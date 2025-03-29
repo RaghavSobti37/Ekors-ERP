@@ -1,0 +1,103 @@
+:root {
+    --primary-color: #4b0082; /* Dark purple */
+    --secondary-color: #00008b; /* Dark blue */
+    --accent-color: #9370db;
+    --text-color: #ffffff;
+    --background-dark: #121212;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-dark);
+    color: var(--text-color);
+  }
+  
+  .auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  }
+  
+  .auth-box {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 2rem 3rem;
+    border-radius: 10px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+  
+  .auth-box h2 {
+    margin-bottom: 1.5rem;
+    color: var(--accent-color);
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--secondary-color);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    font-size: 1rem;
+  }
+  
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .auth-button {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .auth-button:hover {
+    background: var(--secondary-color);
+  }
+  
+  .auth-link {
+    margin-top: 1.5rem;
+    color: var(--text-color);
+  }
+  
+  .auth-link a {
+    color: var(--accent-color);
+    text-decoration: none;
+  }
+  
+  .auth-link a:hover {
+    text-decoration: underline;
+  }
+  
+  .error-message {
+    color: #ff6b6b;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: rgba(255, 0, 0, 0.1);
+    border-radius: 5px;
+  }
