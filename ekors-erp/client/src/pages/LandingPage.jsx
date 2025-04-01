@@ -1,6 +1,7 @@
 import React from 'react';
 import TicketTable from '../components/TicketTable';
 import NewTicketButton from '../components/NewTicketButton';
+import '../components/css/LandingPage.css';
 
 const LandingPage = () => {
   return (
