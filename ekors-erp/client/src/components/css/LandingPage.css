@@ -1,0 +1,74 @@
+/* Apply a light blue background to the entire page */
+body {
+    background-color: #e0f7fa;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Container Styling */
+  .container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 32px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Header Styling */
+  h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #444;
+  }
+  
+  /* Button Styling */
+  button {
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  
+  button:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  
+  /* Cancel Button Styling */
+  button.bg-red-500 {
+    background-color: #e53e3e;
+    color: white;
+  }
+  
+  button.bg-red-500:hover {
+    background-color: #c53030;
+  }
+  
+  /* Ticket Table Styling */
+  .ticket-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  
+  .ticket-table th, .ticket-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .ticket-table th {
+    text-align: left;
+    font-weight: bold;
+    background-color: #f4f4f4;
+  }
+  
