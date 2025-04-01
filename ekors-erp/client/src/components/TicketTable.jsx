@@ -39,3 +39,5 @@ const TicketTable = () => {
       </div>
     );
   };
+
+export default TicketTable;  // ← This was missing
