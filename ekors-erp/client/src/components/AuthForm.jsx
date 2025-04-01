@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function AuthForm({ 
   type, 
-  formData, 
+  formData = {},  // Ensure default value to avoid undefined errors
   handleChange, 
   error, 
   onSubmit 
@@ -11,6 +11,7 @@ export default function AuthForm({
     <div className="auth-container">
       <h2>{type === 'login' ? 'Login' : 'Sign Up'}</h2>
       {error && <div className="error">{error}</div>}
+      
       <form onSubmit={onSubmit}>
         {type === 'signup' && (
           <>
@@ -18,7 +19,7 @@ export default function AuthForm({
               <input
                 type="text"
                 name="firstName"
-                value={formData.firstName}
+                value={formData?.firstName || ""}
                 onChange={handleChange}
                 placeholder="First Name"
                 required
@@ -28,7 +29,7 @@ export default function AuthForm({
               <input
                 type="text"
                 name="lastName"
-                value={formData.lastName}
+                value={formData?.lastName || ""}
                 onChange={handleChange}
                 placeholder="Last Name"
                 required
@@ -38,7 +39,7 @@ export default function AuthForm({
               <input
                 type="tel"
                 name="phone"
-                value={formData.phone}
+                value={formData?.phone || ""}
                 onChange={handleChange}
                 placeholder="Phone Number"
                 required
@@ -51,7 +52,7 @@ export default function AuthForm({
           <input
             type="email"
             name="email"
-            value={formData.email}
+            value={formData?.email || ""}
             onChange={handleChange}
             placeholder="Email"
             required
@@ -62,7 +63,7 @@ export default function AuthForm({
           <input
             type="password"
             name="password"
-            value={formData.password}
+            value={formData?.password || ""}
             onChange={handleChange}
             placeholder={type === 'login' ? 'Password' : 'Set Password'}
             required
@@ -74,7 +75,7 @@ export default function AuthForm({
             <input
               type="password"
               name="confirmPassword"
-              value={formData.confirmPassword}
+              value={formData?.confirmPassword || ""}
               onChange={handleChange}
               placeholder="Confirm Password"
               required
