@@ -1,4 +1,29 @@
 /* Auth Form Styles */
+.guest-login-btn {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem auto;
+  padding: 0.75rem;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.guest-login-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.auth-page {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
 .auth-container {
     max-width: 500px;
     margin: 2rem auto;

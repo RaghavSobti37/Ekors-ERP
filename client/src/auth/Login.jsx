@@ -1,12 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthForm from '../components/AuthForm.jsx'
+import AuthForm from '../components/AuthForm';
+import '../components/css/Login.css';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleGuestLogin = () => {
+    // Set guest credentials (empty for demo)
+    localStorage.setItem('isGuest', 'true');
+    navigate('/LandingPage');
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,28 +30,35 @@ export default function Login() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(formData)
       });
       
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Login failed');
       
       localStorage.setItem('token', data.token);
-      navigate('/dashboard');
+      localStorage.removeItem('isGuest'); // Clear guest flag if regular login
+      navigate('/LandingPage');
     } catch (err) {
       setError(err.message);
     }
   };
 
   return (
-    <AuthForm 
-      type="login"
-      email={email}
-      setEmail={setEmail}
-      password={password}
-      setPassword={setPassword}
-      error={error}
-      onSubmit={handleSubmit}
-    />
+    <div className="auth-page">
+      <AuthForm 
+        type="login"
+        formData={formData}
+        handleChange={handleChange}
+        error={error}
+        onSubmit={handleSubmit}
+      />
+      <button 
+        onClick={handleGuestLogin}
+        className="guest-login-btn"
+      >
+        Continue as Guest
+      </button>
+    </div>
   );
 }

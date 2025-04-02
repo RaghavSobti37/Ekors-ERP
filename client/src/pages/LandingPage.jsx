@@ -4,6 +4,14 @@ import NewTicketButton from '../components/NewTicketButton';
 import '../components/css/LandingPage.css';
 
 const LandingPage = () => {
+
+  useEffect(() => {
+    if (localStorage.getItem('isGuest')) {
+      console.log('Guest user session');
+      // You can add guest-specific logic here
+    }
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
