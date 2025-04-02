@@ -38,8 +38,30 @@ router.post('/signup', async (req, res) => {
     );
 
     res.status(201).json({ token, user });
+
+    res.status(201).json({ 
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      }
+    });
+    
   } catch (err) {
-    handleErrors(res, err);
+    // More specific error messages
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email already exists' 
+      });
+    }
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during signup' 
+    });
   }
 });
 

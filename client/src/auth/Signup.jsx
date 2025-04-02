@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AuthForm from '../components/AuthForm.jsx';
+import AuthForm from '../components/AuthForm';
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -12,6 +12,7 @@ export default function Signup() {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,12 +25,13 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match");
       return;
     }
 
+    setIsLoading(true);
+    
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -47,11 +49,13 @@ export default function Signup() {
       if (!response.ok) throw new Error(data.message || 'Signup failed');
       
       localStorage.setItem('token', data.token);
-      navigate('/dashboard');
+      navigate('/landing');
     } catch (err) {
       setError(err.message.includes('already exists') ? 
         'Email already registered. Please login.' : 
-        err.message);
+        'Signup failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,6 +66,7 @@ export default function Signup() {
       handleChange={handleChange}
       error={error}
       onSubmit={handleSubmit}
+      isLoading={isLoading}
     />
   );
 }

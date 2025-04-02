@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TicketTable from '../components/TicketTable';
 import NewTicketButton from '../components/NewTicketButton';
 import '../components/css/LandingPage.css';
 
 const LandingPage = () => {
+  const navigate = useNavigate(); // Navigation hook
+
+  useEffect(() => {
+    // Redirect to login if user is not authenticated
+    if (!localStorage.getItem("isAuthenticated") && !localStorage.getItem("isGuest")) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (localStorage.getItem('isGuest')) {

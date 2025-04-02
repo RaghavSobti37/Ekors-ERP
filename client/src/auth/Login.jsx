@@ -8,12 +8,12 @@ export default function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleGuestLogin = () => {
-    // Set guest credentials (empty for demo)
     localStorage.setItem('isGuest', 'true');
-    navigate('/LandingPage');
+    navigate('/landing');
   };
 
   const handleChange = (e) => {
@@ -25,6 +25,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -36,10 +37,12 @@ export default function Login() {
       if (!response.ok) throw new Error(data.message || 'Login failed');
       
       localStorage.setItem('token', data.token);
-      localStorage.removeItem('isGuest'); // Clear guest flag if regular login
-      navigate('/LandingPage');
+      localStorage.removeItem('isGuest');
+      navigate('/landing');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -51,10 +54,12 @@ export default function Login() {
         handleChange={handleChange}
         error={error}
         onSubmit={handleSubmit}
+        isLoading={isLoading}
       />
       <button 
         onClick={handleGuestLogin}
         className="guest-login-btn"
+        disabled={isLoading}
       >
         Continue as Guest
       </button>

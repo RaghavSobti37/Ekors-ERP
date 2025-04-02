@@ -10,6 +10,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="/" element={
           <ProtectedRoute>
             <LandingPage />
