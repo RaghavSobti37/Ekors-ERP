@@ -4,7 +4,7 @@ const itemSchema = new mongoose.Schema({
     firstname : String,
     lastname : String,
     email : String,
-    phone : Int,
+    phone : Number,
     password : String,
 })
 

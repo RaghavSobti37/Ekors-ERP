@@ -14,7 +14,9 @@ app.get('/' , async (req,res) => {
 })
 
 app.post('/register' , (req , res)=> {
-  
+  itemModel.create(req.body)
+  .then(item => res.json(item))
+  .catch(err=> res.json(err))
 })
 
 app.listen(3000, ()=> {
