@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Signup from './Signup.jsx'
 import Login from './Login.jsx';
+import Dashboard from "./Dashboard.jsx";
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
   <Routes>
     <Route path='/register' element={<Signup />}> </Route>
     <Route path='/login' element={<Login />}> </Route>
+    <Route path='/dashboard' element={<Dashboard />}></Route>
   </Routes>
   </BrowserRouter>
   </>

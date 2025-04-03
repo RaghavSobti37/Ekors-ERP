@@ -30,6 +30,7 @@ export default function Signup() {
         phone,
         password,
       });
+      
       console.log('Form submitted:', { firstname, lastname, email, phone, password });
       navigate('/login'); // Redirect to login after successful registration
     } catch (error) {

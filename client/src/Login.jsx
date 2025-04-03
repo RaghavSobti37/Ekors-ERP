@@ -1,33 +1,27 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
 import axios from "axios";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // ✅ Define navigate
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); // Clear any previous errors
 
     try {
-      const res = await axios.post("<YOUR_BACKEND_URL>/login", {
+      const response = await axios.post("http://localhost:3000/login", {
         email,
         password,
       });
 
-      if (res.data.success) {
-        console.log("Login successful:", res.data);
-        navigate("/dashboard"); // Redirect to dashboard
-      } else {
-        setError("Invalid email or password!");
-      }
-    } catch (error) {
-      setError("Login failed. Please try again.");
-      console.error("Error logging in:", error);
+      console.log("Login successful:", response.data); 
+      navigate('/dashboard'); // ✅ Now this will work
+    } catch (err) {
+      console.error("Error logging in:", err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || "Invalid credentials");
     }
   };
 
@@ -39,7 +33,7 @@ export default function Login() {
           <div className="form-outline mb-3">
             <input
               type="email"
-              placeholder="Email or username"
+              placeholder="Email"
               className="form-control"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -61,15 +55,12 @@ export default function Login() {
           {error && <p className="text-danger text-center">{error}</p>}
 
           <button type="submit" className="btn btn-primary btn-block w-100">
-            Sign in
+            Sign In
           </button>
-
-          <div className="text-center mt-3">
-            <p>
-              Don't have an account? <a href="/register">Register</a>
-            </p>
-          </div>
         </form>
+        <p className="text-center mt-3">
+          Don't have an account? <a href="/register">Register</a>
+        </p>
       </div>
     </div>
   );
