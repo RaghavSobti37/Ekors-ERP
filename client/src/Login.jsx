@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
+import { useNavigate } from "react-router-dom"; 
 import axios from "axios";
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // ✅ Import eye icons
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // ✅ Define navigate
+  const [showPassword, setShowPassword] = useState(false); // ✅ State for toggling password visibility
+  const navigate = useNavigate(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +20,7 @@ export default function Login() {
       });
 
       console.log("Login successful:", response.data); 
-      navigate('/dashboard'); // ✅ Now this will work
+      navigate('/tickets');
     } catch (err) {
       console.error("Error logging in:", err.response?.data?.error || err.message);
       setError(err.response?.data?.error || "Invalid credentials");
@@ -41,15 +43,25 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-outline mb-3">
+          {/* Password Input with Toggle Eye Icon */}
+          <div className="form-outline mb-3 position-relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"} // ✅ Toggle between text & password
               placeholder="Password"
               className="form-control"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {/* Eye Toggle Button */}
+            <button
+              type="button"
+              className="btn position-absolute"
+              style={{ right: "10px", top: "50%", transform: "translateY(-50%)" }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />} {/* Toggle Icons */}
+            </button>
           </div>
 
           {error && <p className="text-danger text-center">{error}</p>}

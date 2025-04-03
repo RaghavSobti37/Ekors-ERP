@@ -3,6 +3,7 @@ const connectDB = require('./db.js');
 const cors = require('cors');
 const itemModel = require('./models/item.js');
 const bcrypt = require('bcryptjs'); // For password hashing
+const OpenticketModel = require('./models/opentickets.js')
 
 const app = express();
 app.use(express.json());
@@ -58,6 +59,49 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Error logging in' });
     }
 });
+
+app.get('/tickets', async (req, res) => {
+  try {
+      const tickets = await OpenticketModel.find();
+      res.json(tickets);
+  } catch (err) {
+      res.status(500).json({ error: 'Error fetching tickets' });
+  }
+});
+
+app.post('/create-ticket', async (req, res) => {
+  try {
+      const { quotationNumber, billingAddress, shippingAddress, goods } = req.body;
+
+      let totalQuantity = 0;
+      let totalAmount = 0;
+
+      // Calculate total quantity and amount
+      goods.forEach(item => {
+          totalQuantity += item.quantity;
+          totalAmount += item.amount;
+      });
+
+      const gstAmount = (totalAmount * 18) / 100; // 18% GST
+      const grandTotal = totalAmount + gstAmount;
+
+      const newTicket = await OpenticketModel.create({
+          quotationNumber,
+          billingAddress,
+          shippingAddress,
+          goods,
+          totalQuantity,
+          totalAmount,
+          gstAmount,
+          grandTotal
+      });
+
+      res.json(newTicket);
+  } catch (err) {
+      res.status(500).json({ error: 'Error creating ticket' });
+  }
+});
+
 
 app.listen(3000, () => {
     console.log("App is Running on Port 3000");
