@@ -1,41 +1,50 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-// Function to generate a unique 6-digit ticket number
-const generateTicketNumber = () => {
-    return `T-${Math.floor(100000 + Math.random() * 900000)}`;
-};
-
-const openticketSchema = new mongoose.Schema({
-    ticketNumber: { type: String, default: generateTicketNumber, unique: true },
-    quotationNumber: { type: String, required: true },
-    date: { type: Date, default: Date.now },
-    billingAddress: { type: String, required: true },
-    shippingAddress: { type: String, required: true },
-
-    goods: [
-        {
-            srNo: { type: Number, required: true },
-            description: { type: String, required: true },
-            hsnSacCode: { type: String, required: true },
-            quantity: { type: Number, required: true },
-            price: { type: Number, required: true },
-            amount: { type: Number, required: true }
-        }
-    ],
-
-    totalQuantity: { type: Number, required: true },
-    totalAmount: { type: Number, required: true },
-
-    gstRate: { type: Number, default: 18 }, // Default IGST 18%
-    gstAmount: { type: Number, required: true },
-    grandTotal: { type: Number, required: true },
-
-    status: {
-        type: String,
-        enum: ['Quotation Sent', 'PO Received', 'Payment Pending', 'Inspection', 'Packing List', 'Invoice Sent', 'Completed'],
-        default: 'Quotation Sent'
-    }
+const goodsSchema = new Schema({
+    srNo: { type: Number, required: true },
+    description: { type: String, required: true },
+    hsnSacCode: { type: String, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    price: { type: Number, required: true, min: 0 },
+    amount: { type: Number, required: true }
 });
 
-const OpenticketModel = mongoose.model("OpenTicket", openticketSchema);
-module.exports = OpenticketModel;
+const ticketSchema = new Schema({
+    ticketNumber: { type: String, unique: true },
+    companyName: { type: String, required: true },
+    quotationNumber: { type: String, required: true },
+    billingAddress: { type: String, required: true },
+    shippingAddress: { type: String, required: true },
+    goods: [goodsSchema],
+    totalQuantity: { type: Number, required: true },
+    totalAmount: { type: Number, required: true },
+    gstAmount: { type: Number, required: true },
+    grandTotal: { type: Number, required: true },
+    status: { 
+        type: String, 
+        required: true,
+        enum: [
+            "Quotation Sent",
+            "PO Received",
+            "Payment Pending",
+            "Inspection",
+            "Packing List",
+            "Invoice Sent",
+            "Completed"
+        ],
+        default: "Quotation Sent"
+    },
+    createdAt: { type: Date, default: Date.now }
+});
+
+// Pre-save hook to generate ticket number
+ticketSchema.pre('save', async function(next) {
+    if (!this.ticketNumber) {
+        const count = await this.constructor.countDocuments();
+        this.ticketNumber = `T-${(count + 1).toString().padStart(6, '0')}`;
+    }
+    next();
+});
+
+module.exports = mongoose.model('Ticket', ticketSchema);
