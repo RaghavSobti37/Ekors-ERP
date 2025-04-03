@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import {
-  Modal,
-  Button,
-  Form,
-  Table,
-  ProgressBar,
-  Alert,
-} from "react-bootstrap";
-import Navbar from "./components/Navbar.jsx";
+import { Modal, Button, Form, Table, ProgressBar, Alert } from "react-bootstrap";
+import Navbar from './components/Navbar.jsx';
+
+const SortIndicator = ({ columnKey, sortConfig }) => {
+  if (sortConfig.key !== columnKey) return <span>↕️</span>;
+  return sortConfig.direction === 'ascending' ? <span>⬆️</span> : <span>⬇️</span>;
+};
 
 export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +26,7 @@ export default function Dashboard() {
     status: "Quotation Sent",
   });
   const [formValidated, setFormValidated] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
   const statusStages = [
     "Quotation Sent",
@@ -47,10 +46,7 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const response = await axios.get("http://localhost:3000/tickets");
-      // Sort tickets by date (newest first)
-      const sortedTickets = response.data.sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
+      const sortedTickets = response.data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setTickets(sortedTickets);
       setError(null);
     } catch (error) {
@@ -61,19 +57,45 @@ export default function Dashboard() {
     }
   };
 
+  const sortedTickets = useMemo(() => {
+    if (!sortConfig.key) return tickets;
+
+    return [...tickets].sort((a, b) => {
+      if (sortConfig.key === 'date') {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return sortConfig.direction === 'ascending' ? dateA - dateB : dateB - dateA;
+      }
+      if (sortConfig.key === 'grandTotal') {
+        return sortConfig.direction === 'ascending' 
+          ? a.grandTotal - b.grandTotal 
+          : b.grandTotal - a.grandTotal;
+      }
+      
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [tickets, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
   const addRow = () => {
     setTicketData({
       ...ticketData,
       goods: [
         ...ticketData.goods,
-        {
-          srNo: ticketData.goods.length + 1,
-          description: "",
-          hsnSacCode: "",
-          quantity: 1,
-          price: 0,
-          amount: 0,
-        },
+        { srNo: ticketData.goods.length + 1, description: "", hsnSacCode: "", quantity: 1, price: 0, amount: 0 },
       ],
     });
   };
@@ -81,34 +103,20 @@ export default function Dashboard() {
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
     updatedGoods[index][field] = value;
-    updatedGoods[index].amount =
-      updatedGoods[index].quantity * updatedGoods[index].price;
+    updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
 
-    const totalQuantity = updatedGoods.reduce(
-      (sum, item) => sum + Number(item.quantity),
-      0
-    );
-    const totalAmount = updatedGoods.reduce(
-      (sum, item) => sum + Number(item.amount),
-      0
-    );
+    const totalQuantity = updatedGoods.reduce((sum, item) => sum + Number(item.quantity), 0);
+    const totalAmount = updatedGoods.reduce((sum, item) => sum + Number(item.amount), 0);
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
 
-    setTicketData({
-      ...ticketData,
-      goods: updatedGoods,
-      totalQuantity,
-      totalAmount,
-      gstAmount,
-      grandTotal,
-    });
+    setTicketData({ ...ticketData, goods: updatedGoods, totalQuantity, totalAmount, gstAmount, grandTotal });
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-
+    
     const form = event.currentTarget;
     if (form.checkValidity() === false || ticketData.goods.length === 0) {
       event.stopPropagation();
@@ -116,22 +124,16 @@ export default function Dashboard() {
     }
 
     try {
-      // Generate sequential ticket number
-      const nextTicketNumber = `T-${(tickets.length + 1)
-        .toString()
-        .padStart(6, "0")}`;
-
+      const nextTicketNumber = `T-${(tickets.length + 1).toString().padStart(6, '0')}`;
+      
       const ticketToSubmit = {
         ...ticketData,
         ticketNumber: nextTicketNumber,
         date: new Date().toISOString(),
-        companyName: ticketData.companyName,
+        companyName: ticketData.companyName
       };
 
-      const response = await axios.post(
-        "http://localhost:3000/create-ticket",
-        ticketToSubmit
-      );
+      const response = await axios.post("http://localhost:3000/create-ticket", ticketToSubmit);
       if (response.status === 201 || response.status === 200) {
         fetchTickets();
         setShowModal(false);
@@ -175,11 +177,21 @@ export default function Dashboard() {
         <Table striped bordered hover responsive className="mt-3">
           <thead className="table-dark">
             <tr>
-              <th>Ticket Number</th>
-              <th>Quotation No</th>
-              <th>Company Name</th>
-              <th>Date</th>
-              <th>Grand Total (₹)</th>
+              <th onClick={() => requestSort('ticketNumber')} style={{ cursor: 'pointer' }}>
+                Ticket Number <SortIndicator columnKey="ticketNumber" sortConfig={sortConfig} />
+              </th>
+              <th onClick={() => requestSort('quotationNumber')} style={{ cursor: 'pointer' }}>
+                Quotation No <SortIndicator columnKey="quotationNumber" sortConfig={sortConfig} />
+              </th>
+              <th onClick={() => requestSort('companyName')} style={{ cursor: 'pointer' }}>
+                Company Name <SortIndicator columnKey="companyName" sortConfig={sortConfig} />
+              </th>
+              <th onClick={() => requestSort('date')} style={{ cursor: 'pointer' }}>
+                Date <SortIndicator columnKey="date" sortConfig={sortConfig} />
+              </th>
+              <th onClick={() => requestSort('grandTotal')} style={{ cursor: 'pointer' }}>
+                Grand Total (₹) <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
+              </th>
               <th>Progress</th>
             </tr>
           </thead>
@@ -190,12 +202,10 @@ export default function Dashboard() {
                   Loading tickets...
                 </td>
               </tr>
-            ) : tickets.length > 0 ? (
-              tickets.map((ticket) => {
+            ) : sortedTickets.length > 0 ? (
+              sortedTickets.map((ticket) => {
                 const progressPercentage = Math.round(
-                  ((statusStages.indexOf(ticket.status) + 1) /
-                    statusStages.length) *
-                    100
+                  ((statusStages.indexOf(ticket.status) + 1) / statusStages.length) * 100
                 );
                 return (
                   <tr key={ticket.ticketNumber}>
@@ -212,16 +222,14 @@ export default function Dashboard() {
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
                       <div className="d-flex flex-column">
-                        <ProgressBar
-                          now={progressPercentage}
+                        <ProgressBar 
+                          now={progressPercentage} 
                           label={`${progressPercentage}%`}
                           variant={getProgressBarVariant(progressPercentage)}
                           className="mb-1"
                           style={{ height: "20px" }}
                         />
-                        <small className="text-center fw-bold">
-                          {ticket.status}
-                        </small>
+                        <small className="text-center fw-bold">{ticket.status}</small>
                       </div>
                     </td>
                   </tr>
@@ -237,14 +245,7 @@ export default function Dashboard() {
           </tbody>
         </Table>
 
-        <Modal
-          show={showModal}
-          onHide={() => {
-            setShowModal(false);
-            resetForm();
-          }}
-          size="lg"
-        >
+        <Modal show={showModal} onHide={() => { setShowModal(false); resetForm(); }} size="lg">
           <Modal.Header closeButton>
             <Modal.Title>Create New Ticket</Modal.Title>
           </Modal.Header>
@@ -268,12 +269,7 @@ export default function Dashboard() {
                     required
                     type="text"
                     value={ticketData.companyName}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        companyName: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })}
                     placeholder="Enter company name"
                   />
                   <Form.Control.Feedback type="invalid">
@@ -287,12 +283,7 @@ export default function Dashboard() {
                     required
                     type="text"
                     value={ticketData.quotationNumber}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        quotationNumber: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })}
                     placeholder="Enter quotation number"
                   />
                   <Form.Control.Feedback type="invalid">
@@ -309,12 +300,7 @@ export default function Dashboard() {
                     as="textarea"
                     rows={3}
                     value={ticketData.billingAddress}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        billingAddress: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setTicketData({ ...ticketData, billingAddress: e.target.value })}
                     placeholder="Enter billing address"
                   />
                 </Form.Group>
@@ -326,12 +312,7 @@ export default function Dashboard() {
                     as="textarea"
                     rows={3}
                     value={ticketData.shippingAddress}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        shippingAddress: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setTicketData({ ...ticketData, shippingAddress: e.target.value })}
                     placeholder="Enter shipping address"
                   />
                 </Form.Group>
@@ -362,13 +343,7 @@ export default function Dashboard() {
                             required
                             type="text"
                             value={item.description}
-                            onChange={(e) =>
-                              handleGoodsChange(
-                                index,
-                                "description",
-                                e.target.value
-                              )
-                            }
+                            onChange={(e) => handleGoodsChange(index, "description", e.target.value)}
                           />
                         </td>
                         <td>
@@ -376,13 +351,7 @@ export default function Dashboard() {
                             required
                             type="text"
                             value={item.hsnSacCode}
-                            onChange={(e) =>
-                              handleGoodsChange(
-                                index,
-                                "hsnSacCode",
-                                e.target.value
-                              )
-                            }
+                            onChange={(e) => handleGoodsChange(index, "hsnSacCode", e.target.value)}
                           />
                         </td>
                         <td>
@@ -391,13 +360,7 @@ export default function Dashboard() {
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) =>
-                              handleGoodsChange(
-                                index,
-                                "quantity",
-                                e.target.value
-                              )
-                            }
+                            onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)}
                           />
                         </td>
                         <td>
@@ -407,46 +370,29 @@ export default function Dashboard() {
                             min="0"
                             step="0.01"
                             value={item.price}
-                            onChange={(e) =>
-                              handleGoodsChange(index, "price", e.target.value)
-                            }
+                            onChange={(e) => handleGoodsChange(index, "price", e.target.value)}
                           />
                         </td>
-                        <td className="align-middle">
-                          ₹{item.amount.toFixed(2)}
-                        </td>
+                        <td className="align-middle">₹{item.amount.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
               </div>
-              <Button
-                variant="outline-primary"
-                onClick={addRow}
-                className="mb-3"
-              >
+              <Button variant="outline-primary" onClick={addRow} className="mb-3">
                 + Add Item
               </Button>
 
               <div className="bg-light p-3 rounded">
                 <div className="row">
                   <div className="col-md-4">
-                    <p>
-                      Total Quantity:{" "}
-                      <strong>{ticketData.totalQuantity}</strong>
-                    </p>
+                    <p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p>
                   </div>
                   <div className="col-md-4">
-                    <p>
-                      Total Amount:{" "}
-                      <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                    </p>
+                    <p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p>
                   </div>
                   <div className="col-md-4">
-                    <p>
-                      GST (18%):{" "}
-                      <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                    </p>
+                    <p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p>
                   </div>
                 </div>
                 <div className="row">
@@ -457,13 +403,7 @@ export default function Dashboard() {
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-              >
+              <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>
                 Cancel
               </Button>
               <Button variant="primary" type="submit">
