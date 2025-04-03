@@ -92,7 +92,10 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="container">
+
+    <div>
+      <Navbar />
+    <div className="container text2x1 font-bold [#000000]">
       <h2>Open Tickets</h2>
       <Button onClick={() => setShowModal(true)}>Create New Ticket</Button>
 
@@ -227,6 +230,7 @@ export default function Dashboard() {
           </Button>
         </Modal.Footer>
       </Modal>
+    </div>
     </div>
   );
 }
