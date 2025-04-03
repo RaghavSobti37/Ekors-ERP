@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, ProgressBar } from "react-bootstrap";
+import Navbar from './components/Navbar.jsx'
 
 export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
