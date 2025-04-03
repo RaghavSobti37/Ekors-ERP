@@ -3,6 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Signup from './Signup.jsx'
 import Login from './Login.jsx';
 import Dashboard from "./Tickets.jsx";
+import Quotations from "./Quotations";
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
@@ -10,7 +11,7 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('http://localhost:3000'); // ✅ Correct backend port
+        const res = await fetch('http://localhost:3000');
         const data = await res.json();
         setItems(data.items)
       } catch (error) {
@@ -36,7 +37,9 @@ function App() {
     <Route path='/register' element={<Signup />}> </Route>
     <Route path='/login' element={<Login />}> </Route>
     <Route path='/tickets' element={<Dashboard />}></Route>
-  </Routes>
+    <Route path='/quotations' element={<Quotations />}></Route>
+   
+    </Routes>
   </BrowserRouter>
   </>
 }
