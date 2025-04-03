@@ -13,6 +13,10 @@ app.get('/' , async (req,res) => {
     return res.json({items : response})
 })
 
+app.post('/register' , (req , res)=> {
+  
+})
+
 app.listen(3000, ()=> {
   console.log("App is Running")
 })

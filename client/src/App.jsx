@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Signup from './Signup.jsx'
+import Login from './Login.jsx';
+import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
   const [items , setItems] =useState([])
@@ -16,8 +19,7 @@ function App() {
     fetchData();
   }, []);
 
-  return <>
-  {items.map(i => (
+  /* {items.map(i => (
     <p>{i.firstname}  {i.lastname}</p>
   ))}
   {items.map(i => (
@@ -25,7 +27,15 @@ function App() {
   ))}
   {items.map(i => (
     <p>{i.phone}</p>
-  ))}
+  ))} */ 
+
+  return <>
+  <BrowserRouter>
+  <Routes>
+    <Route path='/register' element={<Signup />}> </Route>
+    <Route path='/login' element={<Login />}> </Route>
+  </Routes>
+  </BrowserRouter>
   </>
 }
 
