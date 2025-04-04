@@ -1,28 +1,59 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { Modal, Button, Form, Table, ProgressBar, Alert, Dropdown } from "react-bootstrap";
-import Navbar from './components/Navbar.jsx';
-import { PDFViewer, Document, Page, Text, View, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
+import {
+  Modal,
+  Button,
+  Form,
+  Table,
+  ProgressBar,
+  Alert,
+  Dropdown,
+} from "react-bootstrap";
+import Navbar from "./components/Navbar.jsx";
+import {
+  PDFViewer,
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  PDFDownloadLink,
+} from "@react-pdf/renderer";
 
 // PDF Document Templates
 const styles = StyleSheet.create({
-  page: { padding: 30, fontFamily: 'Helvetica' },
-  header: { fontSize: 24, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
+  page: { padding: 30, fontFamily: "Helvetica" },
+  header: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+  },
   section: { marginBottom: 15 },
-  row: { flexDirection: 'row', marginBottom: 8, borderBottom: '1px solid #eee', paddingBottom: 8 },
-  label: { width: 150, fontWeight: 'bold' },
+  row: {
+    flexDirection: "row",
+    marginBottom: 8,
+    borderBottom: "1px solid #eee",
+    paddingBottom: 8,
+  },
+  label: { width: 150, fontWeight: "bold" },
   value: { flex: 1 },
-  table: { display: 'table', width: 'auto', marginTop: 20 },
-  tableRow: { flexDirection: 'row' },
-  tableColHeader: { width: '25%', fontWeight: 'bold', border: '1px solid #000', padding: 5 },
-  tableCol: { width: '25%', border: '1px solid #000', padding: 5 }
+  table: { display: "table", width: "auto", marginTop: 20 },
+  tableRow: { flexDirection: "row" },
+  tableColHeader: {
+    width: "25%",
+    fontWeight: "bold",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
 });
 
 const QuotationTemplate = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <Text style={styles.header}>QUOTATION</Text>
-      
+
       <View style={styles.section}>
         <View style={styles.row}>
           <Text style={styles.label}>Quotation No:</Text>
@@ -30,7 +61,9 @@ const QuotationTemplate = ({ ticket }) => (
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>{new Date(ticket.createdAt).toLocaleDateString()}</Text>
+          <Text style={styles.value}>
+            {new Date(ticket.createdAt).toLocaleDateString()}
+          </Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Company Name:</Text>
@@ -39,7 +72,7 @@ const QuotationTemplate = ({ ticket }) => (
       </View>
 
       <View style={styles.table}>
-        <View style={[styles.tableRow, { backgroundColor: '#f0f0f0' }]}>
+        <View style={[styles.tableRow, { backgroundColor: "#f0f0f0" }]}>
           <Text style={styles.tableColHeader}>Description</Text>
           <Text style={styles.tableColHeader}>HSN/SAC</Text>
           <Text style={styles.tableColHeader}>Qty</Text>
@@ -65,8 +98,12 @@ const QuotationTemplate = ({ ticket }) => (
           <Text style={styles.value}>₹{ticket.gstAmount.toFixed(2)}</Text>
         </View>
         <View style={[styles.row, { borderBottom: 0 }]}>
-          <Text style={[styles.label, { fontWeight: 'bold' }]}>Grand Total:</Text>
-          <Text style={[styles.value, { fontWeight: 'bold' }]}>₹{ticket.grandTotal.toFixed(2)}</Text>
+          <Text style={[styles.label, { fontWeight: "bold" }]}>
+            Grand Total:
+          </Text>
+          <Text style={[styles.value, { fontWeight: "bold" }]}>
+            ₹{ticket.grandTotal.toFixed(2)}
+          </Text>
         </View>
       </View>
     </Page>
@@ -75,7 +112,11 @@ const QuotationTemplate = ({ ticket }) => (
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) return <span>↕️</span>;
-  return sortConfig.direction === 'ascending' ? <span>⬆️</span> : <span>⬇️</span>;
+  return sortConfig.direction === "ascending" ? (
+    <span>⬆️</span>
+  ) : (
+    <span>⬇️</span>
+  );
 };
 
 export default function Dashboard() {
@@ -97,9 +138,21 @@ export default function Dashboard() {
     gstAmount: 0,
     grandTotal: 0,
     status: "Quotation Sent",
+    documents: {
+      // Initialize documents object
+      quotation: "",
+      po: "",
+      pi: "",
+      challan: "",
+      packingList: "",
+      feedback: "",
+    },
   });
   const [formValidated, setFormValidated] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
 
   const statusStages = [
     "Quotation Sent",
@@ -119,7 +172,10 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const response = await axios.get("http://localhost:3000/tickets");
-      const sortedTickets = response.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+      console.log("Fetched tickets:", response.data);
+      const sortedTickets = response.data.sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
       setTickets(sortedTickets);
       setError(null);
     } catch (error) {
@@ -129,36 +185,37 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   };
-
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
 
     return [...tickets].sort((a, b) => {
-      if (sortConfig.key === 'date') {
+      if (sortConfig.key === "date") {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
-        return sortConfig.direction === 'ascending' ? dateA - dateB : dateB - dateA;
+        return sortConfig.direction === "ascending"
+          ? dateA - dateB
+          : dateB - dateA;
       }
-      if (sortConfig.key === 'grandTotal') {
-        return sortConfig.direction === 'ascending' 
-          ? a.grandTotal - b.grandTotal 
+      if (sortConfig.key === "grandTotal") {
+        return sortConfig.direction === "ascending"
+          ? a.grandTotal - b.grandTotal
           : b.grandTotal - a.grandTotal;
       }
-      
+
       if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
+        return sortConfig.direction === "ascending" ? -1 : 1;
       }
       if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
+        return sortConfig.direction === "ascending" ? 1 : -1;
       }
       return 0;
     });
   }, [tickets, sortConfig]);
 
   const requestSort = (key) => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
     }
     setSortConfig({ key, direction });
   };
@@ -168,7 +225,14 @@ export default function Dashboard() {
       ...ticketData,
       goods: [
         ...ticketData.goods,
-        { srNo: ticketData.goods.length + 1, description: "", hsnSacCode: "", quantity: 1, price: 0, amount: 0 },
+        {
+          srNo: ticketData.goods.length + 1,
+          description: "",
+          hsnSacCode: "",
+          quantity: 1,
+          price: 0,
+          amount: 0,
+        },
       ],
     });
   };
@@ -176,20 +240,34 @@ export default function Dashboard() {
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
     updatedGoods[index][field] = value;
-    updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
+    updatedGoods[index].amount =
+      updatedGoods[index].quantity * updatedGoods[index].price;
 
-    const totalQuantity = updatedGoods.reduce((sum, item) => sum + Number(item.quantity), 0);
-    const totalAmount = updatedGoods.reduce((sum, item) => sum + Number(item.amount), 0);
+    const totalQuantity = updatedGoods.reduce(
+      (sum, item) => sum + Number(item.quantity),
+      0
+    );
+    const totalAmount = updatedGoods.reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
 
-    setTicketData({ ...ticketData, goods: updatedGoods, totalQuantity, totalAmount, gstAmount, grandTotal });
+    setTicketData({
+      ...ticketData,
+      goods: updatedGoods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
+    });
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-    
+
     const form = event.currentTarget;
     if (form.checkValidity() === false || ticketData.goods.length === 0) {
       event.stopPropagation();
@@ -197,16 +275,21 @@ export default function Dashboard() {
     }
 
     try {
-      const nextTicketNumber = `T-${(tickets.length + 1).toString().padStart(6, '0')}`;
-      
+      const nextTicketNumber = `T-${(tickets.length + 1)
+        .toString()
+        .padStart(6, "0")}`;
+
       const ticketToSubmit = {
         ...ticketData,
         ticketNumber: nextTicketNumber,
         date: new Date().toISOString(),
-        companyName: ticketData.companyName
+        companyName: ticketData.companyName,
       };
 
-      const response = await axios.post("http://localhost:3000/create-ticket", ticketToSubmit);
+      const response = await axios.post(
+        "http://localhost:3000/create-ticket",
+        ticketToSubmit
+      );
       if (response.status === 201 || response.status === 200) {
         fetchTickets();
         setShowModal(false);
@@ -230,11 +313,25 @@ export default function Dashboard() {
       gstAmount: 0,
       grandTotal: 0,
       status: "Quotation Sent",
+      documents: {
+        quotation: "",
+        po: "",
+        pi: "",
+        challan: "",
+        packingList: "",
+        feedback: "",
+      },
     });
     setFormValidated(false);
   };
 
   const handleEdit = (ticket) => {
+
+    //debugging
+    console.log("Editing ticket:", ticket);
+    console.log("Ticket ID:", ticket._id);
+
+
     setEditTicket(ticket);
     setTicketData({
       companyName: ticket.companyName,
@@ -247,6 +344,15 @@ export default function Dashboard() {
       gstAmount: ticket.gstAmount,
       grandTotal: ticket.grandTotal,
       status: ticket.status,
+      documents: ticket.documents || {
+        // Fallback if documents don't exist
+        quotation: "",
+        po: "",
+        pi: "",
+        challan: "",
+        packingList: "",
+        feedback: "",
+      },
     });
     setShowEditModal(true);
   };
@@ -257,19 +363,40 @@ export default function Dashboard() {
 
   const handleUpdateTicket = async () => {
     try {
+      console.log("Updating ticket with ID:", editTicket._id);
+      
+      // Prepare the update data
+      const updateData = {
+        ...ticketData,
+        // Ensure we don't send React-specific properties
+        _id: undefined,
+        __v: undefined,
+        createdAt: undefined,
+        updatedAt: undefined
+      };
+    
       const response = await axios.put(
-        `http://localhost:3000/tickets/${editTicket._id}`,
-        ticketData
+        `http://localhost:3000/tickets/${editTicket.id || editTicket._id}`,
+        updateData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
+      
       if (response.status === 200) {
-        fetchTickets();
+        fetchTickets(); // Refresh the ticket list
         setShowEditModal(false);
+        setError(null); // Clear any previous errors
       }
     } catch (error) {
       console.error("Error updating ticket:", error);
-      setError("Failed to update ticket. Please try again.");
+      console.error("Full error object:", JSON.stringify(error, null, 2));
+      setError(`Failed to update ticket: ${error.response?.data?.message || error.message}`);
     }
   };
+
 
   const renderDocumentSection = () => {
     if (!documentType || !editTicket) return null;
@@ -278,25 +405,77 @@ export default function Dashboard() {
       <div className="mt-4 p-3 border rounded">
         <h5 className="mt-4">{documentType.toUpperCase()} Document</h5>
         <PDFViewer width="100%" height="500px" className="mb-3">
-          {documentType === 'quotation' && <QuotationTemplate ticket={editTicket} />}
+          {documentType === "quotation" && (
+            <QuotationTemplate ticket={editTicket} />
+          )}
         </PDFViewer>
         <PDFDownloadLink
           document={
-            documentType === 'quotation' ? <QuotationTemplate ticket={editTicket} /> : <></>
+            documentType === "quotation" ? (
+              <QuotationTemplate ticket={editTicket} />
+            ) : (
+              <></>
+            )
           }
           fileName={`${documentType}_${editTicket.quotationNumber}.pdf`}
         >
           {({ loading }) => (
             <Button variant="primary" disabled={loading}>
-              {loading ? 'Generating PDF...' : 'Download PDF'}
+              {loading ? "Generating PDF..." : "Download PDF"}
             </Button>
           )}
         </PDFDownloadLink>
-        <Button variant="secondary" onClick={() => setDocumentType(null)} className="ms-2">
+        <Button
+          variant="secondary"
+          onClick={() => setDocumentType(null)}
+          className="ms-2"
+        >
           Close
         </Button>
       </div>
     );
+  };
+
+  const handleDocumentUpload = async (file, documentType) => {
+    try {
+      const formData = new FormData();
+      formData.append("document", file);
+      formData.append("documentType", documentType);
+
+      const response = await axios.post(
+        `http://localhost:3000/tickets/${editTicket._id}/documents`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // Update local state with the new document path
+      setTicketData((prev) => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [documentType]: response.data.documents[documentType],
+        },
+      }));
+
+      // Also update the editTicket reference
+      setEditTicket((prev) => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [documentType]: response.data.documents[documentType],
+        },
+      }));
+
+      return true;
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      setError("Failed to upload document");
+      return false;
+    }
   };
 
   return (
@@ -315,20 +494,48 @@ export default function Dashboard() {
         <Table striped bordered hover responsive className="mt-3">
           <thead className="table-dark">
             <tr>
-              <th onClick={() => requestSort('ticketNumber')} style={{ cursor: 'pointer' }}>
-                Ticket Number <SortIndicator columnKey="ticketNumber" sortConfig={sortConfig} />
+              <th
+                onClick={() => requestSort("ticketNumber")}
+                style={{ cursor: "pointer" }}
+              >
+                Ticket Number{" "}
+                <SortIndicator
+                  columnKey="ticketNumber"
+                  sortConfig={sortConfig}
+                />
               </th>
-              <th onClick={() => requestSort('quotationNumber')} style={{ cursor: 'pointer' }}>
-                Quotation No <SortIndicator columnKey="quotationNumber" sortConfig={sortConfig} />
+              <th
+                onClick={() => requestSort("quotationNumber")}
+                style={{ cursor: "pointer" }}
+              >
+                Quotation No{" "}
+                <SortIndicator
+                  columnKey="quotationNumber"
+                  sortConfig={sortConfig}
+                />
               </th>
-              <th onClick={() => requestSort('companyName')} style={{ cursor: 'pointer' }}>
-                Company Name <SortIndicator columnKey="companyName" sortConfig={sortConfig} />
+              <th
+                onClick={() => requestSort("companyName")}
+                style={{ cursor: "pointer" }}
+              >
+                Company Name{" "}
+                <SortIndicator
+                  columnKey="companyName"
+                  sortConfig={sortConfig}
+                />
               </th>
-              <th onClick={() => requestSort('date')} style={{ cursor: 'pointer' }}>
+              <th
+                onClick={() => requestSort("date")}
+                style={{ cursor: "pointer" }}
+              >
                 Date <SortIndicator columnKey="date" sortConfig={sortConfig} />
               </th>
-              <th onClick={() => requestSort('grandTotal')} style={{ cursor: 'pointer' }}>
-                Grand Total (₹) <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
+              <th
+                onClick={() => requestSort("grandTotal")}
+                style={{ cursor: "pointer" }}
+              >
+                Grand Total (₹){" "}
+                <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
               </th>
               <th>Progress</th>
               <th>Actions</th>
@@ -344,7 +551,9 @@ export default function Dashboard() {
             ) : sortedTickets.length > 0 ? (
               sortedTickets.map((ticket) => {
                 const progressPercentage = Math.round(
-                  ((statusStages.indexOf(ticket.status) + 1) / statusStages.length) * 100
+                  ((statusStages.indexOf(ticket.status) + 1) /
+                    statusStages.length) *
+                    100
                 );
                 return (
                   <tr key={ticket.ticketNumber}>
@@ -361,18 +570,24 @@ export default function Dashboard() {
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
                       <div className="d-flex flex-column">
-                        <ProgressBar 
-                          now={progressPercentage} 
+                        <ProgressBar
+                          now={progressPercentage}
                           label={`${progressPercentage}%`}
                           variant={getProgressBarVariant(progressPercentage)}
                           className="mb-1"
                           style={{ height: "20px" }}
                         />
-                        <small className="text-center fw-bold">{ticket.status}</small>
+                        <small className="text-center fw-bold">
+                          {ticket.status}
+                        </small>
                       </div>
                     </td>
                     <td>
-                      <Button variant="info" size="sm" onClick={() => handleEdit(ticket)}>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        onClick={() => handleEdit(ticket)}
+                      >
                         Edit
                       </Button>
                     </td>
@@ -390,7 +605,14 @@ export default function Dashboard() {
         </Table>
 
         {/* Create Ticket Modal */}
-        <Modal show={showModal} onHide={() => { setShowModal(false); resetForm(); }} size="lg">
+        <Modal
+          show={showModal}
+          onHide={() => {
+            setShowModal(false);
+            resetForm();
+          }}
+          size="lg"
+        >
           <Modal.Header closeButton>
             <Modal.Title>Create New Ticket</Modal.Title>
           </Modal.Header>
@@ -414,7 +636,12 @@ export default function Dashboard() {
                     required
                     type="text"
                     value={ticketData.companyName}
-                    onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        companyName: e.target.value,
+                      })
+                    }
                     placeholder="Enter company name"
                   />
                   <Form.Control.Feedback type="invalid">
@@ -428,7 +655,12 @@ export default function Dashboard() {
                     required
                     type="text"
                     value={ticketData.quotationNumber}
-                    onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        quotationNumber: e.target.value,
+                      })
+                    }
                     placeholder="Enter quotation number"
                   />
                   <Form.Control.Feedback type="invalid">
@@ -445,7 +677,12 @@ export default function Dashboard() {
                     as="textarea"
                     rows={3}
                     value={ticketData.billingAddress}
-                    onChange={(e) => setTicketData({ ...ticketData, billingAddress: e.target.value })}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        billingAddress: e.target.value,
+                      })
+                    }
                     placeholder="Enter billing address"
                   />
                 </Form.Group>
@@ -457,7 +694,12 @@ export default function Dashboard() {
                     as="textarea"
                     rows={3}
                     value={ticketData.shippingAddress}
-                    onChange={(e) => setTicketData({ ...ticketData, shippingAddress: e.target.value })}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        shippingAddress: e.target.value,
+                      })
+                    }
                     placeholder="Enter shipping address"
                   />
                 </Form.Group>
@@ -488,7 +730,13 @@ export default function Dashboard() {
                             required
                             type="text"
                             value={item.description}
-                            onChange={(e) => handleGoodsChange(index, "description", e.target.value)}
+                            onChange={(e) =>
+                              handleGoodsChange(
+                                index,
+                                "description",
+                                e.target.value
+                              )
+                            }
                           />
                         </td>
                         <td>
@@ -496,7 +744,13 @@ export default function Dashboard() {
                             required
                             type="text"
                             value={item.hsnSacCode}
-                            onChange={(e) => handleGoodsChange(index, "hsnSacCode", e.target.value)}
+                            onChange={(e) =>
+                              handleGoodsChange(
+                                index,
+                                "hsnSacCode",
+                                e.target.value
+                              )
+                            }
                           />
                         </td>
                         <td>
@@ -505,7 +759,13 @@ export default function Dashboard() {
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)}
+                            onChange={(e) =>
+                              handleGoodsChange(
+                                index,
+                                "quantity",
+                                e.target.value
+                              )
+                            }
                           />
                         </td>
                         <td>
@@ -515,29 +775,46 @@ export default function Dashboard() {
                             min="0"
                             step="0.01"
                             value={item.price}
-                            onChange={(e) => handleGoodsChange(index, "price", e.target.value)}
+                            onChange={(e) =>
+                              handleGoodsChange(index, "price", e.target.value)
+                            }
                           />
                         </td>
-                        <td className="align-middle">₹{item.amount.toFixed(2)}</td>
+                        <td className="align-middle">
+                          ₹{item.amount.toFixed(2)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
               </div>
-              <Button variant="outline-primary" onClick={addRow} className="mb-3">
+              <Button
+                variant="outline-primary"
+                onClick={addRow}
+                className="mb-3"
+              >
                 + Add Item
               </Button>
 
               <div className="bg-light p-3 rounded">
                 <div className="row">
                   <div className="col-md-4">
-                    <p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p>
+                    <p>
+                      Total Quantity:{" "}
+                      <strong>{ticketData.totalQuantity}</strong>
+                    </p>
                   </div>
                   <div className="col-md-4">
-                    <p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p>
+                    <p>
+                      Total Amount:{" "}
+                      <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                    </p>
                   </div>
                   <div className="col-md-4">
-                    <p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p>
+                    <p>
+                      GST (18%):{" "}
+                      <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                    </p>
                   </div>
                 </div>
                 <div className="row">
@@ -548,7 +825,13 @@ export default function Dashboard() {
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+              >
                 Cancel
               </Button>
               <Button variant="primary" type="submit">
@@ -559,201 +842,288 @@ export default function Dashboard() {
         </Modal>
 
         {/* Edit Ticket Modal */}
-        <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" fullscreen>
-  <Modal.Header closeButton>
-    <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
-  </Modal.Header>
-  <Modal.Body>
-    {/* Status Progress Bar */}
-    <div className="mb-4">
-      <ProgressBar style={{ height: '30px' }}>
-        {statusStages.map((stage, index) => {
-          const isCompleted = statusStages.indexOf(ticketData.status) >= index;
-          const isCurrent = ticketData.status === stage;
-          return (
-            <ProgressBar
-              key={stage}
-              now={100 / statusStages.length}
-              variant={isCompleted ? 'success' : 'secondary'}
-              label={isCurrent ? stage : ''}
-              animated={isCurrent}
-            />
-          );
-        })}
-      </ProgressBar>
-    </div>
+        <Modal
+          show={showEditModal}
+          onHide={() => setShowEditModal(false)}
+          size="xl"
+          fullscreen
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {/* Status Progress Bar */}
+            <div className="mb-4">
+              <ProgressBar style={{ height: "30px" }}>
+                {statusStages.map((stage, index) => {
+                  const isCompleted =
+                    statusStages.indexOf(ticketData.status) >= index;
+                  const isCurrent = ticketData.status === stage;
+                  return (
+                    <ProgressBar
+                      key={stage}
+                      now={100 / statusStages.length}
+                      variant={isCompleted ? "success" : "secondary"}
+                      label={isCurrent ? stage : ""}
+                      animated={isCurrent}
+                    />
+                  );
+                })}
+              </ProgressBar>
+            </div>
 
-    {/* Status Update Dropdown */}
-    <div className="row mb-4">
-      <Form.Group className="col-md-6">
-        <Form.Label>Update Status</Form.Label>
-        <Dropdown>
-          <Dropdown.Toggle variant="primary" id="status-dropdown">
-            {ticketData.status}
-          </Dropdown.Toggle>
-          <Dropdown.Menu>
-            {statusStages.map((stage) => (
-              <Dropdown.Item
-                key={stage}
-                onClick={() => handleStatusChange(stage)}
-              >
-                {stage}
-              </Dropdown.Item>
-            ))}
-          </Dropdown.Menu>
-        </Dropdown>
-      </Form.Group>
-      <Form.Group className="col-md-6">
-        <Form.Label>Date</Form.Label>
-        <Form.Control
-          type="text"
-          value={new Date(editTicket?.createdAt).toLocaleDateString()}
-          readOnly
-          disabled
-        />
-      </Form.Group>
-    </div>
+            {/* Status Update Dropdown */}
+            <div className="row mb-4">
+              <Form.Group className="col-md-6">
+                <Form.Label>Update Status</Form.Label>
+                <Dropdown>
+                  <Dropdown.Toggle variant="primary" id="status-dropdown">
+                    {ticketData.status}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    {statusStages.map((stage) => (
+                      <Dropdown.Item
+                        key={stage}
+                        onClick={() => handleStatusChange(stage)}
+                      >
+                        {stage}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Form.Group>
+              <Form.Group className="col-md-6">
+                <Form.Label>Date</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={new Date(editTicket?.createdAt).toLocaleDateString()}
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </div>
 
-    {/* Company and Quotation Info */}
-    <div className="row">
-      <Form.Group className="mb-3 col-md-6">
-        <Form.Label>Company Name*</Form.Label>
-        <Form.Control
-          required
-          type="text"
-          value={ticketData.companyName}
-          onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })}
-        />
-      </Form.Group>
-      <Form.Group className="mb-3 col-md-6">
-        <Form.Label>Quotation Number*</Form.Label>
-        <Form.Control
-          required
-          type="text"
-          value={ticketData.quotationNumber}
-          onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })}
-        />
-      </Form.Group>
-    </div>
-
-    {/* Address Information */}
-    <div className="row">
-      <Form.Group className="mb-3 col-md-6">
-        <Form.Label>Billing Address*</Form.Label>
-        <Form.Control
-          required
-          as="textarea"
-          rows={3}
-          value={ticketData.billingAddress}
-          onChange={(e) => setTicketData({ ...ticketData, billingAddress: e.target.value })}
-        />
-      </Form.Group>
-      <Form.Group className="mb-3 col-md-6">
-        <Form.Label>Shipping Address*</Form.Label>
-        <Form.Control
-          required
-          as="textarea"
-          rows={3}
-          value={ticketData.shippingAddress}
-          onChange={(e) => setTicketData({ ...ticketData, shippingAddress: e.target.value })}
-        />
-      </Form.Group>
-    </div>
-
-    {/* Goods Details */}
-    <h5 className="mt-4">Goods Details*</h5>
-    <div className="table-responsive">
-      <Table bordered className="mb-3">
-        <thead>
-          <tr>
-            <th>Sr No.</th>
-            <th>Description*</th>
-            <th>HSN/SAC*</th>
-            <th>Qty*</th>
-            <th>Price*</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ticketData.goods.map((item, index) => (
-            <tr key={index}>
-              <td>{item.srNo}</td>
-              <td>
+            {/* Company and Quotation Info */}
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Company Name*</Form.Label>
                 <Form.Control
                   required
                   type="text"
-                  value={item.description}
-                  onChange={(e) => handleGoodsChange(index, "description", e.target.value)}
+                  value={ticketData.companyName}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      companyName: e.target.value,
+                    })
+                  }
                 />
-              </td>
-              <td>
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Quotation Number*</Form.Label>
                 <Form.Control
                   required
                   type="text"
-                  value={item.hsnSacCode}
-                  onChange={(e) => handleGoodsChange(index, "hsnSacCode", e.target.value)}
+                  value={ticketData.quotationNumber}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      quotationNumber: e.target.value,
+                    })
+                  }
                 />
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="number"
-                  min="1"
-                  value={item.quantity}
-                  onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)}
-                />
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={item.price}
-                  onChange={(e) => handleGoodsChange(index, "price", e.target.value)}
-                />
-              </td>
-              <td className="align-middle">₹{item.amount.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
-    <Button variant="outline-primary" onClick={addRow} className="mb-3">
-      + Add Item
-    </Button>
+              </Form.Group>
+            </div>
 
-    {/* Totals Section */}
-    <div className="bg-light p-3 rounded">
-      <div className="row">
-        <div className="col-md-4">
-          <p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p>
-        </div>
-        <div className="col-md-4">
-          <p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p>
-        </div>
-        <div className="col-md-4">
-          <p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p>
-        </div>
-      </div>
-      <div className="row">
-        <div className="col-md-12">
-          <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
-        </div>
-      </div>
-    </div>
+            {/* Address Information */}
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Billing Address*</Form.Label>
+                <Form.Control
+                  required
+                  as="textarea"
+                  rows={3}
+                  value={ticketData.billingAddress}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      billingAddress: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Shipping Address*</Form.Label>
+                <Form.Control
+                  required
+                  as="textarea"
+                  rows={3}
+                  value={ticketData.shippingAddress}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      shippingAddress: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+            </div>
+
+            {/* Goods Details */}
+            <h5 className="mt-4">Goods Details*</h5>
+            <div className="table-responsive">
+              <Table bordered className="mb-3">
+                <thead>
+                  <tr>
+                    <th>Sr No.</th>
+                    <th>Description*</th>
+                    <th>HSN/SAC*</th>
+                    <th>Qty*</th>
+                    <th>Price*</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ticketData.goods.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.srNo}</td>
+                      <td>
+                        <Form.Control
+                          required
+                          type="text"
+                          value={item.description}
+                          onChange={(e) =>
+                            handleGoodsChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          required
+                          type="text"
+                          value={item.hsnSacCode}
+                          onChange={(e) =>
+                            handleGoodsChange(
+                              index,
+                              "hsnSacCode",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          required
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleGoodsChange(index, "quantity", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          required
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.price}
+                          onChange={(e) =>
+                            handleGoodsChange(index, "price", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td className="align-middle">
+                        ₹{item.amount.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+            <Button variant="outline-primary" onClick={addRow} className="mb-3">
+              + Add Item
+            </Button>
+
+            {/* Totals Section */}
+            <div className="bg-light p-3 rounded">
+              <div className="row">
+                <div className="col-md-4">
+                  <p>
+                    Total Quantity: <strong>{ticketData.totalQuantity}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    Total Amount:{" "}
+                    <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    GST (18%):{" "}
+                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <div className="row">
+                <div className="col-md-12">
+                  <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
+                </div>
+              </div>
+            </div>
             {/* Documents Section */}
             <div className="mt-4">
               <h4>Documents</h4>
               <div className="d-flex flex-wrap gap-2 mb-3">
-                {['quotation', 'PO', 'PI', 'challan', 'packing list', 'feedback'].map((doc) => (
-                  <Button
-                    key={doc}
-                    variant="outline-primary"
-                    onClick={() => setDocumentType(doc)}
-                  >
-                    {doc.toUpperCase()}
-                  </Button>
+                {Object.entries({
+                  quotation: "Quotation",
+                  po: "PO",
+                  pi: "PI",
+                  challan: "Challan",
+                  packingList: "Packing List",
+                  feedback: "Feedback",
+                }).map(([docKey, docName]) => (
+                  <div key={docKey} className="d-flex align-items-center gap-2">
+                    <Button
+                      variant={
+                        documentType === docKey ? "primary" : "outline-primary"
+                      }
+                      onClick={() => setDocumentType(docKey)}
+                    >
+                      {docName}
+                    </Button>
+                    {ticketData.documents?.[docKey] && (
+                      <a
+                        href={`http://localhost:3000/${ticketData.documents[docKey]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-success btn-sm"
+                      >
+                        View
+                      </a>
+                    )}
+                    <input
+                      type="file"
+                      id={`upload-${docKey}`}
+                      style={{ display: "none" }}
+                      onChange={(e) =>
+                        handleDocumentUpload(e.target.files[0], docKey)
+                      }
+                      accept=".pdf,.doc,.docx,.xls,.xlsx"
+                    />
+                    <label
+                      htmlFor={`upload-${docKey}`}
+                      className="btn btn-info btn-sm mb-0"
+                    >
+                      Upload
+                    </label>
+                  </div>
                 ))}
               </div>
               {renderDocumentSection()}

@@ -4,6 +4,8 @@ const cors = require('cors');
 const itemModel = require('./models/item.js');
 const bcrypt = require('bcryptjs');
 const OpenticketModel = require('./models/opentickets.js');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
@@ -88,7 +90,19 @@ app.post('/create-ticket', async (req, res) => {
             totalAmount,
             gstAmount,
             grandTotal,
-            status: "Quotation Sent" // Default status
+            status: "Quotation Sent",
+            statusHistory: [{
+                status: "Quotation Sent",
+                changedAt: new Date()
+            }],
+            documents: {
+                quotation: "",
+                po: "",
+                pi: "",
+                challan: "",
+                packingList: "",
+                feedback: ""
+            }
         });
 
         res.status(201).json(newTicket);
@@ -97,6 +111,75 @@ app.post('/create-ticket', async (req, res) => {
         res.status(500).json({ error: 'Error creating ticket', details: err.message });
     }
 });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
+
+const upload = multer({ storage });
+
+app.post('/tickets/:id/documents', upload.single('document'), async (req, res) => {
+    try {
+        const { documentType } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const update = {};
+        update[`documents.${documentType}`] = req.file.path.replace(/\\/g, '/');
+
+        const updatedTicket = await OpenticketModel.findByIdAndUpdate(
+            req.params.id,
+            update,
+            { new: true }
+        );
+
+        if (!updatedTicket) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        res.json(updatedTicket);
+    } catch (err) {
+        res.status(500).json({ error: 'Error uploading document' });
+    }
+});
+
+// In your backend (index.js or ticket routes)
+app.put('/tickets/:id', async (req, res) => {
+  try {
+    const { _id, __v, createdAt, updatedAt, ...updateData } = req.body;
+    
+    const updatedTicket = await OpenticketModel.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true } // Return updated doc and run validators
+    );
+
+    if (!updatedTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    res.json(updatedTicket);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ 
+      error: 'Error updating ticket',
+      message: err.message 
+    });
+  }
+});
+
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
+}
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.listen(3000, () => {
     console.log("Server is running on port 3000");
