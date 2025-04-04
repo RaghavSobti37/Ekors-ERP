@@ -1,7 +1,77 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { Modal, Button, Form, Table, ProgressBar, Alert } from "react-bootstrap";
+import { Modal, Button, Form, Table, ProgressBar, Alert, Dropdown } from "react-bootstrap";
 import Navbar from './components/Navbar.jsx';
+import { PDFViewer, Document, Page, Text, View, StyleSheet, PDFDownloadLink } from '@react-pdf/renderer';
+
+// PDF Document Templates
+const styles = StyleSheet.create({
+  page: { padding: 30, fontFamily: 'Helvetica' },
+  header: { fontSize: 24, marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
+  section: { marginBottom: 15 },
+  row: { flexDirection: 'row', marginBottom: 8, borderBottom: '1px solid #eee', paddingBottom: 8 },
+  label: { width: 150, fontWeight: 'bold' },
+  value: { flex: 1 },
+  table: { display: 'table', width: 'auto', marginTop: 20 },
+  tableRow: { flexDirection: 'row' },
+  tableColHeader: { width: '25%', fontWeight: 'bold', border: '1px solid #000', padding: 5 },
+  tableCol: { width: '25%', border: '1px solid #000', padding: 5 }
+});
+
+const QuotationTemplate = ({ ticket }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.header}>QUOTATION</Text>
+      
+      <View style={styles.section}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Quotation No:</Text>
+          <Text style={styles.value}>{ticket.quotationNumber}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Date:</Text>
+          <Text style={styles.value}>{new Date(ticket.createdAt).toLocaleDateString()}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Company Name:</Text>
+          <Text style={styles.value}>{ticket.companyName}</Text>
+        </View>
+      </View>
+
+      <View style={styles.table}>
+        <View style={[styles.tableRow, { backgroundColor: '#f0f0f0' }]}>
+          <Text style={styles.tableColHeader}>Description</Text>
+          <Text style={styles.tableColHeader}>HSN/SAC</Text>
+          <Text style={styles.tableColHeader}>Qty</Text>
+          <Text style={styles.tableColHeader}>Price (₹)</Text>
+        </View>
+        {ticket.goods.map((item, index) => (
+          <View style={styles.tableRow} key={index}>
+            <Text style={styles.tableCol}>{item.description}</Text>
+            <Text style={styles.tableCol}>{item.hsnSacCode}</Text>
+            <Text style={styles.tableCol}>{item.quantity}</Text>
+            <Text style={styles.tableCol}>{item.price.toFixed(2)}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={[styles.section, { marginTop: 20 }]}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Total Amount:</Text>
+          <Text style={styles.value}>₹{ticket.totalAmount.toFixed(2)}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>GST (18%):</Text>
+          <Text style={styles.value}>₹{ticket.gstAmount.toFixed(2)}</Text>
+        </View>
+        <View style={[styles.row, { borderBottom: 0 }]}>
+          <Text style={[styles.label, { fontWeight: 'bold' }]}>Grand Total:</Text>
+          <Text style={[styles.value, { fontWeight: 'bold' }]}>₹{ticket.grandTotal.toFixed(2)}</Text>
+        </View>
+      </View>
+    </Page>
+  </Document>
+);
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) return <span>↕️</span>;
@@ -10,9 +80,12 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
 
 export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [editTicket, setEditTicket] = useState(null);
+  const [documentType, setDocumentType] = useState(null);
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
@@ -161,6 +234,71 @@ export default function Dashboard() {
     setFormValidated(false);
   };
 
+  const handleEdit = (ticket) => {
+    setEditTicket(ticket);
+    setTicketData({
+      companyName: ticket.companyName,
+      quotationNumber: ticket.quotationNumber,
+      billingAddress: ticket.billingAddress,
+      shippingAddress: ticket.shippingAddress,
+      goods: ticket.goods,
+      totalQuantity: ticket.totalQuantity,
+      totalAmount: ticket.totalAmount,
+      gstAmount: ticket.gstAmount,
+      grandTotal: ticket.grandTotal,
+      status: ticket.status,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleStatusChange = (status) => {
+    setTicketData({ ...ticketData, status });
+  };
+
+  const handleUpdateTicket = async () => {
+    try {
+      const response = await axios.put(
+        `http://localhost:3000/tickets/${editTicket._id}`,
+        ticketData
+      );
+      if (response.status === 200) {
+        fetchTickets();
+        setShowEditModal(false);
+      }
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+      setError("Failed to update ticket. Please try again.");
+    }
+  };
+
+  const renderDocumentSection = () => {
+    if (!documentType || !editTicket) return null;
+
+    return (
+      <div className="mt-4 p-3 border rounded">
+        <h5 className="mt-4">{documentType.toUpperCase()} Document</h5>
+        <PDFViewer width="100%" height="500px" className="mb-3">
+          {documentType === 'quotation' && <QuotationTemplate ticket={editTicket} />}
+        </PDFViewer>
+        <PDFDownloadLink
+          document={
+            documentType === 'quotation' ? <QuotationTemplate ticket={editTicket} /> : <></>
+          }
+          fileName={`${documentType}_${editTicket.quotationNumber}.pdf`}
+        >
+          {({ loading }) => (
+            <Button variant="primary" disabled={loading}>
+              {loading ? 'Generating PDF...' : 'Download PDF'}
+            </Button>
+          )}
+        </PDFDownloadLink>
+        <Button variant="secondary" onClick={() => setDocumentType(null)} className="ms-2">
+          Close
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div>
       <Navbar />
@@ -193,12 +331,13 @@ export default function Dashboard() {
                 Grand Total (₹) <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
               </th>
               <th>Progress</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="6" className="text-center">
+                <td colSpan="7" className="text-center">
                   Loading tickets...
                 </td>
               </tr>
@@ -232,12 +371,17 @@ export default function Dashboard() {
                         <small className="text-center fw-bold">{ticket.status}</small>
                       </div>
                     </td>
+                    <td>
+                      <Button variant="info" size="sm" onClick={() => handleEdit(ticket)}>
+                        Edit
+                      </Button>
+                    </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan="6" className="text-center">
+                <td colSpan="7" className="text-center">
                   No tickets found.
                 </td>
               </tr>
@@ -245,6 +389,7 @@ export default function Dashboard() {
           </tbody>
         </Table>
 
+        {/* Create Ticket Modal */}
         <Modal show={showModal} onHide={() => { setShowModal(false); resetForm(); }} size="lg">
           <Modal.Header closeButton>
             <Modal.Title>Create New Ticket</Modal.Title>
@@ -411,6 +556,217 @@ export default function Dashboard() {
               </Button>
             </Modal.Footer>
           </Form>
+        </Modal>
+
+        {/* Edit Ticket Modal */}
+        <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" fullscreen>
+  <Modal.Header closeButton>
+    <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {/* Status Progress Bar */}
+    <div className="mb-4">
+      <ProgressBar style={{ height: '30px' }}>
+        {statusStages.map((stage, index) => {
+          const isCompleted = statusStages.indexOf(ticketData.status) >= index;
+          const isCurrent = ticketData.status === stage;
+          return (
+            <ProgressBar
+              key={stage}
+              now={100 / statusStages.length}
+              variant={isCompleted ? 'success' : 'secondary'}
+              label={isCurrent ? stage : ''}
+              animated={isCurrent}
+            />
+          );
+        })}
+      </ProgressBar>
+    </div>
+
+    {/* Status Update Dropdown */}
+    <div className="row mb-4">
+      <Form.Group className="col-md-6">
+        <Form.Label>Update Status</Form.Label>
+        <Dropdown>
+          <Dropdown.Toggle variant="primary" id="status-dropdown">
+            {ticketData.status}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {statusStages.map((stage) => (
+              <Dropdown.Item
+                key={stage}
+                onClick={() => handleStatusChange(stage)}
+              >
+                {stage}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </Form.Group>
+      <Form.Group className="col-md-6">
+        <Form.Label>Date</Form.Label>
+        <Form.Control
+          type="text"
+          value={new Date(editTicket?.createdAt).toLocaleDateString()}
+          readOnly
+          disabled
+        />
+      </Form.Group>
+    </div>
+
+    {/* Company and Quotation Info */}
+    <div className="row">
+      <Form.Group className="mb-3 col-md-6">
+        <Form.Label>Company Name*</Form.Label>
+        <Form.Control
+          required
+          type="text"
+          value={ticketData.companyName}
+          onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })}
+        />
+      </Form.Group>
+      <Form.Group className="mb-3 col-md-6">
+        <Form.Label>Quotation Number*</Form.Label>
+        <Form.Control
+          required
+          type="text"
+          value={ticketData.quotationNumber}
+          onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })}
+        />
+      </Form.Group>
+    </div>
+
+    {/* Address Information */}
+    <div className="row">
+      <Form.Group className="mb-3 col-md-6">
+        <Form.Label>Billing Address*</Form.Label>
+        <Form.Control
+          required
+          as="textarea"
+          rows={3}
+          value={ticketData.billingAddress}
+          onChange={(e) => setTicketData({ ...ticketData, billingAddress: e.target.value })}
+        />
+      </Form.Group>
+      <Form.Group className="mb-3 col-md-6">
+        <Form.Label>Shipping Address*</Form.Label>
+        <Form.Control
+          required
+          as="textarea"
+          rows={3}
+          value={ticketData.shippingAddress}
+          onChange={(e) => setTicketData({ ...ticketData, shippingAddress: e.target.value })}
+        />
+      </Form.Group>
+    </div>
+
+    {/* Goods Details */}
+    <h5 className="mt-4">Goods Details*</h5>
+    <div className="table-responsive">
+      <Table bordered className="mb-3">
+        <thead>
+          <tr>
+            <th>Sr No.</th>
+            <th>Description*</th>
+            <th>HSN/SAC*</th>
+            <th>Qty*</th>
+            <th>Price*</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ticketData.goods.map((item, index) => (
+            <tr key={index}>
+              <td>{item.srNo}</td>
+              <td>
+                <Form.Control
+                  required
+                  type="text"
+                  value={item.description}
+                  onChange={(e) => handleGoodsChange(index, "description", e.target.value)}
+                />
+              </td>
+              <td>
+                <Form.Control
+                  required
+                  type="text"
+                  value={item.hsnSacCode}
+                  onChange={(e) => handleGoodsChange(index, "hsnSacCode", e.target.value)}
+                />
+              </td>
+              <td>
+                <Form.Control
+                  required
+                  type="number"
+                  min="1"
+                  value={item.quantity}
+                  onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)}
+                />
+              </td>
+              <td>
+                <Form.Control
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.price}
+                  onChange={(e) => handleGoodsChange(index, "price", e.target.value)}
+                />
+              </td>
+              <td className="align-middle">₹{item.amount.toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+    <Button variant="outline-primary" onClick={addRow} className="mb-3">
+      + Add Item
+    </Button>
+
+    {/* Totals Section */}
+    <div className="bg-light p-3 rounded">
+      <div className="row">
+        <div className="col-md-4">
+          <p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p>
+        </div>
+        <div className="col-md-4">
+          <p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p>
+        </div>
+        <div className="col-md-4">
+          <p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p>
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-md-12">
+          <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
+        </div>
+      </div>
+    </div>
+            {/* Documents Section */}
+            <div className="mt-4">
+              <h4>Documents</h4>
+              <div className="d-flex flex-wrap gap-2 mb-3">
+                {['quotation', 'PO', 'PI', 'challan', 'packing list', 'feedback'].map((doc) => (
+                  <Button
+                    key={doc}
+                    variant="outline-primary"
+                    onClick={() => setDocumentType(doc)}
+                  >
+                    {doc.toUpperCase()}
+                  </Button>
+                ))}
+              </div>
+              {renderDocumentSection()}
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleUpdateTicket}>
+              Update Ticket
+            </Button>
+          </Modal.Footer>
         </Modal>
       </div>
     </div>
