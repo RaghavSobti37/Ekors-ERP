@@ -13,6 +13,7 @@
     "@react-pdf/renderer": "^4.3.0",
     "axios": "^1.8.4",
     "bootstrap": "^5.3.3",
+    "date-fns": "^4.1.0",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.9",
     "react-dom": "^19.0.0",
