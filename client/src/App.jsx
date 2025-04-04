@@ -4,6 +4,7 @@ import Signup from './Signup.jsx'
 import Login from './Login.jsx';
 import Dashboard from "./Tickets.jsx";
 import Quotations from "./Quotations";
+import Logtime from "./Logtime";
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
@@ -21,15 +22,6 @@ function App() {
     fetchData();
   }, []);
 
-  /* {items.map(i => (
-    <p>{i.firstname}  {i.lastname}</p>
-  ))}
-  {items.map(i => (
-    <p>{i.email}</p>
-  ))}
-  {items.map(i => (
-    <p>{i.phone}</p>
-  ))} */ 
 
   return <>
   <BrowserRouter>
@@ -38,6 +30,7 @@ function App() {
     <Route path='/login' element={<Login />}> </Route>
     <Route path='/tickets' element={<Dashboard />}></Route>
     <Route path='/quotations' element={<Quotations />}></Route>
+    <Route path='/logtime' element={<Logtime />}></Route>
    
     </Routes>
   </BrowserRouter>

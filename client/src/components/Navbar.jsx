@@ -60,7 +60,7 @@ export default function Navbar() {
                     <a href="/challan">
                         <FaClipboardList /> Challan
                     </a>
-                    <a href="/log-time">
+                    <a href="/logtime">
                         <FaClock /> Log Time
                     </a>
                 </div>

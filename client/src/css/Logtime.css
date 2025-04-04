@@ -1,0 +1,129 @@
+.log-time-container {
+    width: 90%;
+    margin: 20px auto;
+    font-family: "Arial", sans-serif;
+}
+
+.log-time-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.log-info {
+    font-size: 16px;
+}
+
+.total-hours {
+    font-weight: bold;
+    color: #5a67d8;
+}
+
+.log-time-table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: left;
+}
+
+.log-time-table th {
+    background-color: #5a67d8;
+    color: white;
+    padding: 12px;
+    text-align: center;
+}
+
+.log-time-table th[colspan="5"] {
+    text-align: center;
+    font-size: 18px;
+}
+
+.log-time-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.log-time-table tr:nth-child(even) {
+    background-color: #f4f4f4;
+}
+
+.log-time-table tr:hover {
+    background-color: #e2e8f0;
+    transition: 0.3s ease-in-out;
+}
+
+/* Time Input Styling */
+.log-time-table input[type="time"],
+.log-time-table input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Editable Cells */
+.log-time-table td[contenteditable="true"] {
+    background-color: #fef3c7;
+    outline: none;
+    border: none;
+    cursor: text;
+}
+
+.log-time-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.add-btn,
+.history-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s ease;
+}
+
+.add-btn {
+    background-color: #38a169; /* green */
+}
+
+.add-btn:hover {
+    background-color: #2f855a;
+}
+
+.history-btn {
+    background-color: #4299e1; /* blue */
+}
+
+.history-btn:hover {
+    background-color: #3182ce;
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+    .log-time-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .log-time-table th, 
+    .log-time-table td {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
