@@ -13,22 +13,22 @@ export default function History() {
     <div>
       <Navbar />
       <div className="log-time-container">
-        <h2 style={{ marginBottom: "10px" }}>History Records</h2>
+        <h2 style={{ marginBottom: "10px", color: "black" }}>History Records</h2>
         <table className="log-time-table">
           <thead>
             <tr>
-              <th>Date</th>
+              <th className="centered">Date</th>
               <th>Total Time</th>
-              <th>Remarks</th>
+              <th className="centered">Remarks</th>
               <th>View</th>
             </tr>
           </thead>
           <tbody>
             {historyData.map((entry, index) => (
               <tr key={index}>
-                <td>{entry.date}</td>
+                <td className="centered">{entry.date}</td>
                 <td className="centered">{entry.totalTime}</td>
-                <td>{entry.remarks}</td>
+                <td className="centered">{entry.remarks}</td>
                 <td className="centered">
                   <button
                     className="edit-btn"

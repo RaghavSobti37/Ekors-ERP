@@ -141,6 +141,11 @@
     background-color: #dd6b20;
 }
 
+.centered {
+    text-align: center;
+}
+  
+
 @media (max-width: 768px) {
     .log-time-header {
         flex-direction: column;
