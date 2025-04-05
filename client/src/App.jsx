@@ -5,6 +5,7 @@ import Login from './Login.jsx';
 import Dashboard from "./Tickets.jsx";
 import Quotations from "./Quotations";
 import Logtime from "./Logtime";
+import History from "./History";
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
     <Route path='/tickets' element={<Dashboard />}></Route>
     <Route path='/quotations' element={<Quotations />}></Route>
     <Route path='/logtime' element={<Logtime />}></Route>
+    <Route path='/history' element={<History />}></Route>
    
     </Routes>
   </BrowserRouter>

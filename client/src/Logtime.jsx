@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./css/Logtime.css";
 import Navbar from "./components/Navbar.jsx";
+import { useNavigate } from "react-router-dom";
 
 export default function Logtime() {
   const [logData, setLogData] = useState([
@@ -13,10 +14,8 @@ export default function Logtime() {
   ]);
 
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  });
+  const [logDate, setLogDate] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     let totalMinutes = 0;
@@ -58,10 +57,6 @@ export default function Logtime() {
     return `${diffHour}:${diffMin.toString().padStart(2, "0")}`;
   };
 
-  const handleEditClick = (index) => {
-    alert(`Edit clicked for row ${index + 1}`);
-  };
-
   return (
     <div>
       <Navbar />
@@ -69,16 +64,16 @@ export default function Logtime() {
         <div className="log-time-header">
           <button
             className="history-btn"
-            onClick={() => alert("History clicked!")}
+            onClick={() => navigate("/history")}
           >
             📜 History
           </button>
 
           <input
             type="date"
-            className="date-display"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            value={logDate}
+            onChange={(e) => setLogDate(e.target.value)}
+            className="date-picker"
           />
 
           <div className="log-info total-hours">
@@ -107,7 +102,6 @@ export default function Logtime() {
                   <input
                     type="text"
                     value={entry.task}
-                    placeholder="Enter task name..."
                     onChange={(e) => handleEdit(index, "task", e.target.value)}
                   />
                 </td>
@@ -130,12 +124,11 @@ export default function Logtime() {
                   <input
                     type="text"
                     value={entry.remarks}
-                    placeholder="Enter remarks..."
                     onChange={(e) => handleEdit(index, "remarks", e.target.value)}
                   />
                 </td>
                 <td>
-                  <button className="edit-btn" onClick={() => handleEditClick(index)}>
+                  <button className="edit-btn" onClick={() => alert(`Edit clicked for row ${index + 1}`)}>
                     ✏️ Edit
                   </button>
                 </td>
