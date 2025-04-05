@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./css/Logtime.css";
 import Navbar from "./components/Navbar.jsx";
 
@@ -12,12 +12,30 @@ export default function Logtime() {
     { task: "Meeting B", start: "17:00", finish: "18:45", timeSpent: "1:45", remarks: "" },
   ]);
 
-  // Handle cell edits
+  const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+
+  useEffect(() => {
+    let totalMinutes = 0;
+    logData.forEach((entry) => {
+      const [hours, minutes] = entry.timeSpent.split(":").map(Number);
+      if (!isNaN(hours) && !isNaN(minutes)) {
+        totalMinutes += hours * 60 + minutes;
+      }
+    });
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    setTotalTime(`${hours} hours, ${minutes} minutes`);
+  }, [logData]);
+
   const handleEdit = (index, field, value) => {
     const newLogData = [...logData];
     newLogData[index][field] = value;
 
-    // Auto-update total time spent
     if (field === "start" || field === "finish") {
       const startTime = newLogData[index].start;
       const finishTime = newLogData[index].finish;
@@ -27,7 +45,6 @@ export default function Logtime() {
     setLogData(newLogData);
   };
 
-  // Calculate Time Difference
   const calculateTimeDifference = (start, finish) => {
     if (!start || !finish) return "";
     const [startHour, startMin] = start.split(":").map(Number);
@@ -41,26 +58,38 @@ export default function Logtime() {
     return `${diffHour}:${diffMin.toString().padStart(2, "0")}`;
   };
 
+  const handleEditClick = (index) => {
+    alert(`Edit clicked for row ${index + 1}`);
+  };
+
   return (
     <div>
       <Navbar />
       <div className="log-time-container">
         <div className="log-time-header">
-          <div className="log-info">
-            <span><strong>Name:</strong> User Name</span>
-          </div>
-          <div className="log-info">
-            <span><strong>Date:</strong> Friday, May 4th, 2025</span>
-          </div>
+          <button
+            className="history-btn"
+            onClick={() => alert("History clicked!")}
+          >
+            📜 History
+          </button>
+
+          <input
+            type="date"
+            className="date-display"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+
           <div className="log-info total-hours">
-            <span><strong>Total Hours Worked:</strong> 9 hours, 40 minutes</span>
+            <span><strong>Total Hours Worked:</strong> {totalTime}</span>
           </div>
         </div>
 
         <table className="log-time-table">
           <thead>
             <tr>
-              <th colSpan="5">Log Time Details</th>
+              <th colSpan="6">Log Time Details</th>
             </tr>
             <tr>
               <th>Tasks</th>
@@ -68,41 +97,53 @@ export default function Logtime() {
               <th>Finish Time</th>
               <th>Total Time Spent</th>
               <th>Remarks</th>
+              <th>Edit</th>
             </tr>
           </thead>
           <tbody>
             {logData.map((entry, index) => (
               <tr key={index}>
-                <td contentEditable>{entry.task}</td>
                 <td>
-                  <input 
-                    type="time" 
-                    value={entry.start} 
+                  <input
+                    type="text"
+                    value={entry.task}
+                    placeholder="Enter task name..."
+                    onChange={(e) => handleEdit(index, "task", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="time"
+                    value={entry.start}
                     onChange={(e) => handleEdit(index, "start", e.target.value)}
                   />
                 </td>
                 <td>
-                  <input 
-                    type="time" 
-                    value={entry.finish} 
+                  <input
+                    type="time"
+                    value={entry.finish}
                     onChange={(e) => handleEdit(index, "finish", e.target.value)}
                   />
                 </td>
-                <td>{entry.timeSpent}</td>
+                <td className="centered">{entry.timeSpent}</td>
                 <td>
-                  <input 
-                    type="text" 
-                    value={entry.remarks} 
-                    placeholder="Enter remarks..." 
+                  <input
+                    type="text"
+                    value={entry.remarks}
+                    placeholder="Enter remarks..."
                     onChange={(e) => handleEdit(index, "remarks", e.target.value)}
                   />
+                </td>
+                <td>
+                  <button className="edit-btn" onClick={() => handleEditClick(index)}>
+                    ✏️ Edit
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Buttons at the bottom */}
         <div className="log-time-buttons">
           <button
             className="add-btn"
@@ -114,15 +155,6 @@ export default function Logtime() {
             }}
           >
             + Add
-          </button>
-          <button
-            className="history-btn"
-            onClick={() => {
-              alert("History button clicked!");
-              // Add navigation or modal logic here
-            }}
-          >
-            📜 History
           </button>
         </div>
       </div>
