@@ -1,0 +1,156 @@
+.log-time-container {
+    width: 90%;
+    margin: 20px auto;
+    font-family: "Arial", sans-serif;
+}
+
+.log-time-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.log-info {
+    font-size: 16px;
+    padding: 8px 16px;
+    background-color: #e2e8f0;
+    border-radius: 6px;
+    font-weight: bold;
+    color: #5a67d8;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.total-hours {
+    cursor: default;
+}
+
+.date-display {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    border: none;
+    background-color: #edf2f7;
+    color: #2d3748;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    cursor: default;
+}
+
+.date-display::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+.log-time-table {
+    width: 100%;
+    margin-top: 15px;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    text-align: left;
+}
+
+.log-time-table th {
+    background-color: #5a67d8;
+    color: white;
+    padding: 12px;
+    text-align: center;
+}
+
+.log-time-table th[colspan="6"] {
+    text-align: center;
+    font-size: 18px;
+}
+
+.log-time-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.log-time-table td.centered {
+    text-align: center;
+}
+
+.log-time-table tr:nth-child(even) {
+    background-color: #f4f4f4;
+}
+
+.log-time-table tr:hover {
+    background-color: #e2e8f0;
+    transition: 0.3s ease-in-out;
+}
+
+.log-time-table input[type="time"],
+.log-time-table input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.log-time-buttons {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 20px;
+}
+
+.add-btn,
+.history-btn,
+.edit-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s ease;
+}
+
+.add-btn {
+    background-color: #38a169;
+}
+
+.add-btn:hover {
+    background-color: #2f855a;
+}
+
+.history-btn {
+    background-color: #4299e1;
+}
+
+.history-btn:hover {
+    background-color: #3182ce;
+}
+
+.edit-btn {
+    background-color: #ed8936;
+    font-size: 13px;
+}
+
+.edit-btn:hover {
+    background-color: #dd6b20;
+}
+
+@media (max-width: 768px) {
+    .log-time-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .log-time-table th,
+    .log-time-table td {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
