@@ -17,6 +17,25 @@ export default function Logtime() {
   const [logDate, setLogDate] = useState("");
   const navigate = useNavigate();
 
+  // Set current date in format "day-Month-Year"
+  useEffect(() => {
+    const getFormattedDate = () => {
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, "0");
+      const month = today.toLocaleString("default", { month: "long" });
+      const year = today.getFullYear();
+      return `${day}-${month}-${year}`;
+    };
+
+    setLogDate(getFormattedDate());
+
+    const interval = setInterval(() => {
+      setLogDate(getFormattedDate());
+    }, 60 * 60 * 1000); // Optional: refresh every hour
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     let totalMinutes = 0;
     logData.forEach((entry) => {
@@ -62,22 +81,18 @@ export default function Logtime() {
       <Navbar />
       <div className="log-time-container">
         <div className="log-time-header">
-          <button
-            className="history-btn"
-            onClick={() => navigate("/history")}
-          >
+          <button className="history-btn" onClick={() => navigate("/history")}>
             📜 History
           </button>
 
-          <input
-            type="date"
-            value={logDate}
-            onChange={(e) => setLogDate(e.target.value)}
-            className="date-picker"
-          />
+          <div className="log-date-display">
+            <strong>Date:</strong> {logDate}
+          </div>
 
           <div className="log-info total-hours">
-            <span><strong>Total Hours Worked:</strong> {totalTime}</span>
+            <span>
+              <strong>Total Hours Worked:</strong> {totalTime}
+            </span>
           </div>
         </div>
 
@@ -128,7 +143,10 @@ export default function Logtime() {
                   />
                 </td>
                 <td>
-                  <button className="edit-btn" onClick={() => alert(`Edit clicked for row ${index + 1}`)}>
+                  <button
+                    className="edit-btn"
+                    onClick={() => alert(`Edit clicked for row ${index + 1}`)}
+                  >
                     ✏️ Edit
                   </button>
                 </td>
