@@ -29,6 +29,7 @@ app.get('/', async (req, res) => {
 
 app.post('/register', async (req, res) => {
     try {
+        //add compare hashed pwds
         const { firstname, lastname, email, phone, password } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
 
