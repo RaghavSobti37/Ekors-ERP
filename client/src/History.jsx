@@ -8,6 +8,15 @@ const historyData = [
   { date: "2025-04-02", totalTime: "9:00", remarks: "Team meeting and dev tasks" },
 ];
 
+// Function to format the date to "D-MonthName-YYYY"
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = date.toLocaleString("default", { month: "long" });
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 export default function History() {
   return (
     <div>
@@ -26,7 +35,7 @@ export default function History() {
           <tbody>
             {historyData.map((entry, index) => (
               <tr key={index}>
-                <td className="centered">{entry.date}</td>
+                <td className="centered">{formatDate(entry.date)}</td>
                 <td className="centered">{entry.totalTime}</td>
                 <td className="centered">{entry.remarks}</td>
                 <td className="centered">

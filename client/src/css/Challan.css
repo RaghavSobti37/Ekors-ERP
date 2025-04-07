@@ -1,0 +1,50 @@
+.challan-container {
+    padding: 20px;
+    background: linear-gradient(to bottom, #1f2235, #274b74);
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+  }
+  
+  .challan-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+  }
+  
+  .create-challan-btn {
+    background-color: #ffb300;
+    color: black;
+    padding: 10px 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .challan-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .challan-form input {
+    padding: 12px;
+    border: none;
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+    border-radius: 2px;
+  }
+  
+  .submit-btn {
+    background-color: #ffb300;
+    color: black;
+    padding: 12px;
+    font-weight: bold;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  
