@@ -2,24 +2,63 @@ import React from "react";
 import Navbar from "./components/Navbar";
 import "./css/Challan.css";
 
+const challanData = [
+  { companyName: "bluepolaroid", totalBill: "1.18" },
+  { companyName: "pixelcraze", totalBill: "2.50" },
+  { companyName: "designhub", totalBill: "3.75" },
+];
+
 export default function Challan() {
+  const handleCreateChallan = () => {
+    alert("Redirecting to Create Challan form...");
+    // You can use navigate("/create-challan") if using React Router
+  };
+
   return (
     <div>
       <Navbar />
       <div className="challan-container">
         <div className="challan-header">
-          <button className="create-challan-btn">+ Create Challan</button>
+          <h2>Challan Records</h2>
+          <button className="create-challan-btn" onClick={handleCreateChallan}>
+            + Create Challan
+          </button>
         </div>
 
-        <form className="challan-form">
-          <input type="text" placeholder="COMPANY NAME" required />
-          <input type="tel" placeholder="PHONE" required />
-          <input type="email" placeholder="EMAIL ID" required />
-          <input type="number" placeholder="TOTAL BILLING" required />
-          <input type="text" placeholder="BILL NUMBER ( NOT REQUIRED UNTIL CLOSING )" />
-          <input type="text" placeholder="MEDIA" required />
-          <button type="submit" className="submit-btn">SUBMIT</button>
-        </form>
+        <table className="challan-table">
+          <thead>
+            <tr>
+              <th>Company Name</th>
+              <th>Total Bill (₹)</th>
+              <th>View</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {challanData.map((entry, index) => (
+              <tr key={index}>
+                <td>{entry.companyName}</td>
+                <td>{entry.totalBill}</td>
+                <td>
+                  <button
+                    className="view-btn"
+                    onClick={() => alert(`Viewing ${entry.companyName}`)}
+                  >
+                    👁️ View
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="edit-btn"
+                    onClick={() => alert(`Editing ${entry.companyName}`)}
+                  >
+                    ✏️ Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

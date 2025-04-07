@@ -30,10 +30,10 @@
   margin-right: 10px;
 }
 
-/* Navigation Links - Now in a Single Row */
+/* Navigation Links */
 .nav-links {
   display: flex;
-  gap: 20px; /* Adds spacing between links */
+  gap: 20px;
 }
 
 .nav-links a {
@@ -41,7 +41,7 @@
   color: white;
   display: flex;
   align-items: center;
-  gap: 5px; /* Space between icon and text */
+  gap: 5px;
   font-size: 16px;
   font-weight: 500;
   padding: 8px 12px;
@@ -49,7 +49,6 @@
   transition: background-color 0.3s ease;
 }
 
-/* Hover Effect */
 .nav-links a:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
@@ -96,9 +95,13 @@
   background: lightgray;
 }
 
+/* Profile Wrapper */
+.profile-wrapper {
+  position: relative;
+}
+
 /* Profile Section */
 .profile-section {
-  position: relative;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -149,6 +152,12 @@
   margin-bottom: 5px;
 }
 
+
+/* Profile Wrapper */
+.profile-wrapper {
+  position: relative;
+}
+
 .logout-btn {
   width: 100%;
   padding: 8px;
@@ -163,3 +172,6 @@
 .logout-btn:hover {
   background: darkred;
 }
+
+
+
