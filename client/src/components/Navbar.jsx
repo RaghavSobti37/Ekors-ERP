@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import "./Navbar.css"; // Importing CSS
+import React, { useState, useRef } from "react";
+import "./Navbar.css";
 import {
     FaSearch,
     FaUser,
@@ -8,15 +8,17 @@ import {
     FaClipboardList,
     FaClock,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"; // 👈 Import useNavigate
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredCompanies, setFilteredCompanies] = useState([]);
     const [showProfilePopup, setShowProfilePopup] = useState(false);
-    const navigate = useNavigate(); // 👈 Hook to navigate to login page
+    const navigate = useNavigate();
 
-    const companies = ["Tesla", "Apple", "Microsoft", "Amazon", "Google"]; // Dummy data
+    const timeoutRef = useRef(null); // Ref to track timeout
+
+    const companies = ["Tesla", "Apple", "Microsoft", "Amazon", "Google"];
 
     const handleSearch = (e) => {
         const query = e.target.value;
@@ -31,11 +33,19 @@ export default function Navbar() {
     };
 
     const handleSignOut = () => {
-        // Clear storage or any session-related logic here
-        localStorage.removeItem("token"); // if you store token
-
-        // Redirect to login page
+        localStorage.removeItem("token");
         navigate("/login");
+    };
+
+    const handleMouseEnter = () => {
+        clearTimeout(timeoutRef.current); // Cancel hide timeout
+        setShowProfilePopup(true);
+    };
+
+    const handleMouseLeave = () => {
+        timeoutRef.current = setTimeout(() => {
+            setShowProfilePopup(false);
+        }, 300); // Delay hide by 300ms
     };
 
     return (
@@ -85,14 +95,16 @@ export default function Navbar() {
             </div>
 
             <div
-                className="profile-section"
-                onMouseEnter={() => setShowProfilePopup(true)}
-                onMouseLeave={() => setShowProfilePopup(false)}
+                className="profile-wrapper"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
             >
-                <div className="profile-icon">
-                    <FaUser />
+                <div className="profile-section">
+                    <div className="profile-icon">
+                        <FaUser />
+                    </div>
+                    <span>User</span>
                 </div>
-                <span>User</span>
 
                 {showProfilePopup && (
                     <div className="profile-popup">
