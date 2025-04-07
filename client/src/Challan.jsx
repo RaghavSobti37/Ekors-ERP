@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Navbar from "./components/Navbar";
 import "./css/Challan.css";
 
@@ -9,9 +9,29 @@ const challanData = [
 ];
 
 export default function Challan() {
-  const handleCreateChallan = () => {
-    alert("Redirecting to Create Challan form...");
-    // You can use navigate("/create-challan") if using React Router
+  const [showPopup, setShowPopup] = useState(false);
+  const [formData, setFormData] = useState({
+    companyName: "",
+    phone: "",
+    email: "",
+    totalBilling: "",
+    billNumber: "",
+    media: null,
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Submitted:", formData);
+    alert("Challan submitted!");
+    setShowPopup(false);
   };
 
   return (
@@ -20,7 +40,7 @@ export default function Challan() {
       <div className="challan-container">
         <div className="challan-header">
           <h2>Challan Records</h2>
-          <button className="create-challan-btn" onClick={handleCreateChallan}>
+          <button className="create-challan-btn" onClick={() => setShowPopup(true)}>
             + Create Challan
           </button>
         </div>
@@ -40,18 +60,12 @@ export default function Challan() {
                 <td>{entry.companyName}</td>
                 <td>{entry.totalBill}</td>
                 <td>
-                  <button
-                    className="view-btn"
-                    onClick={() => alert(`Viewing ${entry.companyName}`)}
-                  >
+                  <button className="view-btn" onClick={() => alert(`Viewing ${entry.companyName}`)}>
                     👁️ View
                   </button>
                 </td>
                 <td>
-                  <button
-                    className="edit-btn"
-                    onClick={() => alert(`Editing ${entry.companyName}`)}
-                  >
+                  <button className="edit-btn" onClick={() => alert(`Editing ${entry.companyName}`)}>
                     ✏️ Edit
                   </button>
                 </td>
@@ -59,6 +73,69 @@ export default function Challan() {
             ))}
           </tbody>
         </table>
+
+        {/* Popup Modal */}
+        {showPopup && (
+          <div className="popup-overlay">
+            <div className="popup-form">
+              <form onSubmit={handleSubmit}>
+                <input
+                  type="text"
+                  name="companyName"
+                  placeholder="COMPANY NAME"
+                  value={formData.companyName}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="text"
+                  name="phone"
+                  placeholder="PHONE"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="EMAIL ID"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="text"
+                  name="totalBilling"
+                  placeholder="TOTAL BILLING"
+                  value={formData.totalBilling}
+                  onChange={handleInputChange}
+                  required
+                />
+                <input
+                  type="text"
+                  name="billNumber"
+                  placeholder="BILL NUMBER ( NOT REQUIRED UNTIL CLOSING )"
+                  value={formData.billNumber}
+                  onChange={handleInputChange}
+                />
+                <input
+                  type="file"
+                  name="media"
+                  accept="image/*"
+                  onChange={handleInputChange}
+                  required
+                />
+
+                <button type="submit" className="submit-btn">
+                  SUBMIT
+                </button>
+              </form>
+              <button className="close-btn" onClick={() => setShowPopup(false)}>
+                ✖
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

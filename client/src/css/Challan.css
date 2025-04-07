@@ -1,88 +1,70 @@
-.challan-container {
-    padding: 30px;
-    background: linear-gradient(to right, #f0f2f5, #e3f2fd);
-    min-height: 100vh;
-    font-family: "Segoe UI", sans-serif;
-  }
-  
-  .challan-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-  }
-  
-  .challan-header h2 {
-    font-size: 24px;
-    color: #333;
-  }
-  
-  .create-challan-btn {
-    background-color: #6a1b9a;
-    color: white;
-    padding: 10px 18px;
-    font-size: 16px;
-    font-weight: bold;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .create-challan-btn:hover {
-    background-color: #8e24aa;
-  }
-  
-  .challan-table {
+/* Popup Styling */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    border-collapse: collapse;
-    background-color: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   }
   
-  .challan-table th, .challan-table td {
-    padding: 14px 20px;
-    text-align: center;
-    border-bottom: 1px solid #f0f0f0;
+  .popup-form {
+    background-color: #2c2c54;
+    padding: 30px;
+    border-radius: 10px;
+    width: 400px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   }
   
-  .challan-table th {
-    background-color: #1a237e;
-    color: white;
-    font-weight: bold;
-    font-size: 15px;
+  .popup-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
   }
   
-  .challan-table tr:hover {
-    background-color: #f5f5f5;
-  }
-  
-  .view-btn, .edit-btn {
-    padding: 6px 14px;
+  .popup-form input[type="text"],
+  .popup-form input[type="email"],
+  .popup-form input[type="file"] {
+    padding: 10px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     font-size: 14px;
+  }
+  
+  .popup-form input[type="file"] {
+    background: white;
+  }
+  
+  .submit-btn {
+    background-color: orange;
+    color: black;
+    font-weight: bold;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
   }
   
-  .view-btn {
-    background-color: #e3f2fd;
-    color: #1976d2;
+  .submit-btn:hover {
+    background-color: darkorange;
   }
   
-  .view-btn:hover {
-    background-color: #bbdefb;
-  }
-  
-  .edit-btn {
-    background-color: #fff3e0;
-    color: #e65100;
-  }
-  
-  .edit-btn:hover {
-    background-color: #ffe0b2;
+  .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: transparent;
+    color: white;
+    font-size: 20px;
+    border: none;
+    cursor: pointer;
   }
   
