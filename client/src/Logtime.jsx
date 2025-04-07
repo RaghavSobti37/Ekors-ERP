@@ -4,38 +4,35 @@ import Navbar from "./components/Navbar.jsx";
 import { useNavigate } from "react-router-dom";
 
 export default function Logtime() {
-  const [logData, setLogData] = useState([
-    { task: "Task 1", start: "08:00", finish: "08:45", timeSpent: "0:45", remarks: "" },
-    { task: "Task 2", start: "09:00", finish: "10:00", timeSpent: "1:00", remarks: "" },
-    { task: "Task 3", start: "10:00", finish: "12:30", timeSpent: "2:30", remarks: "" },
-    { task: "Meeting A", start: "13:00", finish: "15:10", timeSpent: "2:10", remarks: "" },
-    { task: "Task 4", start: "15:15", finish: "16:45", timeSpent: "1:30", remarks: "" },
-    { task: "Meeting B", start: "17:00", finish: "18:45", timeSpent: "1:45", remarks: "" },
-  ]);
-
+  const [logData, setLogData] = useState([]);
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
   const [logDate, setLogDate] = useState("");
   const navigate = useNavigate();
 
-  // Set current date in format "day-Month-Year"
+  // Get formatted date
+  const getFormattedDate = () => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0");
+    const month = today.toLocaleString("default", { month: "long" });
+    const year = today.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  // Fetch logs on mount
   useEffect(() => {
-    const getFormattedDate = () => {
-      const today = new Date();
-      const day = String(today.getDate()).padStart(2, "0");
-      const month = today.toLocaleString("default", { month: "long" });
-      const year = today.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
-
-    setLogDate(getFormattedDate());
-
-    const interval = setInterval(() => {
-      setLogDate(getFormattedDate());
-    }, 60 * 60 * 1000); // Optional: refresh every hour
-
-    return () => clearInterval(interval);
+    const today = getFormattedDate();
+    setLogDate(today);
+    fetch(`http://localhost:3000/api/logtime/today`)
+      .then((res) => res.json())
+      .then((data) => {
+        setLogData(data.logs || []);
+      })
+      .catch((err) => {
+        console.error("Error fetching today's logs:", err);
+      });
   }, []);
 
+  // Calculate total time
   useEffect(() => {
     let totalMinutes = 0;
     logData.forEach((entry) => {
@@ -50,30 +47,51 @@ export default function Logtime() {
     setTotalTime(`${hours} hours, ${minutes} minutes`);
   }, [logData]);
 
+  // Save handler
+  const handleSave = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/logtime", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ logs: logData, date: logDate }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save logs");
+      alert("Logs saved successfully!");
+    } catch (error) {
+      console.error("Error saving logs:", error);
+      alert("Failed to save logs");
+    }
+  };
+
+  // Handle changes
   const handleEdit = (index, field, value) => {
     const newLogData = [...logData];
     newLogData[index][field] = value;
 
     if (field === "start" || field === "finish") {
-      const startTime = newLogData[index].start;
-      const finishTime = newLogData[index].finish;
-      newLogData[index].timeSpent = calculateTimeDifference(startTime, finishTime);
+      const start = newLogData[index].start;
+      const finish = newLogData[index].finish;
+      newLogData[index].timeSpent = calculateTimeDifference(start, finish);
     }
 
     setLogData(newLogData);
   };
 
+  // Calculate time difference
   const calculateTimeDifference = (start, finish) => {
     if (!start || !finish) return "";
-    const [startHour, startMin] = start.split(":").map(Number);
-    const [finishHour, finishMin] = finish.split(":").map(Number);
-    let diffHour = finishHour - startHour;
-    let diffMin = finishMin - startMin;
-    if (diffMin < 0) {
-      diffHour -= 1;
-      diffMin += 60;
+    const [sh, sm] = start.split(":").map(Number);
+    const [fh, fm] = finish.split(":").map(Number);
+    let hours = fh - sh;
+    let minutes = fm - sm;
+    if (minutes < 0) {
+      hours -= 1;
+      minutes += 60;
     }
-    return `${diffHour}:${diffMin.toString().padStart(2, "0")}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -90,24 +108,20 @@ export default function Logtime() {
           </div>
 
           <div className="log-info total-hours">
-            <span>
-              <strong>Total Hours Worked:</strong> {totalTime}
-            </span>
+            <strong>Total Hours Worked:</strong> {totalTime}
           </div>
         </div>
 
         <table className="log-time-table">
           <thead>
             <tr>
-              <th colSpan="6">Log Time Details</th>
+              <th colSpan="4">Log Time Details</th>
             </tr>
             <tr>
               <th>Tasks</th>
               <th>Start Time</th>
               <th>Finish Time</th>
               <th>Total Time Spent</th>
-              <th>Remarks</th>
-              <th>Edit</th>
             </tr>
           </thead>
           <tbody>
@@ -135,37 +149,29 @@ export default function Logtime() {
                   />
                 </td>
                 <td className="centered">{entry.timeSpent}</td>
-                <td>
-                  <input
-                    type="text"
-                    value={entry.remarks}
-                    onChange={(e) => handleEdit(index, "remarks", e.target.value)}
-                  />
-                </td>
-                <td>
-                  <button
-                    className="edit-btn"
-                    onClick={() => alert(`Edit clicked for row ${index + 1}`)}
-                  >
-                    ✏️ Edit
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="log-time-buttons">
+        <div className="log-time-buttons" style={{ display: "flex", justifyContent: "space-between" }}>
           <button
             className="add-btn"
-            onClick={() => {
+            onClick={() =>
               setLogData([
                 ...logData,
-                { task: "", start: "", finish: "", timeSpent: "", remarks: "" },
-              ]);
-            }}
+                { task: "", start: "", finish: "", timeSpent: "" },
+              ])
+            }
           >
             + Add
+          </button>
+
+          <button
+            className="save-btn"
+            onClick={handleSave}
+          >
+            💾 Save Logs
           </button>
         </div>
       </div>

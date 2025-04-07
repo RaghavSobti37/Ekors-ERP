@@ -7,6 +7,7 @@ const OpenticketModel = require('./models/opentickets.js');
 const multer = require('multer');
 const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
+const logtimeRoutes = require('./routes/logTimeRoutes.js');
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,14 @@ app.use(cors({
 connectDB();
 
 // Routes
+app.use('/api/logtime', logtimeRoutes);
+
+// Basic route for testing
+app.get('/', (req, res) => {
+  res.send('Logtime API is running');
+});
+
+
 app.get('/', async (req, res) => {
     try {
         const response = await itemModel.find();
