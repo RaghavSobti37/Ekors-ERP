@@ -7,6 +7,8 @@ import Quotations from "./Quotations";
 import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
+import Items from "./Itemslist.jsx"
+
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
 function App() {
@@ -35,8 +37,9 @@ function App() {
     <Route path='/logtime' element={<Logtime />}></Route>
     <Route path='/history' element={<History />}></Route>
     <Route path='/challan' element={<Challan />}></Route>
+    <Route path='/itemslist' element={<Items />}></Route>
    
-    </Routes>
+  </Routes>
   </BrowserRouter>
   </>
 }

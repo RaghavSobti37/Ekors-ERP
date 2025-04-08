@@ -1,13 +1,14 @@
 const express = require('express');
 const connectDB = require('./db.js');
 const cors = require('cors');
-const itemModel = require('./models/item.js');
+const userModel = require('./models/user.js');
 const bcrypt = require('bcryptjs');
 const OpenticketModel = require('./models/opentickets.js');
 const multer = require('multer');
 const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
+const itemRoutes = require('./routes/itemlistRoutes.js');
 
 const app = express();
 app.use(express.json());
@@ -29,7 +30,7 @@ app.get('/', (req, res) => {
 
 app.get('/', async (req, res) => {
     try {
-        const response = await itemModel.find();
+        const response = await userModel.find();
         return res.json({ items: response });
     } catch (err) {
         res.status(500).json({ error: 'Error fetching users' });
@@ -42,7 +43,7 @@ app.post('/register', async (req, res) => {
         const { firstname, lastname, email, phone, password } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUser = await itemModel.create({
+        const newUser = await userModel.create({
             firstname,
             lastname,
             email,
@@ -59,7 +60,7 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await itemModel.findOne({ email });  
+        const user = await userModel.findOne({ email });  
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -199,6 +200,7 @@ if (!fs.existsSync('uploads')) {
 }
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/items', itemRoutes);
 
 app.listen(3000, () => {
     console.log("Server is running on port 3000");

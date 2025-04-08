@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "./css/Logtime.css";
 import Navbar from "./components/Navbar.jsx";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Logtime() {
   const [logData, setLogData] = useState([]);
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
   const [logDate, setLogDate] = useState("");
   const navigate = useNavigate();
-  const location = useLocation();
 
+  // Get formatted date
   const getFormattedDate = () => {
     const today = new Date();
     const day = String(today.getDate()).padStart(2, "0");
@@ -18,38 +18,21 @@ export default function Logtime() {
     return `${day}-${month}-${year}`;
   };
 
-  // Extract query params
-  const getDateFromParams = () => {
-    const params = new URLSearchParams(location.search);
-    return params.get("date");
-  };
-
+  // Fetch logs on mount
   useEffect(() => {
-    const rawDate = getDateFromParams();
-    let formattedDisplayDate = getFormattedDate();
-    let apiDate = "today";
-
-    if (rawDate) {
-      apiDate = rawDate;
-      const date = new Date(rawDate);
-      const day = String(date.getDate()).padStart(2, "0");
-      const month = date.toLocaleString("default", { month: "long" });
-      const year = date.getFullYear();
-      formattedDisplayDate = `${day}-${month}-${year}`;
-    }
-
-    setLogDate(formattedDisplayDate);
-
-    fetch(`http://localhost:3000/api/logtime/${apiDate}`)
+    const today = getFormattedDate();
+    setLogDate(today);
+    fetch(`http://localhost:3000/api/logtime/today`)
       .then((res) => res.json())
       .then((data) => {
         setLogData(data.logs || []);
       })
       .catch((err) => {
-        console.error("Error fetching logs:", err);
+        console.error("Error fetching today's logs:", err);
       });
-  }, [location.search]);
+  }, []);
 
+  // Calculate total time
   useEffect(() => {
     let totalMinutes = 0;
     logData.forEach((entry) => {
@@ -64,11 +47,14 @@ export default function Logtime() {
     setTotalTime(`${hours} hours, ${minutes} minutes`);
   }, [logData]);
 
+  // Save handler
   const handleSave = async () => {
     try {
       const response = await fetch("http://localhost:3000/api/logtime", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ logs: logData, date: logDate }),
       });
 
@@ -80,6 +66,7 @@ export default function Logtime() {
     }
   };
 
+  // Handle changes
   const handleEdit = (index, field, value) => {
     const newLogData = [...logData];
     newLogData[index][field] = value;
@@ -93,6 +80,7 @@ export default function Logtime() {
     setLogData(newLogData);
   };
 
+  // Calculate time difference
   const calculateTimeDifference = (start, finish) => {
     if (!start || !finish) return "";
     const [sh, sm] = start.split(":").map(Number);
@@ -114,9 +102,11 @@ export default function Logtime() {
           <button className="history-btn" onClick={() => navigate("/history")}>
             📜 History
           </button>
+
           <div className="log-date-display">
             <strong>Date:</strong> {logDate}
           </div>
+
           <div className="log-info total-hours">
             <strong>Total Hours Worked:</strong> {totalTime}
           </div>
@@ -177,7 +167,10 @@ export default function Logtime() {
             + Add
           </button>
 
-          <button className="save-btn" onClick={handleSave}>
+          <button
+            className="save-btn"
+            onClick={handleSave}
+          >
             💾 Save Logs
           </button>
         </div>
