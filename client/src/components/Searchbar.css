@@ -1,7 +1,12 @@
 .top-search-bar {
     display: flex;
     justify-content: center;
-    margin: 20px 0;
+  
+    /* 🔽 Don't use margin-top as it affects layout */
+    /* Instead, shift it visually */
+    transform: translateY(30px); /* You can adjust this value as needed */
+    position: relative;
+    z-index: 1; /* Make sure it appears above nearby content if needed */
   }
   
   .search-container {

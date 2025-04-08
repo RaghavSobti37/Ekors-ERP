@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './css/Items.css'; // Optional for modal styling
+import './css/Items.css';
+import Navbar from "./components/Navbar.jsx";
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -10,6 +11,18 @@ export default function Items() {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({ name: '', quantity: '', price: '', gstRate: '', hsnCode: '' });
   const [showModal, setShowModal] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [purchaseData, setPurchaseData] = useState({
+    companyName: '',
+    gstNumber: '',
+    address: '',
+    stateName: '',
+    invoiceNumber: '',
+    invoiceDate: '',
+    itemsPurchased: [{ name: '', description: '', price: '', quantity: '' }],
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -25,18 +38,6 @@ export default function Items() {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching items:', error);
-      setLoading(false);
-    }
-  };
-
-  const initializeDatabase = async () => {
-    try {
-      setLoading(true);
-      await axios.post('http://localhost:3000/api/items/initialize');
-      await fetchItems();
-    } catch (error) {
-      console.error('Error initializing database:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -97,115 +98,173 @@ export default function Items() {
     }
   };
 
+  const handlePurchaseChange = (e) => {
+    setPurchaseData({ ...purchaseData, [e.target.name]: e.target.value });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updatedItems = [...purchaseData.itemsPurchased];
+    updatedItems[index][field] = value;
+    setPurchaseData({ ...purchaseData, itemsPurchased: updatedItems });
+  };
+
+  const addPurchaseItemRow = () => {
+    setPurchaseData({
+      ...purchaseData,
+      itemsPurchased: [...purchaseData.itemsPurchased, { name: '', description: '', price: '', quantity: '' }]
+    });
+  };
+
+  const toggleDetails = (id) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="container">
-      <h2>Items List</h2>
+    <div>
+      <Navbar />
+      <div className="container mt-4">
+        <h2 style={{ color: 'black' }}>Items List</h2>
 
-      <div className="mb-3 d-flex gap-2">
-        <button onClick={initializeDatabase} className="btn btn-primary">Initialize DB</button>
-        <button onClick={() => setShowModal(true)} className="btn btn-success">Add Item</button>
-        <input
-          type="text"
-          placeholder="Search items or HSN codes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="form-control"
-        />
-      </div>
+        <div className="mb-3 d-flex gap-2">
+          <button onClick={() => setShowModal(true)} className="btn btn-success px-4">Add Item</button>
+          <button onClick={() => setShowPurchaseModal(true)} className="btn btn-primary px-4">Add Purchase</button>
+          <input
+            type="text"
+            placeholder="Search items or HSN codes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="form-control"
+          />
+        </div>
 
-      <div className="table-responsive">
-        <table className="table table-striped table-bordered">
-          <thead className="thead-dark">
-            <tr>
-              {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((key) => (
-                <th key={key} onClick={() => requestSort(key)} style={{ cursor: 'pointer' }}>
-                  {key.charAt(0).toUpperCase() + key.slice(1)} {sortConfig.key === key && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.map((item) => (
-              <tr key={item._id}>
-                {editingItem === item._id ? (
-                  <>
-                    {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((field) => (
-                      <td key={field}>
-                        <input
-                          name={field}
-                          value={formData[field]}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                      </td>
-                    ))}
-                    <td>
-                      <button onClick={handleSave} className="btn btn-success btn-sm mr-1">Save</button>
-                      <button onClick={handleCancel} className="btn btn-secondary btn-sm">Cancel</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
+        <div className="table-responsive">
+          <table className="table table-striped table-bordered">
+            <thead style={{ backgroundColor: '#2c3e50', color: 'white' }}>
+              <tr>
+                {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((key) => (
+                  <th key={key} onClick={() => requestSort(key)} style={{ cursor: 'pointer' }}>
+                    {key.charAt(0).toUpperCase() + key.slice(1)} {sortConfig.key === key && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </th>
+                ))}
+                <th>Actions</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentItems.map((item) => (
+                <React.Fragment key={item._id}>
+                  <tr>
                     <td>{item.name}</td>
                     <td>{item.quantity}</td>
-                    <td>₹{item.price.toFixed(2)}</td>
+                    <td>₹{parseFloat(item.price).toFixed(2)}</td>
                     <td>{item.gstRate}%</td>
                     <td>{item.hsnCode}</td>
                     <td>
                       <button onClick={() => handleEdit(item)} className="btn btn-primary btn-sm">Edit</button>
                     </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <td>
+                      <button onClick={() => toggleDetails(item._id)} className="btn btn-info btn-sm">Details</button>
+                    </td>
+                  </tr>
+                  {expandedRow === item._id && (
+                    <tr>
+                      <td colSpan="7">
+                        <strong>Company:</strong> {purchaseData.companyName || 'Demo Company'}<br />
+                        <strong>GST:</strong> {purchaseData.gstNumber}<br />
+                        <strong>Address:</strong> {purchaseData.address}<br />
+                        <strong>State:</strong> {purchaseData.stateName}<br />
+                        <strong>Invoice No:</strong> {purchaseData.invoiceNumber}<br />
+                        <strong>Date:</strong> {purchaseData.invoiceDate}<br />
+                        <strong>Items Purchased:</strong>
+                        <ul>
+                          {purchaseData.itemsPurchased.map((it, idx) => (
+                            <li key={idx}>
+                              {it.name} - {it.description} - ₹{it.price} x {it.quantity}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
 
-        {/* Pagination */}
-        <div className="d-flex justify-content-center gap-3 mt-2">
-          <button
-            className="btn btn-sm btn-outline-dark"
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            ← Prev
-          </button>
-          <span>Page {currentPage} of {totalPages}</span>
-          <button
-            className="btn btn-sm btn-outline-dark"
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Next →
-          </button>
-        </div>
-      </div>
-
-      {/* Modal for Add Item */}
-      {showModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
-            <h5>Add New Item</h5>
-            {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((field) => (
-              <input
-                key={field}
-                className="form-control my-2"
-                placeholder={field}
-                name={field}
-                value={formData[field]}
-                onChange={handleChange}
-              />
-            ))}
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button onClick={handleAddItem} className="btn btn-success">Add</button>
-              <button onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
-            </div>
+          <div className="d-flex justify-content-center gap-3 mt-2">
+            <button className="btn btn-sm btn-outline-dark" onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
+              ← Prev
+            </button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button className="btn btn-sm btn-outline-dark" onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>
+              Next →
+            </button>
           </div>
         </div>
-      )}
+
+        {showModal && (
+          <div className="modal-backdrop">
+            <div className="modal-content">
+              <h5>Add New Item</h5>
+              {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((field) => (
+                <input
+                  key={field}
+                  className="form-control my-2"
+                  placeholder={field}
+                  name={field}
+                  value={formData[field]}
+                  onChange={handleChange}
+                />
+              ))}
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button onClick={handleAddItem} className="btn btn-success">Add</button>
+                <button onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showPurchaseModal && (
+          <div className="modal-backdrop">
+            <div className="modal-content">
+              <h5>Purchase Tracking</h5>
+              {['companyName', 'gstNumber', 'address', 'stateName', 'invoiceNumber', 'invoiceDate'].map(field => (
+                <input
+                  key={field}
+                  className="form-control my-2"
+                  placeholder={field.replace(/([A-Z])/g, ' $1')}
+                  name={field}
+                  type={field === 'invoiceDate' ? 'date' : 'text'}
+                  value={purchaseData[field]}
+                  onChange={handlePurchaseChange}
+                />
+              ))}
+              <h6>Items Purchased</h6>
+              {purchaseData.itemsPurchased.map((item, idx) => (
+                <div key={idx} className="d-flex gap-2 mb-2">
+                  {['name', 'description', 'price', 'quantity'].map(field => (
+                    <input
+                      key={field}
+                      className="form-control"
+                      placeholder={field}
+                      value={item[field]}
+                      onChange={(e) => handleItemChange(idx, field, e.target.value)}
+                    />
+                  ))}
+                </div>
+              ))}
+              <button className="btn btn-sm btn-outline-primary mb-2" onClick={addPurchaseItemRow}>Add Item</button>
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button onClick={() => setShowPurchaseModal(false)} className="btn btn-success">Submit Purchase</button>
+                <button onClick={() => setShowPurchaseModal(false)} className="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
