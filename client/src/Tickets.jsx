@@ -10,6 +10,7 @@ import {
   Dropdown,
 } from "react-bootstrap";
 import Navbar from "./components/Navbar.jsx";
+import Searchbar from "./components/Searchbar.jsx";
 import {
   PDFViewer,
   Document,
@@ -481,6 +482,7 @@ export default function Dashboard() {
   return (
     <div>
       <Navbar />
+      <Searchbar />
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2>Open Tickets</h2>

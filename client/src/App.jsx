@@ -8,6 +8,7 @@ import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
 import Items from "./Itemslist.jsx"
+import Searchbar from "./components/Searchbar";
 
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
 
@@ -38,6 +39,7 @@ function App() {
     <Route path='/history' element={<History />}></Route>
     <Route path='/challan' element={<Challan />}></Route>
     <Route path='/itemslist' element={<Items />}></Route>
+    <Route path='/searchbar' element={<Searchbar />}></Route>
    
   </Routes>
   </BrowserRouter>

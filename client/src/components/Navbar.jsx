@@ -6,7 +6,8 @@ import {
     FaTicketAlt,
     FaClipboardList,
     FaClock,
-    FaBoxOpen, // Icon for Items List
+    FaBoxOpen, // Items List
+    FaShoppingCart, // Purchase
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -58,6 +59,9 @@ export default function Navbar() {
                     </a>
                     <a href="/itemslist">
                         <FaBoxOpen /> Items List
+                    </a>
+                    <a href="/purchase">
+                        <FaShoppingCart /> Purchase
                     </a>
                 </div>
             </div>
