@@ -9,6 +9,7 @@ const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
+const purchaseRoutes = require('./routes/purchaseRoutes');
 
 const app = express();
 app.use(express.json());
@@ -201,6 +202,7 @@ if (!fs.existsSync('uploads')) {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/items', itemRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 app.listen(3000, () => {
     console.log("Server is running on port 3000");
