@@ -48,4 +48,15 @@ router.get('/today', async (req, res) => {
   }
 });
 
+// Fetch all logs (GET)
+router.get('/all', async (req, res) => {
+  try {
+    const allLogs = await LogTime.find().sort({ date: -1 }); // Latest first
+    res.json(allLogs);
+  } catch (err) {
+    console.error('Error fetching all logs:', err);
+    res.status(500).json({ error: 'Error fetching history' });
+  }
+});
+
 module.exports = router;
