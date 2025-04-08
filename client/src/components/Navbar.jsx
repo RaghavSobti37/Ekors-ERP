@@ -60,9 +60,6 @@ export default function Navbar() {
                     <a href="/itemslist">
                         <FaBoxOpen /> Items List
                     </a>
-                    <a href="/purchase">
-                        <FaShoppingCart /> Purchase
-                    </a>
                 </div>
             </div>
 
