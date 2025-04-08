@@ -1,36 +1,19 @@
 import React, { useState, useRef } from "react";
 import "./Navbar.css";
 import {
-    FaSearch,
     FaUser,
     FaFileInvoice,
     FaTicketAlt,
     FaClipboardList,
     FaClock,
+    FaBoxOpen, // Icon for Items List
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filteredCompanies, setFilteredCompanies] = useState([]);
     const [showProfilePopup, setShowProfilePopup] = useState(false);
     const navigate = useNavigate();
-
-    const timeoutRef = useRef(null); // Ref to track timeout
-
-    const companies = ["Tesla", "Apple", "Microsoft", "Amazon", "Google"];
-
-    const handleSearch = (e) => {
-        const query = e.target.value;
-        setSearchTerm(query);
-        setFilteredCompanies(
-            query
-                ? companies.filter((c) =>
-                      c.toLowerCase().includes(query.toLowerCase())
-                  )
-                : []
-        );
-    };
+    const timeoutRef = useRef(null);
 
     const handleSignOut = () => {
         localStorage.removeItem("token");
@@ -38,14 +21,14 @@ export default function Navbar() {
     };
 
     const handleMouseEnter = () => {
-        clearTimeout(timeoutRef.current); // Cancel hide timeout
+        clearTimeout(timeoutRef.current);
         setShowProfilePopup(true);
     };
 
     const handleMouseLeave = () => {
         timeoutRef.current = setTimeout(() => {
             setShowProfilePopup(false);
-        }, 300); // Delay hide by 300ms
+        }, 300);
     };
 
     return (
@@ -73,25 +56,10 @@ export default function Navbar() {
                     <a href="/logtime">
                         <FaClock /> Log Time
                     </a>
+                    <a href="/itemslist">
+                        <FaBoxOpen /> Items List
+                    </a>
                 </div>
-            </div>
-
-            <div className="search-box">
-                <input
-                    type="text"
-                    placeholder="Search by Company Name"
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    onFocus={handleSearch}
-                />
-                <FaSearch className="search-icon" />
-                {filteredCompanies.length > 0 && (
-                    <ul className="search-results">
-                        {filteredCompanies.map((company, index) => (
-                            <li key={index}>{company}</li>
-                        ))}
-                    </ul>
-                )}
             </div>
 
             <div
