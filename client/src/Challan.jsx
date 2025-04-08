@@ -114,7 +114,7 @@ export default function Challan() {
                 <input
                   type="text"
                   name="billNumber"
-                  placeholder="BILL NUMBER ( NOT REQUIRED UNTIL CLOSING )"
+                  placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
                   value={formData.billNumber}
                   onChange={handleInputChange}
                 />
