@@ -6,29 +6,41 @@ import {
     FaTicketAlt,
     FaClipboardList,
     FaClock,
-    FaBoxOpen, // Items List
-    FaShoppingCart, // Purchase
+    FaBoxOpen,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
     const [showProfilePopup, setShowProfilePopup] = useState(false);
+    const [showItemsDropdown, setShowItemsDropdown] = useState(false);
     const navigate = useNavigate();
     const timeoutRef = useRef(null);
+    const dropdownTimeoutRef = useRef(null);
 
     const handleSignOut = () => {
         localStorage.removeItem("token");
         navigate("/login");
     };
 
-    const handleMouseEnter = () => {
+    const handleMouseEnterProfile = () => {
         clearTimeout(timeoutRef.current);
         setShowProfilePopup(true);
     };
 
-    const handleMouseLeave = () => {
+    const handleMouseLeaveProfile = () => {
         timeoutRef.current = setTimeout(() => {
             setShowProfilePopup(false);
+        }, 300);
+    };
+
+    const handleMouseEnterDropdown = () => {
+        clearTimeout(dropdownTimeoutRef.current);
+        setShowItemsDropdown(true);
+    };
+
+    const handleMouseLeaveDropdown = () => {
+        dropdownTimeoutRef.current = setTimeout(() => {
+            setShowItemsDropdown(false);
         }, 300);
     };
 
@@ -36,11 +48,7 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="navbar-left">
                 <div className="logo">
-                    <img
-                        src="/src/assets/logo.jpeg"
-                        alt="E-KORS"
-                        className="logo-img"
-                    />
+                    <img src="/src/assets/logo.jpeg" alt="E-KORS" className="logo-img" />
                     <span>E-KORS</span>
                 </div>
 
@@ -57,16 +65,31 @@ export default function Navbar() {
                     <a href="/logtime">
                         <FaClock /> Log Time
                     </a>
-                    <a href="/itemslist">
-                        <FaBoxOpen /> Items List
-                    </a>
+
+                    <div
+                        className="dropdown-wrapper"
+                        onMouseEnter={handleMouseEnterDropdown}
+                        onMouseLeave={handleMouseLeaveDropdown}
+                    >
+                        <a className="dropdown-trigger">
+                            <FaBoxOpen /> Items List
+                        </a>
+                        {showItemsDropdown && (
+                            <div className="dropdown-menu">
+                                <a href="/itemslist/la">LA</a>
+                                <a href="/itemslist/earthing">Earthing</a>
+                                <a href="/itemslist/solar">Solar</a>
+                                <a href="/itemslist">View All Items</a>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             <div
                 className="profile-wrapper"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseEnter={handleMouseEnterProfile}
+                onMouseLeave={handleMouseLeaveProfile}
             >
                 <div className="profile-section">
                     <div className="profile-icon">

@@ -14,7 +14,8 @@ export default function Items() {
     quantity: '', 
     price: '', 
     gstRate: '', 
-    hsnCode: '' 
+    hsnCode: '',
+    image: null
   });
   const [showModal, setShowModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -23,6 +24,7 @@ export default function Items() {
   const [purchaseSearchTerm, setPurchaseSearchTerm] = useState('');
   const [purchaseSearchSuggestions, setPurchaseSearchSuggestions] = useState([]);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   
   const [purchaseData, setPurchaseData] = useState({
     companyName: '',
@@ -90,6 +92,7 @@ export default function Items() {
 
   const handleCancel = () => {
     setEditingItem(null);
+    setImagePreview(null);
   };
 
   const handleEdit = (item) => {
@@ -99,8 +102,26 @@ export default function Items() {
       quantity: item.quantity,
       price: item.price,
       gstRate: item.gstRate,
-      hsnCode: item.hsnCode || ''
+      hsnCode: item.hsnCode || '',
+      image: null
     });
+    if (item.imageUrl) {
+      setImagePreview(item.imageUrl);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, image: file });
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -153,14 +174,24 @@ export default function Items() {
     }
     
     try {
-      await axios.put(`http://localhost:3000/api/items/${editingItem}`, {
-        ...formData,
-        quantity: parseInt(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
-        gstRate: parseFloat(formData.gstRate) || 0
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
+      formDataToSend.append('price', parseFloat(formData.price) || 0);
+      formDataToSend.append('gstRate', parseFloat(formData.gstRate) || 0);
+      formDataToSend.append('hsnCode', formData.hsnCode || '');
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      await axios.put(`http://localhost:3000/api/items/${editingItem}`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
       await fetchItems();
       setEditingItem(null);
+      setImagePreview(null);
     } catch (error) {
       console.error('Error updating item:', error);
       alert('Failed to update item. Please try again.');
@@ -206,15 +237,25 @@ export default function Items() {
     }
 
     try {
-      await axios.post('http://localhost:3000/api/items', {
-        ...formData,
-        quantity: parseInt(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
-        gstRate: parseFloat(formData.gstRate) || 0
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
+      formDataToSend.append('price', parseFloat(formData.price) || 0);
+      formDataToSend.append('gstRate', parseFloat(formData.gstRate) || 0);
+      formDataToSend.append('hsnCode', formData.hsnCode || '');
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      await axios.post('http://localhost:3000/api/items', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
       await fetchItems();
       setShowModal(false);
-      setFormData({ name: '', quantity: '', price: '', gstRate: '', hsnCode: '' });
+      setFormData({ name: '', quantity: '', price: '', gstRate: '', hsnCode: '', image: null });
+      setImagePreview(null);
     } catch (error) {
       console.error('Error adding item:', error);
       alert('Failed to add item. Please try again.');
@@ -373,23 +414,6 @@ export default function Items() {
       <div className="container mt-4">
         <h2>Items List</h2>
 
-<button 
-  onClick={async () => {
-    if(window.confirm('This will reset all items. Are you sure?')) {
-      try {
-        const response = await axios.post('http://localhost:3000/api/init/initialize');
-        alert(response.data.message);
-        fetchItems(); // Refresh your items list
-      } catch (error) {
-        console.error('Initialization failed:', error);
-        alert('Failed to initialize database');
-      }
-    }
-  }} 
-  className="btn btn-warning mx-2"
->
-  Reset Database
-</button>
         <div className="mb-3 d-flex gap-2">
           <button onClick={() => setShowModal(true)} className="btn btn-success px-4">Add Item</button>
           <button onClick={() => setShowPurchaseModal(true)} className="btn btn-primary px-4">Add Purchase</button>
@@ -418,6 +442,7 @@ export default function Items() {
                     )}
                   </th>
                 ))}
+                <th>Image</th>
                 <th>Actions</th>
                 <th>Details</th>
               </tr>
@@ -493,6 +518,17 @@ export default function Items() {
                         )}
                       </td>
                       <td>
+                        {item.imageUrl ? (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name} 
+                            style={{ maxWidth: '50px', maxHeight: '50px' }}
+                          />
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td>
                         {editingItem === item._id ? (
                           <div className="d-flex gap-1">
                             <button onClick={handleSave} className="btn btn-success btn-sm">Save</button>
@@ -519,7 +555,7 @@ export default function Items() {
 
                     {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="7" className="expanded-row">
+                        <td colSpan="8" className="expanded-row">
                           <div className="expanded-container">
                             <h6>Purchase History</h6>
                             {purchaseHistory[item._id]?.length > 0 ? (
@@ -558,7 +594,7 @@ export default function Items() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center">No items found</td>
+                  <td colSpan="8" className="text-center">No items found</td>
                 </tr>
               )}
             </tbody>
@@ -647,6 +683,24 @@ export default function Items() {
                   onChange={(e) => setFormData({...formData, hsnCode: e.target.value})}
                 />
               </div>
+              <div className="form-group">
+                <label>Item Image</label>
+                <input
+                  type="file"
+                  className="form-control mb-2"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      style={{ maxWidth: '100px', maxHeight: '100px' }}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="d-flex justify-content-end gap-2 mt-3">
                 <button 
                   onClick={handleAddItem} 
@@ -656,7 +710,10 @@ export default function Items() {
                   Add
                 </button>
                 <button 
-                  onClick={() => setShowModal(false)} 
+                  onClick={() => {
+                    setShowModal(false);
+                    setImagePreview(null);
+                  }} 
                   className="btn btn-secondary"
                 >
                   Cancel
