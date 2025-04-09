@@ -9,6 +9,7 @@ const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
+const initRouter = require('./routes/init'); 
 
 const app = express();
 app.use(express.json());
@@ -201,7 +202,7 @@ if (!fs.existsSync('uploads')) {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/items', itemRoutes);
-app.use('/api/purchases', purchaseRoutes);
+app.use('/api/init', initRouter);
 
 
 app.listen(3000, () => {

@@ -7,11 +7,6 @@ const purchaseEntrySchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
-  supplier: {
-    type: String,
-    required: true,
-    trim: true
-  },
   companyName: {
     type: String,
     required: true,
@@ -30,10 +25,6 @@ const purchaseEntrySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  stateCode: {
-    type: String,
-    default: ''
-  },
   invoiceNumber: {
     type: String,
     required: true
@@ -48,35 +39,27 @@ const purchaseEntrySchema = new mongoose.Schema({
     required: true,
     min: 0
   },
-  totalAmount: {
+  gstRate: {
     type: Number,
-    default: function() {
-      return this.price * this.quantity;
-    }
-  },
-  gstAmount: {
-    type: Number,
-    default: function() {
-      return this.totalAmount * (this.gstRate / 100);
-    }
+    default: 0
   },
   description: {
     type: String,
     default: ''
-  },
-  notes: {
-    type: String,
-    default: ''
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['Paid', 'Pending', 'Partial'],
-    default: 'Pending'
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
   }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Add virtuals for calculated fields
+purchaseEntrySchema.virtual('totalAmount').get(function() {
+  return this.price * this.quantity;
+});
+
+purchaseEntrySchema.virtual('gstAmount').get(function() {
+  return (this.price * this.quantity) * (this.gstRate / 100);
 });
 
 // Define main item schema
@@ -107,20 +90,6 @@ const itemSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  editHistory: [{
-    field: String,
-    oldValue: mongoose.Schema.Types.Mixed,
-    newValue: mongoose.Schema.Types.Mixed,
-    changedBy: String,
-    changedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
   purchaseHistory: [purchaseEntrySchema]
 }, {
   timestamps: true,
@@ -128,11 +97,20 @@ const itemSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Pre-save hook to update quantity based on purchases
+// Update quantity based on purchase history
 itemSchema.pre('save', function(next) {
-  // If this is a new item and it has purchase history
-  if (this.isNew && this.purchaseHistory && this.purchaseHistory.length > 0) {
-    this.quantity = this.purchaseHistory.reduce((total, purchase) => total + purchase.quantity, 0);
+  if (this.isModified('purchaseHistory')) {
+    this.quantity = this.purchaseHistory.reduce((total, purchase) => {
+      return total + purchase.quantity;
+    }, 0);
+    
+    // If we have purchase history, update the price to the latest purchase price
+    if (this.purchaseHistory.length > 0) {
+      const latestPurchase = [...this.purchaseHistory].sort((a, b) => 
+        new Date(b.date) - new Date(a.date)
+      )[0];
+      this.price = latestPurchase.price;
+    }
   }
   next();
 });

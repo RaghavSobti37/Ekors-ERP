@@ -20,9 +20,9 @@ export default function Items() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
   const [purchaseHistory, setPurchaseHistory] = useState({});
-  
   const [purchaseSearchTerm, setPurchaseSearchTerm] = useState('');
   const [purchaseSearchSuggestions, setPurchaseSearchSuggestions] = useState([]);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
   
   const [purchaseData, setPurchaseData] = useState({
     companyName: '',
@@ -37,7 +37,8 @@ export default function Items() {
       price: '', 
       quantity: '', 
       hsnCode: '', 
-      gstRate: '' 
+      gstRate: '',
+      itemId: null
     }],
   });
 
@@ -76,11 +77,19 @@ export default function Items() {
   };
 
   const validateNumberInput = (value, fieldName) => {
-    if (isNaN(value) || value < 0) {
-      alert(`Please enter a valid positive number for ${fieldName}`);
+    if (isNaN(value)) {
+      alert(`Please enter a valid number for ${fieldName}`);
+      return false;
+    }
+    if (value < 0) {
+      alert(`Please enter a positive number for ${fieldName}`);
       return false;
     }
     return true;
+  };
+
+  const handleCancel = () => {
+    setEditingItem(null);
   };
 
   const handleEdit = (item) => {
@@ -96,6 +105,7 @@ export default function Items() {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value.toLowerCase());
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   const handlePurchaseSearchChange = (e, index) => {
@@ -105,11 +115,11 @@ export default function Items() {
     
     if (term.length > 1) {
       const suggestions = items
-        .filter(item => 
-          item.name.toLowerCase().includes(term) || 
-          (item.hsnCode && item.hsnCode.toLowerCase().includes(term))
-        )
-        .slice(0, 3);
+      .filter(item => 
+        item.name.toLowerCase().includes(term) || 
+        (item.hsnCode && item.hsnCode.toLowerCase().includes(term))
+      )
+      .slice(0, 5)
       setPurchaseSearchSuggestions(suggestions);
     } else {
       setPurchaseSearchSuggestions([]);
@@ -216,8 +226,8 @@ export default function Items() {
   };
 
   const handleItemChange = (index, field, value) => {
-    if (['price', 'quantity', 'gstRate'].includes(field) && !validateNumberInput(value, field)) {
-      return;
+    if (['price', 'quantity', 'gstRate'].includes(field)) {
+      if (!validateNumberInput(value, field)) return;
     }
 
     const updatedItems = [...purchaseData.itemsPurchased];
@@ -234,7 +244,8 @@ export default function Items() {
         price: '', 
         quantity: '', 
         hsnCode: '', 
-        gstRate: '' 
+        gstRate: '',
+        itemId: null
       }]
     });
   };
@@ -260,53 +271,69 @@ export default function Items() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const handleSubmitPurchase = async () => {
-    if (!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.invoiceDate) {
-      alert('Please fill in all required fields (Company Name, Invoice Number, Invoice Date)');
-      return;
+  const validatePurchaseData = () => {
+    if (!purchaseData.companyName.trim()) {
+      alert('Company name is required');
+      return false;
     }
-
+    if (!purchaseData.invoiceNumber.trim()) {
+      alert('Invoice number is required');
+      return false;
+    }
+    if (!purchaseData.invoiceDate) {
+      alert('Invoice date is required');
+      return false;
+    }
+    
     const hasValidItems = purchaseData.itemsPurchased.some(
       item => item.name && item.quantity && item.price
     );
     
     if (!hasValidItems) {
       alert('Please add at least one item with name, quantity, and price');
-      return;
+      return false;
     }
     
+    return true;
+  };
+
+  const handleSubmitPurchase = async () => {
+    if (!validatePurchaseData()) return;
+    
+    setPurchaseLoading(true);
+    
     try {
-      // Process each purchased item
-      for (const item of purchaseData.itemsPurchased) {
-        if (item.name && item.quantity && item.price) {
+      const purchasePromises = purchaseData.itemsPurchased
+        .filter(item => item.name && item.quantity && item.price)
+        .map(item => {
+          const purchaseEntry = {
+            date: purchaseData.invoiceDate,
+            companyName: purchaseData.companyName,
+            gstNumber: purchaseData.gstNumber,
+            address: purchaseData.address,
+            stateName: purchaseData.stateName,
+            invoiceNumber: purchaseData.invoiceNumber,
+            quantity: parseInt(item.quantity),
+            price: parseFloat(item.price),
+            description: item.description || '',
+            gstRate: parseFloat(item.gstRate) || 0
+          };
+
           if (item.itemId) {
-            // Existing item - update quantity and add purchase record
-            await axios.post(`http://localhost:3000/api/items/${item.itemId}/purchases`, {
-              date: purchaseData.invoiceDate,
-              supplier: purchaseData.companyName,
-              invoiceNumber: purchaseData.invoiceNumber,
-              quantity: parseInt(item.quantity),
-              price: parseFloat(item.price)
-            });
+            return axios.post(`http://localhost:3000/api/items/${item.itemId}/purchases`, purchaseEntry);
           } else {
-            // New item - create with purchase history
-            await axios.post('http://localhost:3000/api/items', {
+            return axios.post('http://localhost:3000/api/items', {
               name: item.name,
               quantity: parseInt(item.quantity) || 0,
               price: parseFloat(item.price) || 0,
               gstRate: parseFloat(item.gstRate) || 0,
               hsnCode: item.hsnCode || '',
-              purchaseHistory: [{
-                date: purchaseData.invoiceDate,
-                supplier: purchaseData.companyName,
-                invoiceNumber: purchaseData.invoiceNumber,
-                quantity: parseInt(item.quantity) || 0,
-                price: parseFloat(item.price) || 0
-              }]
+              purchaseHistory: [purchaseEntry]
             });
           }
-        }
-      }
+        });
+
+      await Promise.all(purchasePromises);
       
       await fetchItems();
       setShowPurchaseModal(false);
@@ -323,18 +350,18 @@ export default function Items() {
           price: '', 
           quantity: '', 
           hsnCode: '', 
-          gstRate: '' 
+          gstRate: '',
+          itemId: null
         }],
       });
       
-      if (expandedRow) {
-        setExpandedRow(null);
-      }
-      
+      setExpandedRow(null);
       alert('Purchase submitted successfully!');
     } catch (error) {
       console.error('Error submitting purchase:', error);
-      alert('Failed to submit purchase. Please check the console for details.');
+      alert(`Failed to submit purchase: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setPurchaseLoading(false);
     }
   };
 
@@ -346,6 +373,23 @@ export default function Items() {
       <div className="container mt-4">
         <h2>Items List</h2>
 
+<button 
+  onClick={async () => {
+    if(window.confirm('This will reset all items. Are you sure?')) {
+      try {
+        const response = await axios.post('http://localhost:3000/api/init/initialize');
+        alert(response.data.message);
+        fetchItems(); // Refresh your items list
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        alert('Failed to initialize database');
+      }
+    }
+  }} 
+  className="btn btn-warning mx-2"
+>
+  Reset Database
+</button>
         <div className="mb-3 d-flex gap-2">
           <button onClick={() => setShowModal(true)} className="btn btn-success px-4">Add Item</button>
           <button onClick={() => setShowPurchaseModal(true)} className="btn btn-primary px-4">Add Purchase</button>
@@ -494,7 +538,7 @@ export default function Items() {
                                   {purchaseHistory[item._id].map((purchase, idx) => (
                                     <tr key={idx}>
                                       <td>{new Date(purchase.date).toLocaleDateString()}</td>
-                                      <td>{purchase.supplier}</td>
+                                      <td>{purchase.companyName}</td>
                                       <td>{purchase.invoiceNumber}</td>
                                       <td>{purchase.quantity}</td>
                                       <td>₹{parseFloat(purchase.price).toFixed(2)}</td>
@@ -728,7 +772,7 @@ export default function Items() {
                             onClick={() => selectSuggestion(suggestion, idx)}
                           >
                             <strong>{suggestion.name}</strong> 
-                            <span className="text-muted"> - ₹{suggestion.price}</span>
+                            <span className="text-muted"> - ₹{suggestion.price.toFixed(2)}</span>
                             <br />
                             <small>HSN: {suggestion.hsnCode || 'N/A'}, GST: {suggestion.gstRate || 0}%</small>
                           </div>
@@ -807,6 +851,7 @@ export default function Items() {
                   onClick={handleSubmitPurchase} 
                   className="btn btn-success"
                   disabled={
+                    purchaseLoading ||
                     !purchaseData.companyName || 
                     !purchaseData.invoiceNumber || 
                     !purchaseData.invoiceDate || 
@@ -815,7 +860,7 @@ export default function Items() {
                     )
                   }
                 >
-                  Submit Purchase
+                  {purchaseLoading ? 'Submitting...' : 'Submit Purchase'}
                 </button>
                 <button 
                   onClick={() => {
@@ -824,6 +869,7 @@ export default function Items() {
                     setPurchaseSearchSuggestions([]);
                   }} 
                   className="btn btn-secondary"
+                  disabled={purchaseLoading}
                 >
                   Cancel
                 </button>
