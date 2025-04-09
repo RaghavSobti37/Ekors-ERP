@@ -18,6 +18,30 @@
     width: 400px;
   }
 
+  .expanded-row {
+    background-color: #f4f6f8;
+    padding: 20px;
+  }
+  
+  .expanded-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .expanded-container h6 {
+    font-weight: 600;
+    color: #2c3e50;
+  }
+  
+  .small-table th, .small-table td {
+    padding: 6px 10px;
+    font-size: 0.875rem;
+  }
+  
+
   
   
   

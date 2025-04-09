@@ -168,26 +168,65 @@ export default function Items() {
                       <button onClick={() => toggleDetails(item._id)} className="btn btn-info btn-sm">Details</button>
                     </td>
                   </tr>
+
+
+
                   {expandedRow === item._id && (
                     <tr>
-                      <td colSpan="7">
-                        <strong>Company:</strong> {purchaseData.companyName || 'Demo Company'}<br />
-                        <strong>GST:</strong> {purchaseData.gstNumber}<br />
-                        <strong>Address:</strong> {purchaseData.address}<br />
-                        <strong>State:</strong> {purchaseData.stateName}<br />
-                        <strong>Invoice No:</strong> {purchaseData.invoiceNumber}<br />
-                        <strong>Date:</strong> {purchaseData.invoiceDate}<br />
-                        <strong>Items Purchased:</strong>
-                        <ul>
-                          {purchaseData.itemsPurchased.map((it, idx) => (
-                            <li key={idx}>
-                              {it.name} - {it.description} - ₹{it.price} x {it.quantity}
-                            </li>
-                          ))}
-                        </ul>
+                      <td colSpan="7" className="expanded-row">
+                        <div className="expanded-container">
+                          <h6 className="mb-3">Purchase Details</h6>
+                          <table className="table table-bordered small-table mb-3">
+                            <tbody>
+                              <tr>
+                                <th>Company</th>
+                                <td>{purchaseData.companyName || 'Demo Company'}</td>
+                                <th>GST</th>
+                                <td>{purchaseData.gstNumber || '-'}</td>
+                              </tr>
+                              <tr>
+                                <th>Address</th>
+                                <td>{purchaseData.address || '-'}</td>
+                                <th>State</th>
+                                <td>{purchaseData.stateName || '-'}</td>
+                              </tr>
+                              <tr>
+                                <th>Invoice No</th>
+                                <td>{purchaseData.invoiceNumber || '-'}</td>
+                                <th>Date</th>
+                                <td>{purchaseData.invoiceDate || '-'}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+
+                          <h6 className="mb-2">Items Purchased</h6>
+                          <table className="table table-sm table-striped table-bordered">
+                            <thead style={{ backgroundColor: '#f8f9fa' }}>
+                              <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {purchaseData.itemsPurchased.map((it, idx) => (
+                                <tr key={idx}>
+                                  <td>{it.name}</td>
+                                  <td>{it.description}</td>
+                                  <td>₹{parseFloat(it.price || 0).toFixed(2)}</td>
+                                  <td>{it.quantity}</td>
+                                  <td>₹{(parseFloat(it.price || 0) * parseInt(it.quantity || 0)).toFixed(2)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </td>
                     </tr>
                   )}
+
                 </React.Fragment>
               ))}
             </tbody>
