@@ -9,7 +9,6 @@ const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
-const purchaseRoutes = require('./routes/purchaseRoutes');
 
 const app = express();
 app.use(express.json());

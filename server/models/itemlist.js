@@ -1,66 +1,140 @@
 const mongoose = require('mongoose');
 
-const itemSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
+// Define a purchase entry schema
+const purchaseEntrySchema = new mongoose.Schema({
+  date: {
+    type: Date,
     required: true,
+    default: Date.now
+  },
+  supplier: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  companyName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  gstNumber: {
+    type: String,
     trim: true,
-    unique: true,
-    index: true
+    default: ''
   },
-  description: { type: String, default: '' },
-  quantity: { 
-    type: Number, 
-    default: 0,
-    min: 0
+  address: {
+    type: String,
+    default: ''
   },
-  price: { 
-    type: Number, 
+  stateName: {
+    type: String,
+    default: ''
+  },
+  stateCode: {
+    type: String,
+    default: ''
+  },
+  invoiceNumber: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  price: {
+    type: Number,
     required: true,
     min: 0
   },
-  costPrice: { 
-    type: Number, 
-    default: 0,
-    min: 0
+  totalAmount: {
+    type: Number,
+    default: function() {
+      return this.price * this.quantity;
+    }
   },
-  gstRate: { 
-    type: Number, 
-    default: 18,
-    min: 0,
-    max: 28
+  gstAmount: {
+    type: Number,
+    default: function() {
+      return this.totalAmount * (this.gstRate / 100);
+    }
   },
-  hsnCode: { 
-    type: String, 
+  description: {
+    type: String,
+    default: ''
+  },
+  notes: {
+    type: String,
+    default: ''
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['Paid', 'Pending', 'Partial'],
+    default: 'Pending'
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
+});
+
+// Define main item schema
+const itemSchema = new mongoose.Schema({
+  name: {
+    type: String,
     required: true,
     trim: true
   },
-  category: { type: String, default: 'General' },
-  unit: { type: String, default: 'pcs' },
-  minStockLevel: { type: Number, default: 5 },
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  lastEditedBy: { 
-    type: String, 
-    default: 'system',
-    trim: true
+  quantity: {
+    type: Number,
+    default: 0
+  },
+  price: {
+    type: Number,
+    required: true
+  },
+  gstRate: {
+    type: Number,
+    default: 0
+  },
+  hsnCode: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  description: {
+    type: String,
+    default: ''
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   },
   editHistory: [{
     field: String,
     oldValue: mongoose.Schema.Types.Mixed,
     newValue: mongoose.Schema.Types.Mixed,
     changedBy: String,
-    changedAt: { type: Date, default: Date.now },
-    reason: String
-  }]
+    changedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  purchaseHistory: [purchaseEntrySchema]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Add text index for search functionality
-itemSchema.index({ name: 'text', hsnCode: 'text', description: 'text' });
+// Pre-save hook to update quantity based on purchases
+itemSchema.pre('save', function(next) {
+  // If this is a new item and it has purchase history
+  if (this.isNew && this.purchaseHistory && this.purchaseHistory.length > 0) {
+    this.quantity = this.purchaseHistory.reduce((total, purchase) => total + purchase.quantity, 0);
+  }
+  next();
+});
 
 module.exports = mongoose.model('Item', itemSchema);
