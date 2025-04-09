@@ -12,6 +12,15 @@ const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init'); 
 
+const path = require('path');
+const uploadRoutes = require('./routes/itemuploads'); // Adjust path as needed
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Use upload routes
+app.use('/api/upload', uploadRoutes);
+
 const app = express();
 app.use(express.json());
 app.use(cors({

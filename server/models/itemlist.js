@@ -90,6 +90,11 @@ const itemSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Add image field to store image URL
+  imageUrl: {
+    type: String,
+    default: ''
+  },
   purchaseHistory: [purchaseEntrySchema]
 }, {
   timestamps: true,

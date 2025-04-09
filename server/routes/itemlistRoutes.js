@@ -187,6 +187,56 @@ router.post('/initialize', async (req, res) => {
   }
 });
 
+// Update item route to handle image URL
+router.put('/items/:id', async (req, res) => {
+  try {
+    const { name, quantity, price, gstRate, hsnCode, imageUrl } = req.body;
+    
+    const updatedItem = await Item.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        quantity: parseInt(quantity) || 0,
+        price: parseFloat(price) || 0,
+        gstRate: parseFloat(gstRate) || 0,
+        hsnCode,
+        ...(imageUrl && { imageUrl }) // Only include if imageUrl is provided
+      },
+      { new: true }
+    );
 
+    if (!updatedItem) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    res.status(200).json(updatedItem);
+  } catch (error) {
+    console.error('Error updating item:', error);
+    res.status(500).json({ message: 'Error updating item', error: error.message });
+  }
+});
+
+// Create item route with image URL
+router.post('/items', async (req, res) => {
+  try {
+    const { name, quantity, price, gstRate, hsnCode, imageUrl, purchaseHistory } = req.body;
+    
+    const newItem = new Item({
+      name,
+      quantity: parseInt(quantity) || 0,
+      price: parseFloat(price) || 0,
+      gstRate: parseFloat(gstRate) || 0,
+      hsnCode: hsnCode || '',
+      imageUrl: imageUrl || '',
+      purchaseHistory: purchaseHistory || []
+    });
+
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (error) {
+    console.error('Error creating item:', error);
+    res.status(500).json({ message: 'Error creating item', error: error.message });
+  }
+});
 
 module.exports = router;
