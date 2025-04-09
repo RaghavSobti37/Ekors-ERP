@@ -2,12 +2,6 @@ import React, { useState } from "react";
 import Navbar from "./components/Navbar";
 import "./css/Challan.css";
 
-const challanData = [
-  { companyName: "bluepolaroid", totalBill: "1.18" },
-  { companyName: "pixelcraze", totalBill: "2.50" },
-  { companyName: "designhub", totalBill: "3.75" },
-];
-
 export default function Challan() {
   const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,6 +12,9 @@ export default function Challan() {
     billNumber: "",
     media: null,
   });
+  const [challanData, setChallanData] = useState([]);
+  const [viewMode, setViewMode] = useState(false);
+  const [viewData, setViewData] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
@@ -29,9 +26,104 @@ export default function Challan() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Submitted:", formData);
+    const newData = { ...formData };
+    setChallanData((prev) => [...prev, newData]);
     alert("Challan submitted!");
     setShowPopup(false);
+    setFormData({
+      companyName: "",
+      phone: "",
+      email: "",
+      totalBilling: "",
+      billNumber: "",
+      media: null,
+    });
+  };
+
+  const openViewPopup = (data) => {
+    setViewData(data);
+    setViewMode(true);
+    setShowPopup(true);
+  };
+
+  const renderForm = () => {
+    const data = viewMode ? viewData : formData;
+
+    return (
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="companyName"
+          placeholder="COMPANY NAME"
+          value={data.companyName}
+          onChange={handleInputChange}
+          readOnly={viewMode}
+          required
+        />
+        <input
+          type="text"
+          name="phone"
+          placeholder="PHONE"
+          value={data.phone}
+          onChange={handleInputChange}
+          readOnly={viewMode}
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="EMAIL ID"
+          value={data.email}
+          onChange={handleInputChange}
+          readOnly={viewMode}
+          required
+        />
+        <input
+          type="text"
+          name="totalBilling"
+          placeholder="TOTAL BILLING"
+          value={data.totalBilling}
+          onChange={handleInputChange}
+          readOnly={viewMode}
+          required
+        />
+        <input
+          type="text"
+          name="billNumber"
+          placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
+          value={data.billNumber}
+          onChange={handleInputChange}
+          readOnly={viewMode}
+        />
+
+        {viewMode ? (
+          <button
+            type="button"
+            className="document-btn"
+            onClick={() => {
+              const fileURL = URL.createObjectURL(data.media);
+              window.open(fileURL, "_blank");
+            }}
+          >
+            📄 Document
+          </button>
+        ) : (
+          <input
+            type="file"
+            name="media"
+            accept="image/*,application/pdf"
+            onChange={handleInputChange}
+            required
+          />
+        )}
+
+        {!viewMode && (
+          <button type="submit" className="submit-btn">
+            SUBMIT
+          </button>
+        )}
+      </form>
+    );
   };
 
   return (
@@ -40,7 +132,13 @@ export default function Challan() {
       <div className="challan-container">
         <div className="challan-header">
           <h2>Challan Records</h2>
-          <button className="create-challan-btn" onClick={() => setShowPopup(true)}>
+          <button
+            className="create-challan-btn"
+            onClick={() => {
+              setShowPopup(true);
+              setViewMode(false);
+            }}
+          >
             + Create Challan
           </button>
         </div>
@@ -58,14 +156,17 @@ export default function Challan() {
             {challanData.map((entry, index) => (
               <tr key={index}>
                 <td>{entry.companyName}</td>
-                <td>{entry.totalBill}</td>
+                <td>{entry.totalBilling}</td>
                 <td>
-                  <button className="view-btn" onClick={() => alert(`Viewing ${entry.companyName}`)}>
+                  <button className="view-btn" onClick={() => openViewPopup(entry)}>
                     👁️ View
                   </button>
                 </td>
                 <td>
-                  <button className="edit-btn" onClick={() => alert(`Editing ${entry.companyName}`)}>
+                  <button
+                    className="edit-btn"
+                    onClick={() => alert(`Editing ${entry.companyName}`)}
+                  >
                     ✏️ Edit
                   </button>
                 </td>
@@ -74,63 +175,17 @@ export default function Challan() {
           </tbody>
         </table>
 
-        {/* Popup Modal */}
         {showPopup && (
           <div className="popup-overlay">
             <div className="popup-form">
-              <form onSubmit={handleSubmit}>
-                <input
-                  type="text"
-                  name="companyName"
-                  placeholder="COMPANY NAME"
-                  value={formData.companyName}
-                  onChange={handleInputChange}
-                  required
-                />
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="PHONE"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="EMAIL ID"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-                <input
-                  type="text"
-                  name="totalBilling"
-                  placeholder="TOTAL BILLING"
-                  value={formData.totalBilling}
-                  onChange={handleInputChange}
-                  required
-                />
-                <input
-                  type="text"
-                  name="billNumber"
-                  placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
-                  value={formData.billNumber}
-                  onChange={handleInputChange}
-                />
-                <input
-                  type="file"
-                  name="media"
-                  accept="image/*"
-                  onChange={handleInputChange}
-                  required
-                />
-
-                <button type="submit" className="submit-btn">
-                  SUBMIT
-                </button>
-              </form>
-              <button className="close-btn" onClick={() => setShowPopup(false)}>
+              {renderForm()}
+              <button
+                className="close-btn"
+                onClick={() => {
+                  setShowPopup(false);
+                  setViewMode(false);
+                }}
+              >
                 ✖
               </button>
             </div>
