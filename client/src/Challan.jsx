@@ -14,6 +14,8 @@ export default function Challan() {
   });
   const [challanData, setChallanData] = useState([]);
   const [viewMode, setViewMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
   const [viewData, setViewData] = useState(null);
 
   const handleInputChange = (e) => {
@@ -27,9 +29,22 @@ export default function Challan() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const newData = { ...formData };
-    setChallanData((prev) => [...prev, newData]);
-    alert("Challan submitted!");
+
+    if (editMode && editIndex !== null) {
+      const updated = [...challanData];
+      updated[editIndex] = newData;
+      setChallanData(updated);
+      alert("Challan updated!");
+    } else {
+      setChallanData((prev) => [...prev, newData]);
+      alert("Challan submitted!");
+    }
+
+    // Reset states
     setShowPopup(false);
+    setViewMode(false);
+    setEditMode(false);
+    setEditIndex(null);
     setFormData({
       companyName: "",
       phone: "",
@@ -43,6 +58,13 @@ export default function Challan() {
   const openViewPopup = (data) => {
     setViewData(data);
     setViewMode(true);
+    setShowPopup(true);
+  };
+
+  const openEditPopup = (data, index) => {
+    setFormData(data);
+    setEditMode(true);
+    setEditIndex(index);
     setShowPopup(true);
   };
 
@@ -113,13 +135,13 @@ export default function Challan() {
             name="media"
             accept="image/*,application/pdf"
             onChange={handleInputChange}
-            required
+            required={!editMode}
           />
         )}
 
         {!viewMode && (
           <button type="submit" className="submit-btn">
-            SUBMIT
+            {editMode ? "UPDATE" : "SUBMIT"}
           </button>
         )}
       </form>
@@ -137,6 +159,15 @@ export default function Challan() {
             onClick={() => {
               setShowPopup(true);
               setViewMode(false);
+              setEditMode(false);
+              setFormData({
+                companyName: "",
+                phone: "",
+                email: "",
+                totalBilling: "",
+                billNumber: "",
+                media: null,
+              });
             }}
           >
             + Create Challan
@@ -165,7 +196,7 @@ export default function Challan() {
                 <td>
                   <button
                     className="edit-btn"
-                    onClick={() => alert(`Editing ${entry.companyName}`)}
+                    onClick={() => openEditPopup(entry, index)}
                   >
                     ✏️ Edit
                   </button>
@@ -184,6 +215,8 @@ export default function Challan() {
                 onClick={() => {
                   setShowPopup(false);
                   setViewMode(false);
+                  setEditMode(false);
+                  setEditIndex(null);
                 }}
               >
                 ✖
