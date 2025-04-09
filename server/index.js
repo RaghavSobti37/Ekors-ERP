@@ -9,27 +9,29 @@ const path = require('path');
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
+const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init'); 
 
 const app = express();
 app.use(express.json());
 app.use(cors({
   origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type']
 }));
 connectDB();
 
 // Routes
 app.use('/api/logtime', logtimeRoutes);
+app.use('/api/challans', challanRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {
-  res.send('Logtime API is running');
+  res.send('API is running');
 });
 
 
-app.get('/', async (req, res) => {
+app.get('/users', async (req, res) => {
     try {
         const response = await userModel.find();
         return res.json({ items: response });
@@ -135,7 +137,11 @@ app.post('/create-ticket', async (req, res) => {
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        const uploadDir = 'uploads';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         cb(null, `${Date.now()}-${file.originalname}`);
