@@ -12,12 +12,22 @@ export default function Items() {
     direction: "asc",
   });
   const [editingItem, setEditingItem] = useState(null);
+<<<<<<< HEAD
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    quantity: '', 
+    price: '', 
+    gstRate: '', 
+    hsnCode: '',
+    image: null
+=======
   const [formData, setFormData] = useState({
     name: "",
     quantity: "",
     price: "",
     gstRate: "",
     hsnCode: "",
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
   });
   const [showModal, setShowModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -28,7 +38,12 @@ export default function Items() {
     []
   );
   const [purchaseLoading, setPurchaseLoading] = useState(false);
+<<<<<<< HEAD
+  const [imagePreview, setImagePreview] = useState(null);
+  
+=======
 
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
   const [purchaseData, setPurchaseData] = useState({
     companyName: "",
     gstNumber: "",
@@ -99,6 +114,7 @@ export default function Items() {
 
   const handleCancel = () => {
     setEditingItem(null);
+    setImagePreview(null);
   };
 
   const handleEdit = (item) => {
@@ -108,8 +124,30 @@ export default function Items() {
       quantity: item.quantity,
       price: item.price,
       gstRate: item.gstRate,
+<<<<<<< HEAD
+      hsnCode: item.hsnCode || '',
+      image: null
+=======
       hsnCode: item.hsnCode || "",
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
     });
+    if (item.imageUrl) {
+      setImagePreview(item.imageUrl);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, image: file });
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -163,14 +201,32 @@ export default function Items() {
     }
 
     try {
+<<<<<<< HEAD
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
+      formDataToSend.append('price', parseFloat(formData.price) || 0);
+      formDataToSend.append('gstRate', parseFloat(formData.gstRate) || 0);
+      formDataToSend.append('hsnCode', formData.hsnCode || '');
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      await axios.put(`http://localhost:3000/api/items/${editingItem}`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+=======
       await axios.put(`http://localhost:3000/api/items/${editingItem}`, {
         ...formData,
         quantity: parseInt(formData.quantity) || 0,
         price: parseFloat(formData.price) || 0,
         gstRate: parseFloat(formData.gstRate) || 0,
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
       });
       await fetchItems();
       setEditingItem(null);
+      setImagePreview(null);
     } catch (error) {
       console.error("Error updating item:", error);
       alert("Failed to update item. Please try again.");
@@ -218,6 +274,27 @@ export default function Items() {
     }
 
     try {
+<<<<<<< HEAD
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
+      formDataToSend.append('price', parseFloat(formData.price) || 0);
+      formDataToSend.append('gstRate', parseFloat(formData.gstRate) || 0);
+      formDataToSend.append('hsnCode', formData.hsnCode || '');
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      await axios.post('http://localhost:3000/api/items', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      await fetchItems();
+      setShowModal(false);
+      setFormData({ name: '', quantity: '', price: '', gstRate: '', hsnCode: '', image: null });
+      setImagePreview(null);
+=======
       await axios.post("http://localhost:3000/api/items", {
         ...formData,
         quantity: parseInt(formData.quantity) || 0,
@@ -233,6 +310,7 @@ export default function Items() {
         gstRate: "",
         hsnCode: "",
       });
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
     } catch (error) {
       console.error("Error adding item:", error);
       alert("Failed to add item. Please try again.");
@@ -403,6 +481,8 @@ export default function Items() {
       <div className="container mt-4">
         <h2>Items List</h2>
 
+<<<<<<< HEAD
+=======
         {/* <button 
   onClick={async () => {
     if(window.confirm('This will reset all items. Are you sure?')) {
@@ -421,6 +501,7 @@ export default function Items() {
   Reset Database
 </button> */}
 
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
         <div className="mb-3 d-flex gap-2">
           <button
             onClick={() => setShowModal(true)}
@@ -447,6 +528,21 @@ export default function Items() {
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
               <tr>
+<<<<<<< HEAD
+                {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((key) => (
+                  <th 
+                    key={key} 
+                    onClick={() => requestSort(key)} 
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {key.charAt(0).toUpperCase() + key.slice(1)} 
+                    {sortConfig.key === key && (
+                      sortConfig.direction === 'asc' ? ' ↑' : ' ↓'
+                    )}
+                  </th>
+                ))}
+                <th>Image</th>
+=======
                 {["name", "quantity", "price", "gstRate", "hsnCode"].map(
                   (key) => (
                     <th
@@ -460,6 +556,7 @@ export default function Items() {
                     </th>
                   )
                 )}
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                 <th>Actions</th>
                 <th>Details</th>
               </tr>
@@ -557,6 +654,17 @@ export default function Items() {
                         )}
                       </td>
                       <td>
+                        {item.imageUrl ? (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name} 
+                            style={{ maxWidth: '50px', maxHeight: '50px' }}
+                          />
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td>
                         {editingItem === item._id ? (
                           <div className="d-flex gap-1">
                             <button
@@ -593,7 +701,7 @@ export default function Items() {
 
                     {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="7" className="expanded-row">
+                        <td colSpan="8" className="expanded-row">
                           <div className="expanded-container">
                             <h6>Purchase History</h6>
                             {purchaseHistory[item._id]?.length > 0 ? (
@@ -649,9 +757,13 @@ export default function Items() {
                 ))
               ) : (
                 <tr>
+<<<<<<< HEAD
+                  <td colSpan="8" className="text-center">No items found</td>
+=======
                   <td colSpan="7" className="text-center">
                     No items found
                   </td>
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                 </tr>
               )}
             </tbody>
@@ -754,6 +866,24 @@ export default function Items() {
                   }
                 />
               </div>
+              <div className="form-group">
+                <label>Item Image</label>
+                <input
+                  type="file"
+                  className="form-control mb-2"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      style={{ maxWidth: '100px', maxHeight: '100px' }}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="d-flex justify-content-end gap-2 mt-3">
                 <button
                   onClick={handleAddItem}
@@ -762,8 +892,16 @@ export default function Items() {
                 >
                   Add
                 </button>
+<<<<<<< HEAD
+                <button 
+                  onClick={() => {
+                    setShowModal(false);
+                    setImagePreview(null);
+                  }} 
+=======
                 <button
                   onClick={() => setShowModal(false)}
+>>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                   className="btn btn-secondary"
                 >
                   Cancel
