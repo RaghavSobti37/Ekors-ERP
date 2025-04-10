@@ -54,89 +54,151 @@ const styles = StyleSheet.create({
   tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
 
 
-  page: {
-    padding: 30,
-    fontSize: 11,
-    fontFamily: "Helvetica",
-  },
-  header: {
-    fontSize: 18,
-    textAlign: "center",
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  section: {
-    marginBottom: 10,
-  },
-  row: {
-    flexDirection: "row",
-    marginBottom: 4,
-  },
-  label: {
-    width: "25%",
-    fontWeight: "bold",
-  },
-  value: {
-    width: "75%",
-  },
-  addressBlock: {
-    marginTop: 5,
-    marginBottom: 15,
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: "#000",
-    marginTop: 10,
-  },
-  tableRow: {
-    flexDirection: "row",
-  },
-  tableHeader: {
-    backgroundColor: "#f0f0f0",
-    fontWeight: "bold",
-  },
-  tableCol: {
-    borderRightWidth: 1,
-    borderColor: "#000",
-    padding: 4,
-    textAlign: "center",
-  },
-  snCol: {
-    width: "10%",
-  },
-  descCol: {
-    width: "40%",
-  },
-  unitCol: {
-    width: "10%",
-  },
-  qtyCol: {
-    width: "10%",
-  },
-  rateCol: {
-    width: "15%",
-  },
-  amtCol: {
-    width: "15%",
-    borderRightWidth: 0,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingTop: 5,
-    fontWeight: "bold",
-  },
-  terms: {
-    marginTop: 15,
-    fontSize: 9,
-    lineHeight: 1.5,
-  },
-  footer: {
-    marginTop: 20,
-    textAlign: "center",
-    fontSize: 10,
-    color: "red",
-  },
+  // page: {
+  //   padding: 30,
+  //   fontSize: 11,
+  //   fontFamily: "Helvetica",
+  // },
+  // header: {
+  //   fontSize: 18,
+  //   textAlign: "center",
+  //   marginBottom: 10,
+  //   textTransform: "uppercase",
+  // },
+  // section: {
+  //   marginBottom: 10,
+  // },
+  // row: {
+  //   flexDirection: "row",
+  //   marginBottom: 4,
+  // },
+  // label: {
+  //   width: "25%",
+  //   fontWeight: "bold",
+  // },
+  // value: {
+  //   width: "75%",
+  // },
+  // addressBlock: {
+  //   marginTop: 5,
+  //   marginBottom: 15,
+  // },
+  // table: {
+  //   borderWidth: 1,
+  //   borderColor: "#000",
+  //   marginTop: 10,
+  // },
+  // tableRow: {
+  //   flexDirection: "row",
+  // },
+  // tableHeader: {
+  //   backgroundColor: "#f0f0f0",
+  //   fontWeight: "bold",
+  // },
+  // tableCol: {
+  //   borderRightWidth: 1,
+  //   borderColor: "#000",
+  //   padding: 4,
+  //   textAlign: "center",
+  // },
+  // snCol: {
+  //   width: "10%",
+  // },
+  // descCol: {
+  //   width: "40%",
+  // },
+  // unitCol: {
+  //   width: "10%",
+  // },
+  // qtyCol: {
+  //   width: "10%",
+  // },
+  // rateCol: {
+  //   width: "15%",
+  // },
+  // amtCol: {
+  //   width: "15%",
+  //   borderRightWidth: 0,
+  // },
+  // totalRow: {
+  //   flexDirection: "row",
+  //   justifyContent: "flex-end",
+  //   paddingTop: 5,
+  //   fontWeight: "bold",
+  // },
+  // terms: {
+  //   marginTop: 15,
+  //   fontSize: 9,
+  //   lineHeight: 1.5,
+  // },
+  // footer: {
+  //   marginTop: 20,
+  //   textAlign: "center",
+  //   fontSize: 10,
+  //   color: "red",
+  // },
+
+  // page: {
+  //   padding: 30,
+  //   fontSize: 10,
+  //   fontFamily: "Helvetica",
+  // },
+  // centerText: {
+  //   textAlign: "center",
+  // },
+  // bold: {
+  //   fontWeight: "bold",
+  // },
+  // headerSection: {
+  //   borderBottom: "1pt solid black",
+  //   paddingBottom: 5,
+  // },
+  // companyName: {
+  //   fontSize: 14,
+  //   fontWeight: "bold",
+  //   textAlign: "center",
+  // },
+  // subHeader: {
+  //   fontSize: 10,
+  //   textAlign: "center",
+  //   marginBottom: 5,
+  // },
+  // row: {
+  //   flexDirection: "row",
+  //   justifyContent: "space-between",
+  //   marginVertical: 2,
+  // },
+  // col: {
+  //   width: "48%",
+  // },
+  // tableHeader: {
+  //   flexDirection: "row",
+  //   backgroundColor: "#f0f0f0",
+  //   borderTop: "1pt solid black",
+  //   borderBottom: "1pt solid black",
+  //   marginTop: 10,
+  //   paddingVertical: 4,
+  // },
+  // tableRow: {
+  //   flexDirection: "row",
+  //   borderBottom: "1pt solid #ccc",
+  //   paddingVertical: 4,
+  // },
+  // cell: {
+  //   borderRight: "1pt solid #ccc",
+  //   paddingHorizontal: 2,
+  //   paddingVertical: 2,
+  // },
+  // footerSection: {
+  //   marginTop: 10,
+  //   borderTop: "1pt solid black",
+  //   paddingTop: 5,
+  // },
+  // bankDetails: {
+  //   marginTop: 10,
+  //   fontSize: 9,
+  // },
+
 });
 
 const QuotationTemplate = ({ ticket }) => (
@@ -225,6 +287,114 @@ const QuotationTemplate = ({ ticket }) => (
   </Document>
 );
 
+
+// pi document template
+
+// const InvoiceTemplate = ({ invoice }) => (
+//   <Document>
+//     <Page size="A4" style={styles.page}>
+//       {/* GST and Invoice Header */}
+//       <Text style={styles.centerText}>GSTIN : 09AAFCE8706R1ZV</Text>
+//       <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
+//       <Text style={styles.subHeader}>
+//         PLOT NO.-02, Sector-115, NOIDA{"\n"}Gautam Buddha Nagar, Uttar Pradesh,
+//         201307
+//       </Text>
+//       <Text style={{ textAlign: "center", textDecoration: "underline" }}>
+//         PERFORMA INVOICE
+//       </Text>
+
+//       {/* Quotation Info */}
+//       <View style={styles.row}>
+//         <Text>Quotation No. :</Text>
+//         <Text>Date :</Text>
+//       </View>
+
+//       {/* Address Sections */}
+//       <View style={styles.row}>
+//         <View style={styles.col}>
+//           <Text style={styles.bold}>Quotation to :</Text>
+//           <Text> M/S Workfront</Text>
+//           <Text> Ward No 4, H No 35/1, Krishna Colony</Text>
+//           <Text> Aara Machine K Pass</Text>
+//           <Text> Palwal</Text>
+//           <Text> Haryana-121102</Text>
+//           <Text> Party Mobile No :</Text>
+//           <Text> State :</Text>
+//           <Text> GSTIN / UIN :</Text>
+//         </View>
+//         <View style={styles.col}>
+//           <Text style={styles.bold}>Shipped to :</Text>
+//           <Text> M/S Workfront</Text>
+//           <Text> Ward No 4, H No 35/1, Krishna Colony</Text>
+//           <Text> Aara Machine K Pass</Text>
+//           <Text> Palwal</Text>
+//           <Text> Haryana-121102</Text>
+//           <Text> Party Mobile No :</Text>
+//           <Text> State :</Text>
+//           <Text> GSTIN / UIN : 06ASDPK5819C2ZF</Text>
+//         </View>
+//       </View>
+
+//       {/* Table Header */}
+//       <View style={styles.tableHeader}>
+//         <Text style={[styles.cell, { width: "5%" }]}>S.N.</Text>
+//         <Text style={[styles.cell, { width: "35%" }]}>
+//           Description of Goods
+//         </Text>
+//         <Text style={[styles.cell, { width: "15%" }]}>HSN/SAC Code</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Qty.</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Unit</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Price</Text>
+//         <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>
+//           Amount(*)
+//         </Text>
+//       </View>
+
+//       {/* Table Rows */}
+//       {[1, 2, 3, 4].map((_, i) => (
+//         <View style={styles.tableRow} key={i}>
+//           <Text style={[styles.cell, { width: "5%" }]}>{i + 1}</Text>
+//           <Text style={[styles.cell, { width: "35%" }]}></Text>
+//           <Text style={[styles.cell, { width: "15%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}></Text>
+//         </View>
+//       ))}
+
+//       {/* GST and Total Section */}
+//       <View style={{ marginTop: 10 }}>
+//         <Text>Add : GST @ 18.00%</Text>
+//         <Text style={{ fontWeight: "bold", marginTop: 5 }}>
+//           Grand Total : ______________________
+//         </Text>
+//         <Text style={{ marginTop: 5, fontSize: 9 }}>
+//           Taxable Rate Total = Sub Total Amt. + Total Tax.{"\n"}18%
+//         </Text>
+//         <Text style={{ marginTop: 10 }}>
+//           Rupees Eighteen Thousand Five Hundred Twenty Six Only
+//         </Text>
+//       </View>
+
+//       {/* Bank Details */}
+//       <View style={styles.bankDetails}>
+//         <Text style={{ fontWeight: "bold" }}>Bank Details :</Text>
+//         <Text>
+//           Bank : ICICI Bank{"\n"}Bank Account No:: 628906029990, IFSC CODE No.:
+//           ICIC0006284
+//         </Text>
+//       </View>
+
+//       {/* Footer */}
+//       <View style={{ marginTop: 20 }}>
+//         <Text style={{ textAlign: "right" }}>for E-KORS PRIVATE LIMITED</Text>
+//         <Text style={{ textAlign: "right" }}>Authorized Signatory</Text>
+//       </View>
+//     </Page>
+//   </Document>
+// );
 
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
@@ -964,7 +1134,8 @@ export default function Dashboard() {
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
           size="xl"
-          fullscreen
+          dialogClassName="edit-modal-centered"
+          centered
         >
           <Modal.Header closeButton>
             <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
