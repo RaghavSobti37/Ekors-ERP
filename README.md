@@ -1,4 +1,3 @@
-# Ekors-ERP
 # ERP System Documentation
 
 ## Overview
