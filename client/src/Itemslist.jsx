@@ -12,7 +12,6 @@ export default function Items() {
     direction: "asc",
   });
   const [editingItem, setEditingItem] = useState(null);
-<<<<<<< HEAD
   const [formData, setFormData] = useState({ 
     name: '', 
     quantity: '', 
@@ -20,14 +19,6 @@ export default function Items() {
     gstRate: '', 
     hsnCode: '',
     image: null
-=======
-  const [formData, setFormData] = useState({
-    name: "",
-    quantity: "",
-    price: "",
-    gstRate: "",
-    hsnCode: "",
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
   });
   const [showModal, setShowModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -38,12 +29,8 @@ export default function Items() {
     []
   );
   const [purchaseLoading, setPurchaseLoading] = useState(false);
-<<<<<<< HEAD
   const [imagePreview, setImagePreview] = useState(null);
   
-=======
-
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
   const [purchaseData, setPurchaseData] = useState({
     companyName: "",
     gstNumber: "",
@@ -124,12 +111,8 @@ export default function Items() {
       quantity: item.quantity,
       price: item.price,
       gstRate: item.gstRate,
-<<<<<<< HEAD
       hsnCode: item.hsnCode || '',
       image: null
-=======
-      hsnCode: item.hsnCode || "",
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
     });
     if (item.imageUrl) {
       setImagePreview(item.imageUrl);
@@ -201,7 +184,6 @@ export default function Items() {
     }
 
     try {
-<<<<<<< HEAD
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
@@ -216,13 +198,6 @@ export default function Items() {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
-=======
-      await axios.put(`http://localhost:3000/api/items/${editingItem}`, {
-        ...formData,
-        quantity: parseInt(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
-        gstRate: parseFloat(formData.gstRate) || 0,
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
       });
       await fetchItems();
       setEditingItem(null);
@@ -274,7 +249,6 @@ export default function Items() {
     }
 
     try {
-<<<<<<< HEAD
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('quantity', parseInt(formData.quantity) || 0);
@@ -294,23 +268,6 @@ export default function Items() {
       setShowModal(false);
       setFormData({ name: '', quantity: '', price: '', gstRate: '', hsnCode: '', image: null });
       setImagePreview(null);
-=======
-      await axios.post("http://localhost:3000/api/items", {
-        ...formData,
-        quantity: parseInt(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
-        gstRate: parseFloat(formData.gstRate) || 0,
-      });
-      await fetchItems();
-      setShowModal(false);
-      setFormData({
-        name: "",
-        quantity: "",
-        price: "",
-        gstRate: "",
-        hsnCode: "",
-      });
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
     } catch (error) {
       console.error("Error adding item:", error);
       alert("Failed to add item. Please try again.");
@@ -481,27 +438,6 @@ export default function Items() {
       <div className="container mt-4">
         <h2>Items List</h2>
 
-<<<<<<< HEAD
-=======
-        {/* <button 
-  onClick={async () => {
-    if(window.confirm('This will reset all items. Are you sure?')) {
-      try {
-        const response = await axios.post('http://localhost:3000/api/init/initialize');
-        alert(response.data.message);
-        fetchItems(); // Refresh your items list
-      } catch (error) {
-        console.error('Initialization failed:', error);
-        alert('Failed to initialize database');
-      }
-    }
-  }} 
-  className="btn btn-warning mx-2"
->
-  Reset Database
-</button> */}
-
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
         <div className="mb-3 d-flex gap-2">
           <button
             onClick={() => setShowModal(true)}
@@ -528,7 +464,6 @@ export default function Items() {
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
               <tr>
-<<<<<<< HEAD
                 {['name', 'quantity', 'price', 'gstRate', 'hsnCode'].map((key) => (
                   <th 
                     key={key} 
@@ -542,21 +477,6 @@ export default function Items() {
                   </th>
                 ))}
                 <th>Image</th>
-=======
-                {["name", "quantity", "price", "gstRate", "hsnCode"].map(
-                  (key) => (
-                    <th
-                      key={key}
-                      onClick={() => requestSort(key)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                      {sortConfig.key === key &&
-                        (sortConfig.direction === "asc" ? " ↑" : " ↓")}
-                    </th>
-                  )
-                )}
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                 <th>Actions</th>
                 <th>Details</th>
               </tr>
@@ -757,13 +677,7 @@ export default function Items() {
                 ))
               ) : (
                 <tr>
-<<<<<<< HEAD
                   <td colSpan="8" className="text-center">No items found</td>
-=======
-                  <td colSpan="7" className="text-center">
-                    No items found
-                  </td>
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                 </tr>
               )}
             </tbody>
@@ -892,16 +806,11 @@ export default function Items() {
                 >
                   Add
                 </button>
-<<<<<<< HEAD
                 <button 
                   onClick={() => {
                     setShowModal(false);
                     setImagePreview(null);
                   }} 
-=======
-                <button
-                  onClick={() => setShowModal(false)}
->>>>>>> c733a2580b9ffd2267b5f61c0e7c499e6029af63
                   className="btn btn-secondary"
                 >
                   Cancel
