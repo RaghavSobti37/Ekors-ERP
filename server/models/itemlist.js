@@ -77,6 +77,22 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  unit: {
+    type: String,
+    required: true,
+    enum: ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG'],
+    default: 'Nos'
+  },
+  // New fields for category structure
+  category: {
+    type: String,
+    enum: ['Lightning Arrester', 'Earthing', 'Solar', 'Other'],
+    default: 'Other'
+  },
+  subcategory: {
+    type: String,
+    default: 'General'
+  },
   gstRate: {
     type: Number,
     default: 0
@@ -86,12 +102,16 @@ const itemSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
-  description: {
-    type: String,
-    default: ''
+  discountAvailable: {
+    type: Boolean,
+    default: false
   },
-  // Add image field to store image URL
-  imageUrl: {
+  dynamicPricing: {
+    type: Boolean,
+    default: false
+  },
+  // New field for image
+  image: {
     type: String,
     default: ''
   },
@@ -105,12 +125,16 @@ const itemSchema = new mongoose.Schema({
 // Update quantity based on purchase history
 itemSchema.pre('save', function(next) {
   if (this.isModified('purchaseHistory')) {
-    this.quantity = this.purchaseHistory.reduce((total, purchase) => {
-      return total + purchase.quantity;
-    }, 0);
+    // Calculate quantity only from purchase history if not manually set
+    if (!this.isModified('quantity')) {
+      this.quantity = this.purchaseHistory.reduce((total, purchase) => {
+        return total + purchase.quantity;
+      }, 0);
+    }
     
-    // If we have purchase history, update the price to the latest purchase price
-    if (this.purchaseHistory.length > 0) {
+    // Optional: Update price to the latest purchase price
+    // Only if there's purchase history and price wasn't manually set
+    if (this.purchaseHistory.length > 0 && !this.isModified('price')) {
       const latestPurchase = [...this.purchaseHistory].sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       )[0];
