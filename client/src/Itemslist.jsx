@@ -26,7 +26,6 @@ export default function Items() {
     dynamicPricing: false,
   });
   const [showModal, setShowModal] = useState(false);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,6 +44,7 @@ export default function Items() {
     gstRate: "0",
     description: ""
   });
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -137,11 +137,7 @@ export default function Items() {
         dynamicPricing: formData.dynamicPricing,
       };
       
-      console.log("Updating item with ID:", editingItem);
-      const url = `http://localhost:3000/api/items/${editingItem}`;
-      console.log("PUT to:", url);
-      await axios.put(url, updatedItem);
-  
+      await axios.put(`http://localhost:3000/api/items/${editingItem}`, updatedItem);
       await fetchItems();
       setEditingItem(null);
     } catch (error) {
@@ -250,7 +246,7 @@ export default function Items() {
     }
   };
 
-  const addPurchaseEntry = async (itemId) => {
+  const addPurchaseEntry = async () => {
     try {
       const purchaseDataToSend = {
         ...purchaseData,
@@ -261,14 +257,11 @@ export default function Items() {
       };
 
       await axios.post(
-        `http://localhost:3000/api/items/${itemId}/purchase`,
+        `http://localhost:3000/api/items/purchase`,
         purchaseDataToSend
       );
       
       await fetchItems();
-      if (expandedRow === itemId) {
-        await fetchPurchaseHistory(itemId);
-      }
       setShowPurchaseModal(false);
       setPurchaseData({
         companyName: "",
@@ -294,20 +287,20 @@ export default function Items() {
 
   return (
     <div className="items-container">
-      <Navbar />
+      <Navbar showPurchaseModal={() => setShowPurchaseModal(true)} />
       <div className="container mt-4">
         <h2>Items List</h2>
 
-        <div className="mb-3 d-flex gap-2 flex-wrap">
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn btn-success px-4"
-          >
-            Add Item
-          </button>
-          
-          <div className="d-flex gap-2">
-            <select
+        <div className="top-controls-container">
+          <div className="controls-row">
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn btn-success px-4"
+            >
+              Add Item
+            </button>
+            
+            {/* <select
               className="form-select"
               value={selectedCategory}
               onChange={(e) => {
@@ -322,7 +315,7 @@ export default function Items() {
                   {cat.category}
                 </option>
               ))}
-            </select>
+            </select> */}
 
             <select
               className="form-select"
@@ -343,16 +336,15 @@ export default function Items() {
                     </option>
                   ))}
             </select>
-          </div>
 
-          <input
-            type="text"
-            placeholder="Search items or HSN codes..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="form-control"
-            style={{ minWidth: "250px" }}
-          />
+            <input
+              type="text"
+              placeholder="Search items or HSN codes..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="form-control search-input"
+            />
+          </div>
         </div>
 
         <div className="table-responsive">
@@ -527,12 +519,6 @@ export default function Items() {
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Purchase History</h6>
-                              <button
-                                onClick={() => setShowPurchaseModal(item._id)}
-                                className="btn btn-sm btn-success"
-                              >
-                                Add Purchase
-                              </button>
                             </div>
                             {purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
@@ -933,7 +919,7 @@ export default function Items() {
               </div>
               <div className="d-flex justify-content-end gap-2 mt-3">
                 <button
-                  onClick={() => addPurchaseEntry(showPurchaseModal)}
+                  onClick={addPurchaseEntry}
                   className="btn btn-success"
                   disabled={!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.quantity || !purchaseData.price}
                 >

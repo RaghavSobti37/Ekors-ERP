@@ -214,31 +214,6 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.down-arrow {
-  margin-left: 5px;
-  font-size: 12px;
-}
-
-/* Sub Dropdown Wrapper */
-.sub-dropdown-wrapper {
-  position: relative;
-}
-
-.sub-dropdown-trigger {
-  padding: 10px 15px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-decoration: none;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.sub-dropdown-trigger:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
 .right-arrow {
   margin-left: 8px;
   font-size: 12px;

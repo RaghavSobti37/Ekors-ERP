@@ -54,89 +54,89 @@ const styles = StyleSheet.create({
   tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
 
 
-  // page: {
-  //   padding: 30,
-  //   fontSize: 11,
-  //   fontFamily: "Helvetica",
-  // },
-  // header: {
-  //   fontSize: 18,
-  //   textAlign: "center",
-  //   marginBottom: 10,
-  //   textTransform: "uppercase",
-  // },
-  // section: {
-  //   marginBottom: 10,
-  // },
-  // row: {
-  //   flexDirection: "row",
-  //   marginBottom: 4,
-  // },
-  // label: {
-  //   width: "25%",
-  //   fontWeight: "bold",
-  // },
-  // value: {
-  //   width: "75%",
-  // },
-  // addressBlock: {
-  //   marginTop: 5,
-  //   marginBottom: 15,
-  // },
-  // table: {
-  //   borderWidth: 1,
-  //   borderColor: "#000",
-  //   marginTop: 10,
-  // },
-  // tableRow: {
-  //   flexDirection: "row",
-  // },
-  // tableHeader: {
-  //   backgroundColor: "#f0f0f0",
-  //   fontWeight: "bold",
-  // },
-  // tableCol: {
-  //   borderRightWidth: 1,
-  //   borderColor: "#000",
-  //   padding: 4,
-  //   textAlign: "center",
-  // },
-  // snCol: {
-  //   width: "10%",
-  // },
-  // descCol: {
-  //   width: "40%",
-  // },
-  // unitCol: {
-  //   width: "10%",
-  // },
-  // qtyCol: {
-  //   width: "10%",
-  // },
-  // rateCol: {
-  //   width: "15%",
-  // },
-  // amtCol: {
-  //   width: "15%",
-  //   borderRightWidth: 0,
-  // },
-  // totalRow: {
-  //   flexDirection: "row",
-  //   justifyContent: "flex-end",
-  //   paddingTop: 5,
-  //   fontWeight: "bold",
-  // },
-  // terms: {
-  //   marginTop: 15,
-  //   fontSize: 9,
-  //   lineHeight: 1.5,
-  // },
-  // footer: {
-  //   marginTop: 20,
-  //   textAlign: "center",
-  //   fontSize: 10,
-  //   color: "red",
-  // },
+  page: {
+    padding: 30,
+    fontSize: 11,
+    fontFamily: "Helvetica",
+  },
+  header: {
+    fontSize: 18,
+    textAlign: "center",
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
+  section: {
+    marginBottom: 10,
+  },
+  row: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  label: {
+    width: "25%",
+    fontWeight: "bold",
+  },
+  value: {
+    width: "75%",
+  },
+  addressBlock: {
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  table: {
+    borderWidth: 1,
+    borderColor: "#000",
+    marginTop: 10,
+  },
+  tableRow: {
+    flexDirection: "row",
+  },
+  tableHeader: {
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+  },
+  tableCol: {
+    borderRightWidth: 1,
+    borderColor: "#000",
+    padding: 4,
+    textAlign: "center",
+  },
+  snCol: {
+    width: "10%",
+  },
+  descCol: {
+    width: "40%",
+  },
+  unitCol: {
+    width: "10%",
+  },
+  qtyCol: {
+    width: "10%",
+  },
+  rateCol: {
+    width: "15%",
+  },
+  amtCol: {
+    width: "15%",
+    borderRightWidth: 0,
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 5,
+    fontWeight: "bold",
+  },
+  terms: {
+    marginTop: 15,
+    fontSize: 9,
+    lineHeight: 1.5,
+  },
+  footer: {
+    marginTop: 20,
+    textAlign: "center",
+    fontSize: 10,
+    color: "red",
+  },
 
   // page: {
   //   padding: 30,
