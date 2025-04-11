@@ -7,15 +7,18 @@ import {
     FaClipboardList,
     FaClock,
     FaBoxOpen,
+    FaChevronRight,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
     const [showProfilePopup, setShowProfilePopup] = useState(false);
     const [showItemsDropdown, setShowItemsDropdown] = useState(false);
+    const [showSubItemsDropdown, setShowSubItemsDropdown] = useState(false);
     const navigate = useNavigate();
     const timeoutRef = useRef(null);
     const dropdownTimeoutRef = useRef(null);
+    const subDropdownTimeoutRef = useRef(null);
 
     const handleSignOut = () => {
         localStorage.removeItem("token");
@@ -41,6 +44,18 @@ export default function Navbar() {
     const handleMouseLeaveDropdown = () => {
         dropdownTimeoutRef.current = setTimeout(() => {
             setShowItemsDropdown(false);
+            setShowSubItemsDropdown(false);
+        }, 300);
+    };
+
+    const handleMouseEnterSubDropdown = () => {
+        clearTimeout(subDropdownTimeoutRef.current);
+        setShowSubItemsDropdown(true);
+    };
+
+    const handleMouseLeaveSubDropdown = () => {
+        subDropdownTimeoutRef.current = setTimeout(() => {
+            setShowSubItemsDropdown(false);
         }, 300);
     };
 
@@ -76,10 +91,23 @@ export default function Navbar() {
                         </a>
                         {showItemsDropdown && (
                             <div className="dropdown-menu">
-                                <a href="/itemslist/la">LA</a>
-                                <a href="/itemslist/earthing">Earthing</a>
-                                <a href="/itemslist/solar">Solar</a>
-                                <a href="/itemslist">View All Items</a>
+                                <a href="/itemslist">Add Purchase</a>
+                                <div
+                                    className="sub-dropdown-wrapper"
+                                    onMouseEnter={handleMouseEnterSubDropdown}
+                                    onMouseLeave={handleMouseLeaveSubDropdown}
+                                >
+                                    <a className="sub-dropdown-trigger">
+                                        View Items <FaChevronRight className="right-arrow" />
+                                    </a>
+                                    {showSubItemsDropdown && (
+                                        <div className="sub-dropdown-menu">
+                                            <a href="/itemslist/la">LA</a>
+                                            <a href="/itemslist/earthing">Earthing</a>
+                                            <a href="/itemslist/solar">Light Arrester</a>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

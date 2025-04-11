@@ -22,6 +22,10 @@ import {
 } from "@react-pdf/renderer";
 
 // PDF Document Templates
+
+
+// import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+
 const styles = StyleSheet.create({
   page: { padding: 30, fontFamily: "Helvetica" },
   header: {
@@ -48,68 +52,350 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
+
+
+  // page: {
+  //   padding: 30,
+  //   fontSize: 11,
+  //   fontFamily: "Helvetica",
+  // },
+  // header: {
+  //   fontSize: 18,
+  //   textAlign: "center",
+  //   marginBottom: 10,
+  //   textTransform: "uppercase",
+  // },
+  // section: {
+  //   marginBottom: 10,
+  // },
+  // row: {
+  //   flexDirection: "row",
+  //   marginBottom: 4,
+  // },
+  // label: {
+  //   width: "25%",
+  //   fontWeight: "bold",
+  // },
+  // value: {
+  //   width: "75%",
+  // },
+  // addressBlock: {
+  //   marginTop: 5,
+  //   marginBottom: 15,
+  // },
+  // table: {
+  //   borderWidth: 1,
+  //   borderColor: "#000",
+  //   marginTop: 10,
+  // },
+  // tableRow: {
+  //   flexDirection: "row",
+  // },
+  // tableHeader: {
+  //   backgroundColor: "#f0f0f0",
+  //   fontWeight: "bold",
+  // },
+  // tableCol: {
+  //   borderRightWidth: 1,
+  //   borderColor: "#000",
+  //   padding: 4,
+  //   textAlign: "center",
+  // },
+  // snCol: {
+  //   width: "10%",
+  // },
+  // descCol: {
+  //   width: "40%",
+  // },
+  // unitCol: {
+  //   width: "10%",
+  // },
+  // qtyCol: {
+  //   width: "10%",
+  // },
+  // rateCol: {
+  //   width: "15%",
+  // },
+  // amtCol: {
+  //   width: "15%",
+  //   borderRightWidth: 0,
+  // },
+  // totalRow: {
+  //   flexDirection: "row",
+  //   justifyContent: "flex-end",
+  //   paddingTop: 5,
+  //   fontWeight: "bold",
+  // },
+  // terms: {
+  //   marginTop: 15,
+  //   fontSize: 9,
+  //   lineHeight: 1.5,
+  // },
+  // footer: {
+  //   marginTop: 20,
+  //   textAlign: "center",
+  //   fontSize: 10,
+  //   color: "red",
+  // },
+
+  // page: {
+  //   padding: 30,
+  //   fontSize: 10,
+  //   fontFamily: "Helvetica",
+  // },
+  // centerText: {
+  //   textAlign: "center",
+  // },
+  // bold: {
+  //   fontWeight: "bold",
+  // },
+  // headerSection: {
+  //   borderBottom: "1pt solid black",
+  //   paddingBottom: 5,
+  // },
+  // companyName: {
+  //   fontSize: 14,
+  //   fontWeight: "bold",
+  //   textAlign: "center",
+  // },
+  // subHeader: {
+  //   fontSize: 10,
+  //   textAlign: "center",
+  //   marginBottom: 5,
+  // },
+  // row: {
+  //   flexDirection: "row",
+  //   justifyContent: "space-between",
+  //   marginVertical: 2,
+  // },
+  // col: {
+  //   width: "48%",
+  // },
+  // tableHeader: {
+  //   flexDirection: "row",
+  //   backgroundColor: "#f0f0f0",
+  //   borderTop: "1pt solid black",
+  //   borderBottom: "1pt solid black",
+  //   marginTop: 10,
+  //   paddingVertical: 4,
+  // },
+  // tableRow: {
+  //   flexDirection: "row",
+  //   borderBottom: "1pt solid #ccc",
+  //   paddingVertical: 4,
+  // },
+  // cell: {
+  //   borderRight: "1pt solid #ccc",
+  //   paddingHorizontal: 2,
+  //   paddingVertical: 2,
+  // },
+  // footerSection: {
+  //   marginTop: 10,
+  //   borderTop: "1pt solid black",
+  //   paddingTop: 5,
+  // },
+  // bankDetails: {
+  //   marginTop: 10,
+  //   fontSize: 9,
+  // },
+
 });
 
 const QuotationTemplate = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <Text style={styles.header}>QUOTATION</Text>
+      <Text style={styles.header}></Text>
 
       <View style={styles.section}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Quotation No:</Text>
-          <Text style={styles.value}>{ticket.quotationNumber}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>
-            {new Date(ticket.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Company Name:</Text>
-          <Text style={styles.value}>{ticket.companyName}</Text>
-        </View>
+        <Text>CIN NO- U40106UP2020PTC127954</Text>
+        <Text>Ref: E-KORS/2025-26</Text>
+        
       </View>
 
+      <View style={styles.section}>
+        <Text>To,</Text>
+        <Text>{ticket.companyName}</Text>
+        
+        <Text>Site:- Assam</Text>
+        <Text>Sub: Quotation for Earthing Material and Installation</Text>
+      </View>
+
+      <Text style={styles.section}>
+        Dear Sir,{"\n"}Thanks for your enquiry of <Text style={{ fontWeight: "bold" }}>Earthing Items</Text>. 
+        As per your requirement, here we are giving you our prices. Kindly view it.
+      </Text>
+
+      <Text style={{ fontWeight: "bold", marginTop: 10 }}>Supply & Installation</Text>
+
       <View style={styles.table}>
-        <View style={[styles.tableRow, { backgroundColor: "#f0f0f0" }]}>
-          <Text style={styles.tableColHeader}>Description</Text>
-          <Text style={styles.tableColHeader}>HSN/SAC</Text>
-          <Text style={styles.tableColHeader}>Qty</Text>
-          <Text style={styles.tableColHeader}>Price (₹)</Text>
+        <View style={[styles.tableRow, styles.tableHeader]}>
+          <Text style={[styles.tableCol, styles.snCol]}>S. No</Text>
+          <Text style={[styles.tableCol, styles.descCol]}>Item Description</Text>
+          <Text style={[styles.tableCol, styles.unitCol]}>Unit</Text>
+          <Text style={[styles.tableCol, styles.qtyCol]}>Qty</Text>
+          <Text style={[styles.tableCol, styles.rateCol]}>Rate</Text>
+          <Text style={[styles.tableCol, styles.amtCol]}>Amount</Text>
         </View>
+
         {ticket.goods.map((item, index) => (
           <View style={styles.tableRow} key={index}>
-            <Text style={styles.tableCol}>{item.description}</Text>
-            <Text style={styles.tableCol}>{item.hsnSacCode}</Text>
-            <Text style={styles.tableCol}>{item.quantity}</Text>
-            <Text style={styles.tableCol}>{item.price.toFixed(2)}</Text>
+            <Text style={[styles.tableCol, styles.snCol]}>{index + 1}</Text>
+            <Text style={[styles.tableCol, styles.descCol]}>{item.description}</Text>
+            <Text style={[styles.tableCol, styles.unitCol]}>{item.unit}</Text>
+            <Text style={[styles.tableCol, styles.qtyCol]}>{item.quantity}</Text>
+            <Text style={[styles.tableCol, styles.rateCol]}>
+              ₹{item.price.toFixed(2)}
+            </Text>
+            <Text style={[styles.tableCol, styles.amtCol]}>
+              ₹{(item.price * item.quantity).toFixed(2)}
+            </Text>
           </View>
         ))}
       </View>
 
-      <View style={[styles.section, { marginTop: 20 }]}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Total Amount:</Text>
-          <Text style={styles.value}>₹{ticket.totalAmount.toFixed(2)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>GST (18%):</Text>
-          <Text style={styles.value}>₹{ticket.gstAmount.toFixed(2)}</Text>
-        </View>
-        <View style={[styles.row, { borderBottom: 0 }]}>
-          <Text style={[styles.label, { fontWeight: "bold" }]}>
-            Grand Total:
-          </Text>
-          <Text style={[styles.value, { fontWeight: "bold" }]}>
-            ₹{ticket.grandTotal.toFixed(2)}
-          </Text>
-        </View>
+      <View style={styles.totalRow}>
+        <Text>Total: ₹{ticket.totalAmount.toFixed(2)}</Text>
       </View>
+
+      <View style={styles.terms}>
+        <Text>Terms & Conditions:</Text>
+        <Text>Material is Ex-Factory Noida</Text>
+        <Text>GST:     18% extra applicable</Text>
+        <Text>Payment:     100% advance before dispatch</Text>
+        <Text>Freight:     Extra on actual before dispatch</Text>
+        <Text>Dispatch:     Within 10 days after receiving Formal PO and Advance</Text>
+        <Text>E-way bill:     As applicable</Text>
+        <Text>Quotation Validity:     11 April 2025</Text>
+        <Text>PO Name:     Order to be placed in the name of "E-KORS PVT LTD"</Text> 
+        
+      </View>
+
+      <Text style={{ marginTop: 10 }}>
+        Hoping for your valuable order at the earliest.
+      </Text>
+      <Text style={{ marginTop: 10 }}>Thanking you in anticipation.</Text>
+      <Text style={{ marginTop: 10 }}>For E-KORS Private Limited</Text>
+
+      <Text style={styles.footer}>
+        E-KORS PVT LTD{"\n"}
+        Com Add: Plot No. C2, Sector 115, Noida – 201307{"\n"}
+        Ph. No. 9711127989 / 9870262345{"\n"}
+        Email: info@kors.co.in , Sales@kors.co.in{"\n"}
+        GST No. – 09AAFCE8706R1ZV
+      </Text>
     </Page>
   </Document>
 );
+
+
+// pi document template
+
+// const InvoiceTemplate = ({ invoice }) => (
+//   <Document>
+//     <Page size="A4" style={styles.page}>
+//       {/* GST and Invoice Header */}
+//       <Text style={styles.centerText}>GSTIN : 09AAFCE8706R1ZV</Text>
+//       <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
+//       <Text style={styles.subHeader}>
+//         PLOT NO.-02, Sector-115, NOIDA{"\n"}Gautam Buddha Nagar, Uttar Pradesh,
+//         201307
+//       </Text>
+//       <Text style={{ textAlign: "center", textDecoration: "underline" }}>
+//         PERFORMA INVOICE
+//       </Text>
+
+//       {/* Quotation Info */}
+//       <View style={styles.row}>
+//         <Text>Quotation No. :</Text>
+//         <Text>Date :</Text>
+//       </View>
+
+//       {/* Address Sections */}
+//       <View style={styles.row}>
+//         <View style={styles.col}>
+//           <Text style={styles.bold}>Quotation to :</Text>
+//           <Text> M/S Workfront</Text>
+//           <Text> Ward No 4, H No 35/1, Krishna Colony</Text>
+//           <Text> Aara Machine K Pass</Text>
+//           <Text> Palwal</Text>
+//           <Text> Haryana-121102</Text>
+//           <Text> Party Mobile No :</Text>
+//           <Text> State :</Text>
+//           <Text> GSTIN / UIN :</Text>
+//         </View>
+//         <View style={styles.col}>
+//           <Text style={styles.bold}>Shipped to :</Text>
+//           <Text> M/S Workfront</Text>
+//           <Text> Ward No 4, H No 35/1, Krishna Colony</Text>
+//           <Text> Aara Machine K Pass</Text>
+//           <Text> Palwal</Text>
+//           <Text> Haryana-121102</Text>
+//           <Text> Party Mobile No :</Text>
+//           <Text> State :</Text>
+//           <Text> GSTIN / UIN : 06ASDPK5819C2ZF</Text>
+//         </View>
+//       </View>
+
+//       {/* Table Header */}
+//       <View style={styles.tableHeader}>
+//         <Text style={[styles.cell, { width: "5%" }]}>S.N.</Text>
+//         <Text style={[styles.cell, { width: "35%" }]}>
+//           Description of Goods
+//         </Text>
+//         <Text style={[styles.cell, { width: "15%" }]}>HSN/SAC Code</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Qty.</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Unit</Text>
+//         <Text style={[styles.cell, { width: "10%" }]}>Price</Text>
+//         <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>
+//           Amount(*)
+//         </Text>
+//       </View>
+
+//       {/* Table Rows */}
+//       {[1, 2, 3, 4].map((_, i) => (
+//         <View style={styles.tableRow} key={i}>
+//           <Text style={[styles.cell, { width: "5%" }]}>{i + 1}</Text>
+//           <Text style={[styles.cell, { width: "35%" }]}></Text>
+//           <Text style={[styles.cell, { width: "15%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "10%" }]}></Text>
+//           <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}></Text>
+//         </View>
+//       ))}
+
+//       {/* GST and Total Section */}
+//       <View style={{ marginTop: 10 }}>
+//         <Text>Add : GST @ 18.00%</Text>
+//         <Text style={{ fontWeight: "bold", marginTop: 5 }}>
+//           Grand Total : ______________________
+//         </Text>
+//         <Text style={{ marginTop: 5, fontSize: 9 }}>
+//           Taxable Rate Total = Sub Total Amt. + Total Tax.{"\n"}18%
+//         </Text>
+//         <Text style={{ marginTop: 10 }}>
+//           Rupees Eighteen Thousand Five Hundred Twenty Six Only
+//         </Text>
+//       </View>
+
+//       {/* Bank Details */}
+//       <View style={styles.bankDetails}>
+//         <Text style={{ fontWeight: "bold" }}>Bank Details :</Text>
+//         <Text>
+//           Bank : ICICI Bank{"\n"}Bank Account No:: 628906029990, IFSC CODE No.:
+//           ICIC0006284
+//         </Text>
+//       </View>
+
+//       {/* Footer */}
+//       <View style={{ marginTop: 20 }}>
+//         <Text style={{ textAlign: "right" }}>for E-KORS PRIVATE LIMITED</Text>
+//         <Text style={{ textAlign: "right" }}>Authorized Signatory</Text>
+//       </View>
+//     </Page>
+//   </Document>
+// );
+
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) return <span>↕️</span>;
@@ -848,7 +1134,8 @@ export default function Dashboard() {
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
           size="xl"
-          fullscreen
+          dialogClassName="edit-modal-centered"
+          centered
         >
           <Modal.Header closeButton>
             <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>

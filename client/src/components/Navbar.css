@@ -174,3 +174,99 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Nested Dropdown Trigger */
+.nested-dropdown {
+  position: relative;
+}
+
+.nested-trigger {
+  padding: 10px 15px;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.nested-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Sub Dropdown Wrapper */
+.sub-dropdown-wrapper {
+  position: relative;
+}
+
+.sub-dropdown-trigger {
+  padding: 10px 15px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sub-dropdown-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.down-arrow {
+  margin-left: 5px;
+  font-size: 12px;
+}
+
+/* Sub Dropdown Wrapper */
+.sub-dropdown-wrapper {
+  position: relative;
+}
+
+.sub-dropdown-trigger {
+  padding: 10px 15px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sub-dropdown-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.right-arrow {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+/* Sub Dropdown Menu */
+.sub-dropdown-menu {
+  position: absolute;
+  top: 0;
+  left: 160px;
+  background-color: #2c2c54;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  padding: 10px 0;
+  z-index: 1000;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sub-dropdown-menu a {
+  padding: 10px 15px;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.sub-dropdown-menu a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
