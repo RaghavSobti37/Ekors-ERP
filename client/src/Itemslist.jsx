@@ -289,7 +289,7 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={() => setShowPurchaseModal(true)} />
       <div className="container mt-4">
-        <h2>Items List</h2>
+        <h2 style={{ color: "black" }}>Items List</h2>
 
         <div className="top-controls-container">
           <div className="controls-row">
