@@ -1,12 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./css/Items.css";
 import Navbar from "./components/Navbar.jsx";
+
+const debug = (message, data = null) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEBUG] ${message}`, data);
+  }
+};
 
 export default function Items() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: "name",
@@ -30,6 +37,7 @@ export default function Items() {
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [currentItemIndex, setCurrentItemIndex] = useState(-1);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSubcategory, setSelectedSubcategory] = useState("All");
   const [purchaseData, setPurchaseData] = useState({
@@ -38,53 +46,151 @@ export default function Items() {
     address: "",
     stateName: "",
     invoiceNumber: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     quantity: "",
     price: "",
     gstRate: "0",
-    description: ""
+    description: "",
+    items: [],
   });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [itemSearchTerm, setItemSearchTerm] = useState("");
+  const [filteredItemsList, setFilteredItemsList] = useState([]);
+  const [showItemSearch, setShowItemSearch] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const showSuccess = (message) => {
+    // Could use a toast library here
+    alert(message);
+  };
+
+  useEffect(() => {
+    console.log("Items state updated:", items.length);
+  }, [items]);
+
+  useEffect(() => {
+    debug("Component mounted or dependencies changed", { items, categories });
+  }, [items, categories]);
+
+  const fetchItems = useCallback(async () => {
+    try {
+      debug("Starting to fetch items");
+      setLoading(true);
+      setError(null);
+      const response = await axios.get("http://localhost:3000/api/items");
+      debug("Items fetched successfully", response.data);
+      setItems(response.data);
+    } catch (err) {
+      debug("Error fetching items", err);
+      console.error("Error fetching items:", err);
+      setError("Failed to load items. Please try again.");
+    } finally {
+      debug("Finished items fetch attempt");
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      debug("Attempting to fetch categories");
+      const response = await axios.get("http://localhost:3000/api/items/categories", {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 5000 // 5 second timeout
+      });
+  
+      if (!response.data) {
+        throw new Error("Received empty response from server");
+      }
+  
+      debug("Categories data received", response.data);
+      setCategories(response.data);
+      
+    } catch (err) {
+      const errorDetails = {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+        config: err.config
+      };
+      
+      debug("Categories fetch failed", errorDetails);
+      
+      let errorMessage = "Failed to load categories";
+      if (err.response) {
+        // Server responded with error status
+        errorMessage += ` (${err.response.status})`;
+        if (err.response.data?.message) {
+          errorMessage += `: ${err.response.data.message}`;
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage += ": No response from server";
+      } else {
+        // Something else happened
+        errorMessage += `: ${err.message}`;
+      }
+      
+      setError(errorMessage);
+      
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchItems();
     fetchCategories();
-  }, []);
 
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("http://localhost:3000/api/items");
-      setItems(response.data);
-    } catch (error) {
-      console.error("Error fetching items:", error);
-      alert("Failed to load items. Please try again.");
-    } finally {
-      setLoading(false);
+    return () => {
+      setItems([]);
+      setCategories([]);
+    };
+  }, [fetchItems, fetchCategories]);
+
+  useEffect(() => {
+    if (itemSearchTerm.trim() !== "") {
+      const filtered = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
+          (item.hsnCode &&
+            item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
+      );
+      setFilteredItemsList(filtered);
+    } else {
+      setFilteredItemsList([]);
     }
-  };
+  }, [itemSearchTerm, items]);
 
-  const fetchCategories = async () => {
+  const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
-      const response = await axios.get("http://localhost:3000/api/items/categories");
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      alert("Failed to load categories.");
-    }
-  };
-
-  const fetchPurchaseHistory = async (itemId) => {
-    try {
-      const response = await axios.get(`http://localhost:3000/api/items/${itemId}`);
+      const response = await axios.get(
+        `http://localhost:3000/api/items/${itemId}/purchases`
+      );
       setPurchaseHistory((prev) => ({
         ...prev,
-        [itemId]: response.data.purchaseHistory || [],
+        [itemId]: response.data || [],
       }));
-    } catch (error) {
-      console.error("Error fetching purchase history:", error);
-      alert("Failed to load purchase history.");
+    } catch (err) {
+      console.error("Error fetching purchase history:", err);
+      setError("Failed to load purchase history.");
     }
+  }, []);
+
+  const handleError = (error, customMessage) => {
+    debug("Error occurred", error);
+    const message = error.response?.data?.message || 
+                   error.message || 
+                   customMessage || 
+                   "An unexpected error occurred";
+    setError(message);
+    
+    // Show error to user (you might want to use a toast notification instead)
+    alert(message);
   };
 
   const handleEdit = (item) => {
@@ -114,16 +220,17 @@ export default function Items() {
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert("Item name is required");
+      setError("Item name is required");
       return;
     }
-  
+
     if (!editingItem) {
-      alert("No item selected for editing.");
+      setError("No item selected for editing.");
       return;
     }
-  
+
     try {
+      setIsSubmitting(true);
       const updatedItem = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
@@ -136,16 +243,25 @@ export default function Items() {
         discountAvailable: formData.discountAvailable,
         dynamicPricing: formData.dynamicPricing,
       };
-      
-      await axios.put(`http://localhost:3000/api/items/${editingItem}`, updatedItem);
+
+      await axios.put(
+        `http://localhost:3000/api/items/${editingItem}`,
+        updatedItem
+      );
       await fetchItems();
       setEditingItem(null);
-    } catch (error) {
-      console.error("Error updating item:", error);
-      alert(`Failed to update item: ${error.response?.data?.message || error.message}`);
+      setError(null);
+      showSuccess("Item saved successfully!");
+    } catch (err) {
+      console.error("Error updating item:", err);
+      setError(
+        `Failed to update item: ${err.response?.data?.message || err.message}`
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
+
   const requestSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -169,11 +285,15 @@ export default function Items() {
   }, [items, sortConfig]);
 
   const filteredItems = sortedItems.filter((item) => {
-    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    const matchesSubcategory = selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         (item.hsnCode && item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+    const matchesCategory =
+      selectedCategory === "All" || item.category === selectedCategory;
+    const matchesSubcategory =
+      selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.hsnCode &&
+        item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
+
     return matchesCategory && matchesSubcategory && matchesSearch;
   });
 
@@ -182,13 +302,143 @@ export default function Items() {
   const currentItems = filteredItems.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
+  const addNewPurchaseItem = () => {
+    setPurchaseData({
+      ...purchaseData,
+      items: [
+        ...(purchaseData.items || []),
+        {
+          description: "",
+          quantity: "1",
+          price: "",
+          gstRate: "0",
+        },
+      ],
+    });
+  };
+
+  const addExistingItemToPurchase = (item) => {
+    setPurchaseData({
+      ...purchaseData,
+      items: [
+        ...(purchaseData.items || []),
+        {
+          itemId: item._id,
+          description: item.name,
+          quantity: "1",
+          price: item.price.toString(),
+          gstRate: item.gstRate.toString(),
+        },
+      ],
+    });
+    setItemSearchTerm("");
+    setShowItemSearch(false);
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updatedItems = [...(purchaseData.items || [])];
+    if (!updatedItems[index]) {
+      updatedItems[index] = {
+        description: "",
+        quantity: "1",
+        price: "",
+        gstRate: "0",
+      };
+    }
+    updatedItems[index][field] = value;
+    setPurchaseData({
+      ...purchaseData,
+      items: updatedItems,
+    });
+  };
+
+  const openPurchaseModal = () => {
+    setPurchaseData({
+      companyName: "",
+      gstNumber: "",
+      address: "",
+      stateName: "",
+      invoiceNumber: "",
+      date: new Date().toISOString().split("T")[0],
+      items: [
+        {
+          description: "",
+          quantity: "1",
+          price: "",
+          gstRate: "0",
+        },
+      ],
+    });
+    setShowPurchaseModal(true);
+  };
+
+  const removeItem = (index) => {
+    const updatedItems = [...purchaseData.items];
+    updatedItems.splice(index, 1);
+    setPurchaseData({
+      ...purchaseData,
+      items: updatedItems,
+    });
+  };
+
+  const calculateItemAmount = (item) => {
+    const quantity = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.price) || 0;
+    const gstRate = parseFloat(item.gstRate) || 0;
+
+    return quantity * price * (1 + gstRate / 100);
+  };
+
+  const calculateTotalAmount = () => {
+    if (!purchaseData.items || purchaseData.items.length === 0) return 0;
+    return purchaseData.items.reduce(
+      (sum, item) => sum + calculateItemAmount(item),
+      0
+    );
+  };
+
+  const isPurchaseDataValid = () => {
+    if (!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.date) {
+      return false;
+    }
+    
+    if (!purchaseData.items || purchaseData.items.length === 0) {
+      return false;
+    }
+    
+    return purchaseData.items.every(
+      (item) =>
+        item.description &&
+        parseFloat(item.quantity) > 0 &&
+        parseFloat(item.price) >= 0
+    );
+  };
+
+  const resetPurchaseForm = () => {
+    setPurchaseData({
+      companyName: "",
+      gstNumber: "",
+      address: "",
+      stateName: "",
+      invoiceNumber: "",
+      date: new Date().toISOString().split("T")[0],
+      quantity: "",
+      price: "",
+      gstRate: "0",
+      items: [],
+    });
+    setItemSearchTerm("");
+    setShowItemSearch(false);
+  };
+
   const handleAddItem = async () => {
     if (!formData.name) {
-      alert("Item name is required");
+      setError("Item name is required");
       return;
     }
 
     try {
+      setIsSubmitting(true);
       const newItem = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
@@ -217,9 +467,12 @@ export default function Items() {
         discountAvailable: false,
         dynamicPricing: false,
       });
-    } catch (error) {
-      console.error("Error adding item:", error);
-      alert("Failed to add item. Please try again.");
+      setError(null);
+    } catch (err) {
+      console.error("Error adding item:", err);
+      setError("Failed to add item. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -237,70 +490,88 @@ export default function Items() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
+        setIsSubmitting(true);
         await axios.delete(`http://localhost:3000/api/items/${id}`);
         await fetchItems();
-      } catch (error) {
-        console.error("Error deleting item:", error);
-        alert("Failed to delete item.");
+      } catch (err) {
+        console.error("Error deleting item:", err);
+        setError("Failed to delete item.");
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
 
   const addPurchaseEntry = async () => {
     try {
+      setIsSubmitting(true);
+  
+      if (!isPurchaseDataValid()) {
+        setError("Please fill all required fields and ensure each item has a description, quantity, and price");
+        return false;
+      }
+  
       const purchaseDataToSend = {
-        ...purchaseData,
-        quantity: parseFloat(purchaseData.quantity),
-        price: parseFloat(purchaseData.price),
-        gstRate: parseFloat(purchaseData.gstRate),
-        date: new Date(purchaseData.date)
+        companyName: purchaseData.companyName,
+        gstNumber: purchaseData.gstNumber,
+        address: purchaseData.address,
+        stateName: purchaseData.stateName,
+        invoiceNumber: purchaseData.invoiceNumber,
+        date: purchaseData.date,
+        items: purchaseData.items.map((item) => ({
+          itemId: item.itemId || null,
+          description: item.description,
+          quantity: parseFloat(item.quantity),
+          price: parseFloat(item.price),
+          gstRate: parseFloat(item.gstRate || 0),
+        })),
       };
-
+  
       await axios.post(
         `http://localhost:3000/api/items/purchase`,
         purchaseDataToSend
       );
-      
+  
       await fetchItems();
       setShowPurchaseModal(false);
-      setPurchaseData({
-        companyName: "",
-        gstNumber: "",
-        address: "",
-        stateName: "",
-        invoiceNumber: "",
-        date: new Date().toISOString().split('T')[0],
-        quantity: "",
-        price: "",
-        gstRate: "0",
-        description: ""
-      });
+      resetPurchaseForm();
       return true;
-    } catch (error) {
-      console.error("Error adding purchase entry:", error);
-      alert(`Failed to add purchase entry: ${error.response?.data?.message || error.message}`);
+    } catch (err) {
+      console.error("Error adding purchase entry:", err);
+      setError(
+        `Failed to add purchase entry: ${
+          err.response?.data?.message || err.message
+        }`
+      );
       return false;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
-
   return (
     <div className="items-container">
-      <Navbar showPurchaseModal={() => setShowPurchaseModal(true)} />
+      <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
         <h2>Items List</h2>
+
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="top-controls-container">
           <div className="controls-row">
             <button
               onClick={() => setShowModal(true)}
               className="btn btn-success px-4"
+              disabled={isSubmitting}
             >
-              Add Item
+              {isSubmitting ? "Processing..." : "Add Item"}
             </button>
-            
-            {/* <select
+
+            <select
               className="form-select"
               value={selectedCategory}
               onChange={(e) => {
@@ -308,6 +579,7 @@ export default function Items() {
                 setSelectedSubcategory("All");
                 setCurrentPage(1);
               }}
+              disabled={isSubmitting}
             >
               <option value="All">All Categories</option>
               {categories.map((cat) => (
@@ -315,7 +587,7 @@ export default function Items() {
                   {cat.category}
                 </option>
               ))}
-            </select> */}
+            </select>
 
             <select
               className="form-select"
@@ -324,13 +596,13 @@ export default function Items() {
                 setSelectedSubcategory(e.target.value);
                 setCurrentPage(1);
               }}
-              disabled={selectedCategory === "All"}
+              disabled={selectedCategory === "All" || isSubmitting}
             >
               <option value="All">All Subcategories</option>
-              {selectedCategory !== "All" && 
+              {selectedCategory !== "All" &&
                 categories
-                  .find(c => c.category === selectedCategory)?.subcategories
-                  .map((subcat) => (
+                  .find((c) => c.category === selectedCategory)
+                  ?.subcategories.map((subcat) => (
                     <option key={subcat} value={subcat}>
                       {subcat}
                     </option>
@@ -343,6 +615,7 @@ export default function Items() {
               value={searchTerm}
               onChange={handleSearchChange}
               className="form-control search-input"
+              disabled={isSubmitting}
             />
           </div>
         </div>
@@ -363,8 +636,8 @@ export default function Items() {
                 ].map((key) => (
                   <th
                     key={key}
-                    onClick={() => requestSort(key)}
-                    style={{ cursor: "pointer" }}
+                    onClick={() => !isSubmitting && requestSort(key)}
+                    style={{ cursor: isSubmitting ? "not-allowed" : "pointer" }}
                   >
                     {key.charAt(0).toUpperCase() +
                       key.slice(1).replace(/([A-Z])/g, " $1")}
@@ -389,6 +662,7 @@ export default function Items() {
                             onChange={(e) =>
                               setFormData({ ...formData, name: e.target.value })
                             }
+                            disabled={isSubmitting}
                           />
                         ) : (
                           item.name
@@ -409,6 +683,7 @@ export default function Items() {
                                 quantity: e.target.value,
                               })
                             }
+                            disabled={isSubmitting}
                           />
                         ) : (
                           item.quantity
@@ -428,6 +703,7 @@ export default function Items() {
                                 price: e.target.value,
                               })
                             }
+                            disabled={isSubmitting}
                           />
                         ) : (
                           `₹${parseFloat(item.price).toFixed(2)}`
@@ -448,6 +724,7 @@ export default function Items() {
                                 gstRate: e.target.value,
                               })
                             }
+                            disabled={isSubmitting}
                           />
                         ) : (
                           `${item.gstRate}%`
@@ -465,6 +742,7 @@ export default function Items() {
                                 hsnCode: e.target.value,
                               })
                             }
+                            disabled={isSubmitting}
                           />
                         ) : (
                           item.hsnCode || "-"
@@ -477,12 +755,14 @@ export default function Items() {
                               <button
                                 onClick={handleSave}
                                 className="btn btn-success btn-sm"
+                                disabled={isSubmitting}
                               >
-                                Save
+                                {isSubmitting ? "Saving..." : "Save"}
                               </button>
                               <button
                                 onClick={handleCancel}
                                 className="btn btn-secondary btn-sm"
+                                disabled={isSubmitting}
                               >
                                 Cancel
                               </button>
@@ -492,12 +772,14 @@ export default function Items() {
                               <button
                                 onClick={() => handleEdit(item)}
                                 className="btn btn-primary btn-sm"
+                                disabled={isSubmitting}
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDelete(item._id)}
                                 className="btn btn-danger btn-sm"
+                                disabled={isSubmitting}
                               >
                                 Delete
                               </button>
@@ -506,6 +788,7 @@ export default function Items() {
                           <button
                             onClick={() => toggleDetails(item._id)}
                             className="btn btn-info btn-sm"
+                            disabled={isSubmitting}
                           >
                             {expandedRow === item._id ? "Hide" : "Show"} Details
                           </button>
@@ -535,18 +818,43 @@ export default function Items() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {purchaseHistory[item._id].map((purchase, idx) => (
-                                    <tr key={idx}>
-                                      <td>{new Date(purchase.date).toLocaleDateString()}</td>
-                                      <td>{purchase.companyName}</td>
-                                      <td>{purchase.gstNumber || '-'}</td>
-                                      <td>{purchase.invoiceNumber}</td>
-                                      <td>{purchase.quantity}</td>
-                                      <td>₹{parseFloat(purchase.price).toFixed(2)}</td>
-                                      <td>₹{(purchase.price * purchase.quantity * (purchase.gstRate/100)).toFixed(2)}</td>
-                                      <td>₹{(purchase.price * purchase.quantity * (1 + purchase.gstRate/100)).toFixed(2)}</td>
-                                    </tr>
-                                  ))}
+                                  {purchaseHistory[item._id].map(
+                                    (purchase, idx) => (
+                                      <tr key={idx}>
+                                        <td>
+                                          {new Date(
+                                            purchase.date
+                                          ).toLocaleDateString()}
+                                        </td>
+                                        <td>{purchase.companyName}</td>
+                                        <td>{purchase.gstNumber || "-"}</td>
+                                        <td>{purchase.invoiceNumber}</td>
+                                        <td>{purchase.quantity}</td>
+                                        <td>
+                                          ₹
+                                          {parseFloat(purchase.price).toFixed(
+                                            2
+                                          )}
+                                        </td>
+                                        <td>
+                                          ₹
+                                          {(
+                                            purchase.price *
+                                            purchase.quantity *
+                                            (purchase.gstRate / 100)
+                                          ).toFixed(2)}
+                                        </td>
+                                        <td>
+                                          ₹
+                                          {(
+                                            purchase.price *
+                                            purchase.quantity *
+                                            (1 + purchase.gstRate / 100)
+                                          ).toFixed(2)}
+                                        </td>
+                                      </tr>
+                                    )
+                                  )}
                                 </tbody>
                               </table>
                             ) : (
@@ -573,7 +881,7 @@ export default function Items() {
               <button
                 className="btn btn-sm btn-outline-dark"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isSubmitting}
               >
                 ← Prev
               </button>
@@ -585,7 +893,7 @@ export default function Items() {
                 onClick={() =>
                   setCurrentPage((p) => Math.min(p + 1, totalPages))
                 }
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || isSubmitting}
               >
                 Next →
               </button>
@@ -598,6 +906,11 @@ export default function Items() {
           <div className="modal-backdrop">
             <div className="modal-content">
               <h5>Add New Item</h5>
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
               <div className="form-group">
                 <label>Name*</label>
                 <input
@@ -609,6 +922,7 @@ export default function Items() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="form-group">
@@ -622,6 +936,7 @@ export default function Items() {
                   onChange={(e) =>
                     setFormData({ ...formData, quantity: e.target.value })
                   }
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="form-group">
@@ -637,6 +952,7 @@ export default function Items() {
                     setFormData({ ...formData, price: e.target.value })
                   }
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="form-group">
@@ -651,6 +967,7 @@ export default function Items() {
                   onChange={(e) =>
                     setFormData({ ...formData, gstRate: e.target.value })
                   }
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="form-group">
@@ -663,6 +980,7 @@ export default function Items() {
                   onChange={(e) =>
                     setFormData({ ...formData, hsnCode: e.target.value })
                   }
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="form-group">
@@ -674,6 +992,7 @@ export default function Items() {
                   onChange={(e) =>
                     setFormData({ ...formData, unit: e.target.value })
                   }
+                  disabled={isSubmitting}
                 >
                   <option value="Nos">Nos</option>
                   <option value="Mtr">Meter</option>
@@ -696,6 +1015,7 @@ export default function Items() {
                       onChange={(e) =>
                         setFormData({ ...formData, category: e.target.value })
                       }
+                      disabled={isSubmitting}
                     >
                       <option value="">Select Category</option>
                       {categories.map((cat) => (
@@ -714,15 +1034,18 @@ export default function Items() {
                       name="subcategory"
                       value={formData.subcategory}
                       onChange={(e) =>
-                        setFormData({ ...formData, subcategory: e.target.value })
+                        setFormData({
+                          ...formData,
+                          subcategory: e.target.value,
+                        })
                       }
-                      disabled={!formData.category}
+                      disabled={!formData.category || isSubmitting}
                     >
                       <option value="General">General</option>
-                      {formData.category && 
+                      {formData.category &&
                         categories
-                          .find(c => c.category === formData.category)?.subcategories
-                          .map((subcat) => (
+                          .find((c) => c.category === formData.category)
+                          ?.subcategories.map((subcat) => (
                             <option key={subcat} value={subcat}>
                               {subcat}
                             </option>
@@ -744,6 +1067,7 @@ export default function Items() {
                       discountAvailable: e.target.checked,
                     })
                   }
+                  disabled={isSubmitting}
                 />
                 <label className="form-check-label" htmlFor="discountAvailable">
                   Discount Available
@@ -762,6 +1086,7 @@ export default function Items() {
                       dynamicPricing: e.target.checked,
                     })
                   }
+                  disabled={isSubmitting}
                 />
                 <label className="form-check-label" htmlFor="dynamicPricing">
                   Dynamic Pricing
@@ -772,9 +1097,14 @@ export default function Items() {
                 <button
                   onClick={handleAddItem}
                   className="btn btn-success"
-                  disabled={!formData.name || !formData.price || !formData.category}
+                  disabled={
+                    isSubmitting ||
+                    !formData.name ||
+                    !formData.price ||
+                    !formData.category
+                  }
                 >
-                  Add
+                  {isSubmitting ? "Adding..." : "Add"}
                 </button>
                 <button
                   onClick={() => {
@@ -791,8 +1121,10 @@ export default function Items() {
                       discountAvailable: false,
                       dynamicPricing: false,
                     });
+                    setError(null);
                   }}
                   className="btn btn-secondary"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>
@@ -804,29 +1136,43 @@ export default function Items() {
         {/* Purchase Modal */}
         {showPurchaseModal && (
           <div className="modal-backdrop">
-            <div className="modal-content">
-              <h5>Add Purchase Entry</h5>
-              <div className="form-group">
-                <label>Company Name*</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Company Name"
-                  name="companyName"
-                  value={purchaseData.companyName}
-                  onChange={handlePurchaseChange}
-                  required
-                />
+            <div className="modal-content wide-modal">
+              <h5>Purchase Tracking</h5>
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Company Name*</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Company Name"
+                      name="companyName"
+                      value={purchaseData.companyName}
+                      onChange={handlePurchaseChange}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>GST Number</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="GST Number"
+                      name="gstNumber"
+                      value={purchaseData.gstNumber}
+                      onChange={handlePurchaseChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>GST Number</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="GST Number"
-                  name="gstNumber"
-                  value={purchaseData.gstNumber}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
+
               <div className="form-group">
                 <label>Address</label>
                 <input
@@ -835,113 +1181,233 @@ export default function Items() {
                   name="address"
                   value={purchaseData.address}
                   onChange={handlePurchaseChange}
+                  disabled={isSubmitting}
                 />
               </div>
-              <div className="form-group">
-                <label>State</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="State Name"
-                  name="stateName"
-                  value={purchaseData.stateName}
-                  onChange={handlePurchaseChange}
-                />
+
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>State</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="State Name"
+                      name="stateName"
+                      value={purchaseData.stateName}
+                      onChange={handlePurchaseChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Invoice Number*</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Invoice Number"
+                      name="invoiceNumber"
+                      value={purchaseData.invoiceNumber}
+                      onChange={handlePurchaseChange}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Invoice Number*</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Invoice Number"
-                  name="invoiceNumber"
-                  value={purchaseData.invoiceNumber}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
+
               <div className="form-group">
                 <label>Invoice Date*</label>
                 <input
                   type="date"
-                  className="form-control mb-2"
+                  className="form-control mb-3"
                   name="date"
                   value={purchaseData.date}
                   onChange={handlePurchaseChange}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
-              <div className="form-group">
-                <label>Quantity*</label>
-                <input
-                  type="number"
-                  className="form-control mb-2"
-                  placeholder="Quantity"
-                  name="quantity"
-                  value={purchaseData.quantity}
-                  onChange={handlePurchaseChange}
-                  required
-                />
+
+              <h6>Items Purchased</h6>
+              {purchaseData.items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="purchase-item-container mb-3 p-3 border rounded"
+                >
+                  <div className="position-relative">
+                    <label>Search Item</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Search item by name or HSN..."
+                      value={idx === currentItemIndex ? itemSearchTerm : ""}
+                      onChange={(e) => {
+                        setItemSearchTerm(e.target.value);
+                        setCurrentItemIndex(idx);
+                        setShowItemSearch(true);
+                      }}
+                      onFocus={() => setCurrentItemIndex(idx)}
+                      disabled={isSubmitting}
+                    />
+
+                    {filteredItemsList.length > 0 &&
+                      currentItemIndex === idx &&
+                      showItemSearch && (
+                        <div className="suggestions-dropdown">
+                          {filteredItemsList.map((suggestion, i) => (
+                            <div
+                              key={i}
+                              className="suggestion-item"
+                              onClick={() => {
+                                handleItemChange(
+                                  idx,
+                                  "description",
+                                  suggestion.name
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "price",
+                                  suggestion.price.toString()
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "gstRate",
+                                  suggestion.gstRate.toString()
+                                );
+                                setItemSearchTerm("");
+                                setShowItemSearch(false);
+                              }}
+                            >
+                              <strong>{suggestion.name}</strong>
+                              <span className="text-muted">
+                                {" "}
+                                - ₹{suggestion.price.toFixed(2)}
+                              </span>
+                              <br />
+                              <small>
+                                HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
+                                {suggestion.gstRate || 0}%
+                              </small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+
+                  {item.description && (
+                    <div className="selected-item-details mb-2 p-2 bg-light border rounded">
+                      <strong>{item.description}</strong>
+                      {item.price && (
+                        <small className="d-block">
+                          Price: ₹{item.price}, GST: {item.gstRate || 0}%
+                        </small>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="row">
+                    <div className="col-md-3">
+                      <div className="form-group">
+                        <label>Description*</label>
+                        <input
+                          type="text"
+                          className="form-control mb-2"
+                          placeholder="Description"
+                          value={item.description || ""}
+                          onChange={(e) =>
+                            handleItemChange(idx, "description", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>Price*</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control mb-2"
+                          placeholder="Price"
+                          value={item.price || ""}
+                          onChange={(e) =>
+                            handleItemChange(idx, "price", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>Quantity*</label>
+                        <input
+                          type="number"
+                          className="form-control mb-2"
+                          placeholder="Quantity"
+                          value={item.quantity || ""}
+                          onChange={(e) =>
+                            handleItemChange(idx, "quantity", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>GST Rate (%)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control mb-2"
+                          placeholder="GST Rate"
+                          value={item.gstRate || "0"}
+                          onChange={(e) =>
+                            handleItemChange(idx, "gstRate", e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2 d-flex align-items-end">
+                      <button
+                        onClick={() => removeItem(idx)}
+                        className="btn btn-danger btn-block"
+                        disabled={purchaseData.items.length === 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="d-flex justify-content-between mb-3">
+                <button
+                  onClick={addNewPurchaseItem}
+                  className="btn btn-outline-primary"
+                >
+                  Add Another Item
+                </button>
+                <div className="total-amount">
+                  <strong>Total Amount: ₹{calculateTotalAmount().toFixed(2)}</strong>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Price*</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="Price"
-                  name="price"
-                  value={purchaseData.price}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>GST Rate (%)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="GST Rate"
-                  name="gstRate"
-                  value={purchaseData.gstRate}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  className="form-control mb-2"
-                  placeholder="Description"
-                  name="description"
-                  value={purchaseData.description}
-                  onChange={handlePurchaseChange}
-                  rows="3"
-                />
-              </div>
+
               <div className="d-flex justify-content-end gap-2 mt-3">
                 <button
                   onClick={addPurchaseEntry}
                   className="btn btn-success"
-                  disabled={!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.quantity || !purchaseData.price}
+                  disabled={!isPurchaseDataValid() || isSubmitting}
                 >
-                  Add Purchase
+                  {isSubmitting ? "Submitting..." : "Submit Purchase"}
                 </button>
                 <button
                   onClick={() => {
                     setShowPurchaseModal(false);
-                    setPurchaseData({
-                      companyName: "",
-                      gstNumber: "",
-                      address: "",
-                      stateName: "",
-                      invoiceNumber: "",
-                      date: new Date().toISOString().split('T')[0],
-                      quantity: "",
-                      price: "",
-                      gstRate: "0",
-                      description: ""
-                    });
+                    setItemSearchTerm("");
+                    setFilteredItemsList([]);
+                    resetPurchaseForm();
                   }}
                   className="btn btn-secondary"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>

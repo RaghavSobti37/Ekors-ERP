@@ -7,10 +7,10 @@ import Quotations from "./Quotations";
 import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
-import Items from "./Itemslist.jsx"
+import Items from "./Items.jsx"
 import Searchbar from "./components/Searchbar";
-
 import { BrowserRouter , Routes , Route } from 'react-router-dom';
+import PurchaseHistory from './PurchaseHistory.jsx';
 
 function App() {
   const [items , setItems] =useState([])
@@ -40,6 +40,7 @@ function App() {
     <Route path='/challan' element={<Challan />}></Route>
     <Route path='/itemslist' element={<Items />}></Route>
     <Route path='/searchbar' element={<Searchbar />}></Route>
+    <Route path='/purchasehistory' element={<PurchaseHistory />}></Route>
    
   </Routes>
   </BrowserRouter>

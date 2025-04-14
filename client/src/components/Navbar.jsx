@@ -10,7 +10,6 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
@@ -19,6 +18,9 @@ export default function Navbar({ showPurchaseModal }) {
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const subDropdownTimeoutRef = useRef(null);
+  const handlePurchaseHistoryClick = () => {
+    navigate("/purchasehistory");
+  };
 
   const handleSignOut = () => {
     localStorage.removeItem("token");
@@ -95,9 +97,19 @@ export default function Navbar({ showPurchaseModal }) {
             </div>
             {showItemsDropdown && (
               <div className="dropdown-menu">
-                <div onClick={showPurchaseModal} style={{ cursor: "pointer", padding: "10px 15px" }}>
+                <div
+                  onClick={showPurchaseModal}
+                  style={{ cursor: "pointer", padding: "10px 15px" }}
+                >
                   Add Purchase
                 </div>
+                <div
+                  onClick={handlePurchaseHistoryClick}
+                  style={{ cursor: "pointer", padding: "10px 15px" }}
+                >
+                  Purchase History
+                </div>
+
                 <div
                   className="sub-dropdown-wrapper"
                   onMouseEnter={handleMouseEnterSubDropdown}

@@ -116,3 +116,45 @@
   max-height: 100px;
   margin-top: 10px;
 }
+
+/* You can add this to your existing CSS or create a new file */
+.purchase-history-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.filters-container {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.expanded-row {
+  background-color: #f9f9f9;
+  padding: 0;
+}
+
+.expanded-purchase-details {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+
+.table th {
+  position: relative;
+  cursor: pointer;
+}
+
+.table th:hover::after {
+  content: "⇅";
+  margin-left: 5px;
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .filters-container .row {
+    flex-direction: column;
+  }
+}

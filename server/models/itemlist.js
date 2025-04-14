@@ -1,6 +1,70 @@
 const mongoose = require('mongoose');
 
-// Define a purchase entry schema
+// Schema for purchase items (used in Purchase schema)
+const purchaseItemSchema = new mongoose.Schema({
+  itemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Item'
+  },
+  description: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 0.01
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  gstRate: {
+    type: Number,
+    default: 0
+  }
+}, { 
+  _id: true,
+  timestamps: false
+});
+
+// Purchase schema for bulk purchases
+const purchaseSchema = new mongoose.Schema({
+  companyName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  gstNumber: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  address: {
+    type: String,
+    default: ''
+  },
+  stateName: {
+    type: String,
+    default: ''
+  },
+  invoiceNumber: {
+    type: String,
+    required: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  items: [purchaseItemSchema]
+}, { 
+  timestamps: true 
+});
+
+// Define a purchase entry schema for item history
 const purchaseEntrySchema = new mongoose.Schema({
   date: {
     type: Date,
@@ -32,7 +96,7 @@ const purchaseEntrySchema = new mongoose.Schema({
   quantity: {
     type: Number,
     required: true,
-    min: 1
+    min: 0.01
   },
   price: {
     type: Number,
@@ -43,23 +107,9 @@ const purchaseEntrySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  description: {
-    type: String,
-    default: ''
-  }
 }, { 
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
-
-// Add virtuals for calculated fields
-purchaseEntrySchema.virtual('totalAmount').get(function() {
-  return this.price * this.quantity;
-});
-
-purchaseEntrySchema.virtual('gstAmount').get(function() {
-  return (this.price * this.quantity) * (this.gstRate / 100);
+  timestamps: false,
+  _id: true
 });
 
 // Define main item schema
@@ -83,10 +133,8 @@ const itemSchema = new mongoose.Schema({
     enum: ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG'],
     default: 'Nos'
   },
-  // New fields for category structure
   category: {
     type: String,
-    enum: ['Lightning Arrester', 'Earthing', 'Solar', 'Other'],
     default: 'Other'
   },
   subcategory: {
@@ -110,38 +158,21 @@ const itemSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  // New field for image
-  image: {
-    type: String,
-    default: ''
-  },
   purchaseHistory: [purchaseEntrySchema]
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Update quantity based on purchase history
-itemSchema.pre('save', function(next) {
-  if (this.isModified('purchaseHistory')) {
-    // Calculate quantity only from purchase history if not manually set
-    if (!this.isModified('quantity')) {
-      this.quantity = this.purchaseHistory.reduce((total, purchase) => {
-        return total + purchase.quantity;
-      }, 0);
-    }
-    
-    // Optional: Update price to the latest purchase price
-    // Only if there's purchase history and price wasn't manually set
-    if (this.purchaseHistory.length > 0 && !this.isModified('price')) {
-      const latestPurchase = [...this.purchaseHistory].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-      )[0];
-      this.price = latestPurchase.price;
-    }
-  }
-  next();
-});
+// Indexes for faster queries
+itemSchema.index({ name: 1 });
+itemSchema.index({ category: 1, subcategory: 1 });
+itemSchema.index({ hsnCode: 1 });
 
-module.exports = mongoose.model('Item', itemSchema);
+purchaseSchema.index({ date: -1 });
+purchaseSchema.index({ companyName: 1 });
+purchaseSchema.index({ 'items.itemId': 1 });
+
+const Item = mongoose.model('Item', itemSchema);
+const Purchase = mongoose.model('Purchase', purchaseSchema);
+
+module.exports = { Item, Purchase };
