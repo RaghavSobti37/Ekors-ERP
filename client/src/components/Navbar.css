@@ -149,6 +149,7 @@
 
 /* Dropdown Menu */
 .dropdown-menu {
+  color: white;
   position: absolute;
   top: 42px;
   left: 0;
