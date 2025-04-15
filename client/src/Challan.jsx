@@ -362,8 +362,8 @@ export default function Challan() {
         </table>
 
         {showPopup && (
-          <div className="popup-overlay fullscreen">
-            <div className="popup-form fullscreen-popup">
+          <div className="popup-overlay">
+            <div className="popup-form ninety-five-percent">
               <div className="popup-header">
                 <h3>{viewMode ? "View Challan" : (editMode ? "Edit Challan" : "Create New Challan")}</h3>
                 <button
