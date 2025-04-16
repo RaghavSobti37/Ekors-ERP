@@ -115,16 +115,6 @@ export default function Navbar({ showPurchaseModal }) {
                   onMouseEnter={handleMouseEnterSubDropdown}
                   onMouseLeave={handleMouseLeaveSubDropdown}
                 >
-                  <div className="sub-dropdown-trigger">
-                    View Items <FaChevronRight className="right-arrow" />
-                  </div>
-                  {showSubItemsDropdown && (
-                    <div className="sub-dropdown-menu">
-                      <a href="/itemslist/la">LA</a>
-                      <a href="/itemslist/earthing">Earthing</a>
-                      <a href="/itemslist/solar">Light Arrester</a>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

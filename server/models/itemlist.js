@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 const purchaseItemSchema = new mongoose.Schema({
   itemId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Item'
+    ref: 'Item',
+    required: true 
   },
   description: {
     type: String,
@@ -23,7 +24,9 @@ const purchaseItemSchema = new mongoose.Schema({
   },
   gstRate: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   }
 }, { 
   _id: true,
@@ -40,7 +43,14 @@ const purchaseSchema = new mongoose.Schema({
   gstNumber: {
     type: String,
     trim: true,
-    default: ''
+    default: '',
+    validate: {
+      validator: function(v) {
+        // Basic GST validation - can be enhanced
+        return v === '' || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid GST number!`
+    }
   },
   address: {
     type: String,
@@ -51,81 +61,41 @@ const purchaseSchema = new mongoose.Schema({
     default: ''
   },
   invoiceNumber: {
-    type: String,
-    required: true
-  },
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  items: [purchaseItemSchema]
-}, { 
-  timestamps: true 
-});
-
-// Define a purchase entry schema for item history
-const purchaseEntrySchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  companyName: {
     type: String,
     required: true,
     trim: true
   },
-  gstNumber: {
+  date: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  items: [purchaseItemSchema],
+  totalAmount: {
+    type: Number,
+    default: 0
+  }
+}, { 
+  timestamps: true 
+});
+
+// Instead of embedding purchase history, reference purchase documents
+const itemSchema = new mongoose.Schema({
+  name: {
     type: String,
+    required: true,
     trim: true,
-    default: ''
-  },
-  address: {
-    type: String,
-    default: ''
-  },
-  stateName: {
-    type: String,
-    default: ''
-  },
-  invoiceNumber: {
-    type: String,
-    required: true
+    index: true
   },
   quantity: {
     type: Number,
-    required: true,
-    min: 0.01
+    default: 0,
+    min: 0
   },
   price: {
     type: Number,
     required: true,
     min: 0
-  },
-  gstRate: {
-    type: Number,
-    default: 0
-  },
-}, { 
-  timestamps: false,
-  _id: true
-});
-
-// Define main item schema
-const itemSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  quantity: {
-    type: Number,
-    default: 0
-  },
-  price: {
-    type: Number,
-    required: true
   },
   unit: {
     type: String,
@@ -135,20 +105,25 @@ const itemSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    default: 'Other'
+    default: 'Other',
+    index: true
   },
   subcategory: {
     type: String,
-    default: 'General'
+    default: 'General',
+    index: true
   },
   gstRate: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   },
   hsnCode: {
     type: String,
     trim: true,
-    default: ''
+    default: '',
+    index: true
   },
   discountAvailable: {
     type: Boolean,
@@ -158,16 +133,33 @@ const itemSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  purchaseHistory: [purchaseEntrySchema]
+  // Reference to purchases instead of embedding them
+  lastPurchaseDate: {
+    type: Date,
+    default: null
+  },
+  lastPurchasePrice: {
+    type: Number,
+    default: null
+  }
 }, {
   timestamps: true
 });
 
-// Indexes for faster queries
-itemSchema.index({ name: 1 });
-itemSchema.index({ category: 1, subcategory: 1 });
-itemSchema.index({ hsnCode: 1 });
+// Add a pre-save hook to calculate total amount
+purchaseSchema.pre('save', function(next) {
+  if (this.items && this.items.length > 0) {
+    this.totalAmount = this.items.reduce((sum, item) => {
+      const itemTotal = item.price * item.quantity;
+      const gstAmount = itemTotal * (item.gstRate / 100);
+      return sum + itemTotal + gstAmount;
+    }, 0);
+  }
+  next();
+});
 
+// Create a compound index for better performance on common queries
+itemSchema.index({ category: 1, subcategory: 1 });
 purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ companyName: 1 });
 purchaseSchema.index({ 'items.itemId': 1 });
@@ -176,3 +168,4 @@ const Item = mongoose.model('Item', itemSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
 module.exports = { Item, Purchase };
+

@@ -27,79 +27,64 @@ import {
 // import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
-  page: { padding: 30, fontFamily: "Helvetica" },
+  page: { 
+    padding: 30, 
+    fontFamily: "Helvetica",
+    fontSize: 11
+  },
   header: {
     fontSize: 24,
     marginBottom: 20,
     textAlign: "center",
     fontWeight: "bold",
+    textTransform: "uppercase"
   },
-  section: { marginBottom: 15 },
+  section: { 
+    marginBottom: 15 
+  },
   row: {
     flexDirection: "row",
     marginBottom: 8,
     borderBottom: "1px solid #eee",
-    paddingBottom: 8,
+    paddingBottom: 8
   },
-  label: { width: 150, fontWeight: "bold" },
-  value: { flex: 1 },
-  table: { display: "table", width: "auto", marginTop: 20 },
-  tableRow: { flexDirection: "row" },
+  label: { 
+    width: "25%", 
+    fontWeight: "bold" 
+  },
+  value: { 
+    width: "75%" 
+  },
+  table: { 
+    display: "table", 
+    width: "auto", 
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#000"
+  },
+  tableRow: { 
+    flexDirection: "row" 
+  },
   tableColHeader: {
     width: "25%",
     fontWeight: "bold",
     border: "1px solid #000",
     padding: 5,
   },
-  tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
-
-
-  page: {
-    padding: 30,
-    fontSize: 11,
-    fontFamily: "Helvetica",
-  },
-  header: {
-    fontSize: 18,
-    textAlign: "center",
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  section: {
-    marginBottom: 10,
-  },
-  row: {
-    flexDirection: "row",
-    marginBottom: 4,
-  },
-  label: {
-    width: "25%",
-    fontWeight: "bold",
-  },
-  value: {
-    width: "75%",
+  tableCol: { 
+    width: "25%", 
+    border: "1px solid #000", 
+    padding: 5,
+    borderRightWidth: 1,
+    textAlign: "center"
   },
   addressBlock: {
     marginTop: 5,
     marginBottom: 15,
   },
-  table: {
-    borderWidth: 1,
-    borderColor: "#000",
-    marginTop: 10,
-  },
-  tableRow: {
-    flexDirection: "row",
-  },
   tableHeader: {
     backgroundColor: "#f0f0f0",
     fontWeight: "bold",
-  },
-  tableCol: {
-    borderRightWidth: 1,
-    borderColor: "#000",
-    padding: 4,
-    textAlign: "center",
   },
   snCol: {
     width: "10%",
@@ -136,69 +121,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 10,
     color: "red",
-  },
-
-  // page: {
-  //   padding: 30,
-  //   fontSize: 10,
-  //   fontFamily: "Helvetica",
-  // },
-  // centerText: {
-  //   textAlign: "center",
-  // },
-  // bold: {
-  //   fontWeight: "bold",
-  // },
-  // headerSection: {
-  //   borderBottom: "1pt solid black",
-  //   paddingBottom: 5,
-  // },
-  // companyName: {
-  //   fontSize: 14,
-  //   fontWeight: "bold",
-  //   textAlign: "center",
-  // },
-  // subHeader: {
-  //   fontSize: 10,
-  //   textAlign: "center",
-  //   marginBottom: 5,
-  // },
-  // row: {
-  //   flexDirection: "row",
-  //   justifyContent: "space-between",
-  //   marginVertical: 2,
-  // },
-  // col: {
-  //   width: "48%",
-  // },
-  // tableHeader: {
-  //   flexDirection: "row",
-  //   backgroundColor: "#f0f0f0",
-  //   borderTop: "1pt solid black",
-  //   borderBottom: "1pt solid black",
-  //   marginTop: 10,
-  //   paddingVertical: 4,
-  // },
-  // tableRow: {
-  //   flexDirection: "row",
-  //   borderBottom: "1pt solid #ccc",
-  //   paddingVertical: 4,
-  // },
-  // cell: {
-  //   borderRight: "1pt solid #ccc",
-  //   paddingHorizontal: 2,
-  //   paddingVertical: 2,
-  // },
-  // footerSection: {
-  //   marginTop: 10,
-  //   borderTop: "1pt solid black",
-  //   paddingTop: 5,
-  // },
-  // bankDetails: {
-  //   marginTop: 10,
-  //   fontSize: 9,
-  // },
-
+  }
 });
 
 const QuotationTemplate = ({ ticket }) => (

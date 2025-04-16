@@ -4,7 +4,7 @@ import "./css/Items.css";
 import Navbar from "./components/Navbar.jsx";
 
 const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     console.log(`[DEBUG] ${message}`, data);
   }
 };
@@ -93,33 +93,35 @@ export default function Items() {
     try {
       setLoading(true);
       setError(null);
-      
+
       debug("Attempting to fetch categories");
-      const response = await axios.get("http://localhost:3000/api/items/categories", {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: 5000 // 5 second timeout
-      });
-  
+      const response = await axios.get(
+        "http://localhost:3000/api/items/categories",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          timeout: 5000, // 5 second timeout
+        }
+      );
+
       if (!response.data) {
         throw new Error("Received empty response from server");
       }
-  
+
       debug("Categories data received", response.data);
       setCategories(response.data);
-      
     } catch (err) {
       const errorDetails = {
         message: err.message,
         status: err.response?.status,
         data: err.response?.data,
-        config: err.config
+        config: err.config,
       };
-      
+
       debug("Categories fetch failed", errorDetails);
-      
+
       let errorMessage = "Failed to load categories";
       if (err.response) {
         // Server responded with error status
@@ -134,9 +136,8 @@ export default function Items() {
         // Something else happened
         errorMessage += `: ${err.message}`;
       }
-      
+
       setError(errorMessage);
-      
     } finally {
       setLoading(false);
     }
@@ -168,27 +169,46 @@ export default function Items() {
 
   const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
+      // Validate itemId format
+      if (!itemId || !/^[0-9a-fA-F]{24}$/.test(itemId)) {
+        throw new Error('Invalid item ID format');
+      }
+  
       const response = await axios.get(
-        `http://localhost:3000/api/items/${itemId}/purchases`
+        `http://localhost:3000/api/items/${itemId}/purchases`,
+        {
+          timeout: 5000,
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        }
       );
-      setPurchaseHistory((prev) => ({
+  
+      setPurchaseHistory(prev => ({
         ...prev,
-        [itemId]: response.data || [],
+        [itemId]: response.data || []
       }));
     } catch (err) {
-      console.error("Error fetching purchase history:", err);
-      setError("Failed to load purchase history.");
+      console.error("Fetch purchase history error:", err);
+      setError(`Failed to load history: ${err.response?.data?.message || err.message}`);
+      
+      // Set empty array to prevent UI errors
+      setPurchaseHistory(prev => ({
+        ...prev, 
+        [itemId]: []
+      }));
     }
   }, []);
 
   const handleError = (error, customMessage) => {
     debug("Error occurred", error);
-    const message = error.response?.data?.message || 
-                   error.message || 
-                   customMessage || 
-                   "An unexpected error occurred";
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      customMessage ||
+      "An unexpected error occurred";
     setError(message);
-    
+
     // Show error to user (you might want to use a toast notification instead)
     alert(message);
   };
@@ -398,14 +418,18 @@ export default function Items() {
   };
 
   const isPurchaseDataValid = () => {
-    if (!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.date) {
+    if (
+      !purchaseData.companyName ||
+      !purchaseData.invoiceNumber ||
+      !purchaseData.date
+    ) {
       return false;
     }
-    
+
     if (!purchaseData.items || purchaseData.items.length === 0) {
       return false;
     }
-    
+
     return purchaseData.items.every(
       (item) =>
         item.description &&
@@ -505,12 +529,14 @@ export default function Items() {
   const addPurchaseEntry = async () => {
     try {
       setIsSubmitting(true);
-  
+
       if (!isPurchaseDataValid()) {
-        setError("Please fill all required fields and ensure each item has a description, quantity, and price");
+        setError(
+          "Please fill all required fields and ensure each item has a description, quantity, and price"
+        );
         return false;
       }
-  
+
       const purchaseDataToSend = {
         companyName: purchaseData.companyName,
         gstNumber: purchaseData.gstNumber,
@@ -526,12 +552,12 @@ export default function Items() {
           gstRate: parseFloat(item.gstRate || 0),
         })),
       };
-  
+
       await axios.post(
         `http://localhost:3000/api/items/purchase`,
         purchaseDataToSend
       );
-  
+
       await fetchItems();
       setShowPurchaseModal(false);
       resetPurchaseForm();
@@ -819,46 +845,40 @@ export default function Items() {
                                 </thead>
                                 <tbody>
                                   {purchaseHistory[item._id].map(
-                                    (purchase, idx) => (
-                                      <tr key={idx}>
-                                        <td>
-                                          {new Date(
-                                            purchase.date
-                                          ).toLocaleDateString()}
-                                        </td>
-                                        <td>{purchase.companyName}</td>
-                                        <td>{purchase.gstNumber || "-"}</td>
-                                        <td>{purchase.invoiceNumber}</td>
-                                        <td>{purchase.quantity}</td>
-                                        <td>
-                                          ₹
-                                          {parseFloat(purchase.price).toFixed(
-                                            2
-                                          )}
-                                        </td>
-                                        <td>
-                                          ₹
-                                          {(
-                                            purchase.price *
-                                            purchase.quantity *
-                                            (purchase.gstRate / 100)
-                                          ).toFixed(2)}
-                                        </td>
-                                        <td>
-                                          ₹
-                                          {(
-                                            purchase.price *
-                                            purchase.quantity *
-                                            (1 + purchase.gstRate / 100)
-                                          ).toFixed(2)}
-                                        </td>
-                                      </tr>
-                                    )
+                                    (purchase, idx) => {
+                                      const itemTotal =
+                                        purchase.price * purchase.quantity;
+                                      const gstAmount =
+                                        itemTotal * (purchase.gstRate / 100);
+                                      const totalWithGst =
+                                        itemTotal + gstAmount;
+
+                                      return (
+                                        <tr key={purchase._id || idx}>
+                                          <td>
+                                            {new Date(
+                                              purchase.date
+                                            ).toLocaleDateString()}
+                                          </td>
+                                          <td>{purchase.companyName}</td>
+                                          <td>{purchase.gstNumber || "-"}</td>
+                                          <td>{purchase.invoiceNumber}</td>
+                                          <td>{purchase.quantity}</td>
+                                          <td>₹{purchase.price.toFixed(2)}</td>
+                                          <td>₹{gstAmount.toFixed(2)}</td>
+                                          <td>₹{totalWithGst.toFixed(2)}</td>
+                                        </tr>
+                                      );
+                                    }
                                   )}
                                 </tbody>
                               </table>
                             ) : (
-                              <p>No purchase history found for this item.</p>
+                              <div className="alert alert-info">
+                                {error
+                                  ? `Error loading history: ${error}`
+                                  : "No purchase history found"}
+                              </div>
                             )}
                           </div>
                         </td>
@@ -1387,7 +1407,9 @@ export default function Items() {
                   Add Another Item
                 </button>
                 <div className="total-amount">
-                  <strong>Total Amount: ₹{calculateTotalAmount().toFixed(2)}</strong>
+                  <strong>
+                    Total Amount: ₹{calculateTotalAmount().toFixed(2)}
+                  </strong>
                 </div>
               </div>
 

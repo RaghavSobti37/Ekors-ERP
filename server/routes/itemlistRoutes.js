@@ -1,3 +1,4 @@
+const { param } = require('express-validator');
 const express = require('express');
 const router = express.Router();
 const itemController = require('../controllers/itemController');
@@ -9,7 +10,9 @@ router.post('/purchase', purchaseController.addBulkPurchase);     // Add bulk pu
 router.get('/categories', itemController.getCategories);          // GET categories
 
 // Item-related purchases
-router.get('/:id/purchases', itemController.getItemPurchaseHistory); // Get purchase history for item
+router.get('/:id/purchases', [
+    param('id').isMongoId().withMessage('Invalid item ID format')
+  ], itemController.getItemPurchaseHistory);
 router.post('/:id/purchase', purchaseController.addSinglePurchase);  // Add purchase to specific item
 
 // Item routes

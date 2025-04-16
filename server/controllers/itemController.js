@@ -192,55 +192,55 @@ exports.deleteItem = async (req, res) => {
 // Get purchase history for specific item
 exports.getItemPurchaseHistory = async (req, res) => {
   try {
-    // Find the item first to get embedded purchase history
-    const item = await Item.findById(req.params.id);
+    const { id } = req.params;
     
-    if (!item) {
+    // Validate ID format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid item ID format' });
+    }
+
+    // First check if item exists
+    const itemExists = await Item.exists({ _id: id });
+    if (!itemExists) {
       return res.status(404).json({ message: 'Item not found' });
     }
-    
-    // Find any purchases that reference this item
-    const purchases = await Purchase.find({
-      'items.itemId': req.params.id
-    }).sort({ date: -1 });
 
-    // Format the purchase history for the frontend
+    // Get purchases where this item is referenced - with projection for better performance
+    const purchases = await Purchase.find({ 
+      'items.itemId': new mongoose.Types.ObjectId(id) 
+    }, {
+      date: 1,
+      companyName: 1,
+      gstNumber: 1,
+      invoiceNumber: 1,
+      'items.$': 1 // MongoDB positional operator to get only matching items
+    }).sort({ date: -1 }).limit(50); // Add limit for performance
+
+    // Format response
     const formattedPurchases = purchases.map(purchase => {
-      const itemInfo = purchase.items.find(item => 
-        item.itemId && item.itemId.toString() === req.params.id
-      );
+      const itemData = purchase.items[0]; // Using the positional projection above
       
       return {
-        purchaseId: purchase._id,
+        _id: purchase._id,
         date: purchase.date,
         companyName: purchase.companyName,
         gstNumber: purchase.gstNumber,
         invoiceNumber: purchase.invoiceNumber,
-        quantity: itemInfo ? itemInfo.quantity : 0,
-        price: itemInfo ? itemInfo.price : 0,
-        gstRate: itemInfo ? itemInfo.gstRate : 0,
-        total: itemInfo ? (itemInfo.price * itemInfo.quantity * (1 + itemInfo.gstRate / 100)) : 0
+        quantity: itemData?.quantity || 0,
+        price: itemData?.price || 0,
+        gstRate: itemData?.gstRate || 0,
+        amount: (itemData?.price || 0) * (itemData?.quantity || 0),
+        totalWithGst: (itemData?.price || 0) * (itemData?.quantity || 0) * 
+                      (1 + (itemData?.gstRate || 0) / 100)
       };
     });
-    
-    // Also include the item's embedded purchase history
-    const allPurchaseHistory = [
-      ...formattedPurchases,
-      ...(item.purchaseHistory || []).map(ph => ({
-        date: ph.date,
-        companyName: ph.companyName,
-        gstNumber: ph.gstNumber,
-        invoiceNumber: ph.invoiceNumber,
-        quantity: ph.quantity,
-        price: ph.price,
-        gstRate: ph.gstRate,
-        total: ph.price * ph.quantity * (1 + ph.gstRate / 100)
-      }))
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    res.json(allPurchaseHistory);
+    res.json(formattedPurchases);
   } catch (error) {
     console.error('Error fetching purchase history:', error);
-    res.status(500).json({ message: 'Server error while fetching purchase history' });
+    res.status(500).json({ 
+      message: 'Server error while fetching purchase history',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
