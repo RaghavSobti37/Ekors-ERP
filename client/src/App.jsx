@@ -47,25 +47,25 @@ function App() {
           } />
 
           <Route path='/quotations' element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
               <Quotations />
             </ProtectedRoute>
           } />
 
           <Route path='/logtime' element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
               <Logtime />
             </ProtectedRoute>
           } />
 
           <Route path='/history' element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
               <History />
             </ProtectedRoute>
           } />
 
           <Route path='/challan' element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
               <Challan />
             </ProtectedRoute>
           } />
@@ -77,7 +77,7 @@ function App() {
           } />
 
           <Route path='/purchasehistory' element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
               <PurchaseHistory />
             </ProtectedRoute>
           } />
