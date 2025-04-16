@@ -117,12 +117,12 @@ export default function Items() {
       alert("Item name is required");
       return;
     }
-  
+
     if (!editingItem) {
       alert("No item selected for editing.");
       return;
     }
-  
+
     try {
       const updatedItem = {
         name: formData.name,
@@ -136,7 +136,7 @@ export default function Items() {
         discountAvailable: formData.discountAvailable,
         dynamicPricing: formData.dynamicPricing,
       };
-      
+
       await axios.put(`http://localhost:3000/api/items/${editingItem}`, updatedItem);
       await fetchItems();
       setEditingItem(null);
@@ -145,7 +145,7 @@ export default function Items() {
       alert(`Failed to update item: ${error.response?.data?.message || error.message}`);
     }
   };
-  
+
   const requestSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -171,9 +171,9 @@ export default function Items() {
   const filteredItems = sortedItems.filter((item) => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
     const matchesSubcategory = selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         (item.hsnCode && item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.hsnCode && item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
+
     return matchesCategory && matchesSubcategory && matchesSearch;
   });
 
@@ -260,7 +260,7 @@ export default function Items() {
         `http://localhost:3000/api/items/purchase`,
         purchaseDataToSend
       );
-      
+
       await fetchItems();
       setShowPurchaseModal(false);
       setPurchaseData({
@@ -299,7 +299,7 @@ export default function Items() {
             >
               Add Item
             </button>
-            
+
             {/* <select
               className="form-select"
               value={selectedCategory}
@@ -327,7 +327,7 @@ export default function Items() {
               disabled={selectedCategory === "All"}
             >
               <option value="All">All Subcategories</option>
-              {selectedCategory !== "All" && 
+              {selectedCategory !== "All" &&
                 categories
                   .find(c => c.category === selectedCategory)?.subcategories
                   .map((subcat) => (
@@ -543,8 +543,8 @@ export default function Items() {
                                       <td>{purchase.invoiceNumber}</td>
                                       <td>{purchase.quantity}</td>
                                       <td>₹{parseFloat(purchase.price).toFixed(2)}</td>
-                                      <td>₹{(purchase.price * purchase.quantity * (purchase.gstRate/100)).toFixed(2)}</td>
-                                      <td>₹{(purchase.price * purchase.quantity * (1 + purchase.gstRate/100)).toFixed(2)}</td>
+                                      <td>₹{(purchase.price * purchase.quantity * (purchase.gstRate / 100)).toFixed(2)}</td>
+                                      <td>₹{(purchase.price * purchase.quantity * (1 + purchase.gstRate / 100)).toFixed(2)}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -595,7 +595,7 @@ export default function Items() {
 
         {/* Add/Edit Item Modal */}
         {showModal && (
-        
+
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">
               <div className="modal-header">
@@ -745,7 +745,7 @@ export default function Items() {
                         disabled={!formData.category}
                       >
                         <option value="General">General</option>
-                        {formData.category && 
+                        {formData.category &&
                           categories
                             .find(c => c.category === formData.category)?.subcategories
                             .map((subcat) => (
@@ -829,128 +829,156 @@ export default function Items() {
 
         {/* Purchase Modal */}
         {showPurchaseModal && (
-          <div className="modal-backdrop">
-            <div className="modal-content">
-              <h5>Add Purchase Entry</h5>
-              <div className="form-group">
-                <label>Company Name*</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Company Name"
-                  name="companyName"
-                  value={purchaseData.companyName}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>GST Number</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="GST Number"
-                  name="gstNumber"
-                  value={purchaseData.gstNumber}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>Address</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Address"
-                  name="address"
-                  value={purchaseData.address}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>State</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="State Name"
-                  name="stateName"
-                  value={purchaseData.stateName}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>Invoice Number*</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Invoice Number"
-                  name="invoiceNumber"
-                  value={purchaseData.invoiceNumber}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Invoice Date*</label>
-                <input
-                  type="date"
-                  className="form-control mb-2"
-                  name="date"
-                  value={purchaseData.date}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity*</label>
-                <input
-                  type="number"
-                  className="form-control mb-2"
-                  placeholder="Quantity"
-                  name="quantity"
-                  value={purchaseData.quantity}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Price*</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="Price"
-                  name="price"
-                  value={purchaseData.price}
-                  onChange={handlePurchaseChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>GST Rate (%)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="GST Rate"
-                  name="gstRate"
-                  value={purchaseData.gstRate}
-                  onChange={handlePurchaseChange}
-                />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  className="form-control mb-2"
-                  placeholder="Description"
-                  name="description"
-                  value={purchaseData.description}
-                  onChange={handlePurchaseChange}
-                  rows="3"
-                />
-              </div>
-              <div className="d-flex justify-content-end gap-2 mt-3">
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add Purchase Entry</h5>
                 <button
-                  onClick={addPurchaseEntry}
-                  className="btn btn-success"
-                  disabled={!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.quantity || !purchaseData.price}
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowPurchaseModal(false);
+                    setPurchaseData({
+                      companyName: "",
+                      gstNumber: "",
+                      address: "",
+                      stateName: "",
+                      invoiceNumber: "",
+                      date: new Date().toISOString().split('T')[0],
+                      quantity: "",
+                      price: "",
+                      gstRate: "0",
+                      description: ""
+                    });
+                  }}
                 >
-                  Add Purchase
+                  <span>&times;</span>
                 </button>
+              </div>
+              <div className="modal-body">
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Company Name*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Company Name"
+                        name="companyName"
+                        value={purchaseData.companyName}
+                        onChange={handlePurchaseChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Number</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="GST Number"
+                        name="gstNumber"
+                        value={purchaseData.gstNumber}
+                        onChange={handlePurchaseChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Address</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Address"
+                        name="address"
+                        value={purchaseData.address}
+                        onChange={handlePurchaseChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>State</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="State Name"
+                        name="stateName"
+                        value={purchaseData.stateName}
+                        onChange={handlePurchaseChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Invoice Number*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Invoice Number"
+                        name="invoiceNumber"
+                        value={purchaseData.invoiceNumber}
+                        onChange={handlePurchaseChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Invoice Date*</label>
+                      <input
+                        type="date"
+                        className="form-control mb-2"
+                        name="date"
+                        value={purchaseData.date}
+                        onChange={handlePurchaseChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity*</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        placeholder="Quantity"
+                        name="quantity"
+                        value={purchaseData.quantity}
+                        onChange={handlePurchaseChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Price*</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Price"
+                        name="price"
+                        value={purchaseData.price}
+                        onChange={handlePurchaseChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="GST Rate"
+                        name="gstRate"
+                        value={purchaseData.gstRate}
+                        onChange={handlePurchaseChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="col-12">
+                    <div className="form-group">
+                      <label>Description</label>
+                      <textarea
+                        className="form-control mb-2"
+                        placeholder="Description"
+                        name="description"
+                        value={purchaseData.description}
+                        onChange={handlePurchaseChange}
+                        rows="3"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
                 <button
                   onClick={() => {
                     setShowPurchaseModal(false);
@@ -970,6 +998,13 @@ export default function Items() {
                   className="btn btn-secondary"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={addPurchaseEntry}
+                  className="btn btn-success"
+                  disabled={!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.quantity || !purchaseData.price}
+                >
+                  Add Purchase
                 </button>
               </div>
             </div>
