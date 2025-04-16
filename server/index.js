@@ -1,14 +1,18 @@
 const express = require('express');
+require("dotenv").config(); 
+console.log("JWT_SECRET is:", process.env.JWT_SECRET);
+
 const connectDB = require('./db.js');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid'); // For unique file names
-
+const authRoutes = require("./routes/authRoutes");
 const userModel = require('./models/user.js');
 const OpenticketModel = require('./models/opentickets.js');
+
 
 // Routes
 const quotationRoutes = require('./routes/quotations.js');
@@ -63,44 +67,6 @@ app.get('/users', async (req, res) => {
     return res.json({ items: response });
   } catch (err) {
     res.status(500).json({ error: 'Error fetching users' });
-  }
-});
-
-app.post('/register', async (req, res) => {
-  try {
-    const { firstname, lastname, email, phone, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await userModel.create({
-      firstname,
-      lastname,
-      email,
-      phone,
-      password: hashedPassword,
-    });
-
-    res.status(201).json(newUser);
-  } catch (err) {
-    res.status(500).json({ error: 'Error registering user' });
-  }
-});
-
-app.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await userModel.findOne({ email });  
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Invalid password' });
-    }
-
-    res.json({ message: 'Login successful', user });
-  } catch (err) {
-    res.status(500).json({ error: 'Error logging in' });
   }
 });
 
@@ -210,6 +176,7 @@ app.use('/api/init', initRouter);
 app.use('/api/logtime', logtimeRoutes);
 app.use('/api/challans', challanRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use(authRoutes);
 
 // ----------------------------
 // Start server

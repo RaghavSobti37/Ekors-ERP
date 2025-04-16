@@ -1,25 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import Signup from './Signup.jsx'
+import Signup from './Signup.jsx';
 import Login from './Login.jsx';
 import Tickets from "./Tickets.jsx";
 import Quotations from "./Quotations";
 import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
-import Items from "./Items.jsx"
+import Items from "./Items.jsx";
 import Searchbar from "./components/Searchbar";
-import { BrowserRouter , Routes , Route } from 'react-router-dom';
 import PurchaseHistory from './PurchaseHistory.jsx';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
+import Unauthorized from './components/Unauthorized.jsx'
 
 function App() {
-  const [items , setItems] =useState([])
+  const [items, setItems] = useState([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch('http://localhost:3000');
         const data = await res.json();
-        setItems(data.items)
+        setItems(data.items);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -27,24 +31,64 @@ function App() {
     fetchData();
   }, []);
 
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path='/register' element={<Signup />} />
+          <Route path='/login' element={<Login />} />
 
-  return <>
-  <BrowserRouter>
-  <Routes>
-    <Route path='/register' element={<Signup />}> </Route>
-    <Route path='/login' element={<Login />}> </Route>
-    <Route path='/tickets' element={<Tickets />}></Route>
-    <Route path='/quotations' element={<Quotations />}></Route>
-    <Route path='/logtime' element={<Logtime />}></Route>
-    <Route path='/history' element={<History />}></Route>
-    <Route path='/challan' element={<Challan />}></Route>
-    <Route path='/itemslist' element={<Items />}></Route>
-    <Route path='/searchbar' element={<Searchbar />}></Route>
-    <Route path='/purchasehistory' element={<PurchaseHistory />}></Route>
-   
-  </Routes>
-  </BrowserRouter>
-  </>
+          {/* Protected Routes */}
+          <Route path='/tickets' element={
+            <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
+              <Tickets />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/quotations' element={
+            <ProtectedRoute allowedRoles={["user", "admin"]}>
+              <Quotations />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/logtime' element={
+            <ProtectedRoute allowedRoles={["user", "admin"]}>
+              <Logtime />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/history' element={
+            <ProtectedRoute allowedRoles={["user", "admin"]}>
+              <History />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/challan' element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Challan />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/itemslist' element={
+            <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+              <Items />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/purchasehistory' element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <PurchaseHistory />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/searchbar' element={<Searchbar />} />
+          <Route path='/unauthorized' element={<Unauthorized />} />
+
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
 export default App;

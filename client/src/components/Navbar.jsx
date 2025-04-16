@@ -7,23 +7,27 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
-  FaChevronRight,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showSubItemsDropdown, setShowSubItemsDropdown] = useState(false);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const subDropdownTimeoutRef = useRef(null);
+
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
+    logout();
     navigate("/login");
   };
 
@@ -83,7 +87,6 @@ export default function Navbar({ showPurchaseModal }) {
             <FaClock /> Log Time
           </a>
 
-          {/* Items List Dropdown */}
           <div
             className="dropdown-wrapper"
             onMouseEnter={handleMouseEnterDropdown}
@@ -109,13 +112,11 @@ export default function Navbar({ showPurchaseModal }) {
                 >
                   Purchase History
                 </div>
-
                 <div
                   className="sub-dropdown-wrapper"
                   onMouseEnter={handleMouseEnterSubDropdown}
                   onMouseLeave={handleMouseLeaveSubDropdown}
-                >
-                </div>
+                ></div>
               </div>
             )}
           </div>
@@ -131,7 +132,7 @@ export default function Navbar({ showPurchaseModal }) {
           <div className="profile-icon">
             <FaUser />
           </div>
-          <span>User</span>
+          <span>{user?.firstname || "User"}</span>
         </div>
 
         {showProfilePopup && (
@@ -141,9 +142,12 @@ export default function Navbar({ showPurchaseModal }) {
               alt="Profile"
               className="profile-pic"
             />
-            <p className="profile-name">John Doe</p>
-            <p className="profile-email">john.doe@example.com</p>
-            <p className="profile-phone">+1 234 567 890</p>
+            <div className="profile-details">
+              <p><strong>{user?.firstname} {user?.lastname}</strong></p>
+              <p><strong>Email:</strong> {user?.email || "N/A"}</p>
+              <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
+              <p><strong>Role:</strong> {user?.role || "N/A"}</p>
+            </div>
             <button className="logout-btn" onClick={handleSignOut}>
               Sign Out
             </button>

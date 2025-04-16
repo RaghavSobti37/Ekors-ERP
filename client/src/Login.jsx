@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
 import axios from "axios";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // ✅ Import eye icons
+import { useAuth } from "./context/AuthContext"; // Adjust path if needed
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -9,21 +10,29 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false); // ✅ State for toggling password visibility
   const navigate = useNavigate(); 
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Sending login request:", { email, password });
 
     try {
       const response = await axios.post("http://localhost:3000/login", {
         email,
         password,
       });
-
-      console.log("Login successful:", response.data); 
-      navigate('/tickets');
+  
+      const { token, user } = response.data;
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  
+      login({ ...user, token });
+  
+      if (user.role === "super-admin") navigate("/quotations");
+      else if (user.role === "admin") navigate("/logtime");
+      else navigate("/tickets");
     } catch (err) {
-      console.error("Error logging in:", err.response?.data?.error || err.message);
-      setError(err.response?.data?.error || "Invalid credentials");
+      console.error("Login failed:", err);
+      setError("Invalid email or password");
     }
   };
 

@@ -88,6 +88,7 @@
   width: 220px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 10;
+  text-align: left;
 }
 
 .profile-pic {
@@ -98,16 +99,11 @@
   margin: 0 auto 10px;
 }
 
-.profile-name {
-  text-align: center;
+.profile-details p {
+  font-size: 13px;
   font-weight: bold;
-}
-
-.profile-email,
-.profile-phone {
-  text-align: center;
-  font-size: 12px;
-  margin-bottom: 5px;
+  margin: 6px 0;
+  color: #f1f1f1;
 }
 
 .logout-btn {
@@ -124,6 +120,7 @@
 .logout-btn:hover {
   background: darkred;
 }
+
 
 /* Dropdown Wrapper */
 .dropdown-wrapper {
