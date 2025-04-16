@@ -117,44 +117,61 @@
   margin-top: 10px;
 }
 
-/* You can add this to your existing CSS or create a new file */
-.purchase-history-container {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* Full Screen Modal Styles */
+.full-screen-modal {
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1050;
 }
 
-.filters-container {
-  background-color: #f8f9fa;
-  padding: 15px;
-  border-radius: 5px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.expanded-row {
-  background-color: #f9f9f9;
+.full-screen-content {
+  width: 95%;
+  height: 95%;
+  max-width: none;
+  max-height: none;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.expanded-purchase-details {
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 5px;
+.modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.table th {
-  position: relative;
+.modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.modal-footer {
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.close {
+  font-size: 2rem;
+  font-weight: bold;
+  line-height: 1;
+  color: #000;
+  text-shadow: 0 1px 0 #fff;
+  opacity: 0.5;
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
 }
 
-.table th:hover::after {
-  content: "⇅";
-  margin-left: 5px;
-  font-size: 0.8em;
-  opacity: 0.5;
-}
-
-@media (max-width: 768px) {
-  .filters-container .row {
-    flex-direction: column;
-  }
+.close:hover {
+  opacity: 0.75;
 }

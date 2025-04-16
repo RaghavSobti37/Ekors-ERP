@@ -579,7 +579,7 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        <h2>Items List</h2>
+        <h2 style={{ color: "black" }}>Items List</h2>
 
         {error && (
           <div className="alert alert-danger" role="alert">
@@ -923,209 +923,206 @@ export default function Items() {
 
         {/* Add/Edit Item Modal */}
         {showModal && (
-          <div className="modal-backdrop">
-            <div className="modal-content">
-              <h5>Add New Item</h5>
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-              <div className="form-group">
-                <label>Name*</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Name"
-                  name="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity</label>
-                <input
-                  type="number"
-                  className="form-control mb-2"
-                  placeholder="Quantity"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, quantity: e.target.value })
-                  }
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="form-group">
-                <label>Price*</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="Price"
-                  name="price"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: e.target.value })
-                  }
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="form-group">
-                <label>GST Rate (%)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control mb-2"
-                  placeholder="GST Rate"
-                  name="gstRate"
-                  value={formData.gstRate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gstRate: e.target.value })
-                  }
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="form-group">
-                <label>HSN Code</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="HSN Code"
-                  name="hsnCode"
-                  value={formData.hsnCode}
-                  onChange={(e) =>
-                    setFormData({ ...formData, hsnCode: e.target.value })
-                  }
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="form-group">
-                <label>Unit</label>
-                <select
-                  className="form-control mb-2"
-                  name="unit"
-                  value={formData.unit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, unit: e.target.value })
-                  }
-                  disabled={isSubmitting}
-                >
-                  <option value="Nos">Nos</option>
-                  <option value="Mtr">Meter</option>
-                  <option value="PKT">Packet</option>
-                  <option value="Pair">Pair</option>
-                  <option value="Set">Set</option>
-                  <option value="Bottle">Bottle</option>
-                  <option value="KG">Kilogram</option>
-                </select>
-              </div>
-
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Category</label>
-                    <select
-                      className="form-control mb-2"
-                      name="category"
-                      value={formData.category}
-                      onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value })
-                      }
-                      disabled={isSubmitting}
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.category} value={cat.category}>
-                          {cat.category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <select
-                      className="form-control mb-2"
-                      name="subcategory"
-                      value={formData.subcategory}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          subcategory: e.target.value,
-                        })
-                      }
-                      disabled={!formData.category || isSubmitting}
-                    >
-                      <option value="General">General</option>
-                      {formData.category &&
-                        categories
-                          .find((c) => c.category === formData.category)
-                          ?.subcategories.map((subcat) => (
-                            <option key={subcat} value={subcat}>
-                              {subcat}
-                            </option>
-                          ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-check mb-2">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="discountAvailable"
-                  checked={formData.discountAvailable}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      discountAvailable: e.target.checked,
-                    })
-                  }
-                  disabled={isSubmitting}
-                />
-                <label className="form-check-label" htmlFor="discountAvailable">
-                  Discount Available
-                </label>
-              </div>
-
-              <div className="form-check mb-2">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="dynamicPricing"
-                  checked={formData.dynamicPricing}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      dynamicPricing: e.target.checked,
-                    })
-                  }
-                  disabled={isSubmitting}
-                />
-                <label className="form-check-label" htmlFor="dynamicPricing">
-                  Dynamic Pricing
-                </label>
-              </div>
-
-              <div className="d-flex justify-content-end gap-2 mt-3">
+        
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Item</h5>
                 <button
-                  onClick={handleAddItem}
-                  className="btn btn-success"
-                  disabled={
-                    isSubmitting ||
-                    !formData.name ||
-                    !formData.price ||
-                    !formData.category
-                  }
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormData({
+                      name: "",
+                      quantity: "",
+                      price: "",
+                      gstRate: "0",
+                      hsnCode: "",
+                      unit: "Nos",
+                      category: "",
+                      subcategory: "General",
+                      discountAvailable: false,
+                      dynamicPricing: false,
+                    });
+                  }}
                 >
-                  {isSubmitting ? "Adding..." : "Add"}
+                  <span>&times;</span>
                 </button>
+              </div>
+              <div className="modal-body">
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Name*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Name"
+                        name="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        placeholder="Quantity"
+                        name="quantity"
+                        value={formData.quantity}
+                        onChange={(e) =>
+                          setFormData({ ...formData, quantity: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Price*</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Price"
+                        name="price"
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="GST Rate"
+                        name="gstRate"
+                        value={formData.gstRate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, gstRate: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>HSN Code</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="HSN Code"
+                        name="hsnCode"
+                        value={formData.hsnCode}
+                        onChange={(e) =>
+                          setFormData({ ...formData, hsnCode: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Unit</label>
+                      <select
+                        className="form-control mb-2"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={(e) =>
+                          setFormData({ ...formData, unit: e.target.value })
+                        }
+                      >
+                        <option value="Nos">Nos</option>
+                        <option value="Mtr">Meter</option>
+                        <option value="PKT">Packet</option>
+                        <option value="Pair">Pair</option>
+                        <option value="Set">Set</option>
+                        <option value="Bottle">Bottle</option>
+                        <option value="KG">Kilogram</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select
+                        className="form-control mb-2"
+                        name="category"
+                        value={formData.category}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category: e.target.value })
+                        }
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.category} value={cat.category}>
+                            {cat.category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Subcategory</label>
+                      <select
+                        className="form-control mb-2"
+                        name="subcategory"
+                        value={formData.subcategory}
+                        onChange={(e) =>
+                          setFormData({ ...formData, subcategory: e.target.value })
+                        }
+                        disabled={!formData.category}
+                      >
+                        <option value="General">General</option>
+                        {formData.category && 
+                          categories
+                            .find(c => c.category === formData.category)?.subcategories
+                            .map((subcat) => (
+                              <option key={subcat} value={subcat}>
+                                {subcat}
+                              </option>
+                            ))}
+                      </select>
+                    </div>
+
+                    <div className="form-check mb-2">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="discountAvailable"
+                        checked={formData.discountAvailable}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discountAvailable: e.target.checked,
+                          })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="discountAvailable">
+                        Discount Available
+                      </label>
+                    </div>
+
+                    <div className="form-check mb-2">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="dynamicPricing"
+                        checked={formData.dynamicPricing}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            dynamicPricing: e.target.checked,
+                          })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="dynamicPricing">
+                        Dynamic Pricing
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
                 <button
                   onClick={() => {
                     setShowModal(false);
@@ -1147,6 +1144,13 @@ export default function Items() {
                   disabled={isSubmitting}
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={handleAddItem}
+                  className="btn btn-success"
+                  disabled={!formData.name || !formData.price || !formData.category}
+                >
+                  Add Item
                 </button>
               </div>
             </div>
@@ -1234,7 +1238,6 @@ export default function Items() {
                   </div>
                 </div>
               </div>
-
               <div className="form-group">
                 <label>Invoice Date*</label>
                 <input

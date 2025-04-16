@@ -694,7 +694,7 @@ export default function Dashboard() {
       <Searchbar />
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>Open Tickets</h2>
+          <h2 style={{ color: "black" }}>Open Tickets</h2>
           <Button variant="primary" onClick={() => setShowModal(true)}>
             Create New Ticket
           </Button>

@@ -176,84 +176,123 @@ export default function Challan() {
 
   const renderForm = () => {
     return (
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="companyName"
-          placeholder="COMPANY NAME"
-          value={viewMode ? viewData.companyName : formData.companyName}
-          onChange={handleInputChange}
-          readOnly={viewMode}
-          required
-        />
-        <input
-          type="text"
-          name="phone"
-          placeholder="PHONE"
-          value={viewMode ? viewData.phone : formData.phone}
-          onChange={handleInputChange}
-          readOnly={viewMode}
-          required
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="EMAIL ID"
-          value={viewMode ? viewData.email : formData.email}
-          onChange={handleInputChange}
-          readOnly={viewMode}
-          required
-        />
-        <input
-          type="text"
-          name="totalBilling"
-          placeholder="TOTAL BILLING"
-          value={viewMode ? viewData.totalBilling : formData.totalBilling}
-          onChange={handleInputChange}
-          readOnly={viewMode}
-          required
-        />
-        <input
-          type="text"
-          name="billNumber"
-          placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
-          value={viewMode ? (viewData.billNumber || "") : formData.billNumber}
-          onChange={handleInputChange}
-          readOnly={viewMode}
-        />
-
-        {viewMode ? (
-          <button
-            type="button"
-            className="document-btn"
-            onClick={() => viewDocument(viewData._id)}
-          >
-            📄 View Document
-          </button>
-        ) : (
-          <div className="file-input-container">
-            <label>
-              {editMode 
-                ? "Upload New Document (leave empty to keep current document)" 
-                : "Upload Document *"}
-            </label>
+      <form onSubmit={handleSubmit} className="fullscreen-form">
+        <div className="form-content">
+          <div className="form-group">
+            <label htmlFor="companyName">Company Name</label>
             <input
-              type="file"
-              name="media"
-              accept="image/*,application/pdf"
+              id="companyName"
+              type="text"
+              name="companyName"
+              placeholder="COMPANY NAME"
+              value={viewMode ? viewData.companyName : formData.companyName}
               onChange={handleInputChange}
-              required={!editMode}
+              readOnly={viewMode}
+              required
             />
           </div>
-        )}
+          
+          <div className="form-group">
+            <label htmlFor="phone">Phone</label>
+            <input
+              id="phone"
+              type="text"
+              name="phone"
+              placeholder="PHONE"
+              value={viewMode ? viewData.phone : formData.phone}
+              onChange={handleInputChange}
+              readOnly={viewMode}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              placeholder="EMAIL ID"
+              value={viewMode ? viewData.email : formData.email}
+              onChange={handleInputChange}
+              readOnly={viewMode}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="totalBilling">Total Billing</label>
+            <input
+              id="totalBilling"
+              type="text"
+              name="totalBilling"
+              placeholder="TOTAL BILLING"
+              value={viewMode ? viewData.totalBilling : formData.totalBilling}
+              onChange={handleInputChange}
+              readOnly={viewMode}
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="billNumber">Bill Number</label>
+            <input
+              id="billNumber"
+              type="text"
+              name="billNumber"
+              placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
+              value={viewMode ? (viewData.billNumber || "") : formData.billNumber}
+              onChange={handleInputChange}
+              readOnly={viewMode}
+            />
+          </div>
 
-        {!viewMode && (
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? "Processing..." : (editMode ? "UPDATE" : "SUBMIT")}
-          </button>
-        )}
-        
-        {error && <div className="error-message">{error}</div>}
+          {viewMode ? (
+            <div className="form-group">
+              <button
+                type="button"
+                className="document-btn"
+                onClick={() => viewDocument(viewData._id)}
+              >
+                📄 View Document
+              </button>
+            </div>
+          ) : (
+            <div className="form-group file-input-container">
+              <label htmlFor="mediaUpload">
+                {editMode 
+                  ? "Upload New Document (leave empty to keep current document)" 
+                  : "Upload Document *"}
+              </label>
+              <input
+                id="mediaUpload"
+                type="file"
+                name="media"
+                accept="image/*,application/pdf"
+                onChange={handleInputChange}
+                required={!editMode}
+              />
+            </div>
+          )}
+
+          <div className="form-actions">
+            {!viewMode && (
+              <button type="submit" className="submit-btn" disabled={loading}>
+                {loading ? "Processing..." : (editMode ? "UPDATE" : "SUBMIT")}
+              </button>
+            )}
+            
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={resetForm}
+            >
+              CANCEL
+            </button>
+          </div>
+          
+          {error && <div className="error-message">{error}</div>}
+        </div>
       </form>
     );
   };
@@ -324,15 +363,17 @@ export default function Challan() {
 
         {showPopup && (
           <div className="popup-overlay">
-            <div className="popup-form">
-              <h3>{viewMode ? "View Challan" : (editMode ? "Edit Challan" : "Create New Challan")}</h3>
+            <div className="popup-form ninety-five-percent">
+              <div className="popup-header">
+                <h3>{viewMode ? "View Challan" : (editMode ? "Edit Challan" : "Create New Challan")}</h3>
+                <button
+                  className="close-btn"
+                  onClick={resetForm}
+                >
+                  ✖
+                </button>
+              </div>
               {renderForm()}
-              <button
-                className="close-btn"
-                onClick={resetForm}
-              >
-                ✖
-              </button>
             </div>
           </div>
         )}
