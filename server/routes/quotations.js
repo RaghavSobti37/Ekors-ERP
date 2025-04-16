@@ -179,7 +179,7 @@ router.put('/:id', async (req, res) => {
 
 
 // Get all quotations
-router.get('/quotations', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const quotations = await Quotation.find()
             .populate('client', 'companyName gstNumber email phone billingAddress shippingAddress bankDetails')

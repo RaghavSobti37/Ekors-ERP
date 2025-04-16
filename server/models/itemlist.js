@@ -1,12 +1,40 @@
 const mongoose = require('mongoose');
 
-// Define a purchase entry schema
-const purchaseEntrySchema = new mongoose.Schema({
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
+// Schema for purchase items (used in Purchase schema)
+const purchaseItemSchema = new mongoose.Schema({
+  itemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Item',
+    required: true 
   },
+  description: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 0.01
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  gstRate: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  }
+}, { 
+  _id: true,
+  timestamps: false
+});
+
+// Purchase schema for bulk purchases
+const purchaseSchema = new mongoose.Schema({
   companyName: {
     type: String,
     required: true,
@@ -15,7 +43,14 @@ const purchaseEntrySchema = new mongoose.Schema({
   gstNumber: {
     type: String,
     trim: true,
-    default: ''
+    default: '',
+    validate: {
+      validator: function(v) {
+        // Basic GST validation - can be enhanced
+        return v === '' || /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid GST number!`
+    }
   },
   address: {
     type: String,
@@ -27,55 +62,40 @@ const purchaseEntrySchema = new mongoose.Schema({
   },
   invoiceNumber: {
     type: String,
-    required: true
+    required: true,
+    trim: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  items: [purchaseItemSchema],
+  totalAmount: {
+    type: Number,
+    default: 0
+  }
+}, { 
+  timestamps: true 
+});
+
+// Instead of embedding purchase history, reference purchase documents
+const itemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true
   },
   quantity: {
     type: Number,
-    required: true,
-    min: 1
+    default: 0,
+    min: 0
   },
   price: {
     type: Number,
     required: true,
     min: 0
-  },
-  gstRate: {
-    type: Number,
-    default: 0
-  },
-  description: {
-    type: String,
-    default: ''
-  }
-}, { 
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
-
-// Add virtuals for calculated fields
-purchaseEntrySchema.virtual('totalAmount').get(function() {
-  return this.price * this.quantity;
-});
-
-purchaseEntrySchema.virtual('gstAmount').get(function() {
-  return (this.price * this.quantity) * (this.gstRate / 100);
-});
-
-// Define main item schema
-const itemSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  quantity: {
-    type: Number,
-    default: 0
-  },
-  price: {
-    type: Number,
-    required: true
   },
   unit: {
     type: String,
@@ -83,24 +103,27 @@ const itemSchema = new mongoose.Schema({
     enum: ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG'],
     default: 'Nos'
   },
-  // New fields for category structure
   category: {
     type: String,
-    enum: ['Lightning Arrester', 'Earthing', 'Solar', 'Other'],
-    default: 'Other'
+    default: 'Other',
+    index: true
   },
   subcategory: {
     type: String,
-    default: 'General'
+    default: 'General',
+    index: true
   },
   gstRate: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   },
   hsnCode: {
     type: String,
     trim: true,
-    default: ''
+    default: '',
+    index: true
   },
   discountAvailable: {
     type: Boolean,
@@ -110,38 +133,39 @@ const itemSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  // New field for image
-  image: {
-    type: String,
-    default: ''
+  // Reference to purchases instead of embedding them
+  lastPurchaseDate: {
+    type: Date,
+    default: null
   },
-  purchaseHistory: [purchaseEntrySchema]
+  lastPurchasePrice: {
+    type: Number,
+    default: null
+  }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Update quantity based on purchase history
-itemSchema.pre('save', function(next) {
-  if (this.isModified('purchaseHistory')) {
-    // Calculate quantity only from purchase history if not manually set
-    if (!this.isModified('quantity')) {
-      this.quantity = this.purchaseHistory.reduce((total, purchase) => {
-        return total + purchase.quantity;
-      }, 0);
-    }
-    
-    // Optional: Update price to the latest purchase price
-    // Only if there's purchase history and price wasn't manually set
-    if (this.purchaseHistory.length > 0 && !this.isModified('price')) {
-      const latestPurchase = [...this.purchaseHistory].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-      )[0];
-      this.price = latestPurchase.price;
-    }
+// Add a pre-save hook to calculate total amount
+purchaseSchema.pre('save', function(next) {
+  if (this.items && this.items.length > 0) {
+    this.totalAmount = this.items.reduce((sum, item) => {
+      const itemTotal = item.price * item.quantity;
+      const gstAmount = itemTotal * (item.gstRate / 100);
+      return sum + itemTotal + gstAmount;
+    }, 0);
   }
   next();
 });
 
-module.exports = mongoose.model('Item', itemSchema);
+// Create a compound index for better performance on common queries
+itemSchema.index({ category: 1, subcategory: 1 });
+purchaseSchema.index({ date: -1 });
+purchaseSchema.index({ companyName: 1 });
+purchaseSchema.index({ 'items.itemId': 1 });
+
+const Item = mongoose.model('Item', itemSchema);
+const Purchase = mongoose.model('Purchase', purchaseSchema);
+
+module.exports = { Item, Purchase };
+
