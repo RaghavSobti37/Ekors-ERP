@@ -15,7 +15,6 @@ const goodsItemSchema = new mongoose.Schema(
 const quotationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-
     date: { type: Date, required: true },
     referenceNumber: {
       type: String,
@@ -45,7 +44,7 @@ const quotationSchema = new mongoose.Schema(
   }
 );
 
-// Index for better query performance
-quotationSchema.index({ referenceNumber: 1, client: 1 });
+quotationSchema.index({ user: 1, referenceNumber: 1 });
+quotationSchema.index({ user: 1, client: 1 });
 
 module.exports = mongoose.model("Quotation", quotationSchema);
