@@ -140,49 +140,36 @@ export default function Quotations() {
         }
       };
 
-      const fetchNextQuotationNumber = async () => {
-        try {
-          const token = getAuthToken();
-          if (!token) {
-            throw new Error('No authentication token found');
-          }
-          
-          const response = await axios.get("http://localhost:3000/api/quotations/next-number", {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          return response.data.nextQuotationNumber;
-        } catch (error) {
-          console.error("Error fetching next quotation number:", error);
-          // Fallback to client-side generation if API call fails
-          return `Q-${String(quotationsCount + 1).padStart(6, '0')}`;
-        }
-      };
+      const generateQuotationNumber = () => {
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+        
+        return `Q-${day}${month}-${hours}${minutes}${seconds}${milliseconds}`;
+    };
 
       // Update your modal opening function
-const openCreateModal = async () => {
-    setCurrentQuotation(null);
-    
-    // Get the next quotation number from API
-    const nextNumber = await fetchNextQuotationNumber();
-    
-    setQuotationData({
-      ...initialQuotationData,
-      referenceNumber: nextNumber
-    });
-    
-    setShowModal(true);
-  };
-
-  const handleCreateNew = () => {
-    openCreateModal();
-  };
+      const openCreateModal = async () => {
+        setCurrentQuotation(null);
+        
+        // Generate the new quotation number
+        const newQuotationNumber = generateQuotationNumber();
+        
+        setQuotationData({
+            ...initialQuotationData,
+            referenceNumber: newQuotationNumber
+        });
+        
+        setShowModal(true);
+    };
 
     const initialQuotationData = {
         date: formatDateForInput(new Date()),
-        referenceNumber: fetchNextQuotationNumber(),
+        referenceNumber: generateQuotationNumber(),
         validityDate: formatDateForInput(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)),
         dispatchDays: 7,
         orderIssuedBy: "",
@@ -386,7 +373,7 @@ const openCreateModal = async () => {
             const submissionData = {
                 referenceNumber: currentQuotation 
                     ? quotationData.referenceNumber 
-                    : fetchNextQuotationNumber(),
+                    : generateQuotationNumber(),
                 date: new Date(quotationData.date).toISOString(),
                 validityDate: new Date(quotationData.validityDate).toISOString(),
                 dispatchDays: Number(quotationData.dispatchDays),
