@@ -142,4 +142,31 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// In your quotations.js route file
+router.get('/next-number', auth, async (req, res) => {
+  try {
+    // Find the latest quotation for this user
+    const latestQuotation = await Quotation.findOne({ 
+      user: req.user._id 
+    })
+    .sort({ referenceNumber: -1 })
+    .select('referenceNumber');
+    
+    let nextNumber = 1;
+    
+    if (latestQuotation) {
+      // Extract number from format like "Q-000001"
+      const match = latestQuotation.referenceNumber.match(/Q-(\d+)/);
+      if (match && match[1]) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    
+    const nextQuotationNumber = `Q-${String(nextNumber).padStart(6, '0')}`;
+    res.json({ nextQuotationNumber });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
