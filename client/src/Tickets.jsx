@@ -381,7 +381,11 @@ export default function Dashboard() {
   const fetchTickets = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get("http://localhost:3000/tickets");
+      const response = await axios.get("http://localhost:3000/tickets", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("erp-token")}`
+        }
+      });
       console.log("Fetched tickets:", response.data);
       const sortedTickets = response.data.sort(
         (a, b) => new Date(b.date) - new Date(a.date)
@@ -395,6 +399,8 @@ export default function Dashboard() {
       setIsLoading(false);
     }
   };
+
+
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
 
@@ -477,37 +483,71 @@ export default function Dashboard() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-
+  
     const form = event.currentTarget;
     if (form.checkValidity() === false || ticketData.goods.length === 0) {
       event.stopPropagation();
       return;
     }
-
+  
     try {
+      setIsLoading(true); // Show loading state
       const nextTicketNumber = `T-${(tickets.length + 1)
         .toString()
         .padStart(6, "0")}`;
-
+  
+      // Get token from localStorage or auth context
+      const token = localStorage.getItem("erp-token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+  
       const ticketToSubmit = {
         ...ticketData,
         ticketNumber: nextTicketNumber,
         date: new Date().toISOString(),
         companyName: ticketData.companyName,
+        // createdBy will be added by the backend from the token
       };
-
+  
       const response = await axios.post(
-        "http://localhost:3000/create-ticket",
-        ticketToSubmit
+        "http://localhost:3000/tickets",
+        ticketToSubmit,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
-      if (response.status === 201 || response.status === 200) {
-        fetchTickets();
+  
+      if (response.status === 201) {
+        // Refresh the ticket list
+        await fetchTickets();
         setShowModal(false);
         resetForm();
+        setError(null); // Clear any previous errors
       }
     } catch (error) {
       console.error("Error creating ticket:", error);
-      setError("Failed to create ticket. Please try again.");
+      
+      // Set a more detailed error message
+      let errorMessage = "Failed to create ticket. Please try again.";
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        errorMessage = error.response.data.message || 
+                     `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = "No response from server. Check your network connection.";
+      } else {
+        // Something happened in setting up the request
+        errorMessage = error.message || "Error setting up request";
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false); // Hide loading state
     }
   };
 
@@ -590,7 +630,8 @@ export default function Dashboard() {
         updateData,
         {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem("erp-token")}`
           }
         }
       );
@@ -606,7 +647,6 @@ export default function Dashboard() {
       setError(`Failed to update ticket: ${error.response?.data?.message || error.message}`);
     }
   };
-
 
   const renderDocumentSection = () => {
     if (!documentType || !editTicket) return null;

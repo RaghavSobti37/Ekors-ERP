@@ -45,7 +45,12 @@ const ticketSchema = new mongoose.Schema({
   statusHistory: [{
     status: { type: String },
     changedAt: { type: Date, default: Date.now }
-  }]
+  }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
 }, { timestamps: true });
 
 // Pre-save hook to generate ticket number

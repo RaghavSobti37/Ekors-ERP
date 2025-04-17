@@ -1,4 +1,3 @@
-// Create a new middleware file: middlewares/validation.js
 const validateItem = (req, res, next) => {
     const { name, price } = req.body;
     

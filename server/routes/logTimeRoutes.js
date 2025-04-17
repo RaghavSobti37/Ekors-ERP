@@ -1,24 +1,28 @@
-// routes/logTimeRoutes.js
 const express = require('express');
 const router = express.Router();
 const LogTime = require('../models/LogTime');
+const auth = require('../middleware/auth');
 
-// Save logs (POST)
-router.post('/', async (req, res) => {
+// Save logs (POST) - protected route
+router.post('/', auth, async (req, res) => {
   const { logs, date } = req.body;
   if (!logs || !date) {
     return res.status(400).json({ error: 'Missing logs or date' });
   }
 
   try {
-    let existing = await LogTime.findOne({ date });
+    let existing = await LogTime.findOne({ date, user: req.user._id });
     if (existing) {
       existing.logs = logs;
       await existing.save();
       return res.json({ message: 'Logs updated' });
     }
 
-    const newLog = new LogTime({ date, logs });
+    const newLog = new LogTime({ 
+      date, 
+      logs,
+      user: req.user._id 
+    });
     await newLog.save();
     res.status(201).json({ message: 'Logs saved' });
   } catch (err) {
@@ -27,8 +31,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Fetch today's logs (GET)
-router.get('/today', async (req, res) => {
+// Fetch today's logs (GET) - protected route
+router.get('/today', auth, async (req, res) => {
   const today = new Date();
   const day = String(today.getDate()).padStart(2, "0");
   const month = today.toLocaleString("default", { month: "long" });
@@ -36,7 +40,10 @@ router.get('/today', async (req, res) => {
   const formattedDate = `${day}-${month}-${year}`;
 
   try {
-    const entry = await LogTime.findOne({ date: formattedDate });
+    const entry = await LogTime.findOne({ 
+      date: formattedDate,
+      user: req.user._id 
+    });
     if (entry) {
       res.json({ logs: entry.logs });
     } else {
@@ -48,13 +55,12 @@ router.get('/today', async (req, res) => {
   }
 });
 
-// Fetch all logs (GET)
-router.get('/all', async (req, res) => {
+// Get all logs by user - protected route
+router.get('/all', auth, async (req, res) => {
   try {
-    const allLogs = await LogTime.find().sort({ date: -1 }); // Latest first
+    const allLogs = await LogTime.find({ user: req.user._id }).sort({ date: -1 });
     res.json(allLogs);
   } catch (err) {
-    console.error('Error fetching all logs:', err);
     res.status(500).json({ error: 'Error fetching history' });
   }
 });
