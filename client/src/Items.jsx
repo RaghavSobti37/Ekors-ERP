@@ -1156,7 +1156,7 @@ export default function Items() {
           </div>
         )}
 
-        // In the purchase modal section, replace the existing modal-backdrop div with this:
+        
         {showPurchaseModal && (
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">

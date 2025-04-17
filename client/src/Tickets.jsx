@@ -699,6 +699,7 @@ export default function Dashboard() {
             Create New Ticket
           </Button>
         </div>
+        
 
         {error && <Alert variant="danger">{error}</Alert>}
 
