@@ -119,6 +119,7 @@ export default function Quotations() {
         key: null,
         direction: "ascending",
     });
+    const [searchTerm, setSearchTerm] = useState("");
 
     const initialQuotationData = {
         date: formatDateForInput(new Date()),
@@ -192,6 +193,21 @@ export default function Quotations() {
         });
     }, [quotations, sortConfig]);
 
+    const filteredQuotations = useMemo(() => {
+        if (!searchTerm) return sortedQuotations;
+        
+        const term = searchTerm.toLowerCase();
+        return sortedQuotations.filter(quotation => 
+            quotation.referenceNumber?.toLowerCase().includes(term) ||
+            quotation.client?.companyName?.toLowerCase().includes(term) ||
+            quotation.client?.gstNumber?.toLowerCase().includes(term) ||
+            quotation.goods.some(item => 
+                item.description?.toLowerCase().includes(term) ||
+                item.hsnSacCode?.toLowerCase().includes(term)
+            )
+        );
+    }, [sortedQuotations, searchTerm]);
+
     const requestSort = (key) => {
         let direction = "ascending";
         if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -218,18 +234,15 @@ export default function Quotations() {
         });
     };
 
-
     const handleGoodsChange = (index, field, value) => {
         const updatedGoods = [...quotationData.goods];
 
-        // Convert to number if the field is quantity, price, or amount
         if (['quantity', 'price', 'amount'].includes(field)) {
             value = Number(value);
         }
 
         updatedGoods[index][field] = value;
 
-        // Recalculate amount if quantity or price changes
         if (field === 'quantity' || field === 'price') {
             updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
         }
@@ -277,7 +290,6 @@ export default function Quotations() {
         }
     };
 
-
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormValidated(true);
@@ -315,7 +327,6 @@ export default function Quotations() {
                     phone: String(quotationData.client.phone),
                     billingAddress: quotationData.client.billingAddress,
                     shippingAddress: quotationData.client.shippingAddress,
-
                 },
             };
 
@@ -399,15 +410,31 @@ export default function Quotations() {
             <div className="container mt-4">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <h2 style={{ color: "black" }}>Quotations</h2>
-                    <Button
-                        variant="primary"
-                        onClick={() => {
-                            setCurrentQuotation(null);
-                            setShowModal(true);
-                        }}
-                    >
-                        Create New Quotation
-                    </Button>
+                    <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
+                        <Form.Control
+                            type="search"
+                            placeholder="Search here"
+                            className="me-2"
+                            aria-label="Search"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                borderRadius: "20px",
+                                padding: "8px 20px",
+                                border: "1px solid #ced4da",
+                                boxShadow: "none"
+                            }}
+                        />
+                        <Button
+                            variant="primary"
+                            onClick={() => {
+                                setCurrentQuotation(null);
+                                setShowModal(true);
+                            }}
+                        >
+                            Create New Quotation
+                        </Button>
+                    </div>
                 </div>
 
                 {error && <Alert variant="danger">{error}</Alert>}
@@ -464,8 +491,8 @@ export default function Quotations() {
                                     Loading quotations...
                                 </td>
                             </tr>
-                        ) : sortedQuotations.length > 0 ? (
-                            sortedQuotations.map((quotation) => (
+                        ) : filteredQuotations.length > 0 ? (
+                            filteredQuotations.map((quotation) => (
                                 <tr key={quotation._id}>
                                     <td>{quotation.referenceNumber}</td>
                                     <td>{quotation.client?.companyName}</td>
