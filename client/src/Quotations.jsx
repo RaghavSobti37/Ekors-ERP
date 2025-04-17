@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
 import Navbar from "./components/Navbar.jsx";
+import { useAuth } from "./context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const formatDateForInput = (dateString) => {
     if (!dateString) return "";
@@ -115,15 +117,37 @@ export default function Quotations() {
     const [isLoading, setIsLoading] = useState(false);
     const [currentQuotation, setCurrentQuotation] = useState(null);
     const [formValidated, setFormValidated] = useState(false);
+    const [quotationsCount, setQuotationsCount] = useState(0);
     const [sortConfig, setSortConfig] = useState({
         key: null,
         direction: "ascending",
     });
     const [searchTerm, setSearchTerm] = useState("");
+    const { user, loading } = useAuth();
+    const navigate = useNavigate();
+    
+    // Function to get authentication data from localStorage
+    const getAuthToken = () => {
+        try {
+          const userData = JSON.parse(localStorage.getItem('erp-user'));
+          if (!userData || typeof userData !== 'object') {
+            return null;
+          }
+          return userData.token;
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+          return null;
+        }
+      };
+
+    const generateQuotationNumber = () => {
+        const nextNumber = quotationsCount + 1;
+        return `Q-${String(nextNumber).padStart(6, '0')}`;
+    };
 
     const initialQuotationData = {
         date: formatDateForInput(new Date()),
-        referenceNumber: "",
+        referenceNumber: generateQuotationNumber(),
         validityDate: formatDateForInput(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)),
         dispatchDays: 7,
         orderIssuedBy: "",
@@ -137,22 +161,29 @@ export default function Quotations() {
             gstNumber: "",
             email: "",
             phone: "",
-            billingAddress: "",
-            shippingAddress: "",
         },
     };
 
     const [quotationData, setQuotationData] = useState(initialQuotationData);
 
-    useEffect(() => {
-        fetchQuotations();
-    }, []);
-
     const fetchQuotations = useCallback(async () => {
+        if (loading || !user) return;
+        
         setIsLoading(true);
         try {
-            const response = await axios.get("http://localhost:3000/api/quotations");
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+            
+            const response = await axios.get("http://localhost:3000/api/quotations", {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
             setQuotations(response.data);
+            setQuotationsCount(response.data.length); // Store the count
             setError(null);
         } catch (error) {
             console.error("Error fetching quotations:", error);
@@ -161,10 +192,22 @@ export default function Quotations() {
                 error.message ||
                 "Failed to load quotations. Please try again."
             );
+            
+            if (error.response?.status === 401) {
+                navigate('/login', { state: { from: '/quotations' } });
+            }
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [user, loading, navigate]);
+
+    useEffect(() => {
+        if (!loading && !user) {
+            navigate('/login', { state: { from: '/quotations' } });
+        } else {
+            fetchQuotations();
+        }
+    }, [user, loading, navigate, fetchQuotations]);
 
     const sortedQuotations = useMemo(() => {
         if (!sortConfig.key) return quotations;
@@ -225,28 +268,26 @@ export default function Quotations() {
             price: 0,
             amount: 0,
         }];
-
+    
         setQuotationData({
             ...quotationData,
-            client: savedClient._id,
-            user: req.user._id,
             goods: newGoods
         });
     };
 
     const handleGoodsChange = (index, field, value) => {
         const updatedGoods = [...quotationData.goods];
-
+    
         if (['quantity', 'price', 'amount'].includes(field)) {
             value = Number(value);
         }
-
+    
         updatedGoods[index][field] = value;
-
+    
         if (field === 'quantity' || field === 'price') {
             updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
         }
-
+    
         const totalQuantity = updatedGoods.reduce(
             (sum, item) => sum + item.quantity,
             0
@@ -256,12 +297,10 @@ export default function Quotations() {
             0
         );
         const gstAmount = totalAmount * 0.18;
-        const grandTotal = totalAmount + gstAmount + Number(quotationData.packingCharges);
-
+        const grandTotal = totalAmount + gstAmount;
+    
         setQuotationData({
             ...quotationData,
-            client: savedClient._id,
-            user: req.user._id,
             goods: updatedGoods,
             totalQuantity,
             totalAmount,
@@ -293,22 +332,31 @@ export default function Quotations() {
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormValidated(true);
-
-        if (quotationData.goods.length === 0) {
+        
+        // Validate form and goods
+        const form = event.currentTarget;
+        if (form.checkValidity() === false || quotationData.goods.length === 0) {
             event.stopPropagation();
             return;
         }
-
+    
         setIsLoading(true);
         try {
+            const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+    
+            // Prepare the submission data
             const submissionData = {
-
+                referenceNumber: currentQuotation 
+                    ? quotationData.referenceNumber 
+                    : generateQuotationNumber(),
                 date: new Date(quotationData.date).toISOString(),
                 validityDate: new Date(quotationData.validityDate).toISOString(),
-                referenceNumber: quotationData.referenceNumber,
                 dispatchDays: Number(quotationData.dispatchDays),
                 orderIssuedBy: quotationData.orderIssuedBy,
-                goods: quotationData.goods.map((item) => ({
+                goods: quotationData.goods.map(item => ({
                     srNo: item.srNo,
                     description: item.description,
                     hsnSacCode: item.hsnSacCode,
@@ -325,19 +373,24 @@ export default function Quotations() {
                     gstNumber: quotationData.client.gstNumber,
                     email: quotationData.client.email,
                     phone: String(quotationData.client.phone),
-                    billingAddress: quotationData.client.billingAddress,
-                    shippingAddress: quotationData.client.shippingAddress,
-                },
+                }
             };
-
+    
+            // Determine API endpoint and method
             const url = currentQuotation
                 ? `http://localhost:3000/api/quotations/${currentQuotation._id}`
                 : "http://localhost:3000/api/quotations";
-
+            
             const method = currentQuotation ? "put" : "post";
-
-            const response = await axios[method](url, submissionData);
-
+    
+            // Make the API call
+            const response = await axios[method](url, submissionData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+    
             if (response.status === 200 || response.status === 201) {
                 fetchQuotations();
                 setShowModal(false);
@@ -347,10 +400,22 @@ export default function Quotations() {
             }
         } catch (error) {
             console.error("Error saving quotation:", error);
-            setError(
-                error.response?.data?.message ||
-                "Failed to save quotation. Please check all fields and try again."
-            );
+            let errorMessage = "Failed to save quotation. Please try again.";
+            
+            if (error.response) {
+                errorMessage = error.response.data.message || 
+                             error.response.data.error || 
+                             errorMessage;
+                
+                if (error.response.status === 401) {
+                    navigate('/login', { state: { from: '/quotations' } });
+                    return;
+                }
+            } else if (error.request) {
+                errorMessage = "No response from server. Please check your connection.";
+            }
+            
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -389,8 +454,6 @@ export default function Quotations() {
                 gstNumber: quotation.client?.gstNumber || "",
                 email: quotation.client?.email || "",
                 phone: quotation.client?.phone || "",
-                billingAddress: quotation.client?.billingAddress || "",
-                shippingAddress: quotation.client?.shippingAddress || "",
             },
         });
         setShowModal(true);
@@ -472,8 +535,6 @@ export default function Quotations() {
                                     sortConfig={sortConfig}
                                 />
                             </th>
-                            <th>Billing Address</th>
-                            <th>Shipping Address</th>
                             <th
                                 onClick={() => requestSort("grandTotal")}
                                 style={{ cursor: "pointer" }}
@@ -497,8 +558,6 @@ export default function Quotations() {
                                     <td>{quotation.referenceNumber}</td>
                                     <td>{quotation.client?.companyName}</td>
                                     <td>{quotation.client?.gstNumber}</td>
-                                    <td>{quotation.client?.billingAddress}</td>
-                                    <td>{quotation.client?.shippingAddress}</td>
                                     <td className="text-end">
                                         {quotation.grandTotal.toFixed(2)}
                                     </td>
@@ -566,8 +625,8 @@ export default function Quotations() {
                                     <Form.Control
                                         required
                                         type="text"
-                                        name="quotationNumber"
-                                        value={quotationData.quotationNumber}
+                                        name="referenceNumber"
+                                        value={quotationData.referenceNumber}
                                         placeholder="Quotation Number"
                                         disabled
                                     />
@@ -649,8 +708,6 @@ export default function Quotations() {
                             </div>
 
                             <div className="row">
-                                
-
                                 <Form.Group className="mb-3 col-md-6">
                                     <Form.Label>
                                         Order Issued By <span className="text-danger">*</span>
@@ -726,8 +783,8 @@ export default function Quotations() {
                                 </div>
                             </div>
                         </Modal.Body>
-
-                        <Modal.Footer>
+                                    
+<Modal.Footer>
                             <Button
                                 variant="secondary"
                                 onClick={() => {
