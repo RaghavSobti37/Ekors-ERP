@@ -125,15 +125,9 @@ export default function Quotations() {
         date: formatDateForInput(new Date()),
         referenceNumber: "",
         validityDate: formatDateForInput(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)),
-        ewayBillNumber: "",
-        transportId: "",
-        vehicleDetails: "",
-        materialLocation: "factory",
         dispatchDays: 7,
-        packingCharges: 0,
         orderIssuedBy: "",
         goods: [],
-        bankDetails: "",
         totalQuantity: 0,
         totalAmount: 0,
         gstAmount: 0,
@@ -234,6 +228,8 @@ export default function Quotations() {
 
         setQuotationData({
             ...quotationData,
+            client: savedClient._id,
+            user: req.user._id,
             goods: newGoods
         });
     };
@@ -264,6 +260,8 @@ export default function Quotations() {
 
         setQuotationData({
             ...quotationData,
+            client: savedClient._id,
+            user: req.user._id,
             goods: updatedGoods,
             totalQuantity,
             totalAmount,
@@ -304,17 +302,12 @@ export default function Quotations() {
         setIsLoading(true);
         try {
             const submissionData = {
+
                 date: new Date(quotationData.date).toISOString(),
                 validityDate: new Date(quotationData.validityDate).toISOString(),
                 referenceNumber: quotationData.referenceNumber,
-                ewayBillNumber: quotationData.ewayBillNumber,
-                transportId: quotationData.transportId,
-                vehicleDetails: quotationData.vehicleDetails,
-                materialLocation: quotationData.materialLocation,
                 dispatchDays: Number(quotationData.dispatchDays),
-                packingCharges: Number(quotationData.packingCharges),
                 orderIssuedBy: quotationData.orderIssuedBy,
-                bankDetails: quotationData.bankDetails,
                 goods: quotationData.goods.map((item) => ({
                     srNo: item.srNo,
                     description: item.description,
@@ -378,14 +371,9 @@ export default function Quotations() {
             date: formatDateForInput(quotation.date),
             referenceNumber: quotation.referenceNumber,
             validityDate: formatDateForInput(quotation.validityDate),
-            ewayBillNumber: quotation.ewayBillNumber,
-            transportId: quotation.transportId,
-            vehicleDetails: quotation.vehicleDetails,
-            materialLocation: quotation.materialLocation,
             dispatchDays: quotation.dispatchDays,
             packingCharges: quotation.packingCharges,
             orderIssuedBy: quotation.orderIssuedBy,
-            bankDetails: quotation.bankDetails,
             goods: quotation.goods.map(item => ({
                 ...item,
                 quantity: Number(item.quantity),
@@ -661,19 +649,7 @@ export default function Quotations() {
                             </div>
 
                             <div className="row">
-                                <Form.Group className="mb-3 col-md-6">
-                                    <Form.Label>
-                                        Bank Account Details <span className="text-danger">*</span>
-                                    </Form.Label>
-                                    <Form.Control
-                                        required
-                                        as="textarea"
-                                        rows={2}
-                                        name="bankDetails"
-                                        value={getFieldValue("bankDetails")}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
+                                
 
                                 <Form.Group className="mb-3 col-md-6">
                                     <Form.Label>
@@ -687,24 +663,6 @@ export default function Quotations() {
                                         onChange={handleInputChange}
                                     />
                                 </Form.Group>
-                            </div>
-
-                            <div className="row">
-                                <Form.Group className="mb-3 col-md-4">
-                                    <Form.Label>
-                                        Material Location <span className="text-danger">*</span>
-                                    </Form.Label>
-                                    <Form.Select
-                                        name="materialLocation"
-                                        value={getFieldValue("materialLocation")}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="factory">Factory</option>
-                                        <option value="godown">Godown</option>
-                                        <option value="other">Other Location</option>
-                                    </Form.Select>
-                                </Form.Group>
-
                                 <Form.Group className="mb-3 col-md-4">
                                     <Form.Label>
                                         Dispatch Days <span className="text-danger">*</span>
@@ -715,53 +673,6 @@ export default function Quotations() {
                                         min="1"
                                         name="dispatchDays"
                                         value={getFieldValue("dispatchDays")}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3 col-md-4">
-                                    <Form.Label>
-                                        Packing Charges (₹) <span className="text-danger">*</span>
-                                    </Form.Label>
-                                    <Form.Control
-                                        required
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        name="packingCharges"
-                                        value={getFieldValue("packingCharges")}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-                            </div>
-
-                            <div className="row">
-                                <Form.Group className="mb-3 col-md-4">
-                                    <Form.Label>E-way Bill Number</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        name="ewayBillNumber"
-                                        value={getFieldValue("ewayBillNumber")}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3 col-md-4">
-                                    <Form.Label>Transport ID</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        name="transportId"
-                                        value={getFieldValue("transportId")}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3 col-md-4">
-                                    <Form.Label>Vehicle Details</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        name="vehicleDetails"
-                                        value={getFieldValue("vehicleDetails")}
                                         onChange={handleInputChange}
                                     />
                                 </Form.Group>

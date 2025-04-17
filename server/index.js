@@ -10,7 +10,7 @@ const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid'); // For unique file names
 const authRoutes = require("./routes/authRoutes");
-const userModel = require('./models/user.js');
+const userModel = require('./models/User.js');
 const OpenticketModel = require('./models/opentickets.js');
 
 
@@ -28,7 +28,7 @@ app.use(express.json());
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Static file serving

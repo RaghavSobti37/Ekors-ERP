@@ -3,6 +3,8 @@ const router = express.Router();
 const Quotation = require('../models/quotation');
 const Client = require('../models/client');
 const Ticket = require('../models/opentickets');
+const auth = require('../middleware/auth');
+
 
 // Create new quotation
 router.put('/quotations/:id', async (req, res) => {
@@ -179,19 +181,21 @@ router.put('/:id', async (req, res) => {
 
 
 // Get all quotations
-router.get('/', async (req, res) => {
-    try {
-        const quotations = await Quotation.find()
-            .populate('client', 'companyName gstNumber email phone billingAddress shippingAddress bankDetails')
-            .sort({ date: -1 });
-        res.json(quotations);
-    } catch (error) {
-        res.status(500).json({ 
-            message: 'Error fetching quotations',
-            error: error.message 
-        });
-    }
+router.get('/', auth, async (req, res) => {
+  try {
+    const quotations = await Quotation.find({ user: req.user._id }) // filter by user
+      .populate('client', 'companyName gstNumber email phone billingAddress shippingAddress bankDetails')
+      .sort({ date: -1 });
+
+    res.json(quotations);
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error fetching quotations',
+      error: error.message 
+    });
+  }
 });
+
 
 // // Create ticket from quotation
 // router.post('/quotations/:id/create-ticket', async (req, res) => {
