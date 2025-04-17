@@ -140,14 +140,49 @@ export default function Quotations() {
         }
       };
 
-    const generateQuotationNumber = () => {
-        const nextNumber = quotationsCount + 1;
-        return `Q-${String(nextNumber).padStart(6, '0')}`;
-    };
+      const fetchNextQuotationNumber = async () => {
+        try {
+          const token = getAuthToken();
+          if (!token) {
+            throw new Error('No authentication token found');
+          }
+          
+          const response = await axios.get("http://localhost:3000/api/quotations/next-number", {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          return response.data.nextQuotationNumber;
+        } catch (error) {
+          console.error("Error fetching next quotation number:", error);
+          // Fallback to client-side generation if API call fails
+          return `Q-${String(quotationsCount + 1).padStart(6, '0')}`;
+        }
+      };
+
+      // Update your modal opening function
+const openCreateModal = async () => {
+    setCurrentQuotation(null);
+    
+    // Get the next quotation number from API
+    const nextNumber = await fetchNextQuotationNumber();
+    
+    setQuotationData({
+      ...initialQuotationData,
+      referenceNumber: nextNumber
+    });
+    
+    setShowModal(true);
+  };
+
+  const handleCreateNew = () => {
+    openCreateModal();
+  };
 
     const initialQuotationData = {
         date: formatDateForInput(new Date()),
-        referenceNumber: generateQuotationNumber(),
+        referenceNumber: fetchNextQuotationNumber(),
         validityDate: formatDateForInput(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)),
         dispatchDays: 7,
         orderIssuedBy: "",
@@ -351,7 +386,7 @@ export default function Quotations() {
             const submissionData = {
                 referenceNumber: currentQuotation 
                     ? quotationData.referenceNumber 
-                    : generateQuotationNumber(),
+                    : fetchNextQuotationNumber(),
                 date: new Date(quotationData.date).toISOString(),
                 validityDate: new Date(quotationData.validityDate).toISOString(),
                 dispatchDays: Number(quotationData.dispatchDays),
@@ -430,6 +465,7 @@ export default function Quotations() {
         window.location.href = `/create-ticket?quotationId=${quotation._id}`;
     };
 
+
     const handleEdit = (quotation) => {
         setCurrentQuotation(quotation);
         setQuotationData({
@@ -493,6 +529,7 @@ export default function Quotations() {
                             onClick={() => {
                                 setCurrentQuotation(null);
                                 setShowModal(true);
+                                handleCreateNew();
                             }}
                         >
                             Create New Quotation
