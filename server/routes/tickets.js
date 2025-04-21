@@ -4,6 +4,7 @@ const Ticket = require('../models/opentickets');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
+const User = require('../models/users'); 
 
 // Configure file upload storage
 const storage = multer.diskStorage({
