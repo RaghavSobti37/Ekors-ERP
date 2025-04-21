@@ -378,27 +378,22 @@ export default function Dashboard() {
     fetchTickets();
   }, []);
 
-  const fetchTickets = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get("http://localhost:3000/tickets", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("erp-token")}`
-        }
-      });
-      console.log("Fetched tickets:", response.data);
-      const sortedTickets = response.data.sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
-      setTickets(sortedTickets);
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching tickets:", error);
-      setError("Failed to load tickets. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+const fetchTickets = async () => {
+  setIsLoading(true);
+  try {
+    const response = await axios.get("http://localhost:3000/api/tickets", {
+      headers: {
+        Authorization: `Bearer ${getAuthToken()}`
+      }
+    });
+    setTickets(response.data);
+  } catch (error) {
+    setError("Failed to load tickets");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
   const sortedTickets = useMemo(() => {
@@ -480,6 +475,16 @@ export default function Dashboard() {
     });
   };
 
+  const getAuthToken = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      return userData?.token || null;
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+      return null;
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
@@ -497,10 +502,10 @@ export default function Dashboard() {
         .padStart(6, "0")}`;
   
       // Get token from localStorage or auth context
-      const token = localStorage.getItem("erp-token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
+      const token = getAuthToken();
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
   
       const ticketToSubmit = {
         ...ticketData,
@@ -511,7 +516,7 @@ export default function Dashboard() {
       };
   
       const response = await axios.post(
-        "http://localhost:3000/tickets",
+        "http://localhost:3000/api/tickets",
         ticketToSubmit,
         {
           headers: {
@@ -626,12 +631,12 @@ export default function Dashboard() {
       };
     
       const response = await axios.put(
-        `http://localhost:3000/tickets/${editTicket.id || editTicket._id}`,
+        `http://localhost:3000/api/tickets/${editTicket._id}`,
         updateData,
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem("erp-token")}`
+            Authorization: `Bearer ${getAuthToken()}`
           }
         }
       );
@@ -693,12 +698,13 @@ export default function Dashboard() {
       formData.append("documentType", documentType);
 
       const response = await axios.post(
-        `http://localhost:3000/tickets/${editTicket._id}/documents`,
+        `http://localhost:3000/api/tickets/${editTicket._id}/documents`,
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
-          },
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${getAuthToken()}`
+          }
         }
       );
 

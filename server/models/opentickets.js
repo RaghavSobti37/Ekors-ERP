@@ -10,7 +10,6 @@ const goodsSchema = new mongoose.Schema({
 });
 
 const ticketSchema = new mongoose.Schema({
-
   ticketNumber: { type: String, unique: true },
   companyName: { type: String, required: true },
   quotationNumber: { type: String, required: true },
@@ -47,11 +46,11 @@ const ticketSchema = new mongoose.Schema({
     status: { type: String },
     changedAt: { type: Date, default: Date.now }
   }],
-  // createdBy: {
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: 'User',
-  //   required: true
-  // }
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
 }, { timestamps: true });
 
 // Pre-save hook to generate ticket number
