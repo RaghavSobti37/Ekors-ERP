@@ -17,6 +17,22 @@ const storage = multer.diskStorage({
   }
 });
 
+// In your tickets.js route file
+const { getNextSequence } = require('../utils/counterUtils');
+
+router.get('/next-number', auth, async (req, res) => {
+  try {
+    // Get next globally unique sequence number for tickets
+    const nextNumber = await getNextSequence('ticketNumber');
+    
+    // Format with leading zeros (6 digits) and a T prefix
+    const nextTicketNumber = `T-${String(nextNumber).padStart(6, '0')}`;
+    res.json({ nextTicketNumber });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 const upload = multer({ storage });
 
 // Create new ticket (protected route)

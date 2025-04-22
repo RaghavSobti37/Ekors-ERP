@@ -64,6 +64,21 @@ const handleQuotationUpsert = async (req, res) => {
   }
 };
 
+const { getNextSequence } = require('../utils/counterUtils');
+
+router.get('/next-number', auth, async (req, res) => {
+  try {
+    // Get next globally unique sequence number
+    const nextNumber = await getNextSequence('quotationNumber');
+    
+    // Format with leading zeros (6 digits)
+    const nextQuotationNumber = `Q-${String(nextNumber).padStart(6, '0')}`;
+    res.json({ nextQuotationNumber });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get all quotations for current user
 router.get('/', auth, async (req, res) => {
   try {
@@ -142,15 +157,12 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// In your quotations.js route file
 router.get('/next-number', auth, async (req, res) => {
   try {
-    // Find the latest quotation for this user
-    const latestQuotation = await Quotation.findOne({ 
-      user: req.user._id 
-    })
-    .sort({ referenceNumber: -1 })
-    .select('referenceNumber');
+    // Find the latest quotation across ALL users (globally unique)
+    const latestQuotation = await Quotation.findOne({})
+      .sort({ referenceNumber: -1 })
+      .select('referenceNumber');
     
     let nextNumber = 1;
     

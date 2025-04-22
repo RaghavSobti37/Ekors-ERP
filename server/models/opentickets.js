@@ -62,4 +62,6 @@ ticketSchema.pre('save', async function(next) {
   next();
 });
 
+ticketSchema.index({ quotationNumber: 1, user: 1 }, { unique: true });
+
 module.exports = mongoose.model('Ticket', ticketSchema);
