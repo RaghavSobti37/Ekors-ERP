@@ -927,7 +927,7 @@ const fetchTickets = async () => {
                 </Form.Group>
               </div>
 
-              <div className="row">
+              {/* <div className="row">
                 <Form.Group className="mb-3 col-md-6">
                   <Form.Label>Billing Address*</Form.Label>
                   <Form.Control
@@ -960,6 +960,118 @@ const fetchTickets = async () => {
                     }
                     placeholder="Enter shipping address"
                   />
+                </Form.Group>
+              </div> */}
+
+
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Billing Address*</Form.Label>
+                  <Form.Control
+                    required
+                    as="textarea"
+                    rows={3}
+                    value={ticketData.billingAddress}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        billingAddress: e.target.value,
+                      })
+                    }
+                    placeholder="Enter billing address"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Shipping Address*</Form.Label>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Address Line 1*</Form.Label>
+                    <Form.Control
+                      required
+                      value={ticketData.shippingAddress.address1}
+                      onChange={(e) =>
+                        setTicketData({
+                          ...ticketData,
+                          shippingAddress: {
+                            ...ticketData.shippingAddress,
+                            address1: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Address line 1"
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Address Line 2</Form.Label>
+                    <Form.Control
+                      value={ticketData.shippingAddress.address2}
+                      onChange={(e) =>
+                        setTicketData({
+                          ...ticketData,
+                          shippingAddress: {
+                            ...ticketData.shippingAddress,
+                            address2: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Address line 2"
+                    />
+                  </Form.Group>
+                  <div className="row">
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>State*</Form.Label>
+                      <Form.Control
+                        required
+                        value={ticketData.shippingAddress.state}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              state: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="State"
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>City*</Form.Label>
+                      <Form.Control
+                        required
+                        value={ticketData.shippingAddress.city}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              city: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="City"
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>Pincode*</Form.Label>
+                      <Form.Control
+                        required
+                        type="text"
+                        pattern="[0-9]{6}"
+                        value={ticketData.shippingAddress.pincode}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              pincode: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Pincode"
+                      />
+                    </Form.Group>
+                  </div>
                 </Form.Group>
               </div>
 
