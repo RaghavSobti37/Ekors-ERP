@@ -111,6 +111,23 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
     );
 };
 
+// Custom modal style
+const customModalStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+};
+
+// Custom modal content style
+const customModalContentStyle = {
+    width: '95%',
+    height: '95%',
+    maxWidth: 'none',
+    maxHeight: 'none',
+    margin: '0',
+    padding: '0',
+};
+
 export default function Quotations() {
     const [showModal, setShowModal] = useState(false);
     const [quotations, setQuotations] = useState([]);
@@ -616,18 +633,26 @@ export default function Quotations() {
                     </tbody>
                 </Table>
 
-                <Modal show={showModal} onHide={() => {
-                    setShowModal(false);
-                    setCurrentQuotation(null);
-                    resetForm();
-                }} size="xl" fullscreen="md-down">
+                <Modal 
+                    show={showModal} 
+                    onHide={() => {
+                        setShowModal(false);
+                        setCurrentQuotation(null);
+                        resetForm();
+                    }} 
+                    size="xl"
+                    centered
+                    style={customModalStyle}
+                    contentClassName="custom-modal-content"
+                    dialogClassName="modal-95w modal-95h"
+                >
                     <Modal.Header closeButton>
                         <Modal.Title>
                             {currentQuotation ? "Edit Quotation" : "Create New Quotation"}
                         </Modal.Title>
                     </Modal.Header>
                     <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
-                        <Modal.Body>
+                        <Modal.Body style={{ overflowY: 'auto', maxHeight: 'calc(95vh - 150px)' }}>
                             <div className="row">
                                 <Form.Group className="mb-3 col-md-4">
                                     <Form.Label>
@@ -809,7 +834,7 @@ export default function Quotations() {
                             </div>
                         </Modal.Body>
                                     
-<Modal.Footer>
+                        <Modal.Footer>
                             <Button
                                 variant="secondary"
                                 onClick={() => {
@@ -827,6 +852,36 @@ export default function Quotations() {
                     </Form>
                 </Modal>
             </div>
+
+            {/* Add this CSS to your styles */}
+            <style jsx global>{`
+                .modal-95w {
+                    max-width: 95%;
+                    width: 95%;
+                }
+                .modal-95h {
+                    max-height: 95%;
+                    height: 95%;
+                }
+                .custom-modal-content {
+                    width: 95%;
+                    height: 95%;
+                    max-width: none;
+                    max-height: none;
+                    margin: 0;
+                    padding: 0;
+                }
+                .modal-content {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .modal-body {
+                    overflow-y: auto;
+                    flex-grow: 1;
+                }
+            `}</style>
         </div>
     );
 }
