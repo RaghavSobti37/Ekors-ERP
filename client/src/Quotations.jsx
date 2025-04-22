@@ -260,6 +260,23 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
   );
 };
 
+// Custom modal style
+const customModalStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+// Custom modal content style
+const customModalContentStyle = {
+  width: "95%",
+  height: "95%",
+  maxWidth: "none",
+  maxHeight: "none",
+  margin: "0",
+  padding: "0",
+};
+
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -605,88 +622,101 @@ export default function Quotations() {
 
   const generateTicketNumber = async () => {
     try {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-        
-        const response = await axios.get("http://localhost:3000/api/tickets/next-number", {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        return response.data.nextTicketNumber;
-    } catch (error) {
-        console.error("Error generating ticket number:", error);
-        // Fallback to timestamp-based generation if API call fails
-        const now = new Date();
-        return `T-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getTime()).slice(-6)}`;
-    }
-};
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
 
-// Update the handleCreateTicket function:
-const handleCreateTicket = async (quotation) => {
+      const response = await axios.get(
+        "http://localhost:3000/api/tickets/next-number",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.nextTicketNumber;
+    } catch (error) {
+      console.error("Error generating ticket number:", error);
+      // Fallback to timestamp-based generation if API call fails
+      const now = new Date();
+      return `T-${now.getFullYear()}${String(now.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}${String(now.getDate()).padStart(2, "0")}-${String(now.getTime()).slice(
+        -6
+      )}`;
+    }
+  };
+
+  // Update the handleCreateTicket function:
+  const handleCreateTicket = async (quotation) => {
     // Generate a new unique ticket number
     const ticketNumber = await generateTicketNumber();
-    
+
     // Format client information for addresses
-    const companyInfo = quotation.client?.companyName || '';
-    const gstInfo = quotation.client?.gstNumber ? `GST: ${quotation.client.gstNumber}` : '';
-    const emailInfo = quotation.client?.email ? `Email: ${quotation.client.email}` : '';
-    const phoneInfo = quotation.client?.phone ? `Phone: ${quotation.client.phone}` : '';
-    
+    const companyInfo = quotation.client?.companyName || "";
+    const gstInfo = quotation.client?.gstNumber
+      ? `GST: ${quotation.client.gstNumber}`
+      : "";
+    const emailInfo = quotation.client?.email
+      ? `Email: ${quotation.client.email}`
+      : "";
+    const phoneInfo = quotation.client?.phone
+      ? `Phone: ${quotation.client.phone}`
+      : "";
+
     // Build formatted address (only include fields that have data)
     const formattedAddress = [companyInfo, gstInfo, emailInfo, phoneInfo]
-        .filter(item => item) // Remove empty items
-        .join('\n');
-    
+      .filter((item) => item) // Remove empty items
+      .join("\n");
+
     // Set ticket data
     setTicketData({
-        ticketNumber, // Add the globally unique ticket number
-        companyName: quotation.client?.companyName || '',
-        quotationNumber: quotation.referenceNumber,
-        billingAddress: formattedAddress,
-        shippingAddress: formattedAddress,
-        goods: quotation.goods.map(item => ({
-            ...item,
-            quantity: Number(item.quantity),
-            price: Number(item.price),
-            amount: Number(item.amount)
-        })),
-        totalQuantity: Number(quotation.totalQuantity),
-        totalAmount: Number(quotation.totalAmount),
-        gstAmount: Number(quotation.gstAmount),
-        grandTotal: Number(quotation.grandTotal),
-        status: "Quotation Sent"
+      ticketNumber, // Add the globally unique ticket number
+      companyName: quotation.client?.companyName || "",
+      quotationNumber: quotation.referenceNumber,
+      billingAddress: formattedAddress,
+      shippingAddress: formattedAddress,
+      goods: quotation.goods.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        amount: Number(item.amount),
+      })),
+      totalQuantity: Number(quotation.totalQuantity),
+      totalAmount: Number(quotation.totalAmount),
+      gstAmount: Number(quotation.gstAmount),
+      grandTotal: Number(quotation.grandTotal),
+      status: "Quotation Sent",
     });
-    
+
     setShowTicketModal(true);
-};
+  };
 
-const checkExistingTicket = async (quotationNumber) => {
+  const checkExistingTicket = async (quotationNumber) => {
     try {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('No authentication token found');
-        }
-        
-        const response = await axios.get(
-            `http://localhost:3000/api/tickets/check/${quotationNumber}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            }
-        );
-        
-        return response.data.exists;
-    } catch (error) {
-        console.error("Error checking existing ticket:", error);
-        return false;
-    }
-};
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
 
+      const response = await axios.get(
+        `http://localhost:3000/api/tickets/check/${quotationNumber}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.exists;
+    } catch (error) {
+      console.error("Error checking existing ticket:", error);
+      return false;
+    }
+  };
 
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
@@ -695,12 +725,14 @@ const checkExistingTicket = async (quotationNumber) => {
     try {
       setIsLoading(true);
 
-      const ticketExists = await checkExistingTicket(ticketData.quotationNumber);
-        if (ticketExists) {
-            setError("A ticket already exists for this quotation.");
-            setIsLoading(false);
-            return;
-        }
+      const ticketExists = await checkExistingTicket(
+        ticketData.quotationNumber
+      );
+      if (ticketExists) {
+        setError("A ticket already exists for this quotation.");
+        setIsLoading(false);
+        return;
+      }
 
       const token = getAuthToken();
       if (!token) {
@@ -979,17 +1011,17 @@ const checkExistingTicket = async (quotationNumber) => {
                   />
                 </Form.Group>
                 <Form.Group className="mb-3 col-md-6">
-        <Form.Label>Ticket Number</Form.Label>
-        <Form.Control
-            type="text"
-            value={ticketData.ticketNumber}
-            readOnly={true}
-            disabled={true}
-        />
-        <Form.Text className="text-muted">
-            Auto-generated unique ticket number
-        </Form.Text>
-    </Form.Group>
+                  <Form.Label>Ticket Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={ticketData.ticketNumber}
+                    readOnly={true}
+                    disabled={true}
+                  />
+                  <Form.Text className="text-muted">
+                    Auto-generated unique ticket number
+                  </Form.Text>
+                </Form.Group>
                 <Form.Group className="mb-3 col-md-6">
                   <Form.Label>Quotation Number*</Form.Label>
                   <Form.Control
@@ -1000,8 +1032,8 @@ const checkExistingTicket = async (quotationNumber) => {
                     disabled
                   />
                   <Form.Text className="text-muted">
-        Auto-generated unique quotation reference number
-    </Form.Text>
+                    Auto-generated unique quotation reference number
+                  </Form.Text>
                 </Form.Group>
               </div>
 

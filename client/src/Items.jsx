@@ -1156,6 +1156,7 @@ export default function Items() {
           </div>
         )}
 
+        
         {showPurchaseModal && (
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">

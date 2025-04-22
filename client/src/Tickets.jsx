@@ -745,6 +745,7 @@ const fetchTickets = async () => {
             Create New Ticket
           </Button>
         </div>
+        
 
         {error && <Alert variant="danger">{error}</Alert>}
 
@@ -888,7 +889,7 @@ const fetchTickets = async () => {
               </div>
               <div className="row">
                 <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>Company Name*</Form.Label>
+                  <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     type="text"
@@ -907,7 +908,7 @@ const fetchTickets = async () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>Quotation Number*</Form.Label>
+                  <Form.Label>Quotation Number <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     type="text"
@@ -926,7 +927,7 @@ const fetchTickets = async () => {
                 </Form.Group>
               </div>
 
-              <div className="row">
+              {/* <div className="row">
                 <Form.Group className="mb-3 col-md-6">
                   <Form.Label>Billing Address*</Form.Label>
                   <Form.Control
@@ -960,9 +961,121 @@ const fetchTickets = async () => {
                     placeholder="Enter shipping address"
                   />
                 </Form.Group>
+              </div> */}
+
+
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Billing Address <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    required
+                    as="textarea"
+                    rows={3}
+                    value={ticketData.billingAddress}
+                    onChange={(e) =>
+                      setTicketData({
+                        ...ticketData,
+                        billingAddress: e.target.value,
+                      })
+                    }
+                    placeholder="Enter billing address"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Shipping Address <span className="text-danger">*</span></Form.Label>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                      required
+                      value={ticketData.shippingAddress.address1}
+                      onChange={(e) =>
+                        setTicketData({
+                          ...ticketData,
+                          shippingAddress: {
+                            ...ticketData.shippingAddress,
+                            address1: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Address line 1"
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Address Line 2</Form.Label>
+                    <Form.Control
+                      value={ticketData.shippingAddress.address2}
+                      onChange={(e) =>
+                        setTicketData({
+                          ...ticketData,
+                          shippingAddress: {
+                            ...ticketData.shippingAddress,
+                            address2: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="Address line 2"
+                    />
+                  </Form.Group>
+                  <div className="row">
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>State <span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        required
+                        value={ticketData.shippingAddress.state}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              state: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="State"
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>City <span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        required
+                        value={ticketData.shippingAddress.city}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              city: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="City"
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-2 col-md-4">
+                      <Form.Label>Pincode<span className="text-danger">*</span></Form.Label>
+                      <Form.Control
+                        required
+                        type="text"
+                        pattern="[0-9]{6}"
+                        value={ticketData.shippingAddress.pincode}
+                        onChange={(e) =>
+                          setTicketData({
+                            ...ticketData,
+                            shippingAddress: {
+                              ...ticketData.shippingAddress,
+                              pincode: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Pincode"
+                      />
+                    </Form.Group>
+                  </div>
+                </Form.Group>
               </div>
 
-              <h5 className="mt-4">Goods Details*</h5>
+              <h5 className="mt-4">Goods Details <span className="text-danger">*</span></h5>
               {ticketData.goods.length === 0 && (
                 <Alert variant="warning">Please add at least one item</Alert>
               )}
@@ -971,10 +1084,10 @@ const fetchTickets = async () => {
                   <thead>
                     <tr>
                       <th>Sr No.</th>
-                      <th>Description*</th>
-                      <th>HSN/SAC*</th>
-                      <th>Qty*</th>
-                      <th>Price*</th>
+                      <th>Description <span className="text-danger">*</span></th>
+                      <th>HSN/SAC <span className="text-danger">*</span></th>
+                      <th>Qty <span className="text-danger">*</span></th>
+                      <th>Price <span className="text-danger">*</span></th>
                       <th>Amount</th>
                     </tr>
                   </thead>
