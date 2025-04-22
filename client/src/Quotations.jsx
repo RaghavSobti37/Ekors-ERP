@@ -260,23 +260,6 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
   );
 };
 
-// Custom modal style
-const customModalStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-// Custom modal content style
-const customModalContentStyle = {
-  width: "95%",
-  height: "95%",
-  maxWidth: "none",
-  maxHeight: "none",
-  margin: "0",
-  padding: "0",
-};
-
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -295,7 +278,6 @@ export default function Quotations() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Function to get authentication data from localStorage
   const getAuthToken = () => {
     try {
       const userData = JSON.parse(localStorage.getItem("erp-user"));
@@ -639,7 +621,6 @@ export default function Quotations() {
       return response.data.nextTicketNumber;
     } catch (error) {
       console.error("Error generating ticket number:", error);
-      // Fallback to timestamp-based generation if API call fails
       const now = new Date();
       return `T-${now.getFullYear()}${String(now.getMonth() + 1).padStart(
         2,
@@ -650,12 +631,9 @@ export default function Quotations() {
     }
   };
 
-  // Update the handleCreateTicket function:
   const handleCreateTicket = async (quotation) => {
-    // Generate a new unique ticket number
     const ticketNumber = await generateTicketNumber();
 
-    // Format client information for addresses
     const companyInfo = quotation.client?.companyName || "";
     const gstInfo = quotation.client?.gstNumber
       ? `GST: ${quotation.client.gstNumber}`
@@ -667,14 +645,12 @@ export default function Quotations() {
       ? `Phone: ${quotation.client.phone}`
       : "";
 
-    // Build formatted address (only include fields that have data)
     const formattedAddress = [companyInfo, gstInfo, emailInfo, phoneInfo]
-      .filter((item) => item) // Remove empty items
+      .filter((item) => item)
       .join("\n");
 
-    // Set ticket data
     setTicketData({
-      ticketNumber, // Add the globally unique ticket number
+      ticketNumber,
       companyName: quotation.client?.companyName || "",
       quotationNumber: quotation.referenceNumber,
       billingAddress: formattedAddress,
@@ -753,8 +729,6 @@ export default function Quotations() {
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-        // Optionally navigate to tickets page
-        // navigate('/tickets');
       }
     } catch (error) {
       console.error("Error creating ticket:", error);
@@ -794,14 +768,6 @@ export default function Quotations() {
       },
     });
     setShowModal(true);
-  };
-
-  const getFieldValue = (fieldName) => {
-    if (fieldName.startsWith("client.")) {
-      const field = fieldName.split(".")[1];
-      return quotationData.client[field];
-    }
-    return quotationData[fieldName];
   };
 
   const openCreateModal = async () => {
@@ -953,7 +919,8 @@ export default function Quotations() {
             resetForm();
           }}
           size="xl"
-          fullscreen="md-down"
+          fullscreen
+          centered
         >
           <Modal.Header closeButton>
             <Modal.Title>
@@ -962,10 +929,152 @@ export default function Quotations() {
           </Modal.Header>
           <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
             <Modal.Body>
-              {/* Existing Quotation Form Content */}
-              {/* ... (keep all the existing form fields) ... */}
-            </Modal.Body>
+              <div className="row">
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Date*</Form.Label>
+                  <Form.Control
+                    required
+                    type="date"
+                    name="date"
+                    value={quotationData.date}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Reference Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="referenceNumber"
+                    value={quotationData.referenceNumber}
+                    readOnly
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Validity Date*</Form.Label>
+                  <Form.Control
+                    required
+                    type="date"
+                    name="validityDate"
+                    value={quotationData.validityDate}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+              </div>
 
+              <div className="row">
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Dispatch Days*</Form.Label>
+                  <Form.Control
+                    required
+                    type="number"
+                    min="1"
+                    name="dispatchDays"
+                    value={quotationData.dispatchDays}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Order Issued By*</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="orderIssuedBy"
+                    value={quotationData.orderIssuedBy}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+              </div>
+
+              <h5>Client Details</h5>
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Company Name*</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="client.companyName"
+                    value={quotationData.client.companyName}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>GST Number*</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="client.gstNumber"
+                    value={quotationData.client.gstNumber}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+              </div>
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Email</Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="client.email"
+                    value={quotationData.client.email}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="tel"
+                    name="client.phone"
+                    value={quotationData.client.phone}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+              </div>
+
+              <h5>Goods Details</h5>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={addGoodsRow}
+                className="mb-3"
+              >
+                Add Item
+              </Button>
+              <GoodsTable
+                goods={quotationData.goods}
+                handleGoodsChange={handleGoodsChange}
+                currentQuotation={currentQuotation}
+                isEditing={true}
+              />
+
+              <div className="bg-light p-3 rounded">
+                <div className="row">
+                  <div className="col-md-4">
+                    <p>
+                      Total Quantity:{" "}
+                      <strong>{quotationData.totalQuantity}</strong>
+                    </p>
+                  </div>
+                  <div className="col-md-4">
+                    <p>
+                      Total Amount:{" "}
+                      <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                    </p>
+                  </div>
+                  <div className="col-md-4">
+                    <p>
+                      GST (18%):{" "}
+                      <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="col-md-12">
+                    <h5>
+                      Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
+                    </h5>
+                  </div>
+                </div>
+              </div>
+            </Modal.Body>
             <Modal.Footer>
               <Button
                 variant="secondary"
@@ -989,6 +1098,8 @@ export default function Quotations() {
           show={showTicketModal}
           onHide={() => setShowTicketModal(false)}
           size="xl"
+          fullscreen
+          centered
         >
           <Modal.Header closeButton>
             <Modal.Title>Create Ticket from Quotation</Modal.Title>
@@ -1028,7 +1139,7 @@ export default function Quotations() {
                     required
                     type="text"
                     value={ticketData.quotationNumber}
-                    readOnly // Make it read-only
+                    readOnly
                     disabled
                   />
                   <Form.Text className="text-muted">
@@ -1044,6 +1155,7 @@ export default function Quotations() {
                     required
                     as="textarea"
                     rows={3}
+                    value={ticketData.billingAddress}
                     onChange={(e) =>
                       setTicketData({
                         ...ticketData,
@@ -1058,6 +1170,7 @@ export default function Quotations() {
                     required
                     as="textarea"
                     rows={3}
+                    value={ticketData.shippingAddress}
                     onChange={(e) =>
                       setTicketData({
                         ...ticketData,
