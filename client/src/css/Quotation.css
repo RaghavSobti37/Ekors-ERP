@@ -1,0 +1,18 @@
+/* Full-screen Modal Styles */
+.modal-dialog.modal-fullscreen {
+  width: 200vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  margin: 0 !important;
+}
+
+.modal-dialog.modal-fullscreen .modal-content {
+  height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+.modal-dialog.modal-fullscreen .modal-body {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}

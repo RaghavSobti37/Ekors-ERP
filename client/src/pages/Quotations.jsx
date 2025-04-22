@@ -5,6 +5,8 @@ import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ItemSearchComponent from "../components/ItemSearch";
+import "../css/Items.css";
+
 import {
   PDFViewer,
   PDFDownloadLink,
@@ -1023,8 +1025,8 @@ export default function Quotations() {
             setCurrentQuotation(null);
             resetForm();
           }}
-          fullscreen
-          centered
+
+          dialogClassName="modal-fullscreen"
         >
           <Modal.Header closeButton>
             <Modal.Title>
@@ -1200,9 +1202,7 @@ export default function Quotations() {
         <Modal
           show={showTicketModal}
           onHide={() => setShowTicketModal(false)}
-          size="xl"
-          fullscreen
-          centered
+          dialogClassName="modal-fullscreen"
         >
           <Modal.Header closeButton>
             <Modal.Title>Create Ticket from Quotation</Modal.Title>
@@ -1358,7 +1358,7 @@ export default function Quotations() {
         <Modal
           show={showPdfModal}
           onHide={() => setShowPdfModal(false)}
-          size="xl"
+          dialogClassName="modal-fullscreen"
         >
           <Modal.Header closeButton>
             <Modal.Title>
