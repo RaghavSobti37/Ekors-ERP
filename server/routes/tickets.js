@@ -5,6 +5,8 @@ const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const User = require('../models/users'); 
+const ticketController = require('../controllers/ticketController');
+const authMiddleware = require('../middleware/auth');
 
 // Configure file upload storage
 const storage = multer.diskStorage({
@@ -17,11 +19,8 @@ const storage = multer.diskStorage({
   }
 });
 
-// In your tickets.js route file
-const { getNextSequence } = require('../utils/counterUtils');
-
 router.get('/next-number', auth, async (req, res) => {
-  try {
+  try {a
     // Get next globally unique sequence number for tickets
     const nextNumber = await getNextSequence('ticketNumber');
     
@@ -169,5 +168,8 @@ router.post('/:id/documents', auth, upload.single('document'), async (req, res) 
     res.status(500).json({ error: 'Error uploading document', details: error.message });
   }
 });
+
+router.get('/next-number', authMiddleware, ticketController.generateTicketNumber);
+router.get('/check/:quotationNumber', authMiddleware, ticketController.checkExistingTicket);
 
 module.exports = router;

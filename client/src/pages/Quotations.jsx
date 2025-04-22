@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
-import Navbar from "./components/Navbar.jsx";
-import { useAuth } from "./context/AuthContext";
+import Navbar from "../components/Navbar.jsx";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import ItemSearchComponent from "../components/ItemSearch";
 import {
   PDFViewer,
   PDFDownloadLink,
@@ -165,6 +166,7 @@ const GoodsTable = ({
   handleGoodsChange,
   currentQuotation,
   isEditing,
+  onAddItem,
 }) => {
   return (
     <div className="table-responsive">
@@ -247,6 +249,17 @@ const GoodsTable = ({
           ))}
         </tbody>
       </Table>
+
+      {/* Add Item Search Component for editing mode */}
+      {isEditing && (
+        <div className="mb-3">
+          <h6>Search and Add Items</h6>
+          <ItemSearchComponent
+            onItemSelect={onAddItem}
+            placeholder="Search items to add to quotation..."
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -269,6 +282,8 @@ export default function Quotations() {
   const [currentQuotation, setCurrentQuotation] = useState(null);
   const [formValidated, setFormValidated] = useState(false);
   const [quotationsCount, setQuotationsCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5); // Number of items per page
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",
@@ -381,6 +396,10 @@ export default function Quotations() {
     }
   }, [user, loading, navigate, fetchQuotations]);
 
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when search term changes
+  }, [searchTerm]);
+
   const sortedQuotations = useMemo(() => {
     if (!sortConfig.key) return quotations;
 
@@ -425,6 +444,15 @@ export default function Quotations() {
     );
   }, [sortedQuotations, searchTerm]);
 
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredQuotations.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+  const totalPages = Math.ceil(filteredQuotations.length / itemsPerPage);
+
   const requestSort = (key) => {
     let direction = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -449,6 +477,41 @@ export default function Quotations() {
     setQuotationData({
       ...quotationData,
       goods: newGoods,
+    });
+  };
+
+  const handleAddItem = (item) => {
+    const newGoods = [
+      ...quotationData.goods,
+      {
+        srNo: quotationData.goods.length + 1,
+        description: item.name,
+        hsnSacCode: item.hsnCode || "",
+        quantity: 1,
+        price: item.price,
+        amount: item.price, // quantity * price (quantity is 1 initially)
+      },
+    ];
+
+    // Calculate totals
+    const totalQuantity = newGoods.reduce(
+      (sum, item) => sum + Number(item.quantity),
+      0
+    );
+    const totalAmount = newGoods.reduce(
+      (sum, item) => sum + Number(item.amount),
+      0
+    );
+    const gstAmount = totalAmount * 0.18;
+    const grandTotal = totalAmount + gstAmount;
+
+    setQuotationData({
+      ...quotationData,
+      goods: newGoods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
     });
   };
 
@@ -645,16 +708,10 @@ export default function Quotations() {
       ? `Phone: ${quotation.client.phone}`
       : "";
 
-    const formattedAddress = [companyInfo, gstInfo, emailInfo, phoneInfo]
-      .filter((item) => item)
-      .join("\n");
-
     setTicketData({
       ticketNumber,
       companyName: quotation.client?.companyName || "",
       quotationNumber: quotation.referenceNumber,
-      billingAddress: formattedAddress,
-      shippingAddress: formattedAddress,
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -861,8 +918,8 @@ export default function Quotations() {
                   Loading quotations...
                 </td>
               </tr>
-            ) : filteredQuotations.length > 0 ? (
-              filteredQuotations.map((quotation) => (
+            ) : currentItems.length > 0 ? (
+              currentItems.map((quotation) => (
                 <tr key={quotation._id}>
                   <td>{quotation.referenceNumber}</td>
                   <td>{quotation.client?.companyName}</td>
@@ -910,6 +967,54 @@ export default function Quotations() {
           </tbody>
         </Table>
 
+        {filteredQuotations.length > itemsPerPage && (
+          <div className="d-flex justify-content-center mt-3">
+            <nav>
+              <ul className="pagination">
+                <li
+                  className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </button>
+                </li>
+
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <li
+                    key={i + 1}
+                    className={`page-item ${
+                      currentPage === i + 1 ? "active" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  </li>
+                ))}
+
+                <li
+                  className={`page-item ${
+                    currentPage === totalPages ? "disabled" : ""
+                  }`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
+
         {/* Quotation Modal */}
         <Modal
           show={showModal}
@@ -918,7 +1023,6 @@ export default function Quotations() {
             setCurrentQuotation(null);
             resetForm();
           }}
-          size="xl"
           fullscreen
           centered
         >
@@ -1043,6 +1147,7 @@ export default function Quotations() {
                 handleGoodsChange={handleGoodsChange}
                 currentQuotation={currentQuotation}
                 isEditing={true}
+                onAddItem={handleAddItem} // Pass the handler here
               />
 
               <div className="bg-light p-3 rounded">
@@ -1068,9 +1173,7 @@ export default function Quotations() {
                 </div>
                 <div className="row">
                   <div className="col-md-12">
-                    <h5>
-                      Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
-                    </h5>
+                    <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
                   </div>
                 </div>
               </div>
