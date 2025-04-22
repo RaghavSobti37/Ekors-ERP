@@ -53,13 +53,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ----------------------------
-// Basic route
-app.get('/', (req, res) => {
-  res.send('API is running');
-});
-
-// ----------------------------
 // User routes
 app.get('/users', async (req, res) => {
   try {

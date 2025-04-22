@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
-import Navbar from "./components/Navbar.jsx";
-import { useAuth } from "./context/AuthContext";
+import Navbar from "../components/Navbar.jsx";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import ItemSearchComponent from "../components/ItemSearch";
 import {
   PDFViewer,
   PDFDownloadLink,
@@ -160,11 +161,13 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
+
 const GoodsTable = ({
   goods,
   handleGoodsChange,
   currentQuotation,
   isEditing,
+  onAddItem,
 }) => {
   return (
     <div className="table-responsive">
@@ -246,7 +249,18 @@ const GoodsTable = ({
             </tr>
           ))}
         </tbody>
-      </Table>
+      </Table>  
+      
+      {/* Add Item Search Component for editing mode */}
+      {isEditing && (
+        <div className="mb-3">
+          <h6>Search and Add Items</h6>
+          <ItemSearchComponent 
+  onItemSelect={onAddItem}
+  placeholder="Search items to add to quotation..."
+/>
+        </div>
+      )}
     </div>
   );
 };
@@ -449,6 +463,35 @@ export default function Quotations() {
     setQuotationData({
       ...quotationData,
       goods: newGoods,
+    });
+  };
+
+  const handleAddItem = (item) => {
+    const newGoods = [
+      ...quotationData.goods,
+      {
+        srNo: quotationData.goods.length + 1,
+        description: item.name,
+        hsnSacCode: item.hsnCode || "",
+        quantity: 1,
+        price: item.price,
+        amount: item.price, // quantity * price (quantity is 1 initially)
+      },
+    ];
+  
+    // Calculate totals
+    const totalQuantity = newGoods.reduce((sum, item) => sum + Number(item.quantity), 0);
+    const totalAmount = newGoods.reduce((sum, item) => sum + Number(item.amount), 0);
+    const gstAmount = totalAmount * 0.18;
+    const grandTotal = totalAmount + gstAmount;
+  
+    setQuotationData({
+      ...quotationData,
+      goods: newGoods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
     });
   };
 
@@ -1039,11 +1082,12 @@ export default function Quotations() {
                 Add Item
               </Button>
               <GoodsTable
-                goods={quotationData.goods}
-                handleGoodsChange={handleGoodsChange}
-                currentQuotation={currentQuotation}
-                isEditing={true}
-              />
+  goods={quotationData.goods}
+  handleGoodsChange={handleGoodsChange}
+  currentQuotation={currentQuotation}
+  isEditing={true}
+  onAddItem={handleAddItem} // Pass the handler here
+/>
 
               <div className="bg-light p-3 rounded">
                 <div className="row">

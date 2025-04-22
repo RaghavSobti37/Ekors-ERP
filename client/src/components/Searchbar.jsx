@@ -1,33 +1,28 @@
-import React, { useState } from "react";
-import "./SearchBar.css";
-import { FaSearch } from "react-icons/fa";
+import React from "react";
+import { Form, Button } from "react-bootstrap";
 
-export default function SearchBar() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const companies = ["Tesla", "Apple", "Microsoft", "Amazon", "Google"];
+const SearchBar = ({ searchTerm, setSearchTerm, onAddNew, buttonText }) => {
+  return (
+    <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
+      <Form.Control
+        type="search"
+        placeholder="Search here"
+        className="me-2"
+        aria-label="Search"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{
+          borderRadius: "20px",
+          padding: "8px 20px",
+          border: "1px solid #ced4da",
+          boxShadow: "none",
+        }}
+      />
+      <Button variant="primary" onClick={onAddNew}>
+        {buttonText || "Add New"}
+      </Button>
+    </div>
+  );
+};
 
-    const filtered = companies.filter((company) =>
-        company.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return (
-        <div className="top-search-bar">
-            <div className="search-container">
-                <input
-                    type="text"
-                    placeholder="Search by Company Name"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <FaSearch className="search-icon" />
-                {searchTerm && filtered.length > 0 && (
-                    <ul className="search-results">
-                        {filtered.map((company, index) => (
-                            <li key={index}>{company}</li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        </div>
-    );
-}
+export default SearchBar;

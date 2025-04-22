@@ -3,7 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Signup from './Signup.jsx';
 import Login from './Login.jsx';
 import Tickets from "./Tickets.jsx";
-import Quotations from "./Quotations";
+import Quotations from "./pages/Quotations.jsx";
 import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
