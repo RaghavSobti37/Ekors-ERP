@@ -64,8 +64,6 @@ const handleQuotationUpsert = async (req, res) => {
   }
 };
 
-const { getNextSequence } = require('../utils/counterUtils');
-
 router.get('/next-number', auth, async (req, res) => {
   try {
     // Get next globally unique sequence number

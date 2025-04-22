@@ -19,9 +19,6 @@ const storage = multer.diskStorage({
   }
 });
 
-// In your tickets.js route file
-const { getNextSequence } = require('../utils/counterUtils');
-
 router.get('/next-number', auth, async (req, res) => {
   try {a
     // Get next globally unique sequence number for tickets
