@@ -8,7 +8,6 @@ import Logtime from "./Logtime";
 import History from "./History";
 import Challan from "./Challan";
 import Items from "./Items.jsx";
-import Searchbar from "./components/Searchbar";
 import PurchaseHistory from './PurchaseHistory.jsx';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -81,8 +80,8 @@ function App() {
               <PurchaseHistory />
             </ProtectedRoute>
           } />
-
-          <Route path='/searchbar' element={<Searchbar />} />
+  {/* 
+            <Route path='/searchbar' element={<Searchbar />} /> */}
           <Route path='/unauthorized' element={<Unauthorized />} />
 
         </Routes>
