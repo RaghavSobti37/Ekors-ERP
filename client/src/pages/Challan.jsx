@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import Navbar from "./components/Navbar";
-import "./css/Challan.css";
+import Navbar from "../components/Navbar";
+import "../css/Challan.css";
 import axios from "axios";
 
 const API_URL = "http://localhost:3000/api/challans";

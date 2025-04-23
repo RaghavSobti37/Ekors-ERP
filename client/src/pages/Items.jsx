@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import "./css/Items.css";
-import Navbar from "./components/Navbar.jsx";
+import "../css/Items.css";
+import Navbar from "../components/Navbar.jsx";
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {

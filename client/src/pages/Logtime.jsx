@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import "./css/Logtime.css";
-import Navbar from "./components/Navbar.jsx";
+import "../css/Logtime.css";
+import Navbar from "../components/Navbar.jsx";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function Logtime() {
   const [logData, setLogData] = useState([]);
