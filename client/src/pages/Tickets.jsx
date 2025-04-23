@@ -592,7 +592,7 @@ export default function Dashboard() {
 
   const renderDocumentSection = () => {
     if (!documentType || !editTicket) return null;
-
+  
     return (
       <div className="mt-4 p-3 border rounded">
         <h5 className="mt-4">{documentType.toUpperCase()} Document</h5>
@@ -601,19 +601,52 @@ export default function Dashboard() {
             <PDFViewer width="100%" height="500px" className="mb-3">
               <QuotationPDF quotation={editTicket} />
             </PDFViewer>
-            <PDFDownloadLink
-              document={<QuotationPDF quotation={editTicket} />}
-              fileName={`quotation_${editTicket.quotationNumber}.pdf`}
-            >
-              {({ loading }) => (
-                <Button variant="primary" disabled={loading}>
-                  {loading ? "Generating PDF..." : "Download PDF"}
-                </Button>
-              )}
-            </PDFDownloadLink>
+            <div className="d-flex gap-2">
+              <PDFDownloadLink
+                document={<QuotationPDF quotation={editTicket} />}
+                fileName={`quotation_${editTicket.quotationNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    {loading ? "Generating PDF..." : "Download Quotation"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                variant="secondary"
+                onClick={() => setDocumentType(null)}
+              >
+                Close
+              </Button>
+            </div>
           </>
         )}
-        {documentType !== "quotation" && ticketData.documents?.[documentType] && (
+        {documentType === "pi" && (
+          <>
+            <PDFViewer width="100%" height="500px" className="mb-3">
+              <PIPDF ticket={editTicket} />
+            </PDFViewer>
+            <div className="d-flex gap-2">
+              <PDFDownloadLink
+                document={<PIPDF ticket={editTicket} />}
+                fileName={`pi_${editTicket.quotationNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    {loading ? "Generating PDF..." : "Download PI"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                variant="secondary"
+                onClick={() => setDocumentType(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </>
+        )}
+        {!["quotation", "pi"].includes(documentType) && ticketData.documents?.[documentType] && (
           <div className="text-center">
             <a
               href={`http://localhost:3000/${ticketData.documents[documentType]}`}
@@ -625,13 +658,6 @@ export default function Dashboard() {
             </a>
           </div>
         )}
-        <Button
-          variant="secondary"
-          onClick={() => setDocumentType(null)}
-          className="ms-2"
-        >
-          Close
-        </Button>
       </div>
     );
   };

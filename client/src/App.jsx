@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import QuotationPDF from "./components/QuotationPDF";
+import PIPDF from "./components/PIPDF";
 import Signup from './pages/Signup.jsx';
 import Login from './pages/Login.jsx';
 import Tickets from "./pages/Tickets.jsx";
@@ -37,6 +39,8 @@ function App() {
           {/* Public Routes */}
           <Route path='/register' element={<Signup />} />
           <Route path='/login' element={<Login />} />
+          <Route path='/quotationpdf' element={<QuotationPDF />} />
+          <Route path='/pipdf' element={<PIPDF />} />
 
           {/* Protected Routes */}
           <Route path='/tickets' element={
