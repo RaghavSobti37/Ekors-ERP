@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import "./css/Ticket.css";
 import {
   Modal,
   Button,
@@ -1053,7 +1054,7 @@ const fetchTickets = async () => {
                     </Form.Group>
                   </div>
                 </Form.Group>
-                
+
                 {/* <Form.Group className="mb-3 col-md-6">
                   <Form.Label>Billing Address <span className="text-danger">*</span></Form.Label>
                   <Form.Control
