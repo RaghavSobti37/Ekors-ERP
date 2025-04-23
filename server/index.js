@@ -171,6 +171,14 @@ app.use('/api/logtime', logtimeRoutes);
 app.use('/api/challans', challanRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use(authRoutes);
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await userModel.find({}, 'firstname lastname email role');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching users' });
+  }
+});
 
 // ----------------------------
 // Start server

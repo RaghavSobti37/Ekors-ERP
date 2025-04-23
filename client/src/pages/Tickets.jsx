@@ -145,17 +145,140 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
   );
 };
 
+const UserSearchComponent = ({ onUserSelect }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getAuthToken = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      return userData?.token || null;
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() !== "") {
+      const filtered = users.filter(
+        (user) =>
+          user.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+      setShowDropdown(true);
+    } else {
+      setFilteredUsers([]);
+      setShowDropdown(false);
+    }
+  }, [searchTerm, users]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await axios.get("http://localhost:3000/api/users", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setUsers(response.data);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      setError("Failed to load users. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUserClick = (user) => {
+    onUserSelect(user);
+    setSearchTerm("");
+    setShowDropdown(false);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowDropdown(false), 200);
+  };
+
+  return (
+    <div className="user-search-component">
+      {error && <div className="search-error">{error}</div>}
+      
+      <div className="search-input-container">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search user by name or email..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={handleBlur}
+          disabled={loading}
+        />
+        {loading && <div className="search-loading">Loading...</div>}
+      </div>
+
+      {showDropdown && filteredUsers.length > 0 && (
+        <div className="search-suggestions-dropdown">
+          {filteredUsers.map((user) => (
+            <div
+              key={user._id}
+              className="search-suggestion-item"
+              onClick={() => handleUserClick(user)}
+            >
+              <strong>{user.firstname} {user.lastname}</strong>
+              <span className="text-muted"> - {user.email}</span>
+              <br />
+              <small>
+                Role: {user.role}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showDropdown && searchTerm && filteredUsers.length === 0 && (
+        <div className="search-no-results">No users found</div>
+      )}
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [editTicket, setEditTicket] = useState(null);
+  const [transferTicket, setTransferTicket] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [documentType, setDocumentType] = useState(null);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Number of items per page
+  const [itemsPerPage] = useState(5);
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
@@ -233,7 +356,6 @@ export default function Dashboard() {
     }
   };
 
-
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
 
@@ -279,7 +401,6 @@ export default function Dashboard() {
     );
   }, [sortedTickets, searchTerm]);
 
-  // Get current items for pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredTickets.slice(indexOfFirstItem, indexOfLastItem);
@@ -393,6 +514,16 @@ export default function Dashboard() {
     setShowEditModal(true);
   };
 
+  const handleTransfer = (ticket) => {
+    setTransferTicket(ticket);
+    setSelectedUser(null);
+    setShowTransferModal(true);
+  };
+
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+  };
+
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
     setShowStatusDropdown(false);
@@ -427,6 +558,35 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error updating ticket:", error);
       setError(`Failed to update ticket: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleTransferTicket = async () => {
+    if (!selectedUser) {
+      setError("Please select a user to transfer the ticket to");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
+        { userId: selectedUser._id },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getAuthToken()}`
+          }
+        }
+      );
+      
+      if (response.status === 200) {
+        fetchTickets();
+        setShowTransferModal(false);
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error transferring ticket:", error);
+      setError(`Failed to transfer ticket: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -533,7 +693,7 @@ export default function Dashboard() {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page when search term changes
+                setCurrentPage(1);
               }}
               style={{
                 borderRadius: "20px",
@@ -638,13 +798,22 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td>
-                      <Button
-                        variant="info"
-                        size="sm"
-                        onClick={() => handleEdit(ticket)}
-                      >
-                        Edit
-                      </Button>
+                      <div className="d-flex gap-2">
+                        <Button
+                          variant="info"
+                          size="sm"
+                          onClick={() => handleEdit(ticket)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          onClick={() => handleTransfer(ticket)}
+                        >
+                          Transfer
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -999,6 +1168,44 @@ export default function Dashboard() {
             </Button>
             <Button variant="primary" onClick={handleUpdateTicket}>
               Update Ticket
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Transfer Ticket Modal */}
+        <Modal
+          show={showTransferModal}
+          onHide={() => setShowTransferModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="mb-3">
+              <h5>Search User to Transfer To</h5>
+              <UserSearchComponent onUserSelect={handleUserSelect} />
+            </div>
+            
+            {selectedUser && (
+              <div className="selected-user-info p-3 border rounded mt-3">
+                <h6>Selected User:</h6>
+                <p><strong>Name:</strong> {selectedUser.firstname} {selectedUser.lastname}</p>
+                <p><strong>Email:</strong> {selectedUser.email}</p>
+                <p><strong>Role:</strong> {selectedUser.role}</p>
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowTransferModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleTransferTicket}
+              disabled={!selectedUser}
+            >
+              Transfer Ticket
             </Button>
           </Modal.Footer>
         </Modal>

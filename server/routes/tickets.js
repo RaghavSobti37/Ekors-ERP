@@ -169,6 +169,52 @@ router.post('/:id/documents', auth, upload.single('document'), async (req, res) 
   }
 });
 
+router.post('/:id/transfer', auth, async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+    
+    const user = await User.findById(req.body.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Update the ticket with the new assigned user
+    ticket.assignedTo = req.body.userId;
+    
+    // Optional: Add a transfer history if you want to track transfers
+    if (!ticket.transferHistory) {
+      ticket.transferHistory = [];
+    }
+    
+    ticket.transferHistory.push({
+      from: ticket.assignedTo || 'unassigned',
+      to: req.body.userId,
+      transferredBy: req.user.id,
+      transferredAt: new Date()
+    });
+    
+    // Update the ticket status and add a note about the transfer
+    ticket.transferNotes = ticket.transferNotes || [];
+    ticket.transferNotes.push({
+      note: `Transferred to ${user.firstname} ${user.lastname}`,
+      date: new Date(),
+      userId: req.user.id
+    });
+    
+    // Save the updated ticket
+    const updatedTicket = await ticket.save();
+    
+    // Return the updated ticket to the client
+    res.status(200).json(updatedTicket);
+  } catch (error) {
+    console.error('Error transferring ticket:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 router.get('/next-number', authMiddleware, ticketController.generateTicketNumber);
 router.get('/check/:quotationNumber', authMiddleware, ticketController.checkExistingTicket);
 
