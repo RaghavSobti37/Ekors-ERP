@@ -6,6 +6,8 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ItemSearchComponent from "../components/ItemSearch";
 import "../css/Quotation.css";
+import "../css/Items.css";
+
 import {
   PDFViewer,
   PDFDownloadLink,
@@ -1377,7 +1379,7 @@ export default function Quotations() {
         <Modal
           show={showPdfModal}
           onHide={() => setShowPdfModal(false)}
-          size="xl"
+          dialogClassName="modal-fullscreen"
         >
           <Modal.Header closeButton>
             <Modal.Title>
