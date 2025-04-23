@@ -766,10 +766,10 @@ export default function Quotations() {
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-
+  
     try {
       setIsLoading(true);
-
+  
       const ticketExists = await checkExistingTicket(
         ticketData.quotationNumber
       );
@@ -778,15 +778,40 @@ export default function Quotations() {
         setIsLoading(false);
         return;
       }
-
+  
       const token = getAuthToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
-
+  
+      // Get current user info
+      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      if (!userData) {
+        throw new Error("User data not found");
+      }
+  
+      // Prepare complete ticket data
+      const completeTicketData = {
+        ...ticketData,
+        createdBy: userData.id,
+        statusHistory: [{
+          status: ticketData.status,
+          changedAt: new Date(),
+          changedBy: userData.id
+        }],
+        documents: {
+          quotation: "",
+          po: "",
+          pi: "",
+          challan: "",
+          packingList: "",
+          feedback: ""
+        }
+      };
+  
       const response = await axios.post(
         "http://localhost:3000/api/tickets",
-        ticketData,
+        completeTicketData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -794,10 +819,16 @@ export default function Quotations() {
           },
         }
       );
-
+  
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
+        
+        // Show success message
+        alert(`Ticket ${response.data.ticketNumber} created successfully!`);
+        
+        // Optionally navigate to tickets page
+        navigate('/tickets');
       }
     } catch (error) {
       console.error("Error creating ticket:", error);

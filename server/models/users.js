@@ -8,7 +8,11 @@ const userSchema = new mongoose.Schema({
   phone: String,
   password: String,
   role: { type: String, enum: ["user", "admin", "super-admin"], default: "user" },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  tickets: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Ticket'
+  }]
 });
 
 // Hash password before saving
