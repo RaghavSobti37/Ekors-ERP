@@ -15,7 +15,6 @@ import {
   PDFDownloadLink,
 } from "@react-pdf/renderer";
 import QuotationPDF from "../components/QuotationPDF";
-import ItemSearchComponent from "../components/ItemSearch";
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) return <span>↕️</span>;
@@ -26,18 +25,138 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
   );
 };
 
+const ItemSearchComponent = ({ onItemSelect, index }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getAuthToken = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      return userData?.token || null;
+    } catch (e) {
+      console.error('Failed to parse user data:', e);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() !== "") {
+      const filtered = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.hsnCode &&
+            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredItems(filtered);
+      setShowDropdown(true);
+    } else {
+      setFilteredItems([]);
+      setShowDropdown(false);
+    }
+  }, [searchTerm, items]);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await axios.get("http://localhost:3000/api/items", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setItems(response.data);
+    } catch (err) {
+      console.error("Error fetching items:", err);
+      setError("Failed to load items. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleItemClick = (item) => {
+    onItemSelect(item, index);
+    setSearchTerm("");
+    setShowDropdown(false);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowDropdown(false), 200);
+  };
+
+  return (
+    <div className="item-search-component">
+      {error && <div className="search-error">{error}</div>}
+      
+      <div className="search-input-container">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search item by name or HSN..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={handleBlur}
+          disabled={loading}
+        />
+        {loading && <div className="search-loading">Loading...</div>}
+      </div>
+
+      {showDropdown && filteredItems.length > 0 && (
+        <div className="search-suggestions-dropdown">
+          {filteredItems.map((item) => (
+            <div
+              key={item._id}
+              className="search-suggestion-item"
+              onClick={() => handleItemClick(item)}
+            >
+              <strong>{item.name}</strong>
+              <span className="text-muted"> - ₹{item.price.toFixed(2)}</span>
+              <br />
+              <small>
+                HSN: {item.hsnCode || "N/A"}, GST: {item.gstRate || 0}%
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showDropdown && searchTerm && filteredItems.length === 0 && (
+        <div className="search-no-results">No items found</div>
+      )}
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState([]);
-  const [clients, setClients] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [editTicket, setEditTicket] = useState(null);
   const [documentType, setDocumentType] = useState(null);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const [newItemMode, setNewItemMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5); // Number of items per page
   const [ticketData, setTicketData] = useState({
-    client: "",
     companyName: "",
     quotationNumber: "",
     billingAddress: {
@@ -96,7 +215,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchTickets();
-    fetchClients();
   }, []);
 
   const fetchTickets = async () => {
@@ -115,18 +233,6 @@ export default function Dashboard() {
     }
   };
 
-  const fetchClients = async () => {
-    try {
-      const response = await axios.get("http://localhost:3000/api/clients", {
-        headers: {
-          Authorization: `Bearer ${getAuthToken()}`
-        }
-      });
-      setClients(response.data);
-    } catch (error) {
-      console.error("Failed to load clients:", error);
-    }
-  };
 
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
@@ -155,6 +261,30 @@ export default function Dashboard() {
     });
   }, [tickets, sortConfig]);
 
+  const filteredTickets = useMemo(() => {
+    if (!searchTerm) return sortedTickets;
+  
+    const term = searchTerm.toLowerCase();
+    return sortedTickets.filter(
+      (ticket) =>
+        ticket.ticketNumber?.toLowerCase().includes(term) ||
+        ticket.quotationNumber?.toLowerCase().includes(term) ||
+        ticket.companyName?.toLowerCase().includes(term) ||
+        ticket.client?.companyName?.toLowerCase().includes(term) ||
+        ticket.goods.some(
+          (item) =>
+            item.description?.toLowerCase().includes(term) ||
+            item.hsnSacCode?.toLowerCase().includes(term)
+        )
+    );
+  }, [sortedTickets, searchTerm]);
+
+  // Get current items for pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTickets.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+
   const requestSort = (key) => {
     let direction = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -164,22 +294,33 @@ export default function Dashboard() {
   };
 
   const addRow = () => {
-    setNewItemMode(true);
+    setTicketData({
+      ...ticketData,
+      goods: [
+        ...ticketData.goods,
+        {
+          srNo: ticketData.goods.length + 1,
+          description: "",
+          hsnSacCode: "",
+          quantity: 1,
+          price: 0,
+          amount: 0,
+        },
+      ],
+    });
   };
 
-  const handleItemSelect = (item) => {
-    const newItem = {
-      srNo: ticketData.goods.length + 1,
+  const handleItemSelect = (item, index) => {
+    const updatedGoods = [...ticketData.goods];
+    updatedGoods[index] = {
+      ...updatedGoods[index],
       description: item.name,
       hsnSacCode: item.hsnCode,
-      quantity: 1,
       price: item.price,
-      amount: item.price
+      amount: updatedGoods[index].quantity * item.price
     };
-    
-    const updatedGoods = [...ticketData.goods, newItem];
+
     updateTotals(updatedGoods);
-    setNewItemMode(false);
   };
 
   const handleGoodsChange = (index, field, value) => {
@@ -218,7 +359,6 @@ export default function Dashboard() {
   const handleEdit = (ticket) => {
     setEditTicket(ticket);
     setTicketData({
-      client: ticket.client?._id || "",
       companyName: ticket.companyName,
       quotationNumber: ticket.quotationNumber,
       billingAddress: ticket.billingAddress || {
@@ -255,7 +395,7 @@ export default function Dashboard() {
 
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
-    setShowStatusDropdown(false); // Close dropdown after selection
+    setShowStatusDropdown(false);
   };
 
   const handleUpdateTicket = async () => {
@@ -383,8 +523,28 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
+
+          <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
+            <Form.Control
+              type="search"
+              placeholder="Search here"
+              className="me-2"
+              aria-label="Search"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page when search term changes
+              }}
+              style={{
+                borderRadius: "20px",
+                padding: "8px 20px",
+                border: "1px solid #ced4da",
+                boxShadow: "none",
+              }}
+            />
+          </div>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
 
         <Table striped bordered hover responsive className="mt-3">
@@ -444,8 +604,8 @@ export default function Dashboard() {
                   Loading tickets...
                 </td>
               </tr>
-            ) : sortedTickets.length > 0 ? (
-              sortedTickets.map((ticket) => {
+            ) : currentItems.length > 0 ? (
+              currentItems.map((ticket) => {
                 const progressPercentage = Math.round(
                   ((statusStages.indexOf(ticket.status) + 1) /
                     statusStages.length * 100
@@ -499,14 +659,56 @@ export default function Dashboard() {
           </tbody>
         </Table>
 
+        {filteredTickets.length > itemsPerPage && (
+          <div className="d-flex justify-content-center mt-3">
+            <nav>
+              <ul className="pagination">
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </button>
+                </li>
+
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <li
+                    key={i + 1}
+                    className={`page-item ${
+                      currentPage === i + 1 ? "active" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  </li>
+                ))}
+
+                <li
+                  className={`page-item ${
+                    currentPage === totalPages ? "disabled" : ""
+                  }`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
+
         {/* Edit Ticket Modal */}
         <Modal
           show={showEditModal}
-          onHide={() => {
-            setShowEditModal(false);
-            setShowStatusDropdown(false);
-            setNewItemMode(false);
-          }}
+          onHide={() => setShowEditModal(false)}
           size="xl"
           dialogClassName="edit-modal-centered"
           centered
@@ -539,7 +741,10 @@ export default function Dashboard() {
             <div className="row mb-4">
               <Form.Group className="col-md-6">
                 <Form.Label>Update Status</Form.Label>
-                <Dropdown show={showStatusDropdown} onToggle={(isOpen) => setShowStatusDropdown(isOpen)}>
+                <Dropdown 
+                  show={showStatusDropdown} 
+                  onToggle={(isOpen) => setShowStatusDropdown(isOpen)}
+                >
                   <Dropdown.Toggle variant="primary" id="status-dropdown">
                     {ticketData.status}
                   </Dropdown.Toggle>
@@ -588,6 +793,12 @@ export default function Dashboard() {
                   required
                   type="text"
                   value={ticketData.quotationNumber}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      quotationNumber: e.target.value,
+                    })
+                  }
                   readOnly
                   disabled
                 />
@@ -645,19 +856,24 @@ export default function Dashboard() {
                 <tbody>
                   {ticketData.goods.map((item, index) => (
                     <tr key={index}>
-                      <td>{item.srNo}</td>
+                      <td className="align-middle">{item.srNo}</td>
                       <td>
-                        <Form.Control
-                          required
-                          type="text"
-                          value={item.description}
-                          readOnly
-                          disabled
-                        />
+                        {index === ticketData.goods.length - 1 && !item.description ? (
+                          <ItemSearchComponent 
+                            onItemSelect={handleItemSelect} 
+                            index={index}
+                          />
+                        ) : (
+                          <Form.Control
+                            type="text"
+                            value={item.description}
+                            readOnly
+                            disabled
+                          />
+                        )}
                       </td>
                       <td>
                         <Form.Control
-                          required
                           type="text"
                           value={item.hsnSacCode}
                           readOnly
@@ -677,7 +893,6 @@ export default function Dashboard() {
                       </td>
                       <td>
                         <Form.Control
-                          required
                           type="number"
                           min="0"
                           step="0.01"
@@ -694,24 +909,9 @@ export default function Dashboard() {
                 </tbody>
               </Table>
             </div>
-            
-            {newItemMode ? (
-              <div className="mb-3">
-                <h6>Search and Select Item</h6>
-                <ItemSearchComponent onItemSelect={handleItemSelect} />
-                <Button 
-                  variant="outline-secondary" 
-                  className="mt-2" 
-                  onClick={() => setNewItemMode(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline-primary" onClick={addRow} className="mb-3">
-                + Add Item
-              </Button>
-            )}
+            <Button variant="outline-primary" onClick={addRow} className="mb-3">
+              + Add Item
+            </Button>
 
             {/* Totals Section */}
             <div className="bg-light p-3 rounded">
