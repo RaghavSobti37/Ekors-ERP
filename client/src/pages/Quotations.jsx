@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import ItemSearchComponent from "../components/ItemSearch";
 import QuotationPDF from "../components/QuotationPDF";
 import CreateTicketModal from "../components/CreateTicketModal";
+import "../css/Quotation.css";
 import "../css/Items.css";
 
 import {
@@ -18,6 +19,159 @@ import {
   View,
   StyleSheet,
 } from "@react-pdf/renderer";
+
+const fullScreenModalStyle = {
+  position: 'fixed',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '95vw',
+  height: '95vh',
+  maxWidth: 'none',
+  margin: 0,
+  padding: 0,
+  overflow: 'auto'
+};
+
+
+
+// PDF Document Styles
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: "Helvetica",
+    fontSize: 11,
+  },
+  header: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+  },
+  section: {
+    marginBottom: 15,
+  },
+  table: {
+    display: "table",
+    width: "auto",
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#000",
+  },
+  tableRow: {
+    flexDirection: "row",
+  },
+  tableColHeader: {
+    width: "25%",
+    fontWeight: "bold",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  tableCol: {
+    width: "25%",
+    border: "1px solid #000",
+    padding: 5,
+    textAlign: "center",
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 5,
+    fontWeight: "bold",
+  },
+  footer: {
+    marginTop: 20,
+    textAlign: "center",
+    fontSize: 10,
+    color: "red",
+  },
+
+
+});
+
+// Quotation PDF Template
+const QuotationTemplate = ({ quotation }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <Text style={pdfStyles.header}>Quotation</Text>
+
+      <View style={pdfStyles.section}>
+        <Text>Quotation Number: {quotation.referenceNumber}</Text>
+        <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+        <Text>
+          Validity Date: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>To:</Text>
+        <Text>{quotation.client.companyName}</Text>
+        <Text>GST: {quotation.client.gstNumber}</Text>
+      </View>
+
+      <View style={pdfStyles.table}>
+        <View style={[pdfStyles.tableRow, { backgroundColor: "#f0f0f0" }]}>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>S.No</Text>
+          <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+            Description
+          </Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>HSN/SAC</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Qty</Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>Rate</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Amount</Text>
+        </View>
+
+        {quotation.goods.map((item, index) => (
+          <View style={pdfStyles.tableRow} key={index}>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {index + 1}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+              {item.description}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              {item.hsnSacCode}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {item.quantity}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              ₹{item.price.toFixed(2)}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              ₹{item.amount.toFixed(2)}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={pdfStyles.totalRow}>
+        <Text>Sub Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>GST (18%): ₹{quotation.gstAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>Grand Total: ₹{quotation.grandTotal.toFixed(2)}</Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>Terms & Conditions:</Text>
+        <Text>- Payment: 100% advance</Text>
+        <Text>- Delivery: Within {quotation.dispatchDays} days</Text>
+        <Text>
+          - Validity: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.footer}>
+        <Text>For {quotation.client.companyName}</Text>
+        <Text>Authorized Signatory</Text>
+      </View>
+    </Page>
+  </Document>
+);
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
@@ -243,8 +397,8 @@ export default function Quotations() {
       console.error("Error fetching quotations:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to load quotations. Please try again."
+        error.message ||
+        "Failed to load quotations. Please try again."
       );
 
       if (error.response?.status === 401) {
@@ -649,8 +803,8 @@ export default function Quotations() {
       console.error("Error creating ticket:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to create ticket. Please try again."
+        error.message ||
+        "Failed to create ticket. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -843,9 +997,8 @@ export default function Quotations() {
                 {Array.from({ length: totalPages }, (_, i) => (
                   <li
                     key={i + 1}
-                    className={`page-item ${
-                      currentPage === i + 1 ? "active" : ""
-                    }`}
+                    className={`page-item ${currentPage === i + 1 ? "active" : ""
+                      }`}
                   >
                     <button
                       className="page-link"
@@ -857,9 +1010,8 @@ export default function Quotations() {
                 ))}
 
                 <li
-                  className={`page-item ${
-                    currentPage === totalPages ? "disabled" : ""
-                  }`}
+                  className={`page-item ${currentPage === totalPages ? "disabled" : ""
+                    }`}
                 >
                   <button
                     className="page-link"
@@ -881,177 +1033,179 @@ export default function Quotations() {
             setCurrentQuotation(null);
             resetForm();
           }}
-
-          dialogClassName="modal-fullscreen"
+          dialogClassName="custom-modal"
+          centered
         >
-          <Modal.Header closeButton>
+          <Modal.Header closeButton style={{ borderBottom: '1px solid #dee2e6' }}>
             <Modal.Title>
               {currentQuotation ? "Edit Quotation" : "Create New Quotation"}
             </Modal.Title>
           </Modal.Header>
-          <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
-            <Modal.Body>
-              <div className="row">
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>Date*</Form.Label>
-                  <Form.Control
-                    required
-                    type="date"
-                    name="date"
-                    value={quotationData.date}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>Reference Number</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="referenceNumber"
-                    value={quotationData.referenceNumber}
-                    readOnly
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>Validity Date*</Form.Label>
-                  <Form.Control
-                    required
-                    type="date"
-                    name="validityDate"
-                    value={quotationData.validityDate}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </div>
-
-              <div className="row">
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>Dispatch Days*</Form.Label>
-                  <Form.Control
-                    required
-                    type="number"
-                    min="1"
-                    name="dispatchDays"
-                    value={quotationData.dispatchDays}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>Order Issued By*</Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    name="orderIssuedBy"
-                    value={quotationData.orderIssuedBy}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </div>
-
-              <h5>Client Details</h5>
-              <div className="row">
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>Company Name*</Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    name="client.companyName"
-                    value={quotationData.client.companyName}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>GST Number*</Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    name="client.gstNumber"
-                    value={quotationData.client.gstNumber}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </div>
-              <div className="row">
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>Email</Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="client.email"
-                    value={quotationData.client.email}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>Phone</Form.Label>
-                  <Form.Control
-                    type="tel"
-                    name="client.phone"
-                    value={quotationData.client.phone}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-              </div>
-
-              <h5>Goods Details</h5>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={addGoodsRow}
-                className="mb-3"
-              >
-                Add Item
-              </Button>
-              <GoodsTable
-                goods={quotationData.goods}
-                handleGoodsChange={handleGoodsChange}
-                currentQuotation={currentQuotation}
-                isEditing={true}
-                onAddItem={handleAddItem} // Pass the handler here
-              />
-
-              <div className="bg-light p-3 rounded">
+          <div style={fullScreenModalStyle}>
+            <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
+              <Modal.Body>
                 <div className="row">
-                  <div className="col-md-4">
-                    <p>
-                      Total Quantity:{" "}
-                      <strong>{quotationData.totalQuantity}</strong>
-                    </p>
-                  </div>
-                  <div className="col-md-4">
-                    <p>
-                      Total Amount:{" "}
-                      <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
-                    </p>
-                  </div>
-                  <div className="col-md-4">
-                    <p>
-                      GST (18%):{" "}
-                      <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
-                    </p>
-                  </div>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>Date*</Form.Label>
+                    <Form.Control
+                      required
+                      type="date"
+                      name="date"
+                      value={quotationData.date}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>Reference Number</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="referenceNumber"
+                      value={quotationData.referenceNumber}
+                      readOnly
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>Validity Date*</Form.Label>
+                    <Form.Control
+                      required
+                      type="date"
+                      name="validityDate"
+                      value={quotationData.validityDate}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                </div>
+
+                <div className="row">
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>Dispatch Days*</Form.Label>
+                    <Form.Control
+                      required
+                      type="number"
+                      min="1"
+                      name="dispatchDays"
+                      value={quotationData.dispatchDays}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>Order Issued By*</Form.Label>
+                    <Form.Control
+                      required
+                      type="text"
+                      name="orderIssuedBy"
+                      value={quotationData.orderIssuedBy}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                </div>
+
+                <h5>Client Details</h5>
+                <div className="row">
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>Company Name*</Form.Label>
+                    <Form.Control
+                      required
+                      type="text"
+                      name="client.companyName"
+                      value={quotationData.client.companyName}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>GST Number*</Form.Label>
+                    <Form.Control
+                      required
+                      type="text"
+                      name="client.gstNumber"
+                      value={quotationData.client.gstNumber}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
                 </div>
                 <div className="row">
-                  <div className="col-md-12">
-                    <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>Email</Form.Label>
+                    <Form.Control
+                      type="email"
+                      name="client.email"
+                      value={quotationData.client.email}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>Phone</Form.Label>
+                    <Form.Control
+                      type="tel"
+                      name="client.phone"
+                      value={quotationData.client.phone}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                </div>
+
+                <h5>Goods Details</h5>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={addGoodsRow}
+                  className="mb-3"
+                >
+                  Add Item
+                </Button>
+                <GoodsTable
+                  goods={quotationData.goods}
+                  handleGoodsChange={handleGoodsChange}
+                  currentQuotation={currentQuotation}
+                  isEditing={true}
+                  onAddItem={handleAddItem} // Pass the handler here
+                />
+
+                <div className="bg-light p-3 rounded">
+                  <div className="row">
+                    <div className="col-md-4">
+                      <p>
+                        Total Quantity:{" "}
+                        <strong>{quotationData.totalQuantity}</strong>
+                      </p>
+                    </div>
+                    <div className="col-md-4">
+                      <p>
+                        Total Amount:{" "}
+                        <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
+                    <div className="col-md-4">
+                      <p>
+                        GST (18%):{" "}
+                        <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="col-md-12">
+                      <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowModal(false);
-                  setCurrentQuotation(null);
-                  resetForm();
-                }}
-              >
-                Close
-              </Button>
-              <Button variant="primary" type="submit">
-                {currentQuotation ? "Update Quotation" : "Save Quotation"}
-              </Button>
-            </Modal.Footer>
-          </Form>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setCurrentQuotation(null);
+                    resetForm();
+                  }}
+                >
+                  Close
+                </Button>
+                <Button variant="primary" type="submit">
+                  {currentQuotation ? "Update Quotation" : "Save Quotation"}
+                </Button>
+              </Modal.Footer>
+            </Form>
+          </div>  
         </Modal>
 
         {/* Create Ticket Modal */}
