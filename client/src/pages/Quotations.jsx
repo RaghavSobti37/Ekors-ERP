@@ -5,6 +5,8 @@ import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ItemSearchComponent from "../components/ItemSearch";
+import QuotationPDF from "../components/QuotationPDF";
+import CreateTicketModal from "../components/CreateTicketModal";
 import "../css/Quotation.css";
 import "../css/Items.css";
 
@@ -270,7 +272,6 @@ const GoodsTable = ({
         </tbody>
       </Table>
 
-      {/* Add Item Search Component for editing mode */}
       {isEditing && (
         <div className="mb-3">
           <h6>Search and Add Items</h6>
@@ -363,8 +364,8 @@ export default function Quotations() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: "",
-    shippingAddress: "",
+    billingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
+    shippingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -717,21 +718,12 @@ export default function Quotations() {
   const handleCreateTicket = async (quotation) => {
     const ticketNumber = await generateTicketNumber();
 
-    const companyInfo = quotation.client?.companyName || "";
-    const gstInfo = quotation.client?.gstNumber
-      ? `GST: ${quotation.client.gstNumber}`
-      : "";
-    const emailInfo = quotation.client?.email
-      ? `Email: ${quotation.client.email}`
-      : "";
-    const phoneInfo = quotation.client?.phone
-      ? `Phone: ${quotation.client.phone}`
-      : "";
-
     setTicketData({
       ticketNumber,
       companyName: quotation.client?.companyName || "",
       quotationNumber: quotation.referenceNumber,
+      billingAddress: ["", "", "", "", ""],
+      shippingAddress: ["", "", "", "", ""],
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -1217,163 +1209,15 @@ export default function Quotations() {
         </Modal>
 
         {/* Create Ticket Modal */}
-        <Modal
+        <CreateTicketModal
           show={showTicketModal}
           onHide={() => setShowTicketModal(false)}
-          dialogClassName="custom-modal"
-          centered
-        >
-          <Modal.Header closeButton style={{ borderBottom: '1px solid #dee2e6' }}>
-            <Modal.Title>Create Ticket from Quotation</Modal.Title>
-          </Modal.Header>
-          <div style={fullScreenModalStyle}>
-            <Form onSubmit={handleTicketSubmit}>
-              <Modal.Body>
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Company Name*</Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      value={ticketData.companyName}
-                      onChange={(e) =>
-                        setTicketData({
-                          ...ticketData,
-                          companyName: e.target.value,
-                        })
-                      }
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Ticket Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={ticketData.ticketNumber}
-                      readOnly={true}
-                      disabled={true}
-                    />
-                    <Form.Text className="text-muted">
-                      Auto-generated unique ticket number
-                    </Form.Text>
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Quotation Number*</Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      value={ticketData.quotationNumber}
-                      readOnly
-                      disabled
-                    />
-                    <Form.Text className="text-muted">
-                      Auto-generated unique quotation reference number
-                    </Form.Text>
-                  </Form.Group>
-                </div>
-
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Billing Address*</Form.Label>
-                    <Form.Control
-                      required
-                      as="textarea"
-                      rows={3}
-                      value={ticketData.billingAddress}
-                      onChange={(e) =>
-                        setTicketData({
-                          ...ticketData,
-                          billingAddress: e.target.value,
-                        })
-                      }
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Shipping Address*</Form.Label>
-                    <Form.Control
-                      required
-                      as="textarea"
-                      rows={3}
-                      value={ticketData.shippingAddress}
-                      onChange={(e) =>
-                        setTicketData({
-                          ...ticketData,
-                          shippingAddress: e.target.value,
-                        })
-                      }
-                    />
-                  </Form.Group>
-                </div>
-
-                <h5 className="mt-4">Goods Details</h5>
-                <div className="table-responsive">
-                  <Table bordered className="mb-3">
-                    <thead>
-                      <tr>
-                        <th>Sr No.</th>
-                        <th>Description</th>
-                        <th>HSN/SAC</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th>Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ticketData.goods.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.srNo}</td>
-                          <td>{item.description}</td>
-                          <td>{item.hsnSacCode}</td>
-                          <td>{item.quantity}</td>
-                          <td>₹{item.price.toFixed(2)}</td>
-                          <td>₹{item.amount.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-
-                <div className="bg-light p-3 rounded">
-                  <div className="row">
-                    <div className="col-md-4">
-                      <p>
-                        Total Quantity:{" "}
-                        <strong>{ticketData.totalQuantity}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        Total Amount:{" "}
-                        <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        GST (18%):{" "}
-                        <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-md-12">
-                      <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
-                    </div>
-                  </div>
-                </div>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowTicketModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit">
-                  Create Ticket
-                </Button>
-              </Modal.Footer>
-            </Form>
-          </div>
-        </Modal>
+          ticketData={ticketData}
+          setTicketData={setTicketData}
+          handleTicketSubmit={handleTicketSubmit}
+          isLoading={isLoading}
+          error={error}
+        />
 
         {/* PDF View Modal */}
         <Modal
@@ -1386,22 +1230,17 @@ export default function Quotations() {
               Quotation PDF - {currentQuotation?.referenceNumber}
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body
-            className="pdf-viewer-container"
-            style={{ height: "600px" }}
-          >
+          <Modal.Body className="pdf-viewer-container" style={{ height: "600px" }}>
             {currentQuotation && (
               <>
                 <div style={{ height: "500px", width: "100%" }}>
                   <PDFViewer width="100%" height="100%" className="mb-3">
-                    <QuotationTemplate quotation={currentQuotation} />
+                    <QuotationPDF quotation={currentQuotation} />
                   </PDFViewer>
                 </div>
                 <div className="d-flex justify-content-center gap-2 mt-3">
                   <PDFDownloadLink
-                    document={
-                      <QuotationTemplate quotation={currentQuotation} />
-                    }
+                    document={<QuotationPDF quotation={currentQuotation} />}
                     fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
                   >
                     {({ loading }) => (

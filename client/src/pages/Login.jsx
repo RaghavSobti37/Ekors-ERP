@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
 import axios from "axios";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; // ✅ Import eye icons
-import { useAuth } from "./context/AuthContext"; // Adjust path if needed
+import { useAuth } from "../context/AuthContext"; // Adjust path if needed
 
 export default function Login() {
   const [email, setEmail] = useState("");

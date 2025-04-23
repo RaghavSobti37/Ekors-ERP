@@ -10,11 +10,19 @@ const goodsSchema = new mongoose.Schema({
 });
 
 const ticketSchema = new mongoose.Schema({
-  ticketNumber: { type: String, unique: true },
+  ticketNumber: { type: String, unique: true, required: true },
   companyName: { type: String, required: true },
   quotationNumber: { type: String, required: true },
-  billingAddress: { type: String, required: true },
-  shippingAddress: { type: String, required: true },
+  billingAddress: {
+    // Changed to array to match frontend implementation
+    type: [String],
+    validate: [arrayLimit, 'Billing address needs 5 fields']
+  },
+  shippingAddress: {
+    // Changed to array to match frontend implementation
+    type: [String], 
+    validate: [arrayLimit, 'Shipping address needs 5 fields']
+  },
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
   totalAmount: { type: Number, required: true },
@@ -53,15 +61,24 @@ const ticketSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Pre-save hook to generate ticket number
-ticketSchema.pre('save', async function(next) {
-  if (!this.ticketNumber) {
-    const count = await this.constructor.countDocuments();
-    this.ticketNumber = `T-${(count + 1).toString().padStart(6, '0')}`;
+// Validation function for address arrays
+function arrayLimit(val) {
+  return val.length === 5;  // Expecting [address1, address2, state, city, pincode]
+}
+
+// Add a pre-save hook to automatically populate the status history
+ticketSchema.pre('save', function(next) {
+  // If this is a new document or the status has changed
+  if (this.isNew || this.isModified('status')) {
+    this.statusHistory.push({
+      status: this.status,
+      changedAt: new Date()
+    });
   }
   next();
 });
 
-ticketSchema.index({ quotationNumber: 1, user: 1 }, { unique: true });
+// Create a unique compound index to ensure one ticket per quotation
+ticketSchema.index({ quotationNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
