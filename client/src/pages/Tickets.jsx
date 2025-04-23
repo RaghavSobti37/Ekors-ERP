@@ -347,29 +347,18 @@ export default function Dashboard() {
       if (!token) {
         throw new Error("No authentication token found");
       }
-  
-      // Get current user ID
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
-      if (!userData) {
-        throw new Error("User data not found");
-      }
-  
-      // Fetch tickets assigned to current user or created by them
+
+      // The backend will now filter tickets by the current user based on the auth token
       const response = await axios.get("http://localhost:3000/api/tickets", {
         headers: {
           Authorization: `Bearer ${token}`
-        },
-        params: {
-          $or: [
-            { assignedTo: userData.id },
-            { createdBy: userData.id }
-          ]
         }
       });
-  
+
       setTickets(response.data);
     } catch (error) {
-      setError("Failed to load tickets");
+      const errorMsg = error.response?.data?.error || "Failed to load tickets";
+      setError(errorMsg);
       console.error("Error fetching tickets:", error);
     } finally {
       setIsLoading(false);

@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 });
 
 router.get('/next-number', auth, async (req, res) => {
-  try {a
+  try {
     // Get next globally unique sequence number for tickets
     const nextNumber = await getNextSequence('ticketNumber');
     
@@ -35,26 +35,6 @@ router.get('/next-number', auth, async (req, res) => {
 const upload = multer({ storage });
 
 // Create new ticket (protected route)
-router.post('/', auth, async (req, res) => {
-  try {
-    const ticketData = req.body;
-    ticketData.createdBy = req.user.id;
-
-    const ticket = new Ticket(ticketData);
-    await ticket.save();
-
-    // Add ticket to user's tickets array
-    await User.findByIdAndUpdate(req.user.id, {
-      $push: { tickets: ticket._id }
-    });
-
-    res.status(201).json(ticket);
-  } catch (error) {
-    console.error("Error creating ticket:", error);
-    res.status(500).json({ error: "Failed to create ticket", details: error.message });
-  }
-});
-
 router.post('/', auth, async (req, res) => {
   try {
     const ticketData = req.body;
@@ -87,12 +67,15 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Get single ticket (protected route)
+// Get single ticket (protected route) - only tickets assigned to or created by the user
 router.get('/:id', auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOne({
       _id: req.params.id,
-      createdBy: req.user.id
+      $or: [
+        { assignedTo: req.user.id },
+        { createdBy: req.user.id }
+      ]
     });
     
     if (!ticket) {
@@ -106,20 +89,23 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Update ticket (protected route)
+// Update ticket (protected route) - only tickets assigned to or created by the user
 router.put('/:id', auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOneAndUpdate(
       {
         _id: req.params.id,
-        createdBy: req.user.id
+        $or: [
+          { assignedTo: req.user.id },
+          { createdBy: req.user.id }
+        ]
       },
       req.body,
       { new: true, runValidators: true }
     );
     
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(404).json({ error: "Ticket not found or you don't have permission to update it" });
     }
     
     res.json(ticket);
@@ -129,22 +115,29 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete ticket (protected route)
+// Delete ticket (protected route) - only tickets created by the user
 router.delete('/:id', auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOneAndDelete({
       _id: req.params.id,
-      createdBy: req.user.id
+      createdBy: req.user.id // Only the creator can delete
     });
     
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(404).json({ error: "Ticket not found or you don't have permission to delete it" });
     }
     
     // Remove ticket from user's tickets array
     await User.findByIdAndUpdate(req.user.id, {
       $pull: { tickets: ticket._id }
     });
+    
+    // If assigned to someone, also remove from their array
+    if (ticket.assignedTo && ticket.assignedTo.toString() !== req.user.id.toString()) {
+      await User.findByIdAndUpdate(ticket.assignedTo, {
+        $pull: { tickets: ticket._id }
+      });
+    }
     
     res.json({ message: "Ticket deleted successfully" });
   } catch (error) {
@@ -153,7 +146,7 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Upload document (protected route)
+// Upload document (protected route) - only for tickets assigned to or created by the user
 router.post('/:id/documents', auth, upload.single('document'), async (req, res) => {
   try {
     const { documentType } = req.body;
@@ -172,14 +165,17 @@ router.post('/:id/documents', auth, upload.single('document'), async (req, res) 
     const updatedTicket = await Ticket.findOneAndUpdate(
       {
         _id: req.params.id,
-        createdBy: req.user.id
+        $or: [
+          { assignedTo: req.user.id },
+          { createdBy: req.user.id }
+        ]
       },
       { $set: update },
       { new: true }
     );
 
     if (!updatedTicket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ error: 'Ticket not found or you don\'t have permission to update it' });
     }
 
     res.json(updatedTicket);
@@ -189,17 +185,24 @@ router.post('/:id/documents', auth, upload.single('document'), async (req, res) 
   }
 });
 
+// Get all tickets (protected route) - only tickets assigned to or created by the user
 router.get('/', auth, async (req, res) => {
   try {
-    let query = {};
+    // Create base query to only show tickets assigned to or created by current user
+    const query = {
+      $or: [
+        { assignedTo: req.user.id },
+        { createdBy: req.user.id }
+      ]
+    };
     
-    // If $or parameter is provided (for assignedTo or createdBy)
-    if (req.query.$or) {
-      try {
-        query.$or = JSON.parse(req.query.$or);
-      } catch (e) {
-        console.error("Error parsing $or query:", e);
-      }
+    // Add any additional filters from request
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+    
+    if (req.query.companyName) {
+      query.companyName = { $regex: req.query.companyName, $options: 'i' };
     }
     
     const tickets = await Ticket.find(query)
@@ -216,9 +219,17 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/:id/transfer', auth, async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    // Only allow transfer of tickets that are assigned to or created by the current user
+    const ticket = await Ticket.findOne({
+      _id: req.params.id,
+      $or: [
+        { assignedTo: req.user.id },
+        { createdBy: req.user.id }
+      ]
+    });
+    
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
+      return res.status(404).json({ message: 'Ticket not found or you don\'t have permission to transfer it' });
     }
     
     const user = await User.findById(req.body.userId);
@@ -235,7 +246,7 @@ router.post('/:id/transfer', auth, async (req, res) => {
     });
     
     // Remove from previous user's tickets array if it existed
-    if (ticket.assignedTo) {
+    if (ticket.assignedTo && ticket.assignedTo.toString() !== req.body.userId.toString()) {
       await User.findByIdAndUpdate(ticket.assignedTo, {
         $pull: { tickets: ticket._id }
       });
