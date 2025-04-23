@@ -1,0 +1,102 @@
+/* Attractive Full-Screen Modal Styles */
+.custom-modal {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    height: 95vh !important;
+    margin: 0 auto;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  
+  .custom-modal .modal-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+  
+  .custom-modal .modal-header {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    padding: 1.5rem;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .custom-modal .modal-title {
+    font-weight: 600;
+    font-size: 1.5rem;
+  }
+  
+  .custom-modal .modal-body {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+  }
+  
+  .custom-modal .modal-footer {
+    background-color: white;
+    padding: 1.5rem;
+    border-top: 1px solid #e9ecef;
+    border-radius: 0 0 12px 12px;
+  }
+  
+  .custom-modal .close {
+    color: white;
+    text-shadow: none;
+    opacity: 0.8;
+    font-size: 1.5rem;
+  }
+  
+  .custom-modal .close:hover {
+    opacity: 1;
+    color: white;
+  }
+  
+  /* Smooth scroll for modal content */
+  .custom-modal .modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-modal .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+  
+  .custom-modal .modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+  }
+  
+  .custom-modal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* Gradient buttons for modal footer */
+  .modal-footer .btn {
+    border-radius: 6px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .modal-footer .btn-primary {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    border: none;
+  }
+  
+  .modal-footer .btn-secondary {
+    background: linear-gradient(135deg, #868e96 0%, #495057 100%);
+    border: none;
+    color: white;
+  }
+  
+  .modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
