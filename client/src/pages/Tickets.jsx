@@ -343,14 +343,34 @@ export default function Dashboard() {
   const fetchTickets = async () => {
     setIsLoading(true);
     try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+  
+      // Get current user ID
+      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      if (!userData) {
+        throw new Error("User data not found");
+      }
+  
+      // Fetch tickets assigned to current user or created by them
       const response = await axios.get("http://localhost:3000/api/tickets", {
         headers: {
-          Authorization: `Bearer ${getAuthToken()}`
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          $or: [
+            { assignedTo: userData.id },
+            { createdBy: userData.id }
+          ]
         }
       });
+  
       setTickets(response.data);
     } catch (error) {
       setError("Failed to load tickets");
+      console.error("Error fetching tickets:", error);
     } finally {
       setIsLoading(false);
     }
@@ -514,11 +534,11 @@ export default function Dashboard() {
     setShowEditModal(true);
   };
 
-  const handleTransfer = (ticket) => {
-    setTransferTicket(ticket);
-    setSelectedUser(null);
-    setShowTransferModal(true);
-  };
+    const handleTransfer = (ticket) => {
+      setTransferTicket(ticket);
+      setSelectedUser(null);
+      setShowTransferModal(true);
+    };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
@@ -566,7 +586,7 @@ export default function Dashboard() {
       setError("Please select a user to transfer the ticket to");
       return;
     }
-
+  
     try {
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
@@ -580,9 +600,14 @@ export default function Dashboard() {
       );
       
       if (response.status === 200) {
-        fetchTickets();
-        setShowTransferModal(false);
+        // Show success message
         setError(null);
+        // Refresh both tickets and users data
+        await fetchTickets();
+        // Close the modal
+        setShowTransferModal(false);
+        // Show success notification
+        alert(`Ticket successfully transferred to ${selectedUser.firstname} ${selectedUser.lastname}`);
       }
     } catch (error) {
       console.error("Error transferring ticket:", error);

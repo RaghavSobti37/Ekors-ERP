@@ -55,15 +55,35 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Get all tickets for user (protected route)
-router.get('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const tickets = await Ticket.find({ createdBy: req.user.id })
-      .sort({ createdAt: -1 });
-    res.json(tickets);
+    const ticketData = req.body;
+    ticketData.createdBy = req.user.id;
+    ticketData.statusHistory = [{
+      status: ticketData.status || "Quotation Sent",
+      changedAt: new Date(),
+      changedBy: req.user.id
+    }];
+
+    const ticket = new Ticket(ticketData);
+    await ticket.save();
+
+    // Add ticket to creator's tickets array
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { tickets: ticket._id }
+    });
+
+    // If assignedTo is specified, add to that user's tickets array
+    if (ticketData.assignedTo) {
+      await User.findByIdAndUpdate(ticketData.assignedTo, {
+        $addToSet: { tickets: ticket._id }
+      });
+    }
+
+    res.status(201).json(ticket);
   } catch (error) {
-    console.error("Error fetching tickets:", error);
-    res.status(500).json({ error: "Failed to fetch tickets" });
+    console.error("Error creating ticket:", error);
+    res.status(500).json({ error: "Failed to create ticket", details: error.message });
   }
 });
 
@@ -169,6 +189,31 @@ router.post('/:id/documents', auth, upload.single('document'), async (req, res) 
   }
 });
 
+router.get('/', auth, async (req, res) => {
+  try {
+    let query = {};
+    
+    // If $or parameter is provided (for assignedTo or createdBy)
+    if (req.query.$or) {
+      try {
+        query.$or = JSON.parse(req.query.$or);
+      } catch (e) {
+        console.error("Error parsing $or query:", e);
+      }
+    }
+    
+    const tickets = await Ticket.find(query)
+      .populate('assignedTo', 'firstname lastname email')
+      .populate('createdBy', 'firstname lastname email')
+      .sort({ createdAt: -1 });
+      
+    res.json(tickets);
+  } catch (error) {
+    console.error("Error fetching tickets:", error);
+    res.status(500).json({ error: "Failed to fetch tickets" });
+  }
+});
+
 router.post('/:id/transfer', auth, async (req, res) => {
   try {
     const ticket = await Ticket.findById(req.params.id);
@@ -184,31 +229,38 @@ router.post('/:id/transfer', auth, async (req, res) => {
     // Update the ticket with the new assigned user
     ticket.assignedTo = req.body.userId;
     
-    // Optional: Add a transfer history if you want to track transfers
-    if (!ticket.transferHistory) {
-      ticket.transferHistory = [];
+    // Add to the new user's tickets array
+    await User.findByIdAndUpdate(req.body.userId, {
+      $addToSet: { tickets: ticket._id }
+    });
+    
+    // Remove from previous user's tickets array if it existed
+    if (ticket.assignedTo) {
+      await User.findByIdAndUpdate(ticket.assignedTo, {
+        $pull: { tickets: ticket._id }
+      });
     }
     
+    // Add transfer history
+    ticket.transferHistory = ticket.transferHistory || [];
     ticket.transferHistory.push({
-      from: ticket.assignedTo || 'unassigned',
+      from: ticket.assignedTo || null,
       to: req.body.userId,
       transferredBy: req.user.id,
       transferredAt: new Date()
     });
     
-    // Update the ticket status and add a note about the transfer
-    ticket.transferNotes = ticket.transferNotes || [];
-    ticket.transferNotes.push({
-      note: `Transferred to ${user.firstname} ${user.lastname}`,
-      date: new Date(),
-      userId: req.user.id
+    // Update status history
+    ticket.statusHistory = ticket.statusHistory || [];
+    ticket.statusHistory.push({
+      status: `Transferred to ${user.firstname} ${user.lastname}`,
+      changedAt: new Date(),
+      changedBy: req.user.id
     });
     
-    // Save the updated ticket
-    const updatedTicket = await ticket.save();
+    await ticket.save();
     
-    // Return the updated ticket to the client
-    res.status(200).json(updatedTicket);
+    res.status(200).json(ticket);
   } catch (error) {
     console.error('Error transferring ticket:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

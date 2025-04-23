@@ -58,7 +58,22 @@ const ticketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  }
+  },
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  transferHistory: [{
+    from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    transferredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    transferredAt: Date
+  }],
+  statusHistory: [{
+    status: String,
+    changedAt: Date,
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }]
 }, { timestamps: true });
 
 // Validation function for address arrays
