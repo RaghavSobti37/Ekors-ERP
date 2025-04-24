@@ -1,85 +1,280 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "../components/Navbar";
 import Pagination from '../components/Pagination';
 import '../css/Analytics.css';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AnalystPage = () => {
   const navigate = useNavigate();
-
-  const [rows, setRows] = useState([
-    { id: 1, user: 'John Doe', role: 'user' },
-    { id: 2, user: 'Jane Smith', role: 'admin' },
-    { id: 3, user: 'Alex Johnson', role: 'superadmin' },
-    { id: 4, user: 'Emma Wilson', role: 'user' },
-    { id: 5, user: 'Olivia Brown', role: 'admin' },
-    { id: 6, user: 'William King', role: 'user' },
-    { id: 7, user: 'Sophia Lee', role: 'superadmin' },
-    { id: 8, user: 'Liam Green', role: 'user' },
-    { id: 9, user: 'Noah White', role: 'admin' },
-    { id: 10, user: 'Mason Taylor', role: 'user' },
-    { id: 11, user: 'Lucas Hall', role: 'user' },
-    { id: 12, user: 'Ella Walker', role: 'admin' },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [ticketTotals, setTicketTotals] = useState({});
 
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const rowsPerPage = 10;
 
-  const handleRoleChange = (id, newRole) => {
-    setRows(prev =>
-      prev.map(row =>
-        row.id === id ? { ...row, role: newRole } : row
-      )
-    );
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        const data = await response.json();
+        setUsers(data);
+        
+        // Fetch ticket totals for each user
+        const totalsResponse = await fetch('/api/users/ticket-totals');
+        const totalsData = await totalsResponse.json();
+        setTicketTotals(totalsData);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast.error('Failed to fetch users');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const handleRoleChange = async (id, newRole) => {
+    try {
+      const response = await fetch(`/api/users/${id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (response.ok) {
+        setUsers(users.map(user => 
+          user._id === id ? { ...user, role: newRole } : user
+        ));
+        toast.success('Role updated successfully');
+      } else {
+        throw new Error('Failed to update role');
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+      toast.error('Failed to update role');
+    }
   };
 
-  const handleDelete = (id) => {
-    setRows(prev => prev.filter(row => row.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        setUsers(users.filter(user => user._id !== id));
+        toast.success('User deleted successfully');
+      } else {
+        throw new Error('Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+    }
   };
 
-  const totalPages = Math.ceil(rows.length / rowsPerPage);
-  const displayedRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const handleEdit = (user) => {
+    setEditMode(user._id);
+    setEditData({
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      phone: user.phone
+    });
+  };
+
+  const handleEditChange = (e) => {
+    setEditData({
+      ...editData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const saveEdit = async (id) => {
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(editData)
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map(user => 
+          user._id === id ? { ...user, ...updatedUser } : user
+        ));
+        setEditMode(null);
+        toast.success('User updated successfully');
+      } else {
+        throw new Error('Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditMode(null);
+    setEditData({});
+  };
+
+  const totalPages = Math.ceil(users.length / rowsPerPage);
+  const displayedUsers = users.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
 
   return (
-    <div>
+    <div className="analyst-page">
       <Navbar />
-
+      
       <div className="analyst-container">
-        <h2>Analyst Page</h2>
-        <table className="analyst-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Log Time</th>
-              <th>Role</th>
-              <th>Edit</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedRows.map(row => (
-              <tr key={row.id}>
-                <td>{row.user}</td>
-                <td>
-                  <button className="action-btn" onClick={() => navigate(`/history/${row.id}`)}>History</button>
-                </td>
-                <td>
-                  <select
-                    className="dropdown"
-                    value={row.role}
-                    onChange={(e) => handleRoleChange(row.id, e.target.value)}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Super Admin</option>
-                  </select>
-                </td>
-                <td><button className="action-btn">Edit</button></td>
-                <td><button className="delete-btn" onClick={() => handleDelete(row.id)}>Delete</button></td>
+        <div className="analyst-header">
+          <h2>User Management</h2>
+          <div className="analyst-actions">
+            
+          </div>
+        </div>
+
+        <div className="table-responsive">
+          <table className="analyst-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Total Ticket Value</th>
+                <th>Role</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {displayedUsers.map(user => (
+                <tr key={user._id}>
+                  <td>
+                    {editMode === user._id ? (
+                      <div className="edit-fields">
+                        <input
+                          type="text"
+                          name="firstname"
+                          value={editData.firstname}
+                          onChange={handleEditChange}
+                        />
+                        <input
+                          type="text"
+                          name="lastname"
+                          value={editData.lastname}
+                          onChange={handleEditChange}
+                        />
+                      </div>
+                    ) : (
+                      `${user.firstname} ${user.lastname}`
+                    )}
+                  </td>
+                  <td>
+                    {editMode === user._id ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={editData.email}
+                        onChange={handleEditChange}
+                      />
+                    ) : (
+                      user.email
+                    )}
+                  </td>
+                  <td>
+                    {editMode === user._id ? (
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editData.phone}
+                        onChange={handleEditChange}
+                      />
+                    ) : (
+                      user.phone
+                    )}
+                  </td>
+                  <td>
+                    ₹{ticketTotals[user._id]?.total || 0}
+                  </td>
+                  <td>
+                    <select
+                      className="role-dropdown"
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                      disabled={user.role === 'super-admin'}
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="super-admin">Super Admin</option>
+                    </select>
+                  </td>
+                  <td className="actions-cell">
+                    {editMode === user._id ? (
+                      <>
+                        <button 
+                          className="btn-save"
+                          onClick={() => saveEdit(user._id)}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          className="btn-cancel"
+                          onClick={cancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          className="btn-edit"
+                          onClick={() => handleEdit(user)}
+                          disabled={user.role === 'super-admin'}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          className="btn-history"
+                          onClick={() => navigate(`/history/${user._id}`)}
+                        >
+                          History
+                        </button>
+                        <button 
+                          className="btn-delete"
+                          onClick={() => handleDelete(user._id)}
+                          disabled={user.role === 'super-admin'}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <Pagination
           currentPage={currentPage}
