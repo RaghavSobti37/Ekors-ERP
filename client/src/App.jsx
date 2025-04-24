@@ -10,7 +10,7 @@ import Logtime from "./pages/Logtime";
 import History from "./pages/History";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
-// import Analyst from "./pages/Analyst.jsx";
+import Analytics from "./pages/Analytics.jsx";
 import PurchaseHistory from './pages/PurchaseHistory.jsx';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -42,7 +42,7 @@ function App() {
           <Route path='/login' element={<Login />} />
           <Route path='/quotationpdf' element={<QuotationPDF />} />
           <Route path='/pipdf' element={<PIPDF />} />
-          {/* <Route path='/analyst' element={<Analyst />} /> */}
+          <Route path='/analytics' element={<Analytics />} />
 
           {/* Protected Routes */}
           <Route path='/tickets' element={
