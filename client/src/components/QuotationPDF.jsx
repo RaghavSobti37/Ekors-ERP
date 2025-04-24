@@ -5,133 +5,173 @@ import {
   Text,
   View,
   StyleSheet,
+  Font
 } from "@react-pdf/renderer";
 
+// Styles
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontFamily: "Helvetica",
+    padding: 40,
     fontSize: 11,
+    fontFamily: "Helvetica",
+    lineHeight: 1.5,
   },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-    textAlign: "center",
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  logo: {
+    textAlign: "right",
     fontWeight: "bold",
-    textTransform: "uppercase",
+    color: "darkred",
+    fontSize: 18,
+  },
+  refText: {
+    color: "red",
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  heading: {
+    marginVertical: 10,
+    fontSize: 13,
+    textDecoration: "underline",
+    fontWeight: "bold",
   },
   section: {
-    marginBottom: 15,
+    marginBottom: 10,
+  },
+  bodyText: {
+    marginBottom: 5,
   },
   table: {
     display: "table",
     width: "auto",
-    marginTop: 20,
     borderWidth: 1,
     borderColor: "#000",
+    marginVertical: 10,
   },
   tableRow: {
     flexDirection: "row",
   },
-  tableColHeader: {
-    width: "25%",
-    fontWeight: "bold",
-    border: "1px solid #000",
-    padding: 5,
-  },
   tableCol: {
-    width: "25%",
-    border: "1px solid #000",
-    padding: 5,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#000",
+    padding: 4,
     textAlign: "center",
   },
+  col1: { width: "8%" },
+  col2: { width: "42%" },
+  col3: { width: "10%" },
+  col4: { width: "10%" },
+  col5: { width: "15%" },
+  col6: { width: "15%", borderRightWidth: 0 },
   totalRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    paddingTop: 5,
     fontWeight: "bold",
+    marginTop: 5,
+  },
+  terms: {
+    marginTop: 15,
+    fontSize: 10,
   },
   footer: {
-    marginTop: 20,
-    textAlign: "center",
+    marginTop: 25,
     fontSize: 10,
+    textAlign: "center",
     color: "red",
+    fontWeight: "bold",
+  },
+  footerContact: {
+    textAlign: "center",
+    fontSize: 9,
+    marginTop: 5,
   },
 });
 
+// Component
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <Text style={styles.header}>Quotation</Text>
+      <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
 
-      <View style={styles.section}>
-        <Text>Quotation Number: {quotation.referenceNumber}</Text>
+      <View style={styles.headerRow}>
+        <Text>Ref: {quotation.referenceNumber}</Text>
         <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
-        <Text>
-          Validity Date: {new Date(quotation.validityDate).toLocaleDateString()}
-        </Text>
       </View>
 
       <View style={styles.section}>
-        <Text>To:</Text>
+        <Text>To,</Text>
         <Text>{quotation.client.companyName}</Text>
-        <Text>GST: {quotation.client.gstNumber}</Text>
+        <Text>Site: {quotation.client.siteLocation}</Text>
       </View>
 
+      <Text style={styles.heading}>
+        Sub: Quotation for Earthing Material and Installation
+      </Text>
+
+      <Text style={styles.bodyText}>
+        Dear Sir,
+      </Text>
+      <Text style={styles.bodyText}>
+        Thanks for your enquiry of <Text style={{ fontStyle: "italic" }}>Earthing Items</Text>. As per your requirement here we are giving you, our prices. Kindly view it.
+      </Text>
+
+      <Text style={styles.heading}>Supply & Installation</Text>
+
+      {/* Table Header */}
       <View style={styles.table}>
-        <View style={[styles.tableRow, { backgroundColor: "#f0f0f0" }]}>
-          <Text style={[styles.tableCol, { width: "10%" }]}>S.No</Text>
-          <Text style={[styles.tableCol, { width: "40%" }]}>Description</Text>
-          <Text style={[styles.tableCol, { width: "15%" }]}>HSN/SAC</Text>
-          <Text style={[styles.tableCol, { width: "10%" }]}>Qty</Text>
-          <Text style={[styles.tableCol, { width: "15%" }]}>Rate</Text>
-          <Text style={[styles.tableCol, { width: "10%" }]}>Amount</Text>
+        <View style={styles.tableRow}>
+          <Text style={[styles.tableCol, styles.col1]}>S.No</Text>
+          <Text style={[styles.tableCol, styles.col2]}>Item description</Text>
+          <Text style={[styles.tableCol, styles.col3]}>Unit</Text>
+          <Text style={[styles.tableCol, styles.col4]}>Qty</Text>
+          <Text style={[styles.tableCol, styles.col5]}>Rate</Text>
+          <Text style={[styles.tableCol, styles.col6]}>Amount</Text>
         </View>
 
+        {/* Table Rows */}
         {quotation.goods.map((item, index) => (
           <View style={styles.tableRow} key={index}>
-            <Text style={[styles.tableCol, { width: "10%" }]}>{index + 1}</Text>
-            <Text style={[styles.tableCol, { width: "40%" }]}>
-              {item.description}
-            </Text>
-            <Text style={[styles.tableCol, { width: "15%" }]}>
-              {item.hsnSacCode}
-            </Text>
-            <Text style={[styles.tableCol, { width: "10%" }]}>
-              {item.quantity}
-            </Text>
-            <Text style={[styles.tableCol, { width: "15%" }]}>
-              ₹{item.price.toFixed(2)}
-            </Text>
-            <Text style={[styles.tableCol, { width: "10%" }]}>
-              ₹{item.amount.toFixed(2)}
-            </Text>
+            <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
+            <Text style={[styles.tableCol, styles.col2]}>{item.description}</Text>
+            <Text style={[styles.tableCol, styles.col3]}>{item.unit}</Text>
+            <Text style={[styles.tableCol, styles.col4]}>{item.quantity}</Text>
+            <Text style={[styles.tableCol, styles.col5]}>₹{item.price.toFixed(2)}</Text>
+            <Text style={[styles.tableCol, styles.col6]}>₹{item.amount.toFixed(2)}</Text>
           </View>
         ))}
       </View>
 
       <View style={styles.totalRow}>
-        <Text>Sub Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
-      </View>
-      <View style={styles.totalRow}>
-        <Text>GST (18%): ₹{quotation.gstAmount.toFixed(2)}</Text>
-      </View>
-      <View style={styles.totalRow}>
-        <Text>Grand Total: ₹{quotation.grandTotal.toFixed(2)}</Text>
+        <Text>Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
       </View>
 
-      <View style={styles.section}>
+      {/* Terms & Conditions */}
+      <View style={styles.terms}>
         <Text>Terms & Conditions:</Text>
-        <Text>- Payment: 100% advance</Text>
-        <Text>- Delivery: Within {quotation.dispatchDays} days</Text>
-        <Text>
-          - Validity: {new Date(quotation.validityDate).toLocaleDateString()}
-        </Text>
+        <Text>- Material Ex-Factory Noida</Text>
+        <Text>- GST: 18% is applicable</Text>
+        <Text>- Freight: Extra as applicable</Text>
+        <Text>- Packing: Extra if applicable</Text>
+        <Text>- Payment: 100% in advance after receiving Formal PO and Advance</Text>
+        <Text>- Dispatch: Within {quotation.dispatchDays} days after receiving payment</Text>
+        <Text>- Validity: This quotation is valid till {new Date(quotation.validityDate).toLocaleDateString()}</Text>
+        <Text>- Order: Order to be placed in the name of “E-KORS PVT LTD”</Text>
       </View>
 
+      {/* Footer */}
       <View style={styles.footer}>
-        <Text>For {quotation.client.companyName}</Text>
-        <Text>Authorized Signatory</Text>
+        <Text>Hoping for your valuable order in the earliest.</Text>
+        <Text>E-KORS PRIVATE LIMITED</Text>
+      </View>
+
+      <View style={styles.footerContact}>
+        <Text>Com Add: Pole No. 02, Sector 115 Noida - 201307</Text>
+        <Text>Ph. No. 9711725989 / 9897022545</Text>
+        <Text>Email: sales@ekors.in</Text>
       </View>
     </Page>
   </Document>

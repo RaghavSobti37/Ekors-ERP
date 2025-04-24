@@ -7,6 +7,7 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
+  FaChartBar, // For analyst icon
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -65,6 +66,10 @@ export default function Navbar({ showPurchaseModal }) {
     }, 300);
   };
 
+  const handleAnalystClick = () => {
+    navigate("/analyst");
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-left">
@@ -112,13 +117,17 @@ export default function Navbar({ showPurchaseModal }) {
                 >
                   Purchase History
                 </div>
-                <div
-                  className="sub-dropdown-wrapper"
-                  onMouseEnter={handleMouseEnterSubDropdown}
-                  onMouseLeave={handleMouseLeaveSubDropdown}
-                ></div>
               </div>
             )}
+          </div>
+
+          {/* ✅ Analyst Button */}
+          <div
+            className="dropdown-trigger"
+            onClick={handleAnalystClick}
+            style={{ cursor: "pointer" }}
+          >
+            <FaChartBar /> Analyst
           </div>
         </div>
       </div>
@@ -143,7 +152,9 @@ export default function Navbar({ showPurchaseModal }) {
               className="profile-pic"
             />
             <div className="profile-details">
-              <p><strong>{user?.firstname} {user?.lastname}</strong></p>
+              <p>
+                <strong>{user?.firstname} {user?.lastname}</strong>
+              </p>
               <p><strong>Email:</strong> {user?.email || "N/A"}</p>
               <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
               <p><strong>Role:</strong> {user?.role || "N/A"}</p>
