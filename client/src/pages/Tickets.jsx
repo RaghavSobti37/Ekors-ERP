@@ -14,7 +14,9 @@ import {
   PDFViewer,
   PDFDownloadLink,
 } from "@react-pdf/renderer";
-import QuotationPDF from "../components/QuotationPDF";
+import "../css/Ticket.css";
+import QuotationPDF from "../components/QuotationPDF.jsx";
+import PIPDF from "../components/PIPDF.jsx";
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) return <span>↕️</span>;
@@ -67,12 +69,12 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const token = getAuthToken();
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
+
       const response = await axios.get("http://localhost:3000/api/items", {
         headers: {
           Authorization: `Bearer ${token}`
@@ -104,7 +106,7 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
   return (
     <div className="item-search-component">
       {error && <div className="search-error">{error}</div>}
-      
+
       <div className="search-input-container">
         <input
           type="text"
@@ -187,12 +189,12 @@ const UserSearchComponent = ({ onUserSelect }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const token = getAuthToken();
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
+
       const response = await axios.get("http://localhost:3000/api/users", {
         headers: {
           Authorization: `Bearer ${token}`
@@ -224,7 +226,7 @@ const UserSearchComponent = ({ onUserSelect }) => {
   return (
     <div className="user-search-component">
       {error && <div className="search-error">{error}</div>}
-      
+
       <div className="search-input-container">
         <input
           type="text"
@@ -348,7 +350,6 @@ export default function Dashboard() {
         throw new Error("No authentication token found");
       }
 
-      // The backend will now filter tickets by the current user based on the auth token
       const response = await axios.get("http://localhost:3000/api/tickets", {
         headers: {
           Authorization: `Bearer ${token}`
@@ -394,7 +395,7 @@ export default function Dashboard() {
 
   const filteredTickets = useMemo(() => {
     if (!searchTerm) return sortedTickets;
-  
+
     const term = searchTerm.toLowerCase();
     return sortedTickets.filter(
       (ticket) =>
@@ -456,7 +457,7 @@ export default function Dashboard() {
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
     updatedGoods[index][field] = value;
-    
+
     if (field === 'quantity' || field === 'price') {
       updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
     }
@@ -523,11 +524,11 @@ export default function Dashboard() {
     setShowEditModal(true);
   };
 
-    const handleTransfer = (ticket) => {
-      setTransferTicket(ticket);
-      setSelectedUser(null);
-      setShowTransferModal(true);
-    };
+  const handleTransfer = (ticket) => {
+    setTransferTicket(ticket);
+    setSelectedUser(null);
+    setShowTransferModal(true);
+  };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
@@ -547,7 +548,7 @@ export default function Dashboard() {
         createdAt: undefined,
         updatedAt: undefined
       };
-    
+
       const response = await axios.put(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
         updateData,
@@ -558,7 +559,7 @@ export default function Dashboard() {
           }
         }
       );
-      
+
       if (response.status === 200) {
         fetchTickets();
         setShowEditModal(false);
@@ -575,7 +576,7 @@ export default function Dashboard() {
       setError("Please select a user to transfer the ticket to");
       return;
     }
-  
+
     try {
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
@@ -587,15 +588,11 @@ export default function Dashboard() {
           }
         }
       );
-      
+
       if (response.status === 200) {
-        // Show success message
         setError(null);
-        // Refresh both tickets and users data
         await fetchTickets();
-        // Close the modal
         setShowTransferModal(false);
-        // Show success notification
         alert(`Ticket successfully transferred to ${selectedUser.firstname} ${selectedUser.lastname}`);
       }
     } catch (error) {
@@ -615,19 +612,52 @@ export default function Dashboard() {
             <PDFViewer width="100%" height="500px" className="mb-3">
               <QuotationPDF quotation={editTicket} />
             </PDFViewer>
-            <PDFDownloadLink
-              document={<QuotationPDF quotation={editTicket} />}
-              fileName={`quotation_${editTicket.quotationNumber}.pdf`}
-            >
-              {({ loading }) => (
-                <Button variant="primary" disabled={loading}>
-                  {loading ? "Generating PDF..." : "Download PDF"}
-                </Button>
-              )}
-            </PDFDownloadLink>
+            <div className="d-flex justify-content-center gap-2">
+              <PDFDownloadLink
+                document={<QuotationPDF quotation={editTicket} />}
+                fileName={`quotation_${editTicket.quotationNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    {loading ? "Generating PDF..." : "Download Quotation"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                variant="secondary"
+                onClick={() => setDocumentType(null)}
+              >
+                Close
+              </Button>
+            </div>
           </>
         )}
-        {documentType !== "quotation" && ticketData.documents?.[documentType] && (
+        {documentType === "pi" && (
+          <>
+            <PDFViewer width="100%" height="500px" className="mb-3">
+              <PIPDF ticket={editTicket} />
+            </PDFViewer>
+            <div className="d-flex justify-content-center gap-2">
+              <PDFDownloadLink
+                document={<PIPDF ticket={editTicket} />}
+                fileName={`pi_${editTicket.quotationNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    {loading ? "Generating PDF..." : "Download PI"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <Button
+                variant="secondary"
+                onClick={() => setDocumentType(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </>
+        )}
+        {!["quotation", "pi"].includes(documentType) && ticketData.documents?.[documentType] && (
           <div className="text-center">
             <a
               href={`http://localhost:3000/${ticketData.documents[documentType]}`}
@@ -639,13 +669,6 @@ export default function Dashboard() {
             </a>
           </div>
         )}
-        <Button
-          variant="secondary"
-          onClick={() => setDocumentType(null)}
-          className="ms-2"
-        >
-          Close
-        </Button>
       </div>
     );
   };
@@ -694,6 +717,8 @@ export default function Dashboard() {
   return (
     <div>
       <Navbar />
+      {/* <QuotationPDF />
+      <PIPDF /> */}
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
@@ -783,7 +808,7 @@ export default function Dashboard() {
                 const progressPercentage = Math.round(
                   ((statusStages.indexOf(ticket.status) + 1) /
                     statusStages.length * 100
-                ));
+                  ));
                 return (
                   <tr key={ticket.ticketNumber}>
                     <td>{ticket.ticketNumber}</td>
@@ -858,9 +883,8 @@ export default function Dashboard() {
                 {Array.from({ length: totalPages }, (_, i) => (
                   <li
                     key={i + 1}
-                    className={`page-item ${
-                      currentPage === i + 1 ? "active" : ""
-                    }`}
+                    className={`page-item ${currentPage === i + 1 ? "active" : ""
+                      }`}
                   >
                     <button
                       className="page-link"
@@ -872,9 +896,8 @@ export default function Dashboard() {
                 ))}
 
                 <li
-                  className={`page-item ${
-                    currentPage === totalPages ? "disabled" : ""
-                  }`}
+                  className={`page-item ${currentPage === totalPages ? "disabled" : ""
+                    }`}
                 >
                   <button
                     className="page-link"
@@ -893,13 +916,15 @@ export default function Dashboard() {
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
           size="xl"
-          dialogClassName="edit-modal-centered"
           centered
+          dialogClassName="modal-95w"
+          style={{ maxWidth: '95vw', width: '95%', height: '95vh' }}
+          contentClassName="h-100"
         >
           <Modal.Header closeButton>
             <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
           </Modal.Header>
-          <Modal.Body>
+          <Modal.Body style={{ overflowY: 'auto' }}>
             {/* Status Progress Bar */}
             <div className="mb-4">
               <ProgressBar style={{ height: "30px" }}>
@@ -924,8 +949,8 @@ export default function Dashboard() {
             <div className="row mb-4">
               <Form.Group className="col-md-6">
                 <Form.Label>Update Status</Form.Label>
-                <Dropdown 
-                  show={showStatusDropdown} 
+                <Dropdown
+                  show={showStatusDropdown}
                   onToggle={(isOpen) => setShowStatusDropdown(isOpen)}
                 >
                   <Dropdown.Toggle variant="primary" id="status-dropdown">
@@ -1042,8 +1067,8 @@ export default function Dashboard() {
                       <td className="align-middle">{item.srNo}</td>
                       <td>
                         {index === ticketData.goods.length - 1 && !item.description ? (
-                          <ItemSearchComponent 
-                            onItemSelect={handleItemSelect} 
+                          <ItemSearchComponent
+                            onItemSelect={handleItemSelect}
                             index={index}
                           />
                         ) : (
@@ -1123,7 +1148,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Documents Section */}
             <div className="mt-4">
               <h4>Documents</h4>
@@ -1145,34 +1170,49 @@ export default function Dashboard() {
                     >
                       {docName}
                     </Button>
-                    {ticketData.documents?.[docKey] && (
-                      <a
-                        href={`http://localhost:3000/${ticketData.documents[docKey]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-success btn-sm"
+                    {["quotation", "pi"].includes(docKey) ? (
+                      <Button
+                        variant="success"
+                        onClick={() => setDocumentType(docKey)}
                       >
-                        View
-                      </a>
+                        Download
+                      </Button>
+                    ) : (
+                      ticketData.documents?.[docKey] && (
+                        <a
+                          href={`http://localhost:3000/${ticketData.documents[docKey]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-success btn-sm"
+                        >
+                          View
+                        </a>
+                      )
                     )}
-                    <input
-                      type="file"
-                      id={`upload-${docKey}`}
-                      style={{ display: "none" }}
-                      onChange={(e) =>
-                        handleDocumentUpload(e.target.files[0], docKey)
-                      }
-                      accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    />
-                    <label
-                      htmlFor={`upload-${docKey}`}
-                      className="btn btn-info btn-sm mb-0"
-                    >
-                      Upload
-                    </label>
+                    {!["quotation", "pi"].includes(docKey) && (
+                      <>
+                        <input
+                          type="file"
+                          id={`upload-${docKey}`}
+                          style={{ display: "none" }}
+                          onChange={(e) =>
+                            handleDocumentUpload(e.target.files[0], docKey)
+                          }
+                          accept=".pdf,.doc,.docx,.xls,.xlsx"
+                        />
+                        <label
+                          htmlFor={`upload-${docKey}`}
+                          className="btn btn-info btn-sm mb-0"
+                        >
+                          Upload
+                        </label>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
+
+
               {renderDocumentSection()}
             </div>
           </Modal.Body>
@@ -1200,7 +1240,7 @@ export default function Dashboard() {
               <h5>Search User to Transfer To</h5>
               <UserSearchComponent onUserSelect={handleUserSelect} />
             </div>
-            
+
             {selectedUser && (
               <div className="selected-user-info p-3 border rounded mt-3">
                 <h6>Selected User:</h6>
@@ -1214,8 +1254,8 @@ export default function Dashboard() {
             <Button variant="secondary" onClick={() => setShowTransferModal(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={handleTransferTicket}
               disabled={!selectedUser}
             >

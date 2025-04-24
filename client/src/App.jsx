@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import QuotationPDF from "./components/QuotationPDF";
+import PIPDF from "./components/PIPDF";
 import Signup from './pages/Signup.jsx';
 import Login from './pages/Login.jsx';
 import Tickets from "./pages/Tickets.jsx";
@@ -8,6 +10,7 @@ import Logtime from "./pages/Logtime";
 import History from "./pages/History";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
+// import Analyst from "./pages/Analyst.jsx";
 import PurchaseHistory from './pages/PurchaseHistory.jsx';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,6 +40,9 @@ function App() {
           {/* Public Routes */}
           <Route path='/register' element={<Signup />} />
           <Route path='/login' element={<Login />} />
+          <Route path='/quotationpdf' element={<QuotationPDF />} />
+          <Route path='/pipdf' element={<PIPDF />} />
+          {/* <Route path='/analyst' element={<Analyst />} /> */}
 
           {/* Protected Routes */}
           <Route path='/tickets' element={

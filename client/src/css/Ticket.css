@@ -1,4 +1,4 @@
-/* Full-screen centered modal styles */
+/* Dashboard.css */
 .custom-modal {
     position: fixed;
     top: 50% !important;
@@ -10,6 +10,7 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden;
+    border: none;
   }
   
   .custom-modal .modal-content {
@@ -21,26 +22,30 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   }
   
-  .custom-modal .modal-header {
+  .modal-header-custom {
     background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
     color: white;
     padding: 1.5rem;
     border-bottom: none;
-    border-radius: 12px 12px 0 0;
+    border-radius: 12px 12px 0 0 !important;
   }
   
-  .custom-modal .modal-body {
+  .modal-header-custom .btn-close {
+    filter: invert(1);
+  }
+  
+  .modal-body-custom {
     flex: 1;
     padding: 2rem;
     overflow-y: auto;
     background-color: #f8f9fa;
   }
   
-  .custom-modal .modal-footer {
+  .modal-footer-custom {
     background-color: white;
     padding: 1.5rem;
     border-top: 1px solid #e9ecef;
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 12px 12px !important;
   }
   
   /* Animation for modal appearance */
@@ -65,4 +70,18 @@
       width: 98vw !important;
       height: 98vh !important;
     }
+    
+    .modal-body-custom {
+      padding: 1rem;
+    }
+  }
+  
+  /* Make sure the modal backdrop covers the full screen */
+  .modal-backdrop.show {
+    opacity: 0.5 !important;
+  }
+  
+  /* Ensure the modal is above the backdrop */
+  .modal {
+    z-index: 1060 !important;
   }
