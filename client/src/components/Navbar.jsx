@@ -127,7 +127,7 @@ export default function Navbar({ showPurchaseModal }) {
             onClick={handleAnalystClick}
             style={{ cursor: "pointer" }}
           >
-            <FaChartBar /> Analyst
+            <FaChartBar /> Analysis
           </div>
         </div>
       </div>
