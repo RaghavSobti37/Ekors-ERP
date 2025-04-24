@@ -11,6 +11,7 @@ import History from "./pages/History";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
 import Analytics from "./pages/Analytics.jsx";
+import Pagination from "./components/Pagination.jsx";
 import PurchaseHistory from './pages/PurchaseHistory.jsx';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -43,6 +44,7 @@ function App() {
           <Route path='/quotationpdf' element={<QuotationPDF />} />
           <Route path='/pipdf' element={<PIPDF />} />
           <Route path='/analytics' element={<Analytics />} />
+          <Route path='/pagination' element={<Pagination />} />
 
           {/* Protected Routes */}
           <Route path='/tickets' element={
