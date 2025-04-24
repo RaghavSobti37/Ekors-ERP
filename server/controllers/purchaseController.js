@@ -132,49 +132,40 @@ exports.addBulkPurchase = async (req, res) => {
   }
 };
 
-// Get purchase history for an item
-exports.getPurchaseHistoryForItem = async (req, res) => {
+exports.getItemPurchaseHistory = async (req, res) => {
   try {
-    const { itemId } = req.params;
-    
-    // Check if id is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(itemId)) {
-      return res.status(400).json({ message: 'Invalid item ID format' });
+    // Validate item ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid item ID' });
     }
-    
-    const item = await Item.findById(itemId);
-    if (!item) {
-      return res.status(404).json({ message: 'Item not found' });
-    }
-    
-    // Get purchases where this item is referenced
-    const purchases = await Purchase.find({
-      'items.itemId': itemId
-    }).sort({ date: -1 });
 
-    // Format the purchases for the frontend
-    const formattedPurchases = purchases.map(purchase => {
-      const itemInfo = purchase.items.find(item => 
-        item.itemId && item.itemId.toString() === itemId
+    const purchases = await Purchase.find({ 'items.itemId': req.params.id })
+      .sort({ date: -1 })
+      .select('companyName gstNumber invoiceNumber date items')
+      .lean();
+
+    // Transform the data to match frontend expectations
+    const transformed = purchases.map(purchase => {
+      const item = purchase.items.find(i => 
+        i.itemId && i.itemId.toString() === req.params.id
       );
       
+      if (!item) return null;
+      
       return {
-        purchaseId: purchase._id,
-        date: purchase.date,
+        _id: purchase._id,
         companyName: purchase.companyName,
         gstNumber: purchase.gstNumber,
         invoiceNumber: purchase.invoiceNumber,
-        quantity: itemInfo ? itemInfo.quantity : 0,
-        price: itemInfo ? itemInfo.price : 0,
-        gstRate: itemInfo ? itemInfo.gstRate : 0,
-        total: itemInfo ? (itemInfo.price * itemInfo.quantity * (1 + itemInfo.gstRate / 100)) : 0
+        date: purchase.date,
+        ...item
       };
-    });
+    }).filter(Boolean); // Remove any null entries
 
-    res.json(formattedPurchases);
-  } catch (error) {
-    console.error('Error fetching purchase history:', error);
-    res.status(500).json({ message: 'Server error while fetching purchase history' });
+    res.json(transformed);
+  } catch (err) {
+    console.error('Error fetching purchase history:', err);
+    res.status(500).json({ message: 'Server error fetching purchase history' });
   }
 };
 

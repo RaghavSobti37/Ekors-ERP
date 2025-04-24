@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
 
-// Schema for purchase items (used in Purchase schema)
 const purchaseItemSchema = new mongoose.Schema({
   itemId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Item',
-    required: true 
   },
   description: {
     type: String,
