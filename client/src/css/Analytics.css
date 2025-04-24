@@ -9,6 +9,7 @@
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    background-color: white;
   }
   
   .analyst-table th {
@@ -22,10 +23,6 @@
   .analyst-table td {
     padding: 12px 18px;
     border-bottom: 1px solid #ddd;
-  }
-  
-  .analyst-table tbody tr:nth-child(even) {
-    background-color: #f7f7f7;
   }
   
   .analyst-table tbody tr:hover {
