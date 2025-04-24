@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import "../css/Challan.css";
+import Pagination from '../components/Pagination';
 import axios from "axios";
 
 const API_URL = "http://localhost:3000/api/challans";
@@ -63,7 +64,7 @@ export default function Challan() {
       submitData.append("email", formData.email);
       submitData.append("totalBilling", formData.totalBilling);
       submitData.append("billNumber", formData.billNumber || "");
-      
+
       // Only append media if it exists
       if (formData.media) {
         submitData.append("media", formData.media);
@@ -130,7 +131,7 @@ export default function Challan() {
       // Fetch the full challan details
       const response = await axios.get(`${API_URL}/${challan._id}`);
       const challanData = response.data;
-      
+
       setFormData({
         companyName: challanData.companyName,
         phone: challanData.phone,
@@ -140,7 +141,7 @@ export default function Challan() {
         // Don't set media here as we don't want to show the current file in the file input
         media: null,
       });
-      
+
       setEditId(challan._id);
       setEditMode(true);
       setShowPopup(true);
@@ -156,7 +157,7 @@ export default function Challan() {
   //   if (!window.confirm("Are you sure you want to delete this challan?")) {
   //     return;
   //   }
-    
+
   //   try {
   //     setLoading(true);
   //     await axios.delete(`${API_URL}/${id}`);
@@ -191,7 +192,7 @@ export default function Challan() {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="phone">Phone</label>
             <input
@@ -205,7 +206,7 @@ export default function Challan() {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -219,7 +220,7 @@ export default function Challan() {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="totalBilling">Total Billing</label>
             <input
@@ -233,7 +234,7 @@ export default function Challan() {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="billNumber">Bill Number</label>
             <input
@@ -260,8 +261,8 @@ export default function Challan() {
           ) : (
             <div className="form-group file-input-container">
               <label htmlFor="mediaUpload">
-                {editMode 
-                  ? "Upload New Document (leave empty to keep current document)" 
+                {editMode
+                  ? "Upload New Document (leave empty to keep current document)"
                   : "Upload Document *"}
               </label>
               <input
@@ -281,7 +282,7 @@ export default function Challan() {
                 {loading ? "Processing..." : (editMode ? "UPDATE" : "SUBMIT")}
               </button>
             )}
-            
+
             <button
               type="button"
               className="cancel-btn"
@@ -290,7 +291,7 @@ export default function Challan() {
               CANCEL
             </button>
           </div>
-          
+
           {error && <div className="error-message">{error}</div>}
         </div>
       </form>
@@ -336,8 +337,8 @@ export default function Challan() {
                   <td>{challan.companyName}</td>
                   <td>{challan.totalBilling}</td>
                   <td className="action-buttons">
-                    <button 
-                      className="view-btn" 
+                    <button
+                      className="view-btn"
                       onClick={() => openViewPopup(challan)}
                     >
                       👁️ View
@@ -374,9 +375,19 @@ export default function Challan() {
                 </button>
               </div>
               {renderForm()}
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => {
+                  if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                }}
+              />
             </div>
           </div>
         )}
+
+
       </div>
     </div>
   );

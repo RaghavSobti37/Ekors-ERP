@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../css/Logtime.css";
 import Navbar from "../components/Navbar.jsx";
+import Pagination from '../components/Pagination';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -36,7 +37,7 @@ export default function Logtime() {
 
     const today = getFormattedDate();
     setLogDate(today);
-    
+
     const fetchTodayLogs = async () => {
       setIsLoading(true);
       try {
@@ -44,9 +45,9 @@ export default function Logtime() {
         if (!token) {
           throw new Error('No authentication token found');
         }
-        
+
         console.log("Fetching logs with token:", token);
-        
+
         const response = await fetch(`http://localhost:3000/api/logtime/today`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -56,13 +57,13 @@ export default function Logtime() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Server error response:", errorText);
-          
+
           // If unauthorized, redirect to login
           if (response.status === 401) {
             navigate('/login', { state: { from: '/logtime' } });
             return;
           }
-          
+
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
@@ -95,50 +96,50 @@ export default function Logtime() {
   }, [logData]);
 
   // Calculate time difference between start and finish
-const calculateTimeDifference = (start, finish) => {
-  if (!start || !finish) return "";
-  
-  const [startHours, startMinutes] = start.split(":").map(Number);
-  const [finishHours, finishMinutes] = finish.split(":").map(Number);
-  
-  if (isNaN(startHours) || isNaN(startMinutes) || 
+  const calculateTimeDifference = (start, finish) => {
+    if (!start || !finish) return "";
+
+    const [startHours, startMinutes] = start.split(":").map(Number);
+    const [finishHours, finishMinutes] = finish.split(":").map(Number);
+
+    if (isNaN(startHours) || isNaN(startMinutes) ||
       isNaN(finishHours) || isNaN(finishMinutes)) {
-    return "";
-  }
+      return "";
+    }
 
-  const startTotal = startHours * 60 + startMinutes;
-  const finishTotal = finishHours * 60 + finishMinutes;
-  
-  if (finishTotal < startTotal) {
-    return "Invalid time";
-  }
+    const startTotal = startHours * 60 + startMinutes;
+    const finishTotal = finishHours * 60 + finishMinutes;
 
-  const diff = finishTotal - startTotal;
-  const hours = Math.floor(diff / 60);
-  const minutes = diff % 60;
-  
-  return `${hours}:${minutes.toString().padStart(2, '0')}`;
-};
+    if (finishTotal < startTotal) {
+      return "Invalid time";
+    }
 
-// Handle editing any field in a log entry
-const handleEdit = (index, field, value) => {
-  const updatedLogs = [...logData];
-  updatedLogs[index] = {
-    ...updatedLogs[index],
-    [field]: value
+    const diff = finishTotal - startTotal;
+    const hours = Math.floor(diff / 60);
+    const minutes = diff % 60;
+
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  // If editing start or finish time, recalculate time spent
-  if (field === "start" || field === "finish") {
-    const timeSpent = calculateTimeDifference(
-      field === "start" ? value : updatedLogs[index].start,
-      field === "finish" ? value : updatedLogs[index].finish
-    );
-    updatedLogs[index].timeSpent = timeSpent;
-  }
+  // Handle editing any field in a log entry
+  const handleEdit = (index, field, value) => {
+    const updatedLogs = [...logData];
+    updatedLogs[index] = {
+      ...updatedLogs[index],
+      [field]: value
+    };
 
-  setLogData(updatedLogs);
-};
+    // If editing start or finish time, recalculate time spent
+    if (field === "start" || field === "finish") {
+      const timeSpent = calculateTimeDifference(
+        field === "start" ? value : updatedLogs[index].start,
+        field === "finish" ? value : updatedLogs[index].finish
+      );
+      updatedLogs[index].timeSpent = timeSpent;
+    }
+
+    setLogData(updatedLogs);
+  };
 
   const getAuthToken = () => {
     try {
@@ -169,32 +170,32 @@ const handleEdit = (index, field, value) => {
       if (!token) {
         throw new Error('No authentication token found');
       }
-      
+
       console.log("Saving logs with token:", token);
-      
+
       const response = await fetch("http://localhost:3000/api/logtime", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          logs: logData, 
-          date: logDate 
+        body: JSON.stringify({
+          logs: logData,
+          date: logDate
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // If unauthorized, redirect to login
         if (response.status === 401) {
           navigate('/login', { state: { from: '/logtime' } });
           return;
         }
-        
+
         throw new Error(
-          errorData.error || 
+          errorData.error ||
           `Failed to save logs: ${response.status} ${response.statusText}`
         );
       }
@@ -308,7 +309,9 @@ const handleEdit = (index, field, value) => {
           >
             {isSaving ? "Saving..." : "💾 Save Logs"}
           </button>
+
         </div>
+        
       </div>
     </div>
   );

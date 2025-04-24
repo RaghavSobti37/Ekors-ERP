@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import Pagination from '../components/Pagination';
 import axios from "axios";
 import {
   Modal,
@@ -1263,6 +1264,14 @@ export default function Dashboard() {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => {
+            if (page >= 1 && page <= totalPages) setCurrentPage(page);
+          }}
+        />
       </div>
     </div>
   );
