@@ -67,7 +67,7 @@ export default function Navbar({ showPurchaseModal }) {
   };
 
   const handleAnalystClick = () => {
-    navigate("/analyst");
+    navigate("/analytics");
   };
 
   return (
