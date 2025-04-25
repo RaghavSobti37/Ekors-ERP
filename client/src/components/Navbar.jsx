@@ -1,3 +1,4 @@
+// Navbar.jsx
 import React, { useState, useRef } from "react";
 import "../css/Navbar.css";
 import {
@@ -7,7 +8,7 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
-  FaChartBar, // For analyst icon
+  FaChartBar,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -15,13 +16,12 @@ import { useAuth } from "../context/AuthContext";
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
-  const [showSubItemsDropdown, setShowSubItemsDropdown] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
-  const subDropdownTimeoutRef = useRef(null);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -51,120 +51,140 @@ export default function Navbar({ showPurchaseModal }) {
   const handleMouseLeaveDropdown = () => {
     dropdownTimeoutRef.current = setTimeout(() => {
       setShowItemsDropdown(false);
-      setShowSubItemsDropdown(false);
     }, 300);
   };
-
-  const handleMouseEnterSubDropdown = () => {
-    clearTimeout(subDropdownTimeoutRef.current);
-    setShowSubItemsDropdown(true);
-  };
-
-  const handleMouseLeaveSubDropdown = () => {
-    subDropdownTimeoutRef.current = setTimeout(() => {
-      setShowSubItemsDropdown(false);
-    }, 300);
-  };
-
-  // const handleAnalystClick = () => {
-  //   navigate("/analytics");
-  // };
 
   return (
-    <nav className="navbar">
-      <div className="navbar-left">
-        <div className="logo">
-          <img src="/src/assets/logo.jpeg" alt="E-KORS" className="logo-img" />
-          <span>E-KORS</span>
-        </div>
+    <>
+      <nav className="navbar">
+        <div className="navbar-left">
+          <div className="logo">
+            <img src="/src/assets/logo.jpeg" alt="E-KORS" className="logo-img" />
+            <span>E-KORS</span>
+          </div>
 
-        <div className="nav-links">
-          <a href="/quotations">
-            <FaFileInvoice /> Quotations
-          </a>
-          <a href="/tickets">
-            <FaTicketAlt /> Tickets
-          </a>
-          <a href="/challan">
-            <FaClipboardList /> Challan
-          </a>
-          <a href="/logtime">
-            <FaClock /> Log Time
-          </a>
+          <div className="nav-links">
+            <a href="/quotations">
+              <FaFileInvoice /> Quotations
+            </a>
+            <a href="/tickets">
+              <FaTicketAlt /> Tickets
+            </a>
+            <a href="/challan">
+              <FaClipboardList /> Challan
+            </a>
+            <a href="/logtime">
+              <FaClock /> Log Time
+            </a>
 
-          <div
-            className="dropdown-wrapper"
-            onMouseEnter={handleMouseEnterDropdown}
-            onMouseLeave={handleMouseLeaveDropdown}
-          >
             <div
-              className="dropdown-trigger"
-              onClick={() => navigate("/itemslist")}
+              className="dropdown-wrapper"
+              onMouseEnter={handleMouseEnterDropdown}
+              onMouseLeave={handleMouseLeaveDropdown}
             >
-              <FaBoxOpen /> Items List
-            </div>
-            {showItemsDropdown && (
-              <div className="dropdown-menu">
-                <div
-                  onClick={showPurchaseModal}
-                  style={{ cursor: "pointer", padding: "10px 15px" }}
-                >
-                  Add Purchase
-                </div>
-                <div
-                  onClick={handlePurchaseHistoryClick}
-                  style={{ cursor: "pointer", padding: "10px 15px" }}
-                >
-                  Purchase History
-                </div>
+              <div
+                className="dropdown-trigger"
+                onClick={() => navigate("/itemslist")}
+              >
+                <FaBoxOpen /> Items List
               </div>
-            )}
-          </div>
-
-          {/* ✅ Analyst Button */}
-          {/* <div
-            className="dropdown-trigger"
-            onClick={handleAnalystClick}
-            style={{ cursor: "pointer" }}
-          >
-            <FaChartBar /> Analysis
-          </div> */}
-        </div>
-      </div>
-
-      <div
-        className="profile-wrapper"
-        onMouseEnter={handleMouseEnterProfile}
-        onMouseLeave={handleMouseLeaveProfile}
-      >
-        <div className="profile-section">
-          <div className="profile-icon">
-            <FaUser />
-          </div>
-          <span>{user?.firstname || "User"}</span>
-        </div>
-
-        {showProfilePopup && (
-          <div className="profile-popup">
-            <img
-              src="/src/assets/profile.jpg"
-              alt="Profile"
-              className="profile-pic"
-            />
-            <div className="profile-details">
-              <p>
-                <strong>{user?.firstname} {user?.lastname}</strong>
-              </p>
-              <p><strong>Email:</strong> {user?.email || "N/A"}</p>
-              <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
-              <p><strong>Role:</strong> {user?.role || "N/A"}</p>
+              {showItemsDropdown && (
+                <div className="dropdown-menu">
+                  <div
+                    onClick={showPurchaseModal}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    Add Purchase
+                  </div>
+                  <div
+                    onClick={handlePurchaseHistoryClick}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    Purchase History
+                  </div>
+                </div>
+              )}
             </div>
-            <button className="logout-btn" onClick={handleSignOut}>
-              Sign Out
-            </button>
           </div>
-        )}
-      </div>
-    </nav>
+        </div>
+
+        <div
+          className="profile-wrapper"
+          onMouseEnter={handleMouseEnterProfile}
+          onMouseLeave={handleMouseLeaveProfile}
+        >
+          <div className="profile-section">
+            <div className="profile-icon">
+              <FaUser />
+            </div>
+            <span>{user?.firstname || "User"}</span>
+          </div>
+
+          {showProfilePopup && (
+            <div className="profile-popup">
+              <img
+                src="/src/assets/profile.jpg"
+                alt="Profile"
+                className="profile-pic"
+              />
+              <div className="profile-details">
+                <p>
+                  <strong>{user?.firstname} {user?.lastname}</strong>
+                </p>
+                <p><strong>Email:</strong> {user?.email || "N/A"}</p>
+                <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
+                <p><strong>Role:</strong> {user?.role || "N/A"}</p>
+              </div>
+              <button className="edit-btn" onClick={() => setShowEditModal(true)}>
+                Edit
+              </button>
+              <button className="logout-btn" onClick={handleSignOut}>
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {showEditModal && (
+        <div className="edit-modal-overlay">
+          <div className="edit-modal">
+            <h2>Edit Profile</h2>
+            <div className="form-group">
+              <label>First Name</label>
+              <input type="text" defaultValue={user?.firstname || ""} />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input type="text" defaultValue={user?.lastname || ""} />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" defaultValue={user?.email || ""} />
+            </div>
+            <div className="form-group">
+              <label>Mobile Number</label>
+              <input type="text" defaultValue={user?.phone || ""} />
+            </div>
+            <div className="form-group">
+              <label>Role</label>
+              <input type="text" defaultValue={user?.role || ""} />
+            </div>
+            <div className="form-group">
+              <label>Change Password</label>
+              <input type="password" placeholder="Enter new password" />
+            </div>
+            <div className="modal-buttons">
+              <button className="save-btn" onClick={() => setShowEditModal(false)}>
+                Save
+              </button>
+              <button className="cancel-btn" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
