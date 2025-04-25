@@ -10,15 +10,14 @@ import Logtime from "./pages/Logtime";
 import History from "./pages/History";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
-import Analytics from "./pages/Analytics.jsx";
 import Pagination from "./components/Pagination.jsx";
 import PurchaseHistory from "./pages/PurchaseHistory.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
-import AnalystPage from "./pages/Analytics.jsx"
-import UserHistoryPage from "./pages/UserHistory.jsx"
+// import AnalystPage from "./pages/Analytics.jsx"
+// import UserHistoryPage from "./pages/UserHistory.jsx"
 
 function App() {
   const [items, setItems] = useState([]);
@@ -45,7 +44,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/quotationpdf" element={<QuotationPDF />} />
           <Route path="/pipdf" element={<PIPDF />} />
-          <Route path="/analytics" element={<Analytics />} />
+          {/* <Route path="/analytics" element={<AnalystPage />} /> */}
           <Route path="/pagination" element={<Pagination />} />
 
           {/* Protected Routes */}
@@ -111,22 +110,22 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
+          {/* <Route
             path="/analytics"
             element={
               <ProtectedRoute allowedRoles={["super-admin"]}>
                 <AnalystPage />
               </ProtectedRoute>
             }
-          />
-          <Route
+          /> */}
+          {/* <Route
             path="/history/:userId"
             element={
               <ProtectedRoute allowedRoles={["super-admin", "admin"]}>
                 <UserHistoryPage />
               </ProtectedRoute>
             }
-          />
+          /> */}
           {/* 
             <Route path='/searchbar' element={<Searchbar />} /> */}
           <Route path="/unauthorized" element={<Unauthorized />} />

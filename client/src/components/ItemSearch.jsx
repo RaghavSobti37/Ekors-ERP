@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "../css/ItemSearchComponent.css"; // We'll create this CSS file later
+import "../css/ItemSearchComponent.css";
 
 const getAuthToken = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      if (!userData || typeof userData !== "object") {
-        return null;
-      }
-      return userData.token;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
+  try {
+    const userData = JSON.parse(localStorage.getItem("erp-user"));
+    if (!userData || typeof userData !== "object") {
       return null;
     }
-  };
+    return userData.token;
+  } catch (e) {
+    console.error("Failed to parse user data:", e);
+    return null;
+  }
+};
 
 const ItemSearchComponent = ({ 
   onItemSelect, 
   placeholder = "Search item by name or HSN...",
   className = "",
-  disabled = false,
-  authToken
+  disabled = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [items, setItems] = useState([]);
@@ -29,12 +28,10 @@ const ItemSearchComponent = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch items on component mount
   useEffect(() => {
     fetchItems();
   }, []);
 
-  // Filter items when search term changes
   useEffect(() => {
     if (searchTerm.trim() !== "") {
       const filtered = items.filter(
@@ -86,7 +83,6 @@ const ItemSearchComponent = ({
   };
 
   const handleBlur = () => {
-    // Delay hiding dropdown to allow click events to register
     setTimeout(() => setShowDropdown(false), 200);
   };
 

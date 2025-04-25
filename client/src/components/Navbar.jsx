@@ -66,9 +66,9 @@ export default function Navbar({ showPurchaseModal }) {
     }, 300);
   };
 
-  const handleAnalystClick = () => {
-    navigate("/analytics");
-  };
+  // const handleAnalystClick = () => {
+  //   navigate("/analytics");
+  // };
 
   return (
     <nav className="navbar">
@@ -122,13 +122,13 @@ export default function Navbar({ showPurchaseModal }) {
           </div>
 
           {/* ✅ Analyst Button */}
-          <div
+          {/* <div
             className="dropdown-trigger"
             onClick={handleAnalystClick}
             style={{ cursor: "pointer" }}
           >
             <FaChartBar /> Analysis
-          </div>
+          </div> */}
         </div>
       </div>
 
