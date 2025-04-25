@@ -19,7 +19,7 @@ const CreateTicketModal = ({
         <Modal.Body>
           <div className="row">
             <Form.Group className="mb-3 col-md-6">
-              <Form.Label>Company Name*</Form.Label>
+              <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 required
                 type="text"
@@ -42,7 +42,7 @@ const CreateTicketModal = ({
               />
             </Form.Group>
             <Form.Group className="mb-3 col-md-6">
-              <Form.Label>Quotation Number*</Form.Label>
+              <Form.Label>Quotation Number <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 required
                 type="text"
@@ -55,9 +55,9 @@ const CreateTicketModal = ({
 
           <div className="row">
             <Form.Group className="mb-3 col-md-6">
-              <Form.Label>Billing Address*</Form.Label>
+              <Form.Label>Billing Address</Form.Label>
               <Form.Group className="mb-2">
-                <Form.Label>Address Line 1*</Form.Label>
+                <Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   required
                   value={ticketData.billingAddress[0] || ""}
@@ -92,7 +92,7 @@ const CreateTicketModal = ({
               </Form.Group>
               <div className="row">
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>State*</Form.Label>
+                  <Form.Label>State <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     value={ticketData.billingAddress[2] || ""}
@@ -110,7 +110,7 @@ const CreateTicketModal = ({
                   />
                 </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>City*</Form.Label>
+                  <Form.Label>City <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     value={ticketData.billingAddress[3] || ""}
@@ -128,7 +128,7 @@ const CreateTicketModal = ({
                   />
                 </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>Pincode*</Form.Label>
+                  <Form.Label>Pincode <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     type="text"
@@ -150,9 +150,9 @@ const CreateTicketModal = ({
             </Form.Group>
 
             <Form.Group className="mb-3 col-md-6">
-              <Form.Label>Shipping Address*</Form.Label>
+              <Form.Label>Shipping Address</Form.Label>
               <Form.Group className="mb-2">
-                <Form.Label>Address Line 1*</Form.Label>
+                <Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   required
                   value={ticketData.shippingAddress[0] || ""}
@@ -187,7 +187,7 @@ const CreateTicketModal = ({
               </Form.Group>
               <div className="row">
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>State*</Form.Label>
+                  <Form.Label>State <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     value={ticketData.shippingAddress[2] || ""}
@@ -205,7 +205,7 @@ const CreateTicketModal = ({
                   />
                 </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>City*</Form.Label>
+                  <Form.Label>City <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     value={ticketData.shippingAddress[3] || ""}
@@ -223,7 +223,7 @@ const CreateTicketModal = ({
                   />
                 </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>Pincode*</Form.Label>
+                  <Form.Label>Pincode <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     type="text"
