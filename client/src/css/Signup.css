@@ -58,4 +58,17 @@ body {
   a:hover {
     text-decoration: underline;
   }
+
+  .signup-card {
+    width: 90%;
+    max-width: 1000px;
+  }
+  
+  /* Optional for spacing if needed */
+  @media (max-width: 768px) {
+    .signup-card {
+      width: 95%;
+    }
+  }
+  
   

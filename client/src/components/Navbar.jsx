@@ -120,15 +120,7 @@ export default function Navbar({ showPurchaseModal }) {
               </div>
             )}
           </div>
-
-          {/* ✅ Analyst Button */}
-          <div
-            className="dropdown-trigger"
-            onClick={handleAnalystClick}
-            style={{ cursor: "pointer" }}
-          >
-            <FaChartBar /> Analytics
-          </div>
+          
         </div>
       </div>
 
