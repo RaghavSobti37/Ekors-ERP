@@ -196,11 +196,10 @@ const GoodsTable = ({
         <thead>
           <tr>
             <th>Sr No.</th>
-            <th>Description*</th>
-            <th>HSN/SAC*</th>
-            <th>Qty*</th>
-            <th>Unit</th>
-            <th>Price*</th>
+            <th>Description <span className="text-danger">*</span></th>
+            <th>HSN/SAC <span className="text-danger">*</span></th>
+            <th>Qty <span className="text-danger">*</span></th>
+            <th>Price <span className="text-danger">*</span></th>
             <th>Amount</th>
           </tr>
         </thead>
@@ -1108,7 +1107,7 @@ export default function Quotations() {
               <Modal.Body>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Date*</Form.Label>
+                    <Form.Label>Date <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="date"
@@ -1127,7 +1126,7 @@ export default function Quotations() {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Validity Date*</Form.Label>
+                    <Form.Label>Validity Date <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="date"
@@ -1140,7 +1139,7 @@ export default function Quotations() {
 
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Dispatch Days*</Form.Label>
+                    <Form.Label>Dispatch Days <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="number"
@@ -1151,7 +1150,7 @@ export default function Quotations() {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Order Issued By*</Form.Label>
+                    <Form.Label>Order Issued By <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="text"
@@ -1165,7 +1164,7 @@ export default function Quotations() {
                 <h5>Client Details</h5>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Company Name*</Form.Label>
+                    <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="text"
@@ -1175,7 +1174,7 @@ export default function Quotations() {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>GST Number*</Form.Label>
+                    <Form.Label>GST Number <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       required
                       type="text"
@@ -1187,7 +1186,7 @@ export default function Quotations() {
                 </div>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Email</Form.Label>
+                    <Form.Label>Email <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="email"
                       name="client.email"
@@ -1196,7 +1195,7 @@ export default function Quotations() {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Phone</Form.Label>
+                    <Form.Label>Phone <span className="text-danger">*</span></Form.Label>
                     <Form.Control
                       type="tel"
                       name="client.phone"
