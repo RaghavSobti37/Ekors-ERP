@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, Button, Form, Table } from "react-bootstrap";
+import axios from "axios";
 
 const CreateTicketModal = ({
   show,
@@ -10,6 +11,108 @@ const CreateTicketModal = ({
   isLoading,
   error,
 }) => {
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const [sameAsBilling, setSameAsBilling] = useState(false);
+
+  // Update shipping address when billing address changes and sameAsBilling is checked
+  useEffect(() => {
+    if (sameAsBilling) {
+      setTicketData({
+        ...ticketData,
+        shippingAddress: [...ticketData.billingAddress]
+      });
+    }
+  }, [sameAsBilling, ticketData.billingAddress]);
+
+  const fetchAddressFromPincode = async (pincode, addressType) => {
+    if (!pincode || pincode.length !== 6) return;
+    
+    setIsFetchingAddress(true);
+    try {
+      const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = response.data[0];
+      
+      if (data.Status === "Success") {
+        const postOffice = data.PostOffice[0];
+        const newAddress = [...ticketData[addressType]];
+        newAddress[2] = postOffice.State; // State
+        newAddress[3] = postOffice.District; // City
+        // Important: Preserve the pincode that was passed in
+        newAddress[4] = pincode;
+        
+        setTicketData({
+          ...ticketData,
+          [addressType]: newAddress
+        });
+
+        // If same as billing is checked and we're updating billing, also update shipping
+        if (sameAsBilling && addressType === 'billingAddress') {
+          setTicketData(prevData => ({
+            ...prevData,
+            shippingAddress: newAddress
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching address:", error);
+    } finally {
+      setIsFetchingAddress(false);
+    }
+  };
+
+  const handlePincodeChange = (e, addressType) => {
+    const pincode = e.target.value;
+    const newAddress = [...ticketData[addressType]];
+    newAddress[4] = pincode;
+    
+    setTicketData({
+      ...ticketData,
+      [addressType]: newAddress
+    });
+
+    // Use the current pincode value, not the potentially stale state value
+    if (pincode.length === 6) {
+      // Small delay to ensure state is updated before fetching
+      setTimeout(() => {
+        fetchAddressFromPincode(pincode, addressType);
+      }, 0);
+    }
+  };
+
+  const handleAddressChange = (e, addressType, index) => {
+    const value = e.target.value;
+    const newAddress = [...ticketData[addressType]];
+    newAddress[index] = value;
+    
+    setTicketData({
+      ...ticketData,
+      [addressType]: newAddress
+    });
+
+    // If same as billing is checked and we're updating billing, also update shipping
+    if (sameAsBilling && addressType === 'billingAddress') {
+      const newShippingAddress = [...ticketData.shippingAddress];
+      newShippingAddress[index] = value;
+      
+      setTicketData(prevData => ({
+        ...prevData,
+        shippingAddress: newShippingAddress
+      }));
+    }
+  };
+
+  const handleSameAsBillingChange = (e) => {
+    const isChecked = e.target.checked;
+    setSameAsBilling(isChecked);
+    
+    if (isChecked) {
+      setTicketData({
+        ...ticketData,
+        shippingAddress: [...ticketData.billingAddress]
+      });
+    }
+  };
+
   return (
     <Modal show={show} onHide={onHide} dialogClassName="modal-fullscreen">
       <Modal.Header closeButton>
@@ -17,6 +120,8 @@ const CreateTicketModal = ({
       </Modal.Header>
       <Form onSubmit={handleTicketSubmit}>
         <Modal.Body>
+          {error && <div className="alert alert-danger">{error}</div>}
+          
           <div className="row">
             <Form.Group className="mb-3 col-md-6">
               <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
@@ -61,15 +166,7 @@ const CreateTicketModal = ({
                 <Form.Control
                   required
                   value={ticketData.billingAddress[0] || ""}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      billingAddress: [
-                        e.target.value,
-                        ...ticketData.billingAddress.slice(1),
-                      ],
-                    })
-                  }
+                  onChange={(e) => handleAddressChange(e, 'billingAddress', 0)}
                   placeholder="Address line 1"
                 />
               </Form.Group>
@@ -77,36 +174,34 @@ const CreateTicketModal = ({
                 <Form.Label>Address Line 2</Form.Label>
                 <Form.Control
                   value={ticketData.billingAddress[1] || ""}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      billingAddress: [
-                        ticketData.billingAddress[0],
-                        e.target.value,
-                        ...ticketData.billingAddress.slice(2),
-                      ],
-                    })
-                  }
+                  onChange={(e) => handleAddressChange(e, 'billingAddress', 1)}
                   placeholder="Address line 2"
                 />
               </Form.Group>
               <div className="row">
                 <Form.Group className="mb-2 col-md-4">
+                  <Form.Label>Pincode*</Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    pattern="[0-9]{6}"
+                    value={ticketData.billingAddress[4] || ""}
+                    onChange={(e) => handlePincodeChange(e, 'billingAddress')}
+                    placeholder="Pincode"
+                    disabled={isFetchingAddress}
+                  />
+                  <Form.Text className="text-muted">
+                    Enter a 6-digit pincode to auto-fill state and city
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group className="mb-2 col-md-4">
                   <Form.Label>State <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     required
                     value={ticketData.billingAddress[2] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        billingAddress: [
-                          ...ticketData.billingAddress.slice(0, 2),
-                          e.target.value,
-                          ...ticketData.billingAddress.slice(3),
-                        ],
-                      })
-                    }
+                    onChange={(e) => handleAddressChange(e, 'billingAddress', 2)}
                     placeholder="State"
+                    disabled={isFetchingAddress}
                   />
                 </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
@@ -114,114 +209,45 @@ const CreateTicketModal = ({
                   <Form.Control
                     required
                     value={ticketData.billingAddress[3] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        billingAddress: [
-                          ...ticketData.billingAddress.slice(0, 3),
-                          e.target.value,
-                          ...ticketData.billingAddress.slice(4),
-                        ],
-                      })
-                    }
+                    onChange={(e) => handleAddressChange(e, 'billingAddress', 3)}
                     placeholder="City"
-                  />
-                </Form.Group>
-                <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>Pincode <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    pattern="[0-9]{6}"
-                    value={ticketData.billingAddress[4] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        billingAddress: [
-                          ...ticketData.billingAddress.slice(0, 4),
-                          e.target.value,
-                        ],
-                      })
-                    }
-                    placeholder="Pincode"
+                    disabled={isFetchingAddress}
                   />
                 </Form.Group>
               </div>
             </Form.Group>
 
             <Form.Group className="mb-3 col-md-6">
-              <Form.Label>Shipping Address</Form.Label>
+              <div className="d-flex justify-content-between align-items-center">
+                <Form.Label>Shipping Address*</Form.Label>
+                <Form.Check
+                  type="checkbox"
+                  label="Same as Billing Address"
+                  checked={sameAsBilling}
+                  onChange={handleSameAsBillingChange}
+                  className="mb-2"
+                />
+              </div>
               <Form.Group className="mb-2">
-                <Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Address Line 1*</Form.Label>
                 <Form.Control
                   required
                   value={ticketData.shippingAddress[0] || ""}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      shippingAddress: [
-                        e.target.value,
-                        ...ticketData.shippingAddress.slice(1),
-                      ],
-                    })
-                  }
+                  onChange={(e) => handleAddressChange(e, 'shippingAddress', 0)}
                   placeholder="Address line 1"
+                  disabled={sameAsBilling}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
                 <Form.Label>Address Line 2</Form.Label>
                 <Form.Control
                   value={ticketData.shippingAddress[1] || ""}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      shippingAddress: [
-                        ticketData.shippingAddress[0],
-                        e.target.value,
-                        ...ticketData.shippingAddress.slice(2),
-                      ],
-                    })
-                  }
+                  onChange={(e) => handleAddressChange(e, 'shippingAddress', 1)}
                   placeholder="Address line 2"
+                  disabled={sameAsBilling}
                 />
               </Form.Group>
               <div className="row">
-                <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>State <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    value={ticketData.shippingAddress[2] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        shippingAddress: [
-                          ...ticketData.shippingAddress.slice(0, 2),
-                          e.target.value,
-                          ...ticketData.shippingAddress.slice(3),
-                        ],
-                      })
-                    }
-                    placeholder="State"
-                  />
-                </Form.Group>
-                <Form.Group className="mb-2 col-md-4">
-                  <Form.Label>City <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    required
-                    value={ticketData.shippingAddress[3] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        shippingAddress: [
-                          ...ticketData.shippingAddress.slice(0, 3),
-                          e.target.value,
-                          ...ticketData.shippingAddress.slice(4),
-                        ],
-                      })
-                    }
-                    placeholder="City"
-                  />
-                </Form.Group>
                 <Form.Group className="mb-2 col-md-4">
                   <Form.Label>Pincode <span className="text-danger">*</span></Form.Label>
                   <Form.Control
@@ -229,16 +255,32 @@ const CreateTicketModal = ({
                     type="text"
                     pattern="[0-9]{6}"
                     value={ticketData.shippingAddress[4] || ""}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        shippingAddress: [
-                          ...ticketData.shippingAddress.slice(0, 4),
-                          e.target.value,
-                        ],
-                      })
-                    }
+                    onChange={(e) => handlePincodeChange(e, 'shippingAddress')}
                     placeholder="Pincode"
+                    disabled={isFetchingAddress || sameAsBilling}
+                  />
+                  <Form.Text className="text-muted">
+                    Enter a 6-digit pincode to auto-fill state and city
+                  </Form.Text>
+                </Form.Group>
+                <Form.Group className="mb-2 col-md-4">
+                  <Form.Label>State*</Form.Label>
+                  <Form.Control
+                    required
+                    value={ticketData.shippingAddress[2] || ""}
+                    onChange={(e) => handleAddressChange(e, 'shippingAddress', 2)}
+                    placeholder="State"
+                    disabled={isFetchingAddress || sameAsBilling}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-2 col-md-4">
+                  <Form.Label>City*</Form.Label>
+                  <Form.Control
+                    required
+                    value={ticketData.shippingAddress[3] || ""}
+                    onChange={(e) => handleAddressChange(e, 'shippingAddress', 3)}
+                    placeholder="City"
+                    disabled={isFetchingAddress || sameAsBilling}
                   />
                 </Form.Group>
               </div>
@@ -282,14 +324,12 @@ const CreateTicketModal = ({
               </div>
               <div className="col-md-4">
                 <p>
-                  Total Amount:{" "}
-                  <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                  Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
                 </p>
               </div>
               <div className="col-md-4">
                 <p>
-                  GST (18%):{" "}
-                  <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                  GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
                 </p>
               </div>
             </div>
@@ -304,7 +344,7 @@ const CreateTicketModal = ({
           <Button variant="secondary" onClick={onHide}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" disabled={isLoading}>
+          <Button variant="primary" type="submit" disabled={isLoading || isFetchingAddress}>
             {isLoading ? "Creating..." : "Create Ticket"}
           </Button>
         </Modal.Footer>

@@ -65,4 +65,21 @@ router.get('/all', auth, async (req, res) => {
   }
 });
 
+// Add this new route to get logs by user ID
+router.get('/user/:userId', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'super-admin' && req.user._id.toString() !== req.params.userId) {
+      return res.status(403).json({ error: 'Unauthorized access' });
+    }
+
+    const logs = await LogTime.find({ user: req.params.userId })
+      .sort({ date: -1 })
+      .populate('user', 'firstname lastname');
+
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching user logs' });
+  }
+});
+
 module.exports = router;

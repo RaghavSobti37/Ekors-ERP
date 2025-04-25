@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
 import Navbar from "../components/Navbar.jsx";
-import Pagination from '../components/Pagination';
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ItemSearchComponent from "../components/ItemSearch";
@@ -249,6 +248,27 @@ const GoodsTable = ({
                       handleGoodsChange(index, "quantity", e.target.value)
                     }
                   />
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.unit
+                ) : (
+                  <Form.Control
+                    as="select"
+                    value={item.unit || "Nos"}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
+                  >
+                    <option value="Nos">Nos</option>
+                    <option value="Mtr">Mtr</option>
+                    <option value="PKT">PKT</option>
+                    <option value="Pair">Pair</option>
+                    <option value="Set">Set</option>
+                    <option value="Bottle">Bottle</option>
+                    <option value="KG">KG</option>
+                  </Form.Control>
                 )}
               </td>
               <td>
@@ -502,6 +522,7 @@ export default function Quotations() {
     });
   };
 
+
   const handleAddItem = (item) => {
     const newGoods = [
       ...quotationData.goods,
@@ -510,11 +531,12 @@ export default function Quotations() {
         description: item.name,
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
+        unit: item.unit || "Nos",
         price: item.price,
         amount: item.price, // quantity * price (quantity is 1 initially)
       },
     ];
-
+  
     // Calculate totals
     const totalQuantity = newGoods.reduce(
       (sum, item) => sum + Number(item.quantity),
@@ -526,7 +548,7 @@ export default function Quotations() {
     );
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
-
+  
     setQuotationData({
       ...quotationData,
       goods: newGoods,
@@ -536,6 +558,7 @@ export default function Quotations() {
       grandTotal,
     });
   };
+  
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...quotationData.goods];
@@ -550,6 +573,10 @@ export default function Quotations() {
       updatedGoods[index].amount =
         updatedGoods[index].quantity * updatedGoods[index].price;
     }
+
+    updatedGoods.forEach(item => {
+      if (!item.unit) item.unit = 'Nos';
+    });
 
     const totalQuantity = updatedGoods.reduce(
       (sum, item) => sum + item.quantity,
@@ -767,10 +794,10 @@ export default function Quotations() {
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-
+  
     try {
       setIsLoading(true);
-
+  
       const ticketExists = await checkExistingTicket(
         ticketData.quotationNumber
       );
@@ -779,18 +806,18 @@ export default function Quotations() {
         setIsLoading(false);
         return;
       }
-
+  
       const token = getAuthToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
-
+  
       // Get current user info
       const userData = JSON.parse(localStorage.getItem('erp-user'));
       if (!userData) {
         throw new Error("User data not found");
       }
-
+  
       // Prepare complete ticket data
       const completeTicketData = {
         ...ticketData,
@@ -809,7 +836,7 @@ export default function Quotations() {
           feedback: ""
         }
       };
-
+  
       const response = await axios.post(
         "http://localhost:3000/api/tickets",
         completeTicketData,
@@ -820,14 +847,14 @@ export default function Quotations() {
           },
         }
       );
-
+  
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-
+        
         // Show success message
         alert(`Ticket ${response.data.ticketNumber} created successfully!`);
-
+        
         // Optionally navigate to tickets page
         navigate('/tickets');
       }
@@ -992,6 +1019,8 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => {
                           setCurrentQuotation(quotation);
+                          //debugging
+                          console.log("Quotation goods with units:", quotation.goods);
                           setShowPdfModal(true);
                         }}
                       >
@@ -1177,14 +1206,6 @@ export default function Quotations() {
                 </div>
 
                 <h5>Goods Details</h5>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={addGoodsRow}
-                  className="mb-3"
-                >
-                  Add Item
-                </Button>
                 <GoodsTable
                   goods={quotationData.goods}
                   handleGoodsChange={handleGoodsChange}
@@ -1237,7 +1258,7 @@ export default function Quotations() {
                 </Button>
               </Modal.Footer>
             </Form>
-          </div>
+          </div>  
         </Modal>
 
         {/* Create Ticket Modal */}
@@ -1286,14 +1307,6 @@ export default function Quotations() {
             )}
           </Modal.Body>
         </Modal>
-
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            if (page >= 1 && page <= totalPages) setCurrentPage(page);
-          }}
-        />
       </div>
     </div>
   );
