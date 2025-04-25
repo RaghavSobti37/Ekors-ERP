@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "../css/ItemSearchComponent.css";
 
@@ -27,6 +27,10 @@ const ItemSearchComponent = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  
+  const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     fetchItems();
@@ -42,11 +46,44 @@ const ItemSearchComponent = ({
       );
       setFilteredItems(filtered);
       setShowDropdown(true);
+      updateDropdownPosition();
     } else {
       setFilteredItems([]);
       setShowDropdown(false);
     }
   }, [searchTerm, items]);
+
+  // Update dropdown position when it becomes visible
+  useEffect(() => {
+    if (showDropdown) {
+      updateDropdownPosition();
+    }
+  }, [showDropdown]);
+
+  const updateDropdownPosition = () => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
+  // Update position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (showDropdown) {
+        updateDropdownPosition();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [showDropdown]);
 
   const fetchItems = async () => {
     try {
@@ -83,7 +120,8 @@ const ItemSearchComponent = ({
   };
 
   const handleBlur = () => {
-    setTimeout(() => setShowDropdown(false), 200);
+    // Increased timeout to give more time for selection
+    setTimeout(() => setShowDropdown(false), 300);
   };
 
   return (
@@ -92,6 +130,7 @@ const ItemSearchComponent = ({
       
       <div className="search-input-container">
         <input
+          ref={inputRef}
           type="text"
           className="form-control"
           placeholder={placeholder}
@@ -102,30 +141,41 @@ const ItemSearchComponent = ({
           disabled={disabled || loading}
         />
         {loading && <div className="search-loading">Loading...</div>}
+        
+        {showDropdown && filteredItems.length > 0 && (
+          <div 
+            ref={dropdownRef}
+            className="search-suggestions-dropdown"
+            style={{
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+              maxHeight: '300px'
+            }}
+          >
+            {filteredItems.map((item) => (
+              <div
+                key={item._id}
+                className="search-suggestion-item"
+                onClick={() => handleItemClick(item)}
+                onMouseDown={(e) => e.preventDefault()} // Prevent blur event
+              >
+                <strong>{item.name}</strong>
+                <span className="text-muted"> - ₹{item.price.toFixed(2)}</span>
+                <br />
+                <small>
+                  HSN: {item.hsnCode || "N/A"}, GST: {item.gstRate || 0}%
+                </small>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showDropdown && searchTerm && filteredItems.length === 0 && (
+          <div className="search-no-results">No items found</div>
+        )}
       </div>
-
-      {showDropdown && filteredItems.length > 0 && (
-        <div className="search-suggestions-dropdown">
-          {filteredItems.map((item) => (
-            <div
-              key={item._id}
-              className="search-suggestion-item"
-              onClick={() => handleItemClick(item)}
-            >
-              <strong>{item.name}</strong>
-              <span className="text-muted"> - ₹{item.price.toFixed(2)}</span>
-              <br />
-              <small>
-                HSN: {item.hsnCode || "N/A"}, GST: {item.gstRate || 0}%
-              </small>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showDropdown && searchTerm && filteredItems.length === 0 && (
-        <div className="search-no-results">No items found</div>
-      )}
     </div>
   );
 };
