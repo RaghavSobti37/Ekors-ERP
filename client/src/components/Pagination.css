@@ -2,8 +2,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 25px;
-    background: linear-gradient(to right, #4200ff, #6e4fff);
+    gap: 25px;  
     padding: 12px 0;
     border-top: 2px solid #000;
     color: black;

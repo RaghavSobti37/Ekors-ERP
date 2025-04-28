@@ -815,13 +815,13 @@ export default function Items() {
                               </button>
                             </>
                           )}
-                          <button
+                          {/* <button
                             onClick={() => toggleDetails(item._id)}
                             className="btn btn-info btn-sm"
                             disabled={isSubmitting}
                           >
                             {expandedRow === item._id ? "Hide" : "Show"} Details
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
