@@ -23,6 +23,8 @@ export default function Challan() {
   const [viewData, setViewData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Fetch all challans on component mount
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function Challan() {
       setLoading(true);
       const response = await axios.get(API_URL);
       setChallanData(response.data);
+      setTotalPages(Math.ceil(response.data.length / 10)); // Assuming 10 items per page
       setError(null);
     } catch (err) {
       console.error("Error fetching challans:", err);
@@ -57,7 +60,6 @@ export default function Challan() {
     setError(null);
 
     try {
-      // Create FormData object to handle file uploads
       const submitData = new FormData();
       submitData.append("companyName", formData.companyName);
       submitData.append("phone", formData.phone);
@@ -65,26 +67,20 @@ export default function Challan() {
       submitData.append("totalBilling", formData.totalBilling);
       submitData.append("billNumber", formData.billNumber || "");
 
-      // Only append media if it exists
       if (formData.media) {
         submitData.append("media", formData.media);
       }
 
       let response;
       if (editMode && editId) {
-        // Update existing challan
         response = await axios.put(`${API_URL}/${editId}`, submitData);
         alert("Challan updated successfully!");
       } else {
-        // Create new challan
         response = await axios.post(API_URL, submitData);
         alert("Challan submitted successfully!");
       }
 
-      // Refresh the challan list
       fetchChallans();
-
-      // Reset form and states
       resetForm();
     } catch (err) {
       console.error("Error submitting challan:", err);
@@ -99,6 +95,7 @@ export default function Challan() {
     setViewMode(false);
     setEditMode(false);
     setEditId(null);
+    setViewData(null);
     setFormData({
       companyName: "",
       phone: "",
@@ -112,10 +109,10 @@ export default function Challan() {
   const openViewPopup = async (challan) => {
     try {
       setLoading(true);
-      // Fetch the full challan details
       const response = await axios.get(`${API_URL}/${challan._id}`);
       setViewData(response.data);
       setViewMode(true);
+      setEditMode(false);
       setShowPopup(true);
     } catch (err) {
       console.error("Error fetching challan details:", err);
@@ -128,7 +125,6 @@ export default function Challan() {
   const openEditPopup = async (challan) => {
     try {
       setLoading(true);
-      // Fetch the full challan details
       const response = await axios.get(`${API_URL}/${challan._id}`);
       const challanData = response.data;
 
@@ -138,12 +134,12 @@ export default function Challan() {
         email: challanData.email,
         totalBilling: challanData.totalBilling,
         billNumber: challanData.billNumber || "",
-        // Don't set media here as we don't want to show the current file in the file input
         media: null,
       });
 
       setEditId(challan._id);
       setEditMode(true);
+      setViewMode(false);
       setShowPopup(true);
     } catch (err) {
       console.error("Error fetching challan details for edit:", err);
@@ -152,24 +148,6 @@ export default function Challan() {
       setLoading(false);
     }
   };
-
-  // const deleteChallan = async (id) => {
-  //   if (!window.confirm("Are you sure you want to delete this challan?")) {
-  //     return;
-  //   }
-
-  //   try {
-  //     setLoading(true);
-  //     await axios.delete(`${API_URL}/${id}`);
-  //     alert("Challan deleted successfully!");
-  //     fetchChallans();
-  //   } catch (err) {
-  //     console.error("Error deleting challan:", err);
-  //     alert("Failed to delete challan");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const viewDocument = (id) => {
     window.open(`${API_URL}/${id}/document`, "_blank");
@@ -349,12 +327,6 @@ export default function Challan() {
                     >
                       ✏️ Edit
                     </button>
-                    {/* <button
-                      className="delete-btn"
-                      onClick={() => deleteChallan(challan._id)}
-                    >
-                      🗑️ Delete
-                    </button> */}
                   </td>
                 </tr>
               ))
@@ -363,8 +335,8 @@ export default function Challan() {
         </table>
 
         {showPopup && (
-          <div className="popup-overlay">
-            <div className="popup-form ninety-five-percent">
+          <div className="popup-overlay" onClick={resetForm}>
+            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
               <div className="popup-header">
                 <h3>{viewMode ? "View Challan" : (editMode ? "Edit Challan" : "Create New Challan")}</h3>
                 <button
@@ -375,19 +347,17 @@ export default function Challan() {
                 </button>
               </div>
               {renderForm()}
-
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => {
-                  if (page >= 1 && page <= totalPages) setCurrentPage(page);
-                }}
-              />
             </div>
           </div>
         )}
 
-
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => {
+            if (page >= 1 && page <= totalPages) setCurrentPage(page);
+          }}
+        />
       </div>
     </div>
   );

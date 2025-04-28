@@ -8,6 +8,7 @@ import ItemSearchComponent from "../components/ItemSearch";
 import QuotationPDF from "../components/QuotationPDF";
 import CreateTicketModal from "../components/CreateTicketModal";
 import "../css/Quotation.css";
+import Pagination from '../components/Pagination';
 import "../css/Items.css";
 
 import {
