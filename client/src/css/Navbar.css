@@ -3,7 +3,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #1a1a2e;
+  background-color: #000000; /* Changed to black */
   padding: 12px 20px;
   color: white;
   font-family: Arial, sans-serif;
@@ -82,7 +82,7 @@
   position: absolute;
   top: 50px;
   right: 0;
-  background: #2c2c54;
+  background: #ffffff; /* White background */
   padding: 15px;
   border-radius: 10px;
   width: 220px;
@@ -103,7 +103,7 @@
   font-size: 13px;
   font-weight: bold;
   margin: 6px 0;
-  color: #f1f1f1;
+  color: #000000; /* Black text */
 }
 
 .logout-btn {
@@ -121,6 +121,19 @@
   background: darkred;
 }
 
+.edit-btn {
+  width: 100%;
+  padding: 8px;
+  background: #4b0082;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.edit-btn:hover {
+  background: #3a0069;
+}
 
 /* Dropdown Wrapper */
 .dropdown-wrapper {
@@ -150,7 +163,7 @@
   position: absolute;
   top: 42px;
   left: 0;
-  background-color: #2c2c54;
+  background-color: #000000; /* Black background */
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   padding: 10px 0;
@@ -160,7 +173,7 @@
   flex-direction: column;
 }
 
-.dropdown-menu a {
+.dropdown-menu div {
   padding: 10px 15px;
   color: white;
   text-decoration: none;
@@ -168,78 +181,93 @@
   transition: background-color 0.2s ease;
 }
 
-.dropdown-menu a:hover {
+.dropdown-menu div:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Nested Dropdown Trigger */
-.nested-dropdown {
-  position: relative;
-}
-
-.nested-trigger {
-  padding: 10px 15px;
-  color: white;
-  text-decoration: none;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-}
-
-.nested-trigger:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Sub Dropdown Wrapper */
-.sub-dropdown-wrapper {
-  position: relative;
-}
-
-.sub-dropdown-trigger {
-  padding: 10px 15px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-decoration: none;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.sub-dropdown-trigger:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.right-arrow {
-  margin-left: 8px;
-  font-size: 12px;
-}
-
-/* Sub Dropdown Menu */
-.sub-dropdown-menu {
-  position: absolute;
+/* Edit Modal - Updated with more padding */
+.edit-modal-overlay {
+  position: fixed;
   top: 0;
-  left: 160px;
-  background-color: #2c2c54;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  padding: 10px 0;
-  z-index: 1000;
-  min-width: 150px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
 }
 
-.sub-dropdown-menu a {
-  padding: 10px 15px;
-  color: white;
-  text-decoration: none;
+.edit-modal {
+  background-color: white;
+  padding: 30px 40px; /* Increased horizontal padding */
+  border-radius: 8px;
+  width: 400px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+  z-index: 2001;
+  margin: 20px; /* Added margin to ensure space around the modal */
+  max-height: 90vh; /* Limit height to viewport */
+  overflow-y: auto; /* Add scroll if content is too long */
+}
+
+.edit-modal h2 {
+  color: #000000;
+  margin-bottom: 25px; /* Increased margin */
+  padding-top: 10px; /* Added padding */
+}
+
+.form-group {
+  margin-bottom: 20px; /* Increased margin */
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px; /* Increased margin */
+  font-weight: 500;
+  color: #000000;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px; /* Increased padding */
+  border: 1px solid #ccc;
+  border-radius: 4px;
   font-size: 14px;
-  transition: background-color 0.2s ease;
 }
 
-.sub-dropdown-menu a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px; /* Increased gap */
+  margin-top: 30px; /* Increased margin */
+  padding-bottom: 10px; /* Added padding */
+}
+
+.save-btn,
+.cancel-btn {
+  padding: 10px 20px; /* Increased padding */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.save-btn {
+  background-color: #4b0082;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #3a0069;
+}
+
+.cancel-btn {
+  background-color: #ccc;
+  color: black;
+}
+
+.cancel-btn:hover {
+  background-color: #bbb;
 }
