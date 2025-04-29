@@ -1,4 +1,3 @@
-// Navbar.jsx
 import React, { useState, useRef } from "react";
 import "../css/Navbar.css";
 import {
@@ -8,9 +7,8 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
-  FaChartBar,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom"; // Changed from useNavigate to include NavLink
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar({ showPurchaseModal }) {
@@ -64,30 +62,42 @@ export default function Navbar({ showPurchaseModal }) {
           </div>
 
           <div className="nav-links">
-            <a href="/quotations">
+            <NavLink 
+              to="/quotations" 
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
               <FaFileInvoice /> Quotations
-            </a>
-            <a href="/tickets">
+            </NavLink>
+            <NavLink 
+              to="/tickets" 
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
               <FaTicketAlt /> Tickets
-            </a>
-            <a href="/challan">
+            </NavLink>
+            <NavLink 
+              to="/challan" 
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
               <FaClipboardList /> Challan
-            </a>
-            <a href="/logtime">
+            </NavLink>
+            <NavLink 
+              to="/logtime" 
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
               <FaClock /> Log Time
-            </a>
+            </NavLink>
 
             <div
               className="dropdown-wrapper"
               onMouseEnter={handleMouseEnterDropdown}
               onMouseLeave={handleMouseLeaveDropdown}
             >
-              <div
-                className="dropdown-trigger"
-                onClick={() => navigate("/itemslist")}
+              <NavLink 
+                to="/itemslist" 
+                className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
               >
                 <FaBoxOpen /> Items List
-              </div>
+              </NavLink>
               {showItemsDropdown && (
                 <div className="dropdown-menu">
                   <div
