@@ -983,7 +983,7 @@ export default function Dashboard() {
             {/* Company and Quotation Info */}
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Company Name*</Form.Label>
                 <Form.Control
                   required
                   type="text"
@@ -997,7 +997,7 @@ export default function Dashboard() {
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Quotation Number <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Quotation Number*</Form.Label>
                 <Form.Control
                   required
                   type="text"
@@ -1017,7 +1017,7 @@ export default function Dashboard() {
             {/* Address Information */}
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Billing Address <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Billing Address*</Form.Label>
                 <Form.Control
                   required
                   as="textarea"
@@ -1032,7 +1032,7 @@ export default function Dashboard() {
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Shipping Address <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Shipping Address*</Form.Label>
                 <Form.Control
                   required
                   as="textarea"
@@ -1049,16 +1049,16 @@ export default function Dashboard() {
             </div>
 
             {/* Goods Details */}
-            <h5 className="mt-4">Goods Details <span className="text-danger">*</span></h5>
+            <h5 className="mt-4">Goods Details*</h5>
             <div className="table-responsive">
               <Table bordered className="mb-3">
                 <thead>
                   <tr>
                     <th>Sr No.</th>
-                    <th>Description <span className="text-danger">*</span></th>
-                    <th>HSN/SAC <span className="text-danger">*</span></th>
-                    <th>Qty <span className="text-danger">*</span></th>
-                    <th>Price <span className="text-danger">*</span></th>
+                    <th>Description*</th>
+                    <th>HSN/SAC*</th>
+                    <th>Qty*</th>
+                    <th>Price*</th>
                     <th>Amount</th>
                   </tr>
                 </thead>
@@ -1181,7 +1181,9 @@ export default function Dashboard() {
                     ) : (
                       ticketData.documents?.[docKey] && (
                         <a
-                          href={`http://localhost:3000/${ticketData.documents[docKey]}`}
+                        href={ticketData.documents[docKey].startsWith('/') 
+                          ? `http://localhost:3000${ticketData.documents[docKey]}` 
+                          : `http://localhost:3000/${ticketData.documents[docKey]}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-success btn-sm"
