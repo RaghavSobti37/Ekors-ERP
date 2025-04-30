@@ -1,4 +1,38 @@
 /* Navbar */
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+  background-color: #4b0082;
+  color: white;
+  font-weight: 600;
+}
+
+/* For the dropdown trigger when active */
+.dropdown-wrapper .nav-link.active {
+  background-color: #4b0082;
+}
+
+/* Make sure dropdown menu stays black */
+.dropdown-menu {
+  background-color: #000000 !important;
+}
+
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -271,3 +305,4 @@
 .cancel-btn:hover {
   background-color: #bbb;
 }
+

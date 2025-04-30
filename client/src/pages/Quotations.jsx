@@ -34,6 +34,145 @@ const fullScreenModalStyle = {
   overflow: 'auto'
 };
 
+<<<<<<< HEAD
+=======
+// PDF Document Styles
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: "Helvetica",
+    fontSize: 11,
+  },
+  header: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+  },
+  section: {
+    marginBottom: 15,
+  },
+  table: {
+    display: "table",
+    width: "auto",
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#000",
+  },
+  tableRow: {
+    flexDirection: "row",
+  },
+  tableColHeader: {
+    width: "25%",
+    fontWeight: "bold",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  tableCol: {
+    width: "25%",
+    border: "1px solid #000",
+    padding: 5,
+    textAlign: "center",
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 5,
+    fontWeight: "bold",
+  },
+  footer: {
+    marginTop: 20,
+    textAlign: "center",
+    fontSize: 10,
+    color: "red",
+  },
+});
+
+// Quotation PDF Template
+const QuotationTemplate = ({ quotation }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <Text style={pdfStyles.header}>Quotation</Text>
+
+      <View style={pdfStyles.section}>
+        <Text>Quotation Number: {quotation.referenceNumber}</Text>
+        <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+        <Text>
+          Validity Date: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>To:</Text>
+        <Text>{quotation.client.companyName}</Text>
+        <Text>GST: {quotation.client.gstNumber}</Text>
+      </View>
+
+      <View style={pdfStyles.table}>
+        <View style={[pdfStyles.tableRow, { backgroundColor: "#f0f0f0" }]}>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>S.No</Text>
+          <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+            Description
+          </Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>HSN/SAC</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Qty</Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>Rate</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Amount</Text>
+        </View>
+
+        {quotation.goods.map((item, index) => (
+          <View style={pdfStyles.tableRow} key={index}>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {index + 1}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+              {item.description}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              {item.hsnSacCode}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {item.quantity}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              ₹{item.price.toFixed(2)}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              ₹{item.amount.toFixed(2)}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={pdfStyles.totalRow}>
+        <Text>Sub Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>GST (18%): ₹{quotation.gstAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>Grand Total: ₹{quotation.grandTotal.toFixed(2)}</Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>Terms & Conditions:</Text>
+        <Text>- Payment: 100% advance</Text>
+        <Text>- Delivery: Within {quotation.dispatchDays} days</Text>
+        <Text>
+          - Validity: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.footer}>
+        <Text>For {quotation.client.companyName}</Text>
+        <Text>Authorized Signatory</Text>
+      </View>
+    </Page>
+  </Document>
+);
+
+>>>>>>> 7f3b598e894b39f83984a348e9c73934ca5128ef
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -186,7 +325,7 @@ export default function Quotations() {
   const [formValidated, setFormValidated] = useState(false);
   const [quotationsCount, setQuotationsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Number of items per page
+  const [itemsPerPage] = useState(5);
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",
@@ -246,8 +385,8 @@ export default function Quotations() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
-    shippingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
+    billingAddress: ["", "", "", "", ""],
+    shippingAddress: ["", "", "", "", ""],
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -300,7 +439,7 @@ export default function Quotations() {
   }, [user, loading, navigate, fetchQuotations]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset to first page when search term changes
+    setCurrentPage(1);
   }, [searchTerm]);
 
   const sortedQuotations = useMemo(() => {
@@ -347,7 +486,6 @@ export default function Quotations() {
     );
   }, [sortedQuotations, searchTerm]);
 
-  // Get current items for pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredQuotations.slice(
@@ -383,8 +521,17 @@ export default function Quotations() {
     });
   };
 
-
   const handleAddItem = (item) => {
+    // Check if item already exists in the goods list
+    const itemExists = quotationData.goods.some(
+      (existingItem) => existingItem.description === item.name
+    );
+
+    if (itemExists) {
+      setError("This item is already added to the quotation.");
+      return;
+    }
+
     const newGoods = [
       ...quotationData.goods,
       {
@@ -394,10 +541,10 @@ export default function Quotations() {
         quantity: 1,
         unit: item.unit || "Nos",
         price: item.price,
-        amount: item.price, // quantity * price (quantity is 1 initially)
+        amount: item.price,
       },
     ];
-  
+
     // Calculate totals
     const totalQuantity = newGoods.reduce(
       (sum, item) => sum + Number(item.quantity),
@@ -409,7 +556,7 @@ export default function Quotations() {
     );
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
-  
+
     setQuotationData({
       ...quotationData,
       goods: newGoods,
@@ -418,8 +565,8 @@ export default function Quotations() {
       gstAmount,
       grandTotal,
     });
+    setError(null); // Clear any previous errors
   };
-  
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...quotationData.goods];
@@ -465,11 +612,15 @@ export default function Quotations() {
 
     if (name.startsWith("client.")) {
       const field = name.split(".")[1];
+      
+      // Convert GST number to uppercase
+      const processedValue = field === "gstNumber" ? value.toUpperCase() : value;
+      
       setQuotationData((prev) => ({
         ...prev,
         client: {
           ...prev.client,
-          [field]: value,
+          [field]: processedValue,
         },
       }));
     } else {
@@ -655,10 +806,10 @@ export default function Quotations() {
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
-  
+
     try {
       setIsLoading(true);
-  
+
       const ticketExists = await checkExistingTicket(
         ticketData.quotationNumber
       );
@@ -667,19 +818,17 @@ export default function Quotations() {
         setIsLoading(false);
         return;
       }
-  
+
       const token = getAuthToken();
       if (!token) {
         throw new Error("No authentication token found");
       }
-  
-      // Get current user info
+
       const userData = JSON.parse(localStorage.getItem('erp-user'));
       if (!userData) {
         throw new Error("User data not found");
       }
-  
-      // Prepare complete ticket data
+
       const completeTicketData = {
         ...ticketData,
         createdBy: userData.id,
@@ -697,7 +846,7 @@ export default function Quotations() {
           feedback: ""
         }
       };
-  
+
       const response = await axios.post(
         "http://localhost:3000/api/tickets",
         completeTicketData,
@@ -708,15 +857,11 @@ export default function Quotations() {
           },
         }
       );
-  
+
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-        
-        // Show success message
         alert(`Ticket ${response.data.ticketNumber} created successfully!`);
-        
-        // Optionally navigate to tickets page
         navigate('/tickets');
       }
     } catch (error) {
@@ -880,7 +1025,6 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => {
                           setCurrentQuotation(quotation);
-                          //debugging
                           console.log("Quotation goods with units:", quotation.goods);
                           setShowPdfModal(true);
                         }}
@@ -1119,7 +1263,7 @@ export default function Quotations() {
                 </Button>
               </Modal.Footer>
             </Form>
-          </div>  
+          </div>
         </Modal>
 
         {/* Create Ticket Modal */}
@@ -1168,6 +1312,14 @@ export default function Quotations() {
             )}
           </Modal.Body>
         </Modal>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => {
+            if (page >= 1 && page <= totalPages) setCurrentPage(page);
+          }}
+        />
       </div>
     </div>
   );
