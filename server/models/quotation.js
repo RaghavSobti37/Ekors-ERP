@@ -45,6 +45,6 @@ const quotationSchema = new mongoose.Schema(
 );
 
 quotationSchema.index({ user: 1, referenceNumber: 1 });
-quotationSchema.index({ user: 1, client: 1 });
+// quotationSchema.index({ user: 1, client: 1 });
 
 module.exports = mongoose.model("Quotation", quotationSchema);

@@ -34,8 +34,6 @@ const fullScreenModalStyle = {
   overflow: 'auto'
 };
 
-
-
 // PDF Document Styles
 const pdfStyles = StyleSheet.create({
   page: {
@@ -87,8 +85,6 @@ const pdfStyles = StyleSheet.create({
     fontSize: 10,
     color: "red",
   },
-
-
 });
 
 // Quotation PDF Template
@@ -326,7 +322,7 @@ export default function Quotations() {
   const [formValidated, setFormValidated] = useState(false);
   const [quotationsCount, setQuotationsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Number of items per page
+  const [itemsPerPage] = useState(5);
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",
@@ -386,8 +382,8 @@ export default function Quotations() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
-    shippingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
+    billingAddress: ["", "", "", "", ""],
+    shippingAddress: ["", "", "", "", ""],
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -440,7 +436,7 @@ export default function Quotations() {
   }, [user, loading, navigate, fetchQuotations]);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset to first page when search term changes
+    setCurrentPage(1);
   }, [searchTerm]);
 
   const sortedQuotations = useMemo(() => {
@@ -487,7 +483,6 @@ export default function Quotations() {
     );
   }, [sortedQuotations, searchTerm]);
 
-  // Get current items for pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredQuotations.slice(
@@ -523,8 +518,17 @@ export default function Quotations() {
     });
   };
 
-
   const handleAddItem = (item) => {
+    // Check if item already exists in the goods list
+    const itemExists = quotationData.goods.some(
+      (existingItem) => existingItem.description === item.name
+    );
+
+    if (itemExists) {
+      setError("This item is already added to the quotation.");
+      return;
+    }
+
     const newGoods = [
       ...quotationData.goods,
       {
@@ -534,7 +538,7 @@ export default function Quotations() {
         quantity: 1,
         unit: item.unit || "Nos",
         price: item.price,
-        amount: item.price, // quantity * price (quantity is 1 initially)
+        amount: item.price,
       },
     ];
 
@@ -558,8 +562,8 @@ export default function Quotations() {
       gstAmount,
       grandTotal,
     });
+    setError(null); // Clear any previous errors
   };
-
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...quotationData.goods];
@@ -605,11 +609,15 @@ export default function Quotations() {
 
     if (name.startsWith("client.")) {
       const field = name.split(".")[1];
+      
+      // Convert GST number to uppercase
+      const processedValue = field === "gstNumber" ? value.toUpperCase() : value;
+      
       setQuotationData((prev) => ({
         ...prev,
         client: {
           ...prev.client,
-          [field]: value,
+          [field]: processedValue,
         },
       }));
     } else {
@@ -813,13 +821,11 @@ export default function Quotations() {
         throw new Error("No authentication token found");
       }
 
-      // Get current user info
       const userData = JSON.parse(localStorage.getItem('erp-user'));
       if (!userData) {
         throw new Error("User data not found");
       }
 
-      // Prepare complete ticket data
       const completeTicketData = {
         ...ticketData,
         createdBy: userData.id,
@@ -852,11 +858,7 @@ export default function Quotations() {
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-
-        // Show success message
         alert(`Ticket ${response.data.ticketNumber} created successfully!`);
-
-        // Optionally navigate to tickets page
         navigate('/tickets');
       }
     } catch (error) {
@@ -1020,7 +1022,6 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => {
                           setCurrentQuotation(quotation);
-                          //debugging
                           console.log("Quotation goods with units:", quotation.goods);
                           setShowPdfModal(true);
                         }}
