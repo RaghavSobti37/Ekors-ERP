@@ -25,36 +25,41 @@ const CreateTicketModal = ({
   }, [sameAsBilling, ticketData.billingAddress]);
 
   const fetchAddressFromPincode = async (pincode, addressType) => {
-    if (!pincode || pincode.length !== 6) return;
+    if (!pincode || pincode.length !== 6) {
+      console.log("Invalid pincode:", pincode);
+      return;
+    }
     
     setIsFetchingAddress(true);
     try {
+      console.log("Fetching address for pincode:", pincode);
       const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
+      console.log("API Response:", response.data);
+      
       const data = response.data[0];
       
       if (data.Status === "Success") {
         const postOffice = data.PostOffice[0];
+        console.log("Post Office Data:", postOffice);
         const newAddress = [...ticketData[addressType]];
         newAddress[2] = postOffice.State; // State
         newAddress[3] = postOffice.District; // City
-        // Important: Preserve the pincode that was passed in
         newAddress[4] = pincode;
         
+        console.log("New Address:", newAddress);
         setTicketData({
           ...ticketData,
           [addressType]: newAddress
         });
-
-        // If same as billing is checked and we're updating billing, also update shipping
-        if (sameAsBilling && addressType === 'billingAddress') {
-          setTicketData(prevData => ({
-            ...prevData,
-            shippingAddress: newAddress
-          }));
-        }
+      } else {
+        console.log("API returned error status:", data.Status, data.Message);
       }
     } catch (error) {
       console.error("Error fetching address:", error);
+      if (error.response) {
+        console.error("Response data:", error.response.data);
+        console.error("Response status:", error.response.status);
+      }
     } finally {
       setIsFetchingAddress(false);
     }

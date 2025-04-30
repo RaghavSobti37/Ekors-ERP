@@ -123,8 +123,11 @@ app.post('/tickets/:id/documents', upload.single('document'), async (req, res) =
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    // Store only the relative path to the file
+    const filePath = `uploads/${req.file.filename}`;
+    
     const update = {};
-    update[`documents.${documentType}`] = req.file.path.replace(/\\/g, '/');
+    update[`documents.${documentType}`] = filePath;
 
     const updatedTicket = await OpenticketModel.findByIdAndUpdate(
       req.params.id,
@@ -140,6 +143,33 @@ app.post('/tickets/:id/documents', upload.single('document'), async (req, res) =
   } catch (err) {
     res.status(500).json({ error: 'Error uploading document' });
   }
+});
+
+app.get('/uploads/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'uploads', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+  
+  // Determine content type based on file extension
+  const ext = path.extname(filename).toLowerCase();
+  let contentType = 'application/octet-stream'; // Default
+  
+  if (ext === '.pdf') {
+    contentType = 'application/pdf';
+    // For PDFs, set Content-Disposition to inline to encourage viewing rather than downloading
+    res.setHeader('Content-Disposition', 'inline; filename="' + filename + '"');
+  } else if (ext === '.doc' || ext === '.docx') {
+    contentType = 'application/msword';
+  } else if (ext === '.xls' || ext === '.xlsx') {
+    contentType = 'application/vnd.ms-excel';
+  }
+  
+  res.setHeader('Content-Type', contentType);
+  fs.createReadStream(filePath).pipe(res);
 });
 
 app.put('/tickets/:id', async (req, res) => {
