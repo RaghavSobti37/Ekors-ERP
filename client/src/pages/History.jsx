@@ -148,9 +148,14 @@ export default function History() {
       <div className="log-time-container">
         <div className="history-header">
           <h2>Time Log History</h2>
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            ↩ Back to Log Time
-          </button>
+          <div className="header-buttons">
+            <button 
+              className="add-btn"
+              onClick={() => navigate("/logtime")}
+            >
+              + Add New Entry
+            </button>
+          </div>
         </div>
         
         <table className="log-time-table">
