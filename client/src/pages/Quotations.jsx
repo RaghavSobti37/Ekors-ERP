@@ -34,8 +34,6 @@ const fullScreenModalStyle = {
   overflow: 'auto'
 };
 
-<<<<<<< HEAD
-=======
 // PDF Document Styles
 const pdfStyles = StyleSheet.create({
   page: {
@@ -172,7 +170,6 @@ const QuotationTemplate = ({ quotation }) => (
   </Document>
 );
 
->>>>>>> 7f3b598e894b39f83984a348e9c73934ca5128ef
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);

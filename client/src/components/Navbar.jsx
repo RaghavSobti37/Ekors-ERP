@@ -7,19 +7,23 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
+  FaUsers,
 } from "react-icons/fa";
-import { useNavigate, NavLink } from "react-router-dom"; // Changed from useNavigate to include NavLink
+import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Navbar({ showPurchaseModal }) {
+export default function Navbar({ showPurchaseModal, showNewItemModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [showUserPopup, setShowUserPopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showUserEditModal, setShowUserEditModal] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
+  const userPopupTimeoutRef = useRef(null);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -41,6 +45,17 @@ export default function Navbar({ showPurchaseModal }) {
     }, 300);
   };
 
+  const handleMouseEnterUser = () => {
+    clearTimeout(userPopupTimeoutRef.current);
+    setShowUserPopup(true);
+  };
+
+  const handleMouseLeaveUser = () => {
+    userPopupTimeoutRef.current = setTimeout(() => {
+      setShowUserPopup(false);
+    }, 300);
+  };
+
   const handleMouseEnterDropdown = () => {
     clearTimeout(dropdownTimeoutRef.current);
     setShowItemsDropdown(true);
@@ -50,6 +65,13 @@ export default function Navbar({ showPurchaseModal }) {
     dropdownTimeoutRef.current = setTimeout(() => {
       setShowItemsDropdown(false);
     }, 300);
+  };
+
+  const handleDeleteUser = () => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      // Add your user deletion logic here
+      console.log("User deleted");
+    }
   };
 
   return (
@@ -111,6 +133,47 @@ export default function Navbar({ showPurchaseModal }) {
                     style={{ cursor: "pointer", padding: "10px 15px" }}
                   >
                     Purchase History
+                  </div>
+                  <div
+                    onClick={showNewItemModal}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    Add New Item
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div
+              className="dropdown-wrapper"
+              onMouseEnter={handleMouseEnterUser}
+              onMouseLeave={handleMouseLeaveUser}
+            >
+              <NavLink 
+                to="/users" 
+                className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+              >
+                <FaUsers /> Users
+              </NavLink>
+              {showUserPopup && (
+                <div className="dropdown-menu">
+                  <div style={{ padding: "10px 15px", color: "white" }}>
+                    <p><strong>Email:</strong> {user?.email || "N/A"}</p>
+                    <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
+                    <p><strong>Created:</strong> {user?.createdAt || "N/A"}</p>
+                    <p><strong>Updated:</strong> {user?.updatedAt || "N/A"}</p>
+                  </div>
+                  <div
+                    onClick={() => setShowUserEditModal(true)}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    Edit User
+                  </div>
+                  <div
+                    onClick={handleDeleteUser}
+                    style={{ cursor: "pointer", padding: "10px 15px", color: "red" }}
+                  >
+                    Delete User
                   </div>
                 </div>
               )}
@@ -189,6 +252,45 @@ export default function Navbar({ showPurchaseModal }) {
                 Save
               </button>
               <button className="cancel-btn" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUserEditModal && (
+        <div className="edit-modal-overlay">
+          <div className="edit-modal">
+            <h2>Edit User</h2>
+            <div className="form-group">
+              <label>First Name</label>
+              <input type="text" defaultValue={user?.firstname || ""} />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input type="text" defaultValue={user?.lastname || ""} />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" defaultValue={user?.email || ""} />
+            </div>
+            <div className="form-group">
+              <label>Mobile Number</label>
+              <input type="text" defaultValue={user?.phone || ""} />
+            </div>
+            <div className="form-group">
+              <label>Role</label>
+              <select defaultValue={user?.role || ""}>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+              </select>
+            </div>
+            <div className="modal-buttons">
+              <button className="save-btn" onClick={() => setShowUserEditModal(false)}>
+                Save
+              </button>
+              <button className="cancel-btn" onClick={() => setShowUserEditModal(false)}>
                 Cancel
               </button>
             </div>
