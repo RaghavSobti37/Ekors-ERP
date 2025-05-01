@@ -220,9 +220,10 @@ const Users = () => {
                                     <div className="form-group">
                                         <label>Designation</label>
                                         <select defaultValue={selectedUser?.designation || "User"}>
-                                            <option value="Admin">Admin</option>
+                                            <option value="Admin">Director</option>
                                             <option value="Manager">Manager</option>
                                             <option value="User">User</option>
+                                            <option value="User">Account</option>
                                         </select>
                                     </div>
                                     <div className="form-group">

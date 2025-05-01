@@ -180,6 +180,8 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
+// ... (keep all the imports and other code the same until GoodsTable component)
+
 const GoodsTable = ({
   goods,
   handleGoodsChange,
@@ -194,7 +196,7 @@ const GoodsTable = ({
           <tr>
             <th>Sr No.</th>
             <th>Description <span className="text-danger">*</span></th>
-            <th>HSN/SAC <span className="text-danger">*</span></th>
+            <th>HSN/SAC</th>
             <th>Qty <span className="text-danger">*</span></th>
             <th>Price <span className="text-danger">*</span></th>
             <th>Amount</th>
@@ -205,32 +207,19 @@ const GoodsTable = ({
             <tr key={index}>
               <td>{item.srNo}</td>
               <td>
-                {!isEditing ? (
-                  item.description
-                ) : (
-                  <Form.Control
-                    required
-                    type="text"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "description", e.target.value)
-                    }
-                  />
-                )}
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.description}
+                />
               </td>
               <td>
-                {!isEditing ? (
-                  item.hsnSacCode
-                ) : (
-                  <Form.Control
-                    required
-                    type="text"
-                    value={item.hsnSacCode}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "hsnSacCode", e.target.value)
-                    }
-                  />
-                )}
+                {/* Made HSN/SAC non-editable */}
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.hsnSacCode}
+                />
               </td>
               <td>
                 {!isEditing ? (
@@ -609,10 +598,10 @@ export default function Quotations() {
 
     if (name.startsWith("client.")) {
       const field = name.split(".")[1];
-      
+
       // Convert GST number to uppercase
       const processedValue = field === "gstNumber" ? value.toUpperCase() : value;
-      
+
       setQuotationData((prev) => ({
         ...prev,
         client: {
