@@ -70,7 +70,7 @@ function App() {
             path="/logtime"
             element={
               <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
-                <Logtime />
+                <History />
               </ProtectedRoute>
             }
           />
