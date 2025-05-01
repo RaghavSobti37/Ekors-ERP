@@ -14,7 +14,7 @@ export default function Challan() {
     email: "",
     totalBilling: "",
     billNumber: "",
-    media: null,
+    media: [],
   });
   const [challanData, setChallanData] = useState([]);
   const [viewMode, setViewMode] = useState(false);
@@ -25,6 +25,14 @@ export default function Challan() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [notification, setNotification] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState(null);
+
+  // Show notification
+  const showNotification = (message, isSuccess = true) => {
+    setNotification({ message, isSuccess });
+    setTimeout(() => setNotification(null), 2000);
+  };
 
   // Fetch all challans on component mount
   useEffect(() => {
@@ -36,7 +44,7 @@ export default function Challan() {
       setLoading(true);
       const response = await axios.get(API_URL);
       setChallanData(response.data);
-      setTotalPages(Math.ceil(response.data.length / 10)); // Assuming 10 items per page
+      setTotalPages(Math.ceil(response.data.length / 10));
       setError(null);
     } catch (err) {
       console.error("Error fetching challans:", err);
@@ -47,11 +55,30 @@ export default function Challan() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: value,
     }));
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setFormData((prev) => ({
+      ...prev,
+      media: [...prev.media, ...files],
+    }));
+  };
+
+  const removeFile = (index) => {
+    setFormData((prev) => {
+      const newMedia = [...prev.media];
+      newMedia.splice(index, 1);
+      return {
+        ...prev,
+        media: newMedia,
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -67,17 +94,17 @@ export default function Challan() {
       submitData.append("totalBilling", formData.totalBilling);
       submitData.append("billNumber", formData.billNumber || "");
 
-      if (formData.media) {
-        submitData.append("media", formData.media);
-      }
+      formData.media.forEach((file) => {
+        submitData.append("media", file);
+      });
 
       let response;
       if (editMode && editId) {
         response = await axios.put(`${API_URL}/${editId}`, submitData);
-        alert("Challan updated successfully!");
+        showNotification("Challan updated successfully!");
       } else {
         response = await axios.post(API_URL, submitData);
-        alert("Challan submitted successfully!");
+        showNotification("Challan submitted successfully!");
       }
 
       fetchChallans();
@@ -96,13 +123,14 @@ export default function Challan() {
     setEditMode(false);
     setEditId(null);
     setViewData(null);
+    setDocumentPreview(null);
     setFormData({
       companyName: "",
       phone: "",
       email: "",
       totalBilling: "",
       billNumber: "",
-      media: null,
+      media: [],
     });
   };
 
@@ -116,7 +144,7 @@ export default function Challan() {
       setShowPopup(true);
     } catch (err) {
       console.error("Error fetching challan details:", err);
-      alert("Failed to fetch challan details");
+      setError("Failed to fetch challan details");
     } finally {
       setLoading(false);
     }
@@ -134,7 +162,7 @@ export default function Challan() {
         email: challanData.email,
         totalBilling: challanData.totalBilling,
         billNumber: challanData.billNumber || "",
-        media: null,
+        media: [],
       });
 
       setEditId(challan._id);
@@ -143,14 +171,18 @@ export default function Challan() {
       setShowPopup(true);
     } catch (err) {
       console.error("Error fetching challan details for edit:", err);
-      alert("Failed to fetch challan details for editing");
+      setError("Failed to fetch challan details for editing");
     } finally {
       setLoading(false);
     }
   };
 
-  const viewDocument = (id) => {
-    window.open(`${API_URL}/${id}/document`, "_blank");
+  const previewDocument = (url) => {
+    setDocumentPreview(url);
+  };
+
+  const closePreview = () => {
+    setDocumentPreview(null);
   };
 
   const renderForm = () => {
@@ -228,29 +260,66 @@ export default function Challan() {
 
           {viewMode ? (
             <div className="form-group">
-              <button
-                type="button"
-                className="document-btn"
-                onClick={() => viewDocument(viewData._id)}
-              >
-                📄 View Document
-              </button>
+              <label>Documents</label>
+              <div className="document-list">
+                {viewData.documents && viewData.documents.length > 0 ? (
+                  viewData.documents.map((doc, index) => (
+                    <div key={index} className="document-item">
+                      <span className="document-name">{doc.originalName}</span>
+                      <button
+                        type="button"
+                        className="view-document-btn"
+                        onClick={() => previewDocument(doc.url)}
+                      >
+                        View Document
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p>No documents uploaded</p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="form-group file-input-container">
               <label htmlFor="mediaUpload">
-                {editMode
-                  ? "Upload New Document (leave empty to keep current document)"
-                  : "Upload Document *"}
+                Upload Documents {!editMode && "*"}
+                {/* <span className="plus-sign">+</span> */}
               </label>
               <input
                 id="mediaUpload"
                 type="file"
                 name="media"
                 accept="image/*,application/pdf"
-                onChange={handleInputChange}
-                required={!editMode}
+                onChange={handleFileChange}
+                multiple
+                required={!editMode && formData.media.length === 0}
               />
+              
+              {(formData.media.length > 0 || (editMode && viewData?.documents?.length > 0)) && (
+                <div className="uploaded-files">
+                  <p>Selected files:</p>
+                  <ul>
+                    {formData.media.map((file, index) => (
+                      <li key={`new-${index}`}>
+                        {file.name}
+                        <button
+                          type="button"
+                          className="remove-file-btn"
+                          onClick={() => removeFile(index)}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                    {editMode && viewData?.documents?.map((doc, index) => (
+                      <li key={`existing-${index}`}>
+                        {doc.originalName} (uploaded)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
@@ -280,6 +349,12 @@ export default function Challan() {
     <div>
       <Navbar />
       <div className="challan-container">
+        {notification && (
+          <div className={`notification ${notification.isSuccess ? 'success' : 'error'}`}>
+            {notification.message}
+          </div>
+        )}
+        
         <div className="challan-header">
           <h2>Challan Records</h2>
           <button
@@ -347,6 +422,27 @@ export default function Challan() {
                 </button>
               </div>
               {renderForm()}
+            </div>
+          </div>
+        )}
+
+        {documentPreview && (
+          <div className="document-preview-overlay" onClick={closePreview}>
+            <div className="document-preview-container" onClick={(e) => e.stopPropagation()}>
+              <button className="close-preview-btn" onClick={closePreview}>✖</button>
+              {documentPreview.endsWith('.pdf') ? (
+                <iframe 
+                  src={documentPreview} 
+                  title="Document Preview" 
+                  className="document-preview"
+                />
+              ) : (
+                <img 
+                  src={documentPreview} 
+                  alt="Document Preview" 
+                  className="document-preview"
+                />
+              )}
             </div>
           </div>
         )}
