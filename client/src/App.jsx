@@ -17,8 +17,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
-// import AnalystPage from "./pages/Analytics.jsx"
-// import UserHistoryPage from "./pages/UserHistory.jsx"
+
 
 function App() {
   const [items, setItems] = useState([]);

@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import "../css/Logtime.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import LogtimeModal from "../components/LogtimeModal";
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -32,6 +33,8 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
   const entriesPerPage = 5;
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -107,6 +110,18 @@ export default function History() {
     setSelectedEntry(null);
   };
 
+  const handleAddNewEntry = () => {
+    const today = new Date();
+    const formattedDate = formatDisplayDate(today);
+    setSelectedDate(formattedDate);
+    setShowAddModal(true);
+  };
+
+  const handleSaveSuccess = () => {
+    fetchHistory();
+    setShowAddModal(false);
+  };
+
   const totalPages = Math.ceil(historyData.length / entriesPerPage);
   const currentEntries = historyData.slice(
     (currentPage - 1) * entriesPerPage,
@@ -151,7 +166,7 @@ export default function History() {
           <div className="header-buttons">
             <button 
               className="add-btn"
-              onClick={() => navigate("/logtime")}
+              onClick={handleAddNewEntry}
             >
               + Add New Entry
             </button>
@@ -246,6 +261,15 @@ export default function History() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal for adding new entry */}
+      {showAddModal && (
+        <LogtimeModal 
+          date={selectedDate}
+          onClose={() => setShowAddModal(false)}
+          onSave={handleSaveSuccess}
+        />
       )}
     </div>
   );

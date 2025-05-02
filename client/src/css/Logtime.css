@@ -334,6 +334,35 @@
     background-color: #2f855a;
 }
 
+.save-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+    background-color: #5a67d8;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s ease;
+  }
+  
+  .save-btn:hover {
+    background-color: #4c51bf;
+  }
+  
+  .save-btn:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+  }
+  
+  .modal-content h3 {
+    margin-top: 0;
+    color: #2d3748;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 10px;
+  }
+
 @media (max-width: 768px) {
     .history-header {
         flex-direction: column;
