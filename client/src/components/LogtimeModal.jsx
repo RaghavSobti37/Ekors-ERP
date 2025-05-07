@@ -158,6 +158,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
                     type="text"
                     value={entry.task}
                     onChange={(e) => handleEdit(index, "task", e.target.value)}
+                    placeholder="Enter task"
                   />
                 </td>
                 <td>

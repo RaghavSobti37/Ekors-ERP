@@ -202,11 +202,19 @@ const Users = () => {
                             <div className="modal-content">
                                 <div className="form-grid">
                                     <div className="form-group">
-                                        <label>Username</label>
+                                        <label>First Name</label>
                                         <input
                                             type="text"
                                             defaultValue={selectedUser?.username || ""}
-                                            placeholder="Enter username"
+                                            placeholder="Enter First Name"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Last Name</label>
+                                        <input
+                                            type="text"
+                                            defaultValue={selectedUser?.username || ""}
+                                            placeholder="Enter Last Name"
                                         />
                                     </div>
                                     <div className="form-group">
@@ -220,10 +228,12 @@ const Users = () => {
                                     <div className="form-group">
                                         <label>Designation</label>
                                         <select defaultValue={selectedUser?.designation || "User"}>
-                                            <option value="Admin">Director</option>
+                                            <option value="Director">Director</option>
                                             <option value="Manager">Manager</option>
-                                            <option value="User">User</option>
-                                            <option value="User">Account</option>
+                                            <option value="Sales and Marketing">Sales and Marketing</option>
+                                            <option value="Account">Account</option>
+                                            <option value="Dispatch">Dispatch</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div className="form-group">
@@ -235,10 +245,11 @@ const Users = () => {
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label>Access Scope</label>
+                                        <label>Scope (Role)</label>
                                         <select defaultValue={selectedUser?.scope || "Read Only"}>
-                                            <option value="Full Access">Full Access</option>
-                                            <option value="Limited Access">Limited Access</option>
+                                            <option value="Super-Admin">Super-Admin</option>
+                                            <option value="Admin">Admin</option>
+                                            <option value="User">User</option>
                                             <option value="Read Only">Read Only</option>
                                         </select>
                                     </div>
