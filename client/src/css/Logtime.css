@@ -390,6 +390,105 @@
     background-color: #ffebee;
   }
 
+  /* Date Selection Styles */
+.date-selection-container {
+    margin-bottom: 20px;
+  }
+  
+  .date-display-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .date-edit-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .date-edit-input {
+    padding: 8px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 200px;
+  }
+  
+  .date-picker-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .calendar-icon-label {
+    cursor: pointer;
+    font-size: 18px;
+    padding: 6px;
+    border-radius: 4px;
+  }
+  
+  .calendar-icon-label:hover {
+    background-color: #e2e8f0;
+  }
+  
+  .edit-date-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  
+  .edit-date-btn:hover {
+    background-color: #e2e8f0;
+  }
+  
+  .save-date-btn {
+    padding: 6px 12px;
+    background-color: #38a169;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .save-date-btn:hover {
+    background-color: #2f855a;
+  }
+  
+  .cancel-date-btn {
+    padding: 6px 12px;
+    background-color: #e53e3e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .cancel-date-btn:hover {
+    background-color: #c53030;
+  }
+  
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .date-edit-container,
+    .date-display-container {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+  
+    .date-edit-input {
+      width: 100%;
+    }
+  }
+
   
 
   

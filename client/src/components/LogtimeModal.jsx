@@ -1,25 +1,68 @@
 import React, { useState, useEffect } from "react";
 import "../css/Logtime.css";
-// import { getAuthToken } from "./History";
 
 const getAuthToken = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
-      if (!userData || typeof userData !== 'object') {
-        return null;
-      }
-      return userData.token;
-    } catch (e) {
-      console.error('Failed to parse user data:', e);
+  try {
+    const userData = JSON.parse(localStorage.getItem('erp-user'));
+    if (!userData || typeof userData !== 'object') {
       return null;
     }
-  };
+    return userData.token;
+  } catch (e) {
+    console.error('Failed to parse user data:', e);
+    return null;
+  }
+};
 
-const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
+const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) => {
   const [logData, setLogData] = useState(initialLogs);
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [displayDate, setDisplayDate] = useState("");
+  const [isEditingDate, setIsEditingDate] = useState(false);
+
+  // Format date for display (DD-Month-YYYY)
+  const formatDisplayDate = (dateString) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const day = date.getDate();
+    const month = date.toLocaleString("default", { month: "long" });
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  // Format date for input (YYYY-MM-DD)
+  const formatInputDate = (dateString) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Parse date from display format (DD-Month-YYYY)
+  const parseDisplayDate = (displayDate) => {
+    const [day, month, year] = displayDate.split("-");
+    return new Date(`${month} ${day}, ${year}`);
+  };
+
+  // Initialize dates
+  useEffect(() => {
+    if (initialDate) {
+      setSelectedDate(initialDate);
+      setDisplayDate(formatDisplayDate(initialDate));
+    } else {
+      const today = new Date();
+      const todayFormatted = formatInputDate(today);
+      setSelectedDate(todayFormatted);
+      setDisplayDate(formatDisplayDate(todayFormatted));
+    }
+  }, [initialDate]);
 
   // Calculate total time
   useEffect(() => {
@@ -82,6 +125,41 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
     setLogData(updatedLogs);
   };
 
+  // Handle date change from date picker
+  const handleDateChange = (e) => {
+    const newDate = e.target.value;
+    setSelectedDate(newDate);
+    setDisplayDate(formatDisplayDate(newDate));
+    setIsEditingDate(false);
+  };
+
+  // Handle manual date edit
+  const handleManualDateChange = (e) => {
+    setDisplayDate(e.target.value);
+  };
+
+  // Save manually edited date
+  const saveManualDate = () => {
+    try {
+      const date = parseDisplayDate(displayDate);
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date");
+      }
+      const formattedDate = formatInputDate(date);
+      setSelectedDate(formattedDate);
+      setDisplayDate(formatDisplayDate(formattedDate));
+      setIsEditingDate(false);
+    } catch (error) {
+      console.error("Invalid date format", error);
+      // Reset to current date if invalid
+      const today = new Date();
+      const todayFormatted = formatInputDate(today);
+      setSelectedDate(todayFormatted);
+      setDisplayDate(formatDisplayDate(todayFormatted));
+      setIsEditingDate(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -100,7 +178,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
         },
         body: JSON.stringify({
           logs: logData,
-          date: date
+          date: selectedDate
         }),
       });
 
@@ -125,7 +203,60 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h3>Time Log for {date}</h3>
+        {/* Date Selection Section */}
+        <div className="date-selection-container">
+          {isEditingDate ? (
+            <div className="date-edit-container">
+              <input
+                type="text"
+                value={displayDate}
+                onChange={handleManualDateChange}
+                className="date-edit-input"
+                placeholder="DD-Month-YYYY"
+              />
+              <button 
+                className="save-date-btn"
+                onClick={saveManualDate}
+                disabled={isSaving}
+              >
+                Save Date
+              </button>
+              <button 
+                className="cancel-date-btn"
+                onClick={() => {
+                  setDisplayDate(formatDisplayDate(selectedDate));
+                  setIsEditingDate(false);
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="date-display-container">
+              <h3>Time Log for {displayDate}</h3>
+              <button 
+                className="edit-date-btn"
+                onClick={() => setIsEditingDate(true)}
+                title="Edit date"
+                disabled={isSaving}
+              >
+                ✏️
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                className="date-picker-input"
+                max="9999-12-31"
+                disabled={isSaving}
+              />
+              {/* <label htmlFor="log-date" className="calendar-icon-label">
+                📅
+              </label> */}
+            </div>
+          )}
+        </div>
         
         <div className="log-info total-hours">
           <strong>Total Hours Worked:</strong> {totalTime}
@@ -159,6 +290,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
                     value={entry.task}
                     onChange={(e) => handleEdit(index, "task", e.target.value)}
                     placeholder="Enter task"
+                    disabled={isSaving}
                   />
                 </td>
                 <td>
@@ -166,6 +298,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
                     type="time"
                     value={entry.start}
                     onChange={(e) => handleEdit(index, "start", e.target.value)}
+                    disabled={isSaving}
                   />
                 </td>
                 <td>
@@ -173,6 +306,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
                     type="time"
                     value={entry.finish}
                     onChange={(e) => handleEdit(index, "finish", e.target.value)}
+                    disabled={isSaving}
                   />
                 </td>
                 <td className="centered">{entry.timeSpent}</td>
@@ -207,7 +341,7 @@ const LogtimeModal = ({ date, onClose, onSave, initialLogs = [] }) => {
             <button
               className="save-btn"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || !selectedDate}
             >
               {isSaving ? "Saving..." : "💾 Save Logs"}
             </button>
