@@ -14,7 +14,7 @@ export default function Challan() {
     email: "",
     totalBilling: "",
     billNumber: "",
-    media: [],
+    media: null,
   });
   const [challanData, setChallanData] = useState([]);
   const [viewMode, setViewMode] = useState(false);
@@ -63,22 +63,10 @@ export default function Challan() {
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
     setFormData((prev) => ({
       ...prev,
-      media: [...prev.media, ...files],
+      media: e.target.files[0], // Store single file
     }));
-  };
-
-  const removeFile = (index) => {
-    setFormData((prev) => {
-      const newMedia = [...prev.media];
-      newMedia.splice(index, 1);
-      return {
-        ...prev,
-        media: newMedia,
-      };
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -94,16 +82,24 @@ export default function Challan() {
       submitData.append("totalBilling", formData.totalBilling);
       submitData.append("billNumber", formData.billNumber || "");
 
-      formData.media.forEach((file) => {
-        submitData.append("media", file);
-      });
+      if (formData.media) {
+        submitData.append("media", formData.media);
+      }
 
       let response;
       if (editMode && editId) {
-        response = await axios.put(`${API_URL}/${editId}`, submitData);
+        response = await axios.put(`${API_URL}/${editId}`, submitData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
         showNotification("Challan updated successfully!");
       } else {
-        response = await axios.post(API_URL, submitData);
+        response = await axios.post(API_URL, submitData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
         showNotification("Challan submitted successfully!");
       }
 
@@ -130,7 +126,7 @@ export default function Challan() {
       email: "",
       totalBilling: "",
       billNumber: "",
-      media: [],
+      media: null,
     });
   };
 
@@ -162,7 +158,7 @@ export default function Challan() {
         email: challanData.email,
         totalBilling: challanData.totalBilling,
         billNumber: challanData.billNumber || "",
-        media: [],
+        media: null,
       });
 
       setEditId(challan._id);
@@ -177,12 +173,29 @@ export default function Challan() {
     }
   };
 
-  const previewDocument = (url) => {
-    setDocumentPreview(url);
+  const previewDocument = async (challanId) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/${challanId}/document`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const url = window.URL.createObjectURL(blob);
+      setDocumentPreview(url);
+    } catch (err) {
+      console.error("Error fetching document:", err);
+      setError("Failed to load document");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closePreview = () => {
-    setDocumentPreview(null);
+    if (documentPreview) {
+      window.URL.revokeObjectURL(documentPreview);
+      setDocumentPreview(null);
+    }
   };
 
   const renderForm = () => {
@@ -260,31 +273,28 @@ export default function Challan() {
 
           {viewMode ? (
             <div className="form-group">
-              <label>Documents</label>
+              <label>Document</label>
               <div className="document-list">
-                {viewData.documents && viewData.documents.length > 0 ? (
-                  viewData.documents.map((doc, index) => (
-                    <div key={index} className="document-item">
-                      <span className="document-name">{doc.originalName}</span>
-                      <button
-                        type="button"
-                        className="view-document-btn"
-                        onClick={() => previewDocument(doc.url)}
-                      >
-                        View Document
-                      </button>
-                    </div>
-                  ))
+                {viewData.document ? (
+                  <div className="document-item">
+                    <span className="document-name">{viewData.document.originalName}</span>
+                    <button
+                      type="button"
+                      className="view-document-btn"
+                      onClick={() => previewDocument(viewData._id)}
+                    >
+                      View Document
+                    </button>
+                  </div>
                 ) : (
-                  <p>No documents uploaded</p>
+                  <p>No document uploaded</p>
                 )}
               </div>
             </div>
           ) : (
             <div className="form-group file-input-container">
               <label htmlFor="mediaUpload">
-                Upload Documents {!editMode && "*"}
-                {/* <span className="plus-sign">+</span> */}
+                Upload Document {!editMode && "*"}
               </label>
               <input
                 id="mediaUpload"
@@ -292,32 +302,19 @@ export default function Challan() {
                 name="media"
                 accept="image/*,application/pdf"
                 onChange={handleFileChange}
-                multiple
-                required={!editMode && formData.media.length === 0}
+                required={!editMode && !formData.media}
               />
               
-              {(formData.media.length > 0 || (editMode && viewData?.documents?.length > 0)) && (
+              {formData.media && (
                 <div className="uploaded-files">
-                  <p>Selected files:</p>
-                  <ul>
-                    {formData.media.map((file, index) => (
-                      <li key={`new-${index}`}>
-                        {file.name}
-                        <button
-                          type="button"
-                          className="remove-file-btn"
-                          onClick={() => removeFile(index)}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                    {editMode && viewData?.documents?.map((doc, index) => (
-                      <li key={`existing-${index}`}>
-                        {doc.originalName} (uploaded)
-                      </li>
-                    ))}
-                  </ul>
+                  <p>Selected file: {formData.media.name}</p>
+                </div>
+              )}
+              
+              {editMode && viewData?.document && (
+                <div className="uploaded-files">
+                  <p>Current file: {viewData.document.originalName}</p>
+                  <p className="note">Upload a new file to replace the existing one</p>
                 </div>
               )}
             </div>
@@ -430,7 +427,7 @@ export default function Challan() {
           <div className="document-preview-overlay" onClick={closePreview}>
             <div className="document-preview-container" onClick={(e) => e.stopPropagation()}>
               <button className="close-preview-btn" onClick={closePreview}>✖</button>
-              {documentPreview.endsWith('.pdf') ? (
+              {documentPreview.type?.includes('pdf') || documentPreview.includes('pdf') ? (
                 <iframe 
                   src={documentPreview} 
                   title="Document Preview" 

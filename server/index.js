@@ -35,7 +35,7 @@ app.use(cors({
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Multer storage config
 const storage = multer.diskStorage({

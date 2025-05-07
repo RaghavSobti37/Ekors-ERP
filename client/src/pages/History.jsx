@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import "../css/Logtime.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import LogTimeModal from "../components/LogtimeModal";
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -32,6 +33,8 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showLogTimeModal, setShowLogTimeModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
   const entriesPerPage = 5;
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -107,6 +110,17 @@ export default function History() {
     setSelectedEntry(null);
   };
 
+  const handleAddLogTime = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedDate(today);
+    setShowLogTimeModal(true);
+  };
+
+  const handleLogTimeSuccess = () => {
+    setShowLogTimeModal(false);
+    fetchHistory(); // Refresh the history data
+  };
+
   const totalPages = Math.ceil(historyData.length / entriesPerPage);
   const currentEntries = historyData.slice(
     (currentPage - 1) * entriesPerPage,
@@ -148,9 +162,11 @@ export default function History() {
       <div className="log-time-container">
         <div className="history-header">
           <h2>Time Log History</h2>
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            ↩ Back to Log Time
-          </button>
+          <div className="history-actions">
+            <button className="add-log-btn" onClick={handleAddLogTime}>
+              ＋ Add Logs for Today
+            </button>
+          </div>
         </div>
         
         <table className="log-time-table">
@@ -241,6 +257,15 @@ export default function History() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Log Time Modal */}
+      {showLogTimeModal && (
+        <LogTimeModal 
+          date={selectedDate}
+          onClose={() => setShowLogTimeModal(false)}
+          onSuccess={handleLogTimeSuccess}
+        />
       )}
     </div>
   );
