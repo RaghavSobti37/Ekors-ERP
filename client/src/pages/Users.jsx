@@ -9,6 +9,25 @@ const Users = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [designations, setDesignations] = useState([
+        "Director",
+        "Manager",
+        "Sales and Marketing",
+        "Account",
+        "Dispatch",
+        "Other"
+    ]);
+    const [showOtherInput, setShowOtherInput] = useState(false);
+    const [otherDesignation, setOtherDesignation] = useState("");
+    const [formData, setFormData] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        designation: "User",
+        status: "Active",
+        scope: "Read Only",
+        lastLogin: ""
+    });
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -55,6 +74,17 @@ const Users = () => {
 
     const handleEdit = (user) => {
         setSelectedUser(user);
+        setFormData({
+            firstName: user?.username.split('_')[0] || "",
+            lastName: user?.username.split('_')[1] || "",
+            email: user?.email || "",
+            designation: user?.designation || "User",
+            status: user?.status || "Active",
+            scope: user?.scope || "Read Only",
+            lastLogin: user?.lastLogin || ""
+        });
+        setShowOtherInput(user?.designation && !designations.includes(user.designation));
+        setOtherDesignation(user?.designation && !designations.includes(user.designation) ? user.designation : "");
         setShowEditModal(true);
     };
 
@@ -64,9 +94,72 @@ const Users = () => {
         }
     };
 
+    const handleDesignationChange = (e) => {
+        const value = e.target.value;
+        setFormData({...formData, designation: value});
+        
+        if (value === "Other") {
+            setShowOtherInput(true);
+            setFormData({...formData, designation: ""});
+        } else {
+            setShowOtherInput(false);
+            setOtherDesignation("");
+        }
+    };
+
+    const handleOtherDesignationChange = (e) => {
+        const value = e.target.value;
+        setOtherDesignation(value);
+        setFormData({...formData, designation: value});
+    };
+
+    const handleAddNewDesignation = () => {
+        if (otherDesignation.trim() && !designations.includes(otherDesignation)) {
+            setDesignations([...designations.filter(d => d !== "Other"), otherDesignation, "Other"]);
+        }
+        setShowOtherInput(false);
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({...formData, [name]: value});
+    };
+
     const handleSave = () => {
-        // Add save logic here
+        // In a real app, you would send this data to your API
+        const newUser = {
+            id: users.length + 1,
+            username: `${formData.firstName}_${formData.lastName}`,
+            email: formData.email,
+            createdAt: new Date().toISOString().split('T')[0],
+            designation: formData.designation,
+            scope: formData.scope,
+            status: formData.status,
+            lastLogin: formData.lastLogin || "Never"
+        };
+
+        if (selectedUser) {
+            // Update existing user
+            setUsers(users.map(user => user.id === selectedUser.id ? newUser : user));
+        } else {
+            // Add new user
+            setUsers([...users, newUser]);
+        }
+
+        // Reset form and close modal
+        setFormData({
+            firstName: "",
+            lastName: "",
+            email: "",
+            designation: "User",
+            status: "Active",
+            scope: "Read Only",
+            lastLogin: ""
+        });
+        setShowOtherInput(false);
+        setOtherDesignation("");
         setShowEditModal(false);
+        setSelectedUser(null);
     };
 
     return (
@@ -76,7 +169,7 @@ const Users = () => {
             <div className="users-page">
                 <div className="users-header">
                     <h1>User Management</h1>
-                    <button className="add-user-btn" onClick={() => setShowEditModal(true)}>
+                    <button className="add-user-btn" onClick={() => handleEdit(null)}>
                         + Add New User
                     </button>
                 </div>
@@ -104,7 +197,7 @@ const Users = () => {
                                     </td>
                                     <td>{user.email}</td>
                                     <td>
-                                        <span className={`designation-badge ${user.designation.toLowerCase()}`}>
+                                        <span className={`designation-badge ${user.designation.toLowerCase().replace(/\s+/g, '-')}`}>
                                             {user.designation}
                                         </span>
                                     </td>
@@ -194,7 +287,12 @@ const Users = () => {
                         <div className="user-modal edit-modal">
                             <div className="modal-header">
                                 <h2>{selectedUser ? "Edit User" : "Add New User"}</h2>
-                                <button className="close-btn" onClick={() => setShowEditModal(false)}>
+                                <button className="close-btn" onClick={() => {
+                                    setShowEditModal(false);
+                                    setSelectedUser(null);
+                                    setShowOtherInput(false);
+                                    setOtherDesignation("");
+                                }}>
                                     <FaTimes />
                                 </button>
                             </div>
@@ -205,7 +303,9 @@ const Users = () => {
                                         <label>First Name</label>
                                         <input
                                             type="text"
-                                            defaultValue={selectedUser?.username || ""}
+                                            name="firstName"
+                                            value={formData.firstName}
+                                            onChange={handleInputChange}
                                             placeholder="Enter First Name"
                                         />
                                     </div>
@@ -213,7 +313,9 @@ const Users = () => {
                                         <label>Last Name</label>
                                         <input
                                             type="text"
-                                            defaultValue={selectedUser?.username || ""}
+                                            name="lastName"
+                                            value={formData.lastName}
+                                            onChange={handleInputChange}
                                             placeholder="Enter Last Name"
                                         />
                                     </div>
@@ -221,24 +323,50 @@ const Users = () => {
                                         <label>Email</label>
                                         <input
                                             type="email"
-                                            defaultValue={selectedUser?.email || ""}
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleInputChange}
                                             placeholder="Enter email"
                                         />
                                     </div>
                                     <div className="form-group">
                                         <label>Designation</label>
-                                        <select defaultValue={selectedUser?.designation || "User"}>
-                                            <option value="Director">Director</option>
-                                            <option value="Manager">Manager</option>
-                                            <option value="Sales and Marketing">Sales and Marketing</option>
-                                            <option value="Account">Account</option>
-                                            <option value="Dispatch">Dispatch</option>
-                                            <option value="Other">Other</option>
+                                        <select 
+                                            name="designation"
+                                            value={formData.designation === otherDesignation ? "Other" : formData.designation}
+                                            onChange={handleDesignationChange}
+                                        >
+                                            {designations.map((designation) => (
+                                                <option key={designation} value={designation}>
+                                                    {designation}
+                                                </option>
+                                            ))}
                                         </select>
+                                        {showOtherInput && (
+                                            <div className="other-designation-container">
+                                                <input
+                                                    type="text"
+                                                    value={otherDesignation}
+                                                    onChange={handleOtherDesignationChange}
+                                                    placeholder="Enter your designation"
+                                                    className="other-designation-input"
+                                                />
+                                                <button 
+                                                    onClick={handleAddNewDesignation}
+                                                    className="add-designation-btn"
+                                                >
+                                                    Add Designation
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="form-group">
                                         <label>Status</label>
-                                        <select defaultValue={selectedUser?.status || "Active"}>
+                                        <select
+                                            name="status"
+                                            value={formData.status}
+                                            onChange={handleInputChange}
+                                        >
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
                                             <option value="Suspended">Suspended</option>
@@ -246,7 +374,11 @@ const Users = () => {
                                     </div>
                                     <div className="form-group">
                                         <label>Scope (Role)</label>
-                                        <select defaultValue={selectedUser?.scope || "Read Only"}>
+                                        <select
+                                            name="scope"
+                                            value={formData.scope}
+                                            onChange={handleInputChange}
+                                        >
                                             <option value="Super-Admin">Super-Admin</option>
                                             <option value="Admin">Admin</option>
                                             <option value="User">User</option>
@@ -257,7 +389,9 @@ const Users = () => {
                                         <label>Last Login</label>
                                         <input
                                             type="text"
-                                            defaultValue={selectedUser?.lastLogin || ""}
+                                            name="lastLogin"
+                                            value={formData.lastLogin}
+                                            onChange={handleInputChange}
                                             placeholder="YYYY-MM-DD HH:MM"
                                         />
                                     </div>
@@ -265,11 +399,16 @@ const Users = () => {
                             </div>
 
                             <div className="modal-footer">
-                                <button className="cancel-btn" onClick={() => setShowEditModal(false)}>
+                                <button className="cancel-btn" onClick={() => {
+                                    setShowEditModal(false);
+                                    setSelectedUser(null);
+                                    setShowOtherInput(false);
+                                    setOtherDesignation("");
+                                }}>
                                     Cancel
                                 </button>
                                 <button className="save-btn" onClick={handleSave}>
-                                    Save Changes
+                                    Save
                                 </button>
                             </div>
                         </div>

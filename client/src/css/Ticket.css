@@ -47,6 +47,8 @@
     border-top: 1px solid #e9ecef;
     border-radius: 0 0 12px 12px !important;
   }
+
+  
   
   /* Animation for modal appearance */
   @keyframes modalFadeIn {

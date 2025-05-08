@@ -371,3 +371,79 @@
   .save-btn:hover {
     background-color: #3a0069;
   }
+
+  /* Add these styles to your existing Users.css */
+
+.other-designation-container {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.other-designation-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.add-designation-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-designation-btn:hover {
+    background-color: #218838;
+}
+
+/* Update the designation-badge styles to handle custom designations */
+.designation-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.designation-badge.admin {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.designation-badge.manager {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.designation-badge.user {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.designation-badge.director {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.designation-badge.sales-and-marketing {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.designation-badge.account {
+    background-color: #d6d8db;
+    color: #1b1e21;
+}
+
+.designation-badge.dispatch {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+  

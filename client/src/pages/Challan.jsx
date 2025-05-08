@@ -54,6 +54,22 @@ export default function Challan() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this challan?")) {
+      try {
+        setLoading(true);
+        await axios.delete(`${API_URL}/${id}`);
+        showNotification("Challan deleted successfully!");
+        fetchChallans();
+      } catch (err) {
+        console.error("Error deleting challan:", err);
+        setError("Failed to delete challan. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -284,7 +300,6 @@ export default function Challan() {
             <div className="form-group file-input-container">
               <label htmlFor="mediaUpload">
                 Upload Documents {!editMode && "*"}
-                {/* <span className="plus-sign">+</span> */}
               </label>
               <input
                 id="mediaUpload"
@@ -389,19 +404,27 @@ export default function Challan() {
                 <tr key={challan._id}>
                   <td>{challan.companyName}</td>
                   <td>{challan.totalBilling}</td>
-                  <td className="action-buttons">
-                    <button
-                      className="view-btn"
-                      onClick={() => openViewPopup(challan)}
-                    >
-                      👁️
-                    </button>
-                    <button
-                      className="d-flex gap-2"
-                      onClick={() => openEditPopup(challan)}
-                    >
-                      ✏️
-                    </button>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        className="view-btn"
+                        onClick={() => openViewPopup(challan)}
+                      >
+                        👁️
+                      </button>
+                      <button
+                        className="edit-btn"
+                        onClick={() => openEditPopup(challan)}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(challan._id)}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

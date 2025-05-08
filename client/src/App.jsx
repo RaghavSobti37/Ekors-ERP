@@ -12,6 +12,7 @@ import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
 import Pagination from "./components/Pagination.jsx";
+import AddNewItem from "./pages/AddNewItem.jsx";
 import PurchaseHistory from "./pages/PurchaseHistory.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,6 +47,7 @@ function App() {
           <Route path="/pipdf" element={<PIPDF />} />
           <Route path="/pagination" element={<Pagination />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/addnewitem" element={<AddNewItem />} />
           {/* <Route path="/logtime" element={<Logtime />} /> */}
 
           {/* Protected Routes */}
