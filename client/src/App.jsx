@@ -8,6 +8,7 @@ import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
 import Logtime from "./pages/Logtime";
 import History from "./pages/History";
+import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
 import Pagination from "./components/Pagination.jsx";
@@ -16,8 +17,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
-// import AnalystPage from "./pages/Analytics.jsx"
-// import UserHistoryPage from "./pages/UserHistory.jsx"
+
 
 function App() {
   const [items, setItems] = useState([]);
@@ -44,8 +44,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/quotationpdf" element={<QuotationPDF />} />
           <Route path="/pipdf" element={<PIPDF />} />
-          {/* <Route path="/analytics" element={<AnalystPage />} /> */}
           <Route path="/pagination" element={<Pagination />} />
+          <Route path="/users" element={<Users />} />
+          {/* <Route path="/logtime" element={<Logtime />} /> */}
 
           {/* Protected Routes */}
           <Route

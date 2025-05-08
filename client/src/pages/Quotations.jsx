@@ -34,6 +34,142 @@ const fullScreenModalStyle = {
   overflow: 'auto'
 };
 
+// PDF Document Styles
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: "Helvetica",
+    fontSize: 11,
+  },
+  header: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+    textTransform: "uppercase",
+  },
+  section: {
+    marginBottom: 15,
+  },
+  table: {
+    display: "table",
+    width: "auto",
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#000",
+  },
+  tableRow: {
+    flexDirection: "row",
+  },
+  tableColHeader: {
+    width: "25%",
+    fontWeight: "bold",
+    border: "1px solid #000",
+    padding: 5,
+  },
+  tableCol: {
+    width: "25%",
+    border: "1px solid #000",
+    padding: 5,
+    textAlign: "center",
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingTop: 5,
+    fontWeight: "bold",
+  },
+  footer: {
+    marginTop: 20,
+    textAlign: "center",
+    fontSize: 10,
+    color: "red",
+  },
+});
+
+// Quotation PDF Template
+const QuotationTemplate = ({ quotation }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <Text style={pdfStyles.header}>Quotation</Text>
+
+      <View style={pdfStyles.section}>
+        <Text>Quotation Number: {quotation.referenceNumber}</Text>
+        <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+        <Text>
+          Validity Date: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>To:</Text>
+        <Text>{quotation.client.companyName}</Text>
+        <Text>GST: {quotation.client.gstNumber}</Text>
+      </View>
+
+      <View style={pdfStyles.table}>
+        <View style={[pdfStyles.tableRow, { backgroundColor: "#f0f0f0" }]}>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>S.No</Text>
+          <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+            Description
+          </Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>HSN/SAC</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Qty</Text>
+          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>Rate</Text>
+          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Amount</Text>
+        </View>
+
+        {quotation.goods.map((item, index) => (
+          <View style={pdfStyles.tableRow} key={index}>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {index + 1}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
+              {item.description}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              {item.hsnSacCode}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              {item.quantity}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
+              ₹{item.price.toFixed(2)}
+            </Text>
+            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
+              ₹{item.amount.toFixed(2)}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={pdfStyles.totalRow}>
+        <Text>Sub Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>GST (18%): ₹{quotation.gstAmount.toFixed(2)}</Text>
+      </View>
+      <View style={pdfStyles.totalRow}>
+        <Text>Grand Total: ₹{quotation.grandTotal.toFixed(2)}</Text>
+      </View>
+
+      <View style={pdfStyles.section}>
+        <Text>Terms & Conditions:</Text>
+        <Text>- Payment: 100% advance</Text>
+        <Text>- Delivery: Within {quotation.dispatchDays} days</Text>
+        <Text>
+          - Validity: {new Date(quotation.validityDate).toLocaleDateString()}
+        </Text>
+      </View>
+
+      <View style={pdfStyles.footer}>
+        <Text>For {quotation.client.companyName}</Text>
+        <Text>Authorized Signatory</Text>
+      </View>
+    </Page>
+  </Document>
+);
+
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -43,6 +179,8 @@ const formatDateForInput = (dateString) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+// ... (keep all the imports and other code the same until GoodsTable component)
 
 const GoodsTable = ({
   goods,
@@ -58,7 +196,7 @@ const GoodsTable = ({
           <tr>
             <th>Sr No.</th>
             <th>Description <span className="text-danger">*</span></th>
-            <th>HSN/SAC <span className="text-danger">*</span></th>
+            <th>HSN/SAC</th>
             <th>Qty <span className="text-danger">*</span></th>
             <th>Price <span className="text-danger">*</span></th>
             <th>Amount</th>
@@ -69,32 +207,19 @@ const GoodsTable = ({
             <tr key={index}>
               <td>{item.srNo}</td>
               <td>
-                {!isEditing ? (
-                  item.description
-                ) : (
-                  <Form.Control
-                    required
-                    type="text"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "description", e.target.value)
-                    }
-                  />
-                )}
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.description}
+                />
               </td>
               <td>
-                {!isEditing ? (
-                  item.hsnSacCode
-                ) : (
-                  <Form.Control
-                    required
-                    type="text"
-                    value={item.hsnSacCode}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "hsnSacCode", e.target.value)
-                    }
-                  />
-                )}
+                {/* Made HSN/SAC non-editable */}
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.hsnSacCode}
+                />
               </td>
               <td>
                 {!isEditing ? (
@@ -473,10 +598,10 @@ export default function Quotations() {
 
     if (name.startsWith("client.")) {
       const field = name.split(".")[1];
-      
+
       // Convert GST number to uppercase
       const processedValue = field === "gstNumber" ? value.toUpperCase() : value;
-      
+
       setQuotationData((prev) => ({
         ...prev,
         client: {

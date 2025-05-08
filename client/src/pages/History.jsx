@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 import "../css/Logtime.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import LogTimeModal from "../components/LogtimeModal";
+import LogtimeModal from "../components/LogtimeModal";
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -33,8 +33,9 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showLogTimeModal, setShowLogTimeModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
+  const [editingEntry, setEditingEntry] = useState(null);
   const entriesPerPage = 5;
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -106,8 +107,54 @@ export default function History() {
     setSelectedEntry(entry);
   };
 
+  const handleEdit = (entry) => {
+    setEditingEntry(entry);
+  };
+
+  const handleDelete = async (entryId) => {
+    if (window.confirm("Are you sure you want to delete this entry?")) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+        
+        const response = await fetch(`http://localhost:3000/api/logtime/${entryId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete entry');
+        }
+
+        // Refresh the history after deletion
+        await fetchHistory();
+      } catch (error) {
+        console.error("Error deleting entry:", error);
+        setError(error.message || "Failed to delete entry");
+      }
+    }
+  };
+
   const closeModal = () => {
     setSelectedEntry(null);
+    setEditingEntry(null);
+  };
+
+  const handleAddNewEntry = () => {
+    const today = new Date();
+    const formattedDate = formatDisplayDate(today);
+    setSelectedDate(formattedDate);
+    setShowAddModal(true);
+  };
+
+  const handleSaveSuccess = () => {
+    fetchHistory();
+    setShowAddModal(false);
+    setEditingEntry(null);
   };
 
   const handleAddLogTime = () => {
@@ -162,9 +209,12 @@ export default function History() {
       <div className="log-time-container">
         <div className="history-header">
           <h2>Time Log History</h2>
-          <div className="history-actions">
-            <button className="add-log-btn" onClick={handleAddLogTime}>
-              ＋ Add Logs for Today
+          <div className="header-buttons">
+            <button 
+              className="add-btn"
+              onClick={handleAddNewEntry}
+            >
+              + Add New Entry
             </button>
           </div>
         </div>
@@ -186,12 +236,27 @@ export default function History() {
                 <td className="centered">{formatDisplayDate(entry.date)}</td>
                 <td className="centered">{entry.totalTime}</td>
                 <td className="centered">{entry.taskCount}</td>
-                <td className="centered">
+                <td className="centered action-buttons">
                   <button 
                     className="view-btn" 
                     onClick={() => handleView(entry)}
+                    title="View"
                   >
-                    👁️ View
+                    👁️
+                  </button>
+                  <button 
+                    className="edit-btn" 
+                    onClick={() => handleEdit(entry)}
+                    title="Edit"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    className="delete-btn" 
+                    onClick={() => handleDelete(entry._id)}
+                    title="Delete"
+                  >
+                    🗑️
                   </button>
                 </td>
               </tr>
@@ -259,12 +324,23 @@ export default function History() {
         </div>
       )}
 
-      {/* Log Time Modal */}
-      {showLogTimeModal && (
-        <LogTimeModal 
+      {/* Modal for adding new entry */}
+      {showAddModal && (
+        <LogtimeModal 
           date={selectedDate}
-          onClose={() => setShowLogTimeModal(false)}
-          onSuccess={handleLogTimeSuccess}
+          onClose={() => setShowAddModal(false)}
+          onSave={handleSaveSuccess}
+        />
+      )}
+
+      {/* Modal for editing existing entry */}
+      {editingEntry && (
+        <LogtimeModal 
+          date={editingEntry.date}
+          entryData={editingEntry}
+          onClose={closeModal}
+          onSave={handleSaveSuccess}
+          isEditMode={true}
         />
       )}
     </div>

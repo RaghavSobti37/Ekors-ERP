@@ -391,13 +391,13 @@ export default function Challan() {
                       className="view-btn"
                       onClick={() => openViewPopup(challan)}
                     >
-                      👁️ View
+                      👁️
                     </button>
                     <button
                       className="d-flex gap-2"
                       onClick={() => openEditPopup(challan)}
                     >
-                      ✏️ Edit
+                      ✏️
                     </button>
                   </td>
                 </tr>

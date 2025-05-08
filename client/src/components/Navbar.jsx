@@ -7,11 +7,12 @@ import {
   FaClipboardList,
   FaClock,
   FaBoxOpen,
+  FaUsers,
 } from "react-icons/fa";
-import { useNavigate, NavLink } from "react-router-dom"; // Changed from useNavigate to include NavLink
+import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Navbar({ showPurchaseModal }) {
+export default function Navbar({ showPurchaseModal, showNewItemModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -112,9 +113,22 @@ export default function Navbar({ showPurchaseModal }) {
                   >
                     Purchase History
                   </div>
+                  <div
+                    onClick={showNewItemModal}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    Add New Item
+                  </div>
                 </div>
               )}
             </div>
+
+            <NavLink 
+              to="/users" 
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
+              <FaUsers /> Users
+            </NavLink>
           </div>
         </div>
 

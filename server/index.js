@@ -21,6 +21,16 @@ const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init');
 
+// Check if tickets route file exists before requiring it
+let ticketsRouter;
+try {
+  ticketsRouter = require('./routes/tickets');
+} catch (error) {
+  console.error('Error loading tickets router:', error.message);
+  // Create a simple placeholder router if the file doesn't exist
+  ticketsRouter = express.Router();
+}
+
 const app = express();
 connectDB();
 
@@ -195,7 +205,7 @@ app.put('/tickets/:id', async (req, res) => {
 
 // ----------------------------
 // API Route Mounts
-app.use('/api/tickets', require('./routes/tickets'));
+app.use('/api/tickets', ticketsRouter); // Use the safely required router
 app.use('/api/items', itemRoutes);
 app.use('/api/init', initRouter);
 app.use('/api/logtime', logtimeRoutes);
