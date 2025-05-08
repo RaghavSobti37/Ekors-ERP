@@ -11,11 +11,13 @@ import {
 } from "react-icons/fa";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AddNewItem from '../pages/AddNewItem'
 
-export default function Navbar({ showPurchaseModal, showNewItemModal }) {
+export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showNewItemModal, setShowNewItemModal] = useState(false); // State for new item modal
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -114,7 +116,7 @@ export default function Navbar({ showPurchaseModal, showNewItemModal }) {
                     Purchase History
                   </div>
                   <div
-                    onClick={showNewItemModal}
+                    onClick={() => setShowNewItemModal(true)}
                     style={{ cursor: "pointer", padding: "10px 15px" }}
                   >
                     Add New Item
@@ -208,6 +210,10 @@ export default function Navbar({ showPurchaseModal, showNewItemModal }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showNewItemModal && (
+        <AddNewItem onClose={() => setShowNewItemModal(false)} />
       )}
     </>
   );

@@ -136,3 +136,5 @@ router.get('/all', auth, async (req, res) => {
     res.status(500).json({ error: 'Error fetching history' });
   }
 });
+
+module.exports = router;

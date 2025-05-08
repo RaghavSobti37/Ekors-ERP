@@ -538,3 +538,151 @@
   gap: 15px;
   margin-top: 30px;
 }
+
+/* Add New Item Modal Styles */
+.full-screen-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.full-screen-modal {
+  background-color: white;
+  width: 95%;
+  height: 95%;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow-y: auto;
+}
+
+.full-screen-modal h2 {
+  color: #4b0082;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #4b0082;
+  color: white;
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: #3a0069;
+}
+
+.item-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.item-table th, .item-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+.item-table th {
+  background-color: #4b0082;
+  color: white;
+  position: sticky;
+  top: 0;
+}
+
+.item-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.item-table tr:hover {
+  background-color: #e9e9e9;
+}
+
+.item-table input, .item-table select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.item-table select {
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 20px 0;
+}
+
+.add-row-btn, .save-btn, .cancel-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.add-row-btn {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.add-row-btn:hover {
+  background-color: #138496;
+}
+
+.save-btn {
+  background-color: #4b0082;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #3a0069;
+}
+
+.cancel-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
+}
+
+.delete-btn {
+  padding: 8px 12px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}

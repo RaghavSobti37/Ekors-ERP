@@ -122,6 +122,15 @@
     background-color: #e68a00;
   }
   
+  .delete-btn {
+    background-color: #f44336;
+    color: white;
+  }
+  
+  .delete-btn:hover {
+    background-color: #d32f2f;
+  }
+  
   .popup-overlay {
     position: fixed;
     top: 0;
