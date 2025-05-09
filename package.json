@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@react-pdf/renderer": "^4.3.0"
+    "@react-pdf/renderer": "^4.3.0",
+    "framer-motion": "^12.10.4"
   }
 }

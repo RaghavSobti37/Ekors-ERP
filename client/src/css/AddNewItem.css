@@ -1,0 +1,275 @@
+/* Add these styles to your existing CSS */
+
+.add-item-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+}
+
+.full-screen-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.full-screen-modal {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.modal-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.item-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.table-container {
+    overflow-y: auto;
+    flex-grow: 1;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.item-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.item-table th {
+    background-color: #f5f7fa;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #4a5568;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.item-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.item-table tr:last-child td {
+    border-bottom: none;
+}
+
+.item-table tr:hover {
+    background-color: #f8fafc;
+}
+
+.item-table input,
+.item-table select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border 0.2s;
+}
+
+.item-table input:focus,
+.item-table select:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.price-input {
+    display: flex;
+    align-items: center;
+}
+
+.price-input span {
+    margin-right: 5px;
+    color: #666;
+}
+
+.delete-btn {
+    background: #ffebee;
+    border: none;
+    color: #c62828;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.delete-btn:hover {
+    background: #ffcdd2;
+}
+
+.delete-btn svg {
+    margin-right: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.action-group {
+    display: flex;
+    gap: 10px;
+}
+
+.add-row-btn {
+    background: #e3f2fd;
+    border: none;
+    color: #1976d2;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.add-row-btn:hover {
+    background: #bbdefb;
+}
+
+.add-row-btn svg {
+    margin-right: 6px;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.save-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.save-btn svg {
+    margin-right: 6px;
+}
+
+.cancel-btn {
+    background: #f5f5f5;
+    border: none;
+    color: #666;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+    background: #e0e0e0;
+}
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.notification {
+    position: fixed;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #4CAF50;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: bottom 0.3s ease;
+    z-index: 1000;
+}
+
+.notification.show {
+    bottom: 30px;
+}
+
+.notification svg {
+    flex-shrink: 0;
+}
+
+.shake {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
