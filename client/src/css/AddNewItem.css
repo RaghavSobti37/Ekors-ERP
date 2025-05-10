@@ -1,8 +1,7 @@
-/* Add these styles to your existing CSS */
-
 .add-item-container {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #333;
+    background-color: white;
 }
 
 .full-screen-modal-overlay {
@@ -11,7 +10,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -21,11 +20,12 @@
 
 .full-screen-modal {
     background-color: white;
-    border-radius: 12px;
+    border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    width: 90%;
-    max-width: 1200px;
-    max-height: 90vh;
+    width: 95%;
+    height: 95%;
+    max-width: none;
+    max-height: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -44,6 +44,7 @@
 .modal-header h2 {
     margin: 0;
     font-weight: 600;
+    font-size: 1.5rem;
 }
 
 .close-btn {
@@ -68,6 +69,7 @@
     flex-direction: column;
     flex-grow: 1;
     overflow: hidden;
+    background-color: white;
 }
 
 .table-container {
@@ -76,11 +78,13 @@
     margin-bottom: 20px;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
+    background-color: white;
 }
 
 .item-table {
     width: 100%;
     border-collapse: collapse;
+    background-color: white;
 }
 
 .item-table th {
@@ -97,6 +101,7 @@
 .item-table td {
     padding: 12px 15px;
     border-bottom: 1px solid #e0e0e0;
+    background-color: white;
 }
 
 .item-table tr:last-child td {
@@ -115,6 +120,7 @@
     border-radius: 4px;
     font-size: 14px;
     transition: border 0.2s;
+    background-color: white;
 }
 
 .item-table input:focus,
@@ -161,6 +167,7 @@
     align-items: center;
     padding-top: 15px;
     border-top: 1px solid #eee;
+    background-color: white;
 }
 
 .action-group {
@@ -226,50 +233,40 @@
     background: #e0e0e0;
 }
 
-.spinner {
-    width: 18px;
-    height: 18px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
+/* Scrollbar Styles */
+.table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.notification {
-    position: fixed;
-    bottom: -100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #4CAF50;
-    color: white;
-    padding: 15px 25px;
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
     border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: bottom 0.3s ease;
-    z-index: 1000;
 }
 
-.notification.show {
-    bottom: 30px;
+.table-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
 }
 
-.notification svg {
-    flex-shrink: 0;
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
-.shake {
-    animation: shake 0.5s;
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-5px); }
-    40%, 80% { transform: translateX(5px); }
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .full-screen-modal {
+        width: 98%;
+        height: 98%;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .action-group {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
