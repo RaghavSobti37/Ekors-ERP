@@ -210,13 +210,13 @@ const Users = () => {
                                     <td>
                                         <div className="action-buttons">
                                             <button className="view-btn" onClick={() => handleView(user)}>
-                                                <FaEye />
+                                            👁️
                                             </button>
                                             <button className="edit-btn" onClick={() => handleEdit(user)}>
-                                                <FaEdit />
+                                            ✏️
                                             </button>
                                             <button className="delete-btn" onClick={() => handleDelete(user.id)}>
-                                                <FaTrash />
+                                            🗑️
                                             </button>
                                         </div>
                                     </td>

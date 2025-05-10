@@ -804,14 +804,14 @@ export default function Items() {
                                 className="btn btn-primary btn-sm"
                                 disabled={isSubmitting}
                               >
-                                Edit
+                                ✏️
                               </button>
                               <button
                                 onClick={() => handleDelete(item._id)}
                                 className="btn btn-danger btn-sm"
                                 disabled={isSubmitting}
                               >
-                                Delete
+                                🗑️
                               </button>
                             </>
                           )}

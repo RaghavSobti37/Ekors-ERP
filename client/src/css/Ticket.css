@@ -48,6 +48,24 @@
     border-radius: 0 0 12px 12px !important;
   }
 
+  .clickable-progress:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+  }
+  
+  .clickable-progress:hover .progress-bar {
+    opacity: 0.9;
+  }
+  
+  .payment-document-box {
+    transition: all 0.2s ease;
+  }
+  
+  .payment-document-box:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+  }
+
   
 
   

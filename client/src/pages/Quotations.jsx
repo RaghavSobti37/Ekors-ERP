@@ -997,7 +997,7 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => handleEdit(quotation)}
                       >
-                        Edit
+                        ✏️
                       </Button>
                       <Button
                         variant="success"

@@ -271,17 +271,22 @@ const UserSearchComponent = ({ onUserSelect }) => {
 export default function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [editTicket, setEditTicket] = useState(null);
   const [transferTicket, setTransferTicket] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [documentType, setDocumentType] = useState(null);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentReference, setPaymentReference] = useState('');
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
@@ -364,6 +369,42 @@ export default function Dashboard() {
       console.error("Error fetching tickets:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleProgressClick = (ticket) => {
+    setSelectedTicket(ticket);
+    setPaymentAmount(ticket.grandTotal - (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0));
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSubmit = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await axios.post(
+        `http://localhost:3000/api/tickets/${selectedTicket._id}/payments`,
+        {
+          amount: paymentAmount,
+          date: paymentDate,
+          reference: paymentReference
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        await fetchTickets();
+        setShowPaymentModal(false);
+        alert('Payment recorded successfully!');
+      }
+    } catch (error) {
+      console.error("Error recording payment:", error);
+      setError(`Failed to record payment: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -718,8 +759,6 @@ export default function Dashboard() {
   return (
     <div>
       <Navbar />
-      {/* <QuotationPDF />
-      <PIPDF /> */}
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
@@ -824,7 +863,14 @@ export default function Dashboard() {
                     </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
-                      <div className="d-flex flex-column">
+                      <div 
+                        className="d-flex flex-column clickable-progress" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProgressClick(ticket);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <ProgressBar
                           now={progressPercentage}
                           label={`${progressPercentage}%`}
@@ -844,7 +890,7 @@ export default function Dashboard() {
                           size="sm"
                           onClick={() => handleEdit(ticket)}
                         >
-                          Edit
+                          ✏️
                         </Button>
                         <Button
                           variant="warning"
@@ -1215,7 +1261,6 @@ export default function Dashboard() {
                 ))}
               </div>
 
-
               {renderDocumentSection()}
             </div>
           </Modal.Body>
@@ -1263,6 +1308,134 @@ export default function Dashboard() {
               disabled={!selectedUser}
             >
               Transfer Ticket
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Payment Modal */}
+        <Modal
+          show={showPaymentModal}
+          onHide={() => setShowPaymentModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Payment Details - {selectedTicket?.ticketNumber}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="d-flex justify-content-between mb-4">
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>Quotation</h6>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    handleEdit(selectedTicket);
+                    setDocumentType('quotation');
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>PI</h6>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    handleEdit(selectedTicket);
+                    setDocumentType('pi');
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>PO</h6>
+                {selectedTicket?.documents?.po ? (
+                  <a 
+                    href={`http://localhost:3000/${selectedTicket.documents.po}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    View
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>Dispatch</h6>
+                {selectedTicket?.documents?.challan ? (
+                  <a 
+                    href={`http://localhost:3000/${selectedTicket.documents.challan}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    View
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </div>
+            </div>
+
+            <h5 className="mt-3">Payment Information</h5>
+            <div className="bg-light p-3 rounded mb-3">
+              <div className="row">
+                <div className="col-md-6">
+                  <p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p>
+                </div>
+                <div className="col-md-6">
+                  <p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p>
+                </div>
+                <div className="col-md-12">
+                  <p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>Payment Amount (₹)*</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
+                  min="0"
+                  max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)}
+                  step="0.01"
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Payment Date*</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Reference/Notes</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="Payment reference number or notes"
+                />
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handlePaymentSubmit}>
+              Record Payment
             </Button>
           </Modal.Footer>
         </Modal>
