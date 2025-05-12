@@ -863,8 +863,8 @@ export default function Dashboard() {
                     </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
-                      <div 
-                        className="d-flex flex-column clickable-progress" 
+                      <div
+                        className="d-flex flex-column clickable-progress"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleProgressClick(ticket);
@@ -1227,9 +1227,9 @@ export default function Dashboard() {
                     ) : (
                       ticketData.documents?.[docKey] && (
                         <a
-                        href={ticketData.documents[docKey].startsWith('/') 
-                          ? `http://localhost:3000${ticketData.documents[docKey]}` 
-                          : `http://localhost:3000/${ticketData.documents[docKey]}`}
+                          href={ticketData.documents[docKey].startsWith('/')
+                            ? `http://localhost:3000${ticketData.documents[docKey]}`
+                            : `http://localhost:3000/${ticketData.documents[docKey]}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn btn-success btn-sm"
@@ -1316,17 +1316,21 @@ export default function Dashboard() {
         <Modal
           show={showPaymentModal}
           onHide={() => setShowPaymentModal(false)}
+          size="xl"
           centered
+          dialogClassName="custom-modal" // Add this class
+          style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} // Add these styles
+          contentClassName="h-100" // Ensure full height
         >
-          <Modal.Header closeButton>
+          <Modal.Header closeButton className="modal-header-custom">
             <Modal.Title>Payment Details - {selectedTicket?.ticketNumber}</Modal.Title>
           </Modal.Header>
-          <Modal.Body>
+          <Modal.Body className="modal-body-custom" style={{ overflowY: 'auto' }}>
             <div className="d-flex justify-content-between mb-4">
               <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
                 <h6>Quotation</h6>
-                <Button 
-                  variant="outline-primary" 
+                <Button
+                  variant="outline-primary"
                   size="sm"
                   onClick={() => {
                     setShowPaymentModal(false);
@@ -1339,8 +1343,8 @@ export default function Dashboard() {
               </div>
               <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
                 <h6>PI</h6>
-                <Button 
-                  variant="outline-primary" 
+                <Button
+                  variant="outline-primary"
                   size="sm"
                   onClick={() => {
                     setShowPaymentModal(false);
@@ -1354,9 +1358,9 @@ export default function Dashboard() {
               <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
                 <h6>PO</h6>
                 {selectedTicket?.documents?.po ? (
-                  <a 
-                    href={`http://localhost:3000/${selectedTicket.documents.po}`} 
-                    target="_blank" 
+                  <a
+                    href={`http://localhost:3000/${selectedTicket.documents.po}`}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-outline-primary btn-sm"
                   >
@@ -1369,9 +1373,9 @@ export default function Dashboard() {
               <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
                 <h6>Dispatch</h6>
                 {selectedTicket?.documents?.challan ? (
-                  <a 
-                    href={`http://localhost:3000/${selectedTicket.documents.challan}`} 
-                    target="_blank" 
+                  <a
+                    href={`http://localhost:3000/${selectedTicket.documents.challan}`}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-outline-primary btn-sm"
                   >
@@ -1383,54 +1387,85 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <h5 className="mt-3">Payment Information</h5>
-            <div className="bg-light p-3 rounded mb-3">
-              <div className="row">
-                <div className="col-md-6">
-                  <p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p>
+            <div className="row">
+              <div className="col-md-8">
+                <h5 className="mt-3">Payment Information</h5>
+                <div className="bg-light p-3 rounded mb-3">
+                  <div className="row">
+                    <div className="col-md-6">
+                      <p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p>
+                    </div>
+                    <div className="col-md-6">
+                      <p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p>
+                    </div>
+                    <div className="col-md-12">
+                      <p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p>
+                    </div>
+                  </div>
                 </div>
-                <div className="col-md-6">
-                  <p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p>
-                </div>
-                <div className="col-md-12">
-                  <p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p>
-                </div>
+
+                <Form>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Payment Amount (₹)*</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
+                      min="0"
+                      max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)}
+                      step="0.01"
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Payment Date*</Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Reference/Notes</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      placeholder="Payment reference number or notes"
+                    />
+                  </Form.Group>
+                </Form>
+              </div>
+
+              <div className="col-md-4">
+                <h5 className="mt-3">Payment History</h5>
+                {selectedTicket?.payments?.length > 0 ? (
+                  <div className="payment-history-container">
+                    {selectedTicket.payments.map((payment, index) => (
+                      <div key={index} className="payment-history-item p-3 mb-2 border rounded">
+                        <div className="d-flex justify-content-between">
+                          <span className="fw-bold">₹{payment.amount.toFixed(2)}</span>
+                          <span className="text-muted small">
+                            {new Date(payment.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {payment.reference && (
+                          <div className="mt-1 small text-muted">
+                            Ref: {payment.reference}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-4 border rounded bg-light">
+                    No payment history found
+                  </div>
+                )}
               </div>
             </div>
-
-            <Form>
-              <Form.Group className="mb-3">
-                <Form.Label>Payment Amount (₹)*</Form.Label>
-                <Form.Control
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
-                  min="0"
-                  max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)}
-                  step="0.01"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Payment Date*</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Reference/Notes</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={paymentReference}
-                  onChange={(e) => setPaymentReference(e.target.value)}
-                  placeholder="Payment reference number or notes"
-                />
-              </Form.Group>
-            </Form>
           </Modal.Body>
-          <Modal.Footer>
+          <Modal.Footer className="modal-footer-custom">
             <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
               Cancel
             </Button>

@@ -280,7 +280,7 @@ export default function PurchaseHistory() {
                                 onClick={() => window.location.href = `/purchase-detail/${purchase._id}`}
                                 className="btn btn-outline-primary btn-sm"
                               >
-                                View
+                                👁️
                               </button>
                             </div>
                           </td>

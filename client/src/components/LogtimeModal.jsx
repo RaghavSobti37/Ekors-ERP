@@ -203,6 +203,16 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
   return (
     <div className="modal-overlay">
       <div className="modal-content">
+        {/* Close button at top right */}
+        <button 
+          className="modal-close-btn" 
+          onClick={onClose}
+          disabled={isSaving}
+          title="Close"
+        >
+          &times;
+        </button>
+
         {/* Date Selection Section */}
         <div className="date-selection-container">
           {isEditingDate ? (
@@ -251,9 +261,6 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
                 max="9999-12-31"
                 disabled={isSaving}
               />
-              {/* <label htmlFor="log-date" className="calendar-icon-label">
-                📅
-              </label> */}
             </div>
           )}
         </div>
