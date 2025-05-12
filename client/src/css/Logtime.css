@@ -579,3 +579,28 @@
 .cancel-btn:hover {
   background-color: #d32f2f;
 }
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 5px 10px;
+  }
+  
+  .modal-close-btn:hover {
+    color: #333;
+  }
+  
+  .modal-close-btn:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .modal-content {
+    position: relative;
+  }

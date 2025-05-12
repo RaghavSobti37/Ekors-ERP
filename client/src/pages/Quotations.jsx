@@ -1031,7 +1031,7 @@ export default function Quotations() {
           </tbody>
         </Table>
 
-        {filteredQuotations.length > itemsPerPage && (
+        {/* {filteredQuotations.length > itemsPerPage && (
           <div className="d-flex justify-content-center mt-3">
             <nav>
               <ul className="pagination">
@@ -1074,8 +1074,8 @@ export default function Quotations() {
                 </li>
               </ul>
             </nav>
-          </div>
-        )}
+          </div> */}
+        {/* )} */}
 
         {/* Quotation Modal */}
         <Modal
