@@ -203,6 +203,72 @@ app.put('/tickets/:id', async (req, res) => {
   }
 });
 
+// Update your user routes section in server.js
+app.get('/api/users', async (req, res) => {
+  try {
+    // Add authentication check
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized - No token provided' });
+    }
+
+    // Verify token (you'll need your JWT verification logic here)
+    // This is just a placeholder - implement your actual JWT verification
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Only allow super-admin to access all users
+    if (decoded.role !== 'super-admin') {
+      return res.status(403).json({ error: 'Forbidden - Only super-admin can access' });
+    }
+
+    const users = await userModel.find().select('firstname lastname email phone role createdAt updatedAt');
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add other CRUD endpoints with proper authentication
+app.post('/api/users/register', async (req, res) => {
+  try {
+    const { firstname, lastname, email, phone, role, password } = req.body;
+    
+    // Check if user exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await userModel.create({
+      firstname,
+      lastname,
+      email,
+      phone,
+      role,
+      password: hashedPassword
+    });
+
+    // Don't send password back
+    const userResponse = newUser.toObject();
+    delete userResponse.password;
+    delete userResponse.__v;
+
+    res.status(201).json(userResponse);
+  } catch (err) {
+    console.error('Error creating user:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add similar PUT and DELETE endpoints
+
 // ----------------------------
 // API Route Mounts
 app.use('/api/tickets', ticketsRouter); // Use the safely required router
