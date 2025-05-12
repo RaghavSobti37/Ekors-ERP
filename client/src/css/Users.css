@@ -446,4 +446,236 @@
     color: #004085;
 }
 
+/* Add these styles to your existing Users.css */
+
+.user-avatar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar span {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #4e73df;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.avatar-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #4e73df;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 auto 15px;
+}
+
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.role-badge.user {
+    background-color: #e8f4fd;
+    color: #2c7be5;
+}
+
+.role-badge.admin {
+    background-color: #e6f7ee;
+    color: #00a854;
+}
+
+.role-badge.super-admin {
+    background-color: #fef3e6;
+    color: #fa8c16;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-buttons button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.view-btn {
+    color: #4e73df;
+}
+
+.edit-btn {
+    color: #1cc88a;
+}
+
+.delete-btn {
+    color: #e74a3b;
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.user-modal {
+    background-color: white;
+    border-radius: 8px;
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.edit-modal {
+    width: 600px;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e3e6f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #4e73df;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.modal-content {
+    padding: 20px;
+}
+
+.user-profile {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.user-profile h3 {
+    margin: 10px 0 5px;
+}
+
+.user-email {
+    color: #6c757d;
+    margin: 0;
+}
+
+.user-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.detail-value {
+    margin-top: 5px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e3e6f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-footer button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancel-btn {
+    background-color: #f8f9fc;
+    border: 1px solid #d1d3e2;
+    color: #6c757d;
+}
+
+.save-btn {
+    background-color: #4e73df;
+    border: 1px solid #4e73df;
+    color: white;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d3e2;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
   
