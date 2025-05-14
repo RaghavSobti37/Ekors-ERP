@@ -59,7 +59,7 @@ export default function Items() {
   const [filteredItemsList, setFilteredItemsList] = useState([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const showSuccess = (message) => {
     // Could use a toast library here
     alert(message);
@@ -168,10 +168,10 @@ export default function Items() {
   const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
       // Set loading state for this specific item
-      setPurchaseHistoryLoading(prev => ({...prev, [itemId]: true}));
+      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: true }));
       // Clear any previous errors
       setError(null);
-      
+
       const response = await axios.get(
         `http://localhost:3000/api/items/${itemId}/purchases`,
         {
@@ -181,7 +181,7 @@ export default function Items() {
           }
         }
       );
-  
+
       setPurchaseHistory(prev => ({
         ...prev,
         [itemId]: response.data || []
@@ -195,7 +195,7 @@ export default function Items() {
       }));
     } finally {
       // Clear loading state for this specific item
-      setPurchaseHistoryLoading(prev => ({...prev, [itemId]: false}));
+      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: false }));
     }
   }, []);
 
@@ -323,7 +323,7 @@ export default function Items() {
     const indexOfFirst = indexOfLast - itemsPerPage;
     return filteredItems.slice(indexOfFirst, indexOfLast);
   }, [filteredItems, currentPage, itemsPerPage]);
-  
+
   const totalPages = useMemo(() => Math.ceil(filteredItems.length / itemsPerPage), [filteredItems, itemsPerPage]);
 
   const addNewPurchaseItem = () => {
@@ -662,7 +662,7 @@ export default function Items() {
                   "price",
                   "unit",
                   "gstRate",
-                  "hsnCode",
+                  "image"  // Added image column
                 ].map((key) => (
                   <th
                     key={key}
@@ -761,21 +761,15 @@ export default function Items() {
                         )}
                       </td>
                       <td>
-                        {editingItem === item._id ? (
-                          <input
-                            className="form-control"
-                            name="hsnCode"
-                            value={formData.hsnCode}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                hsnCode: e.target.value,
-                              })
-                            }
-                            disabled={isSubmitting}
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="item-image"
+                            onClick={() => window.open(item.image, '_blank')}
                           />
                         ) : (
-                          item.hsnCode || "-"
+                          "-"
                         )}
                       </td>
                       <td>
@@ -813,649 +807,675 @@ export default function Items() {
                               >
                                 🗑️
                               </button>
+                              <button
+                                onClick={() => toggleDetails(item._id)}
+                                className="btn btn-info btn-sm"
+                                disabled={isSubmitting}
+                              >
+                                👁️
+                              </button>
                             </>
                           )}
-                          {/* <button
-                            onClick={() => toggleDetails(item._id)}
-                            className="btn btn-info btn-sm"
-                            disabled={isSubmitting}
-                          >
-                            {expandedRow === item._id ? "Hide" : "Show"} Details
-                          </button> */}
                         </div>
                       </td>
                     </tr>
 
                     {expandedRow === item._id && (
                       <tr>
-                      <td colSpan="9" className="expanded-row">
-                        <div className="expanded-container">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h6>Purchase History</h6>
-                          </div>
-                          {purchaseHistory[item._id]?.length > 0 ? (
-                            <table className="table table-sm table-striped table-bordered">
-                              <thead>
-                                <tr>
-                                  <th>Date</th>
-                                  <th>Supplier</th>
-                                  <th>GST No</th>
-                                  <th>Invoice No</th>
-                                  <th>Qty</th>
-                                  <th>Price</th>
-                                  <th>GST Amt</th>
-                                  <th>Total</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {purchaseHistory[item._id].map(
-                                  (purchase, idx) => {
-                                    const itemTotal =
-                                      purchase.price * purchase.quantity;
-                                    const gstAmount =
-                                      itemTotal * (purchase.gstRate / 100);
-                                    const totalWithGst =
-                                      itemTotal + gstAmount;
-
-                                    return (
-                                      <tr key={purchase._id || idx}>
-                                        <td>
-                                          {new Date(
-                                            purchase.date
-                                          ).toLocaleDateString()}
-                                        </td>
-                                        <td>{purchase.companyName}</td>
-                                        <td>{purchase.gstNumber || "-"}</td>
-                                        <td>{purchase.invoiceNumber}</td>
-                                        <td>{purchase.quantity}</td>
-                                        <td>₹{purchase.price.toFixed(2)}</td>
-                                        <td>₹{gstAmount.toFixed(2)}</td>
-                                        <td>₹{totalWithGst.toFixed(2)}</td>
-                                      </tr>
-                                    );
-                                  }
-                                )}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <div className="alert alert-info">
-                              {error
-                                ? `Error loading history: ${error}`
-                                : "No purchase history found"}
+                        <td colSpan="9" className="expanded-row">
+                          <div className="expanded-container">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6>Item Details</h6>
+                              {item.image && (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="image-preview"
+                                />
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="9" className="text-center">
-                  No items found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                            <div className="row">
+                              <div className="col-md-6">
+                                <p><strong>Name:</strong> {item.name}</p>
+                                <p><strong>Category:</strong> {item.category || "-"}</p>
+                                <p><strong>Subcategory:</strong> {item.subcategory || "-"}</p>
+                                <p><strong>Quantity:</strong> {item.quantity}</p>
+                              </div>
+                              <div className="col-md-6">
+                                <p><strong>Price:</strong> ₹{item.price.toFixed(2)}</p>
+                                <p><strong>Unit:</strong> {item.unit || "Nos"}</p>
+                                <p><strong>GST Rate:</strong> {item.gstRate}%</p>
+                                <p><strong>HSN Code:</strong> {item.hsnCode || "-"}</p>
+                              </div>
+                            </div>
 
-        {filteredItems.length > 0 && (
-          <div className="d-flex justify-content-center gap-3 mt-2">
-            <button
-              className="btn btn-sm btn-outline-dark"
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1 || isSubmitting}
-            >
-              ← Prev
-            </button>
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              className="btn btn-sm btn-outline-dark"
-              onClick={() =>
-                setCurrentPage((p) => Math.min(p + 1, totalPages))
-              }
-              disabled={currentPage === totalPages || isSubmitting}
-            >
-              Next →
-            </button>
+                            <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
+                              <h6>Purchase History</h6>
+                            </div>
+                            {purchaseHistory[item._id]?.length > 0 ? (
+                              <table className="table table-sm table-striped table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>Supplier</th>
+                                    <th>GST No</th>
+                                    <th>Invoice No</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>GST Amt</th>
+                                    <th>Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {purchaseHistory[item._id].map(
+                                    (purchase, idx) => {
+                                      const itemTotal =
+                                        purchase.price * purchase.quantity;
+                                      const gstAmount =
+                                        itemTotal * (purchase.gstRate / 100);
+                                      const totalWithGst =
+                                        itemTotal + gstAmount;
+
+                                      return (
+                                        <tr key={purchase._id || idx}>
+                                          <td>
+                                            {new Date(
+                                              purchase.date
+                                            ).toLocaleDateString()}
+                                          </td>
+                                          <td>{purchase.companyName}</td>
+                                          <td>{purchase.gstNumber || "-"}</td>
+                                          <td>{purchase.invoiceNumber}</td>
+                                          <td>{purchase.quantity}</td>
+                                          <td>₹{purchase.price.toFixed(2)}</td>
+                                          <td>₹{gstAmount.toFixed(2)}</td>
+                                          <td>₹{totalWithGst.toFixed(2)}</td>
+                                        </tr>
+                                      );
+                                    }
+                                  )}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <div className="alert alert-info">
+                                {error
+                                  ? `Error loading history: ${error}`
+                                  : "No purchase history found"}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="9" className="text-center">
+                    No items found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {/* </table> */}
+
+          {filteredItems.length > 0 && (
+            <div className="d-flex justify-content-center gap-3 mt-2">
+              <button
+                className="btn btn-sm btn-outline-dark"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1 || isSubmitting}
+              >
+                ← Prev
+              </button>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="btn btn-sm btn-outline-dark"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={currentPage === totalPages || isSubmitting}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Add/Edit Item Modal */}
+        {showModal && (
+
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Item</h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormData({
+                      name: "",
+                      quantity: "",
+                      price: "",
+                      gstRate: "0",
+                      hsnCode: "",
+                      unit: "Nos",
+                      category: "",
+                      subcategory: "General",
+                      discountAvailable: false,
+                      dynamicPricing: false,
+                    });
+                  }}
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Name*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Name"
+                        name="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        placeholder="Quantity"
+                        name="quantity"
+                        value={formData.quantity}
+                        onChange={(e) =>
+                          setFormData({ ...formData, quantity: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Price*</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Price"
+                        name="price"
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="GST Rate"
+                        name="gstRate"
+                        value={formData.gstRate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, gstRate: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>HSN Code</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="HSN Code"
+                        name="hsnCode"
+                        value={formData.hsnCode}
+                        onChange={(e) =>
+                          setFormData({ ...formData, hsnCode: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Unit</label>
+                      <select
+                        className="form-control mb-2"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={(e) =>
+                          setFormData({ ...formData, unit: e.target.value })
+                        }
+                      >
+                        <option value="Nos">Nos</option>
+                        <option value="Mtr">Meter</option>
+                        <option value="PKT">Packet</option>
+                        <option value="Pair">Pair</option>
+                        <option value="Set">Set</option>
+                        <option value="Bottle">Bottle</option>
+                        <option value="KG">Kilogram</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select
+                        className="form-control mb-2"
+                        name="category"
+                        value={formData.category}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category: e.target.value })
+                        }
+                      >
+                        <option value="">Select Category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.category} value={cat.category}>
+                            {cat.category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Subcategory</label>
+                      <select
+                        className="form-control mb-2"
+                        name="subcategory"
+                        value={formData.subcategory}
+                        onChange={(e) =>
+                          setFormData({ ...formData, subcategory: e.target.value })
+                        }
+                        disabled={!formData.category}
+                      >
+                        <option value="General">General</option>
+                        {formData.category &&
+                          categories
+                            .find(c => c.category === formData.category)?.subcategories
+                            .map((subcat) => (
+                              <option key={subcat} value={subcat}>
+                                {subcat}
+                              </option>
+                            ))}
+                      </select>
+                    </div>
+
+                    <div className="form-check mb-2">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="discountAvailable"
+                        checked={formData.discountAvailable}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            discountAvailable: e.target.checked,
+                          })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="discountAvailable">
+                        Discount Available
+                      </label>
+                    </div>
+
+                    <div className="form-check mb-2">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="dynamicPricing"
+                        checked={formData.dynamicPricing}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            dynamicPricing: e.target.checked,
+                          })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="dynamicPricing">
+                        Dynamic Pricing
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormData({
+                      name: "",
+                      quantity: "",
+                      price: "",
+                      gstRate: "0",
+                      hsnCode: "",
+                      unit: "Nos",
+                      category: "",
+                      subcategory: "General",
+                      discountAvailable: false,
+                      dynamicPricing: false,
+                    });
+                    setError(null);
+                  }}
+                  className="btn btn-secondary"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddItem}
+                  className="btn btn-success"
+                  disabled={!formData.name || !formData.price || !formData.category}
+                >
+                  Add Item
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {showPurchaseModal && (
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Purchase Tracking</h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowPurchaseModal(false);
+                    resetPurchaseForm();
+                  }}
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                {error && (
+                  <div className="alert alert-danger" role="alert">
+                    {error}
+                  </div>
+                )}
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Company Name*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Company Name"
+                        name="companyName"
+                        value={purchaseData.companyName}
+                        onChange={handlePurchaseChange}
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>GST Number</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="GST Number"
+                        name="gstNumber"
+                        value={purchaseData.gstNumber}
+                        onChange={handlePurchaseChange}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Address</label>
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Address"
+                    name="address"
+                    value={purchaseData.address}
+                    onChange={handlePurchaseChange}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>State</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="State Name"
+                        name="stateName"
+                        value={purchaseData.stateName}
+                        onChange={handlePurchaseChange}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Invoice Number*</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Invoice Number"
+                        name="invoiceNumber"
+                        value={purchaseData.invoiceNumber}
+                        onChange={handlePurchaseChange}
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Invoice Date*</label>
+                  <input
+                    type="date"
+                    className="form-control mb-3"
+                    name="date"
+                    value={purchaseData.date}
+                    onChange={handlePurchaseChange}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <h6>Items Purchased</h6>
+                {purchaseData.items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="purchase-item-container mb-3 p-3 border rounded"
+                  >
+                    <div className="position-relative">
+                      <label>Search Item</label>
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Search item by name or HSN..."
+                        value={idx === currentItemIndex ? itemSearchTerm : ""}
+                        onChange={(e) => {
+                          setItemSearchTerm(e.target.value);
+                          setCurrentItemIndex(idx);
+                          setShowItemSearch(true);
+                        }}
+                        onFocus={() => setCurrentItemIndex(idx)}
+                        disabled={isSubmitting}
+                      />
+
+                      {filteredItemsList.length > 0 &&
+                        currentItemIndex === idx &&
+                        showItemSearch && (
+                          <div className="suggestions-dropdown">
+                            {filteredItemsList.map((suggestion, i) => (
+                              <div
+                                key={i}
+                                className="suggestion-item"
+                                onClick={() => {
+                                  handleItemChange(
+                                    idx,
+                                    "description",
+                                    suggestion.name
+                                  );
+                                  handleItemChange(
+                                    idx,
+                                    "price",
+                                    suggestion.price.toString()
+                                  );
+                                  handleItemChange(
+                                    idx,
+                                    "gstRate",
+                                    suggestion.gstRate.toString()
+                                  );
+                                  setItemSearchTerm("");
+                                  setShowItemSearch(false);
+                                }}
+                              >
+                                <strong>{suggestion.name}</strong>
+                                <span className="text-muted">
+                                  {" "}
+                                  - ₹{suggestion.price.toFixed(2)}
+                                </span>
+                                <br />
+                                <small>
+                                  HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
+                                  {suggestion.gstRate || 0}%
+                                </small>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+
+                    {item.description && (
+                      <div className="selected-item-details mb-2 p-2 bg-light border rounded">
+                        <strong>{item.description}</strong>
+                        {item.price && (
+                          <small className="d-block">
+                            Price: ₹{item.price}, GST: {item.gstRate || 0}%
+                          </small>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="row">
+                      <div className="col-md-3">
+                        <div className="form-group">
+                          <label>Description*</label>
+                          <input
+                            type="text"
+                            className="form-control mb-2"
+                            placeholder="Description"
+                            value={item.description || ""}
+                            onChange={(e) =>
+                              handleItemChange(idx, "description", e.target.value)
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-2">
+                        <div className="form-group">
+                          <label>Price*</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="form-control mb-2"
+                            placeholder="Price"
+                            value={item.price || ""}
+                            onChange={(e) =>
+                              handleItemChange(idx, "price", e.target.value)
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-2">
+                        <div className="form-group">
+                          <label>Quantity*</label>
+                          <input
+                            type="number"
+                            className="form-control mb-2"
+                            placeholder="Quantity"
+                            value={item.quantity || ""}
+                            onChange={(e) =>
+                              handleItemChange(idx, "quantity", e.target.value)
+                            }
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-2">
+                        <div className="form-group">
+                          <label>GST Rate (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="form-control mb-2"
+                            placeholder="GST Rate"
+                            value={item.gstRate || "0"}
+                            onChange={(e) =>
+                              handleItemChange(idx, "gstRate", e.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-2 d-flex align-items-end">
+                        <button
+                          onClick={() => removeItem(idx)}
+                          className="btn btn-danger btn-block"
+                          disabled={purchaseData.items.length === 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="d-flex justify-content-between mb-3">
+                  <button
+                    onClick={addNewPurchaseItem}
+                    className="btn btn-outline-primary"
+                  >
+                    Add Another Item
+                  </button>
+                  <div className="total-amount">
+                    <strong>
+                      Total Amount: ₹{calculateTotalAmount().toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  onClick={() => {
+                    setShowPurchaseModal(false);
+                    resetPurchaseForm();
+                  }}
+                  className="btn btn-secondary"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addPurchaseEntry}
+                  className="btn btn-success"
+                  disabled={!isPurchaseDataValid() || isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit Purchase"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Add/Edit Item Modal */}
-      {showModal && (
-
-        <div className="modal-backdrop full-screen-modal">
-          <div className="modal-content full-screen-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Add New Item</h5>
-              <button
-                type="button"
-                className="close"
-                onClick={() => {
-                  setShowModal(false);
-                  setFormData({
-                    name: "",
-                    quantity: "",
-                    price: "",
-                    gstRate: "0",
-                    hsnCode: "",
-                    unit: "Nos",
-                    category: "",
-                    subcategory: "General",
-                    discountAvailable: false,
-                    dynamicPricing: false,
-                  });
-                }}
-              >
-                <span>&times;</span>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Name*</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Name"
-                      name="name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Quantity</label>
-                    <input
-                      type="number"
-                      className="form-control mb-2"
-                      placeholder="Quantity"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Price*</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-control mb-2"
-                      placeholder="Price"
-                      name="price"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>GST Rate (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-control mb-2"
-                      placeholder="GST Rate"
-                      name="gstRate"
-                      value={formData.gstRate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, gstRate: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>HSN Code</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="HSN Code"
-                      name="hsnCode"
-                      value={formData.hsnCode}
-                      onChange={(e) =>
-                        setFormData({ ...formData, hsnCode: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Unit</label>
-                    <select
-                      className="form-control mb-2"
-                      name="unit"
-                      value={formData.unit}
-                      onChange={(e) =>
-                        setFormData({ ...formData, unit: e.target.value })
-                      }
-                    >
-                      <option value="Nos">Nos</option>
-                      <option value="Mtr">Meter</option>
-                      <option value="PKT">Packet</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Set">Set</option>
-                      <option value="Bottle">Bottle</option>
-                      <option value="KG">Kilogram</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Category</label>
-                    <select
-                      className="form-control mb-2"
-                      name="category"
-                      value={formData.category}
-                      onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value })
-                      }
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.category} value={cat.category}>
-                          {cat.category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <select
-                      className="form-control mb-2"
-                      name="subcategory"
-                      value={formData.subcategory}
-                      onChange={(e) =>
-                        setFormData({ ...formData, subcategory: e.target.value })
-                      }
-                      disabled={!formData.category}
-                    >
-                      <option value="General">General</option>
-                      {formData.category &&
-                        categories
-                          .find(c => c.category === formData.category)?.subcategories
-                          .map((subcat) => (
-                            <option key={subcat} value={subcat}>
-                              {subcat}
-                            </option>
-                          ))}
-                    </select>
-                  </div>
-
-                  <div className="form-check mb-2">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="discountAvailable"
-                      checked={formData.discountAvailable}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          discountAvailable: e.target.checked,
-                        })
-                      }
-                    />
-                    <label className="form-check-label" htmlFor="discountAvailable">
-                      Discount Available
-                    </label>
-                  </div>
-
-                  <div className="form-check mb-2">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="dynamicPricing"
-                      checked={formData.dynamicPricing}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dynamicPricing: e.target.checked,
-                        })
-                      }
-                    />
-                    <label className="form-check-label" htmlFor="dynamicPricing">
-                      Dynamic Pricing
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setFormData({
-                    name: "",
-                    quantity: "",
-                    price: "",
-                    gstRate: "0",
-                    hsnCode: "",
-                    unit: "Nos",
-                    category: "",
-                    subcategory: "General",
-                    discountAvailable: false,
-                    dynamicPricing: false,
-                  });
-                  setError(null);
-                }}
-                className="btn btn-secondary"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddItem}
-                className="btn btn-success"
-                disabled={!formData.name || !formData.price || !formData.category}
-              >
-                Add Item
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      
-      {showPurchaseModal && (
-        <div className="modal-backdrop full-screen-modal">
-          <div className="modal-content full-screen-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Purchase Tracking</h5>
-              <button
-                type="button"
-                className="close"
-                onClick={() => {
-                  setShowPurchaseModal(false);
-                  resetPurchaseForm();
-                }}
-              >
-                <span>&times;</span>
-              </button>
-            </div>
-            <div className="modal-body">
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Company Name*</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Company Name"
-                      name="companyName"
-                      value={purchaseData.companyName}
-                      onChange={handlePurchaseChange}
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>GST Number</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="GST Number"
-                      name="gstNumber"
-                      value={purchaseData.gstNumber}
-                      onChange={handlePurchaseChange}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Address</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Address"
-                  name="address"
-                  value={purchaseData.address}
-                  onChange={handlePurchaseChange}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>State</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="State Name"
-                      name="stateName"
-                      value={purchaseData.stateName}
-                      onChange={handlePurchaseChange}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Invoice Number*</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Invoice Number"
-                      name="invoiceNumber"
-                      value={purchaseData.invoiceNumber}
-                      onChange={handlePurchaseChange}
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Invoice Date*</label>
-                <input
-                  type="date"
-                  className="form-control mb-3"
-                  name="date"
-                  value={purchaseData.date}
-                  onChange={handlePurchaseChange}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <h6>Items Purchased</h6>
-              {purchaseData.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="purchase-item-container mb-3 p-3 border rounded"
-                >
-                  <div className="position-relative">
-                    <label>Search Item</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Search item by name or HSN..."
-                      value={idx === currentItemIndex ? itemSearchTerm : ""}
-                      onChange={(e) => {
-                        setItemSearchTerm(e.target.value);
-                        setCurrentItemIndex(idx);
-                        setShowItemSearch(true);
-                      }}
-                      onFocus={() => setCurrentItemIndex(idx)}
-                      disabled={isSubmitting}
-                    />
-
-                    {filteredItemsList.length > 0 &&
-                      currentItemIndex === idx &&
-                      showItemSearch && (
-                        <div className="suggestions-dropdown">
-                          {filteredItemsList.map((suggestion, i) => (
-                            <div
-                              key={i}
-                              className="suggestion-item"
-                              onClick={() => {
-                                handleItemChange(
-                                  idx,
-                                  "description",
-                                  suggestion.name
-                                );
-                                handleItemChange(
-                                  idx,
-                                  "price",
-                                  suggestion.price.toString()
-                                );
-                                handleItemChange(
-                                  idx,
-                                  "gstRate",
-                                  suggestion.gstRate.toString()
-                                );
-                                setItemSearchTerm("");
-                                setShowItemSearch(false);
-                              }}
-                            >
-                              <strong>{suggestion.name}</strong>
-                              <span className="text-muted">
-                                {" "}
-                                - ₹{suggestion.price.toFixed(2)}
-                              </span>
-                              <br />
-                              <small>
-                                HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
-                                {suggestion.gstRate || 0}%
-                              </small>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-
-                  {item.description && (
-                    <div className="selected-item-details mb-2 p-2 bg-light border rounded">
-                      <strong>{item.description}</strong>
-                      {item.price && (
-                        <small className="d-block">
-                          Price: ₹{item.price}, GST: {item.gstRate || 0}%
-                        </small>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="row">
-                    <div className="col-md-3">
-                      <div className="form-group">
-                        <label>Description*</label>
-                        <input
-                          type="text"
-                          className="form-control mb-2"
-                          placeholder="Description"
-                          value={item.description || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "description", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>Price*</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control mb-2"
-                          placeholder="Price"
-                          value={item.price || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "price", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>Quantity*</label>
-                        <input
-                          type="number"
-                          className="form-control mb-2"
-                          placeholder="Quantity"
-                          value={item.quantity || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "quantity", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>GST Rate (%)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control mb-2"
-                          placeholder="GST Rate"
-                          value={item.gstRate || "0"}
-                          onChange={(e) =>
-                            handleItemChange(idx, "gstRate", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2 d-flex align-items-end">
-                      <button
-                        onClick={() => removeItem(idx)}
-                        className="btn btn-danger btn-block"
-                        disabled={purchaseData.items.length === 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <div className="d-flex justify-content-between mb-3">
-                <button
-                  onClick={addNewPurchaseItem}
-                  className="btn btn-outline-primary"
-                >
-                  Add Another Item
-                </button>
-                <div className="total-amount">
-                  <strong>
-                    Total Amount: ₹{calculateTotalAmount().toFixed(2)}
-                  </strong>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                onClick={() => {
-                  setShowPurchaseModal(false);
-                  resetPurchaseForm();
-                }}
-                className="btn btn-secondary"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={addPurchaseEntry}
-                className="btn btn-success"
-                disabled={!isPurchaseDataValid() || isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Submit Purchase"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  </div>
-);
+  );
 }
