@@ -11,13 +11,13 @@ import {
 } from "react-icons/fa";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import AddNewItem from '../pages/AddNewItem'
+import AddNewItem from '../pages/AddNewItem';
 
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showNewItemModal, setShowNewItemModal] = useState(false); // State for new item modal
+  const [showNewItemModal, setShowNewItemModal] = useState(false);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -26,6 +26,10 @@ export default function Navbar({ showPurchaseModal }) {
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
+  };
+
+  const handleViewAllItems = () => {
+    navigate("/itemslist");
   };
 
   const handleSignOut = () => {
@@ -103,6 +107,12 @@ export default function Navbar({ showPurchaseModal }) {
               </NavLink>
               {showItemsDropdown && (
                 <div className="dropdown-menu">
+                  <div
+                    onClick={handleViewAllItems}
+                    style={{ cursor: "pointer", padding: "10px 15px" }}
+                  >
+                    View All Items
+                  </div>
                   <div
                     onClick={showPurchaseModal}
                     style={{ cursor: "pointer", padding: "10px 15px" }}
