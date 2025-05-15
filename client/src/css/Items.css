@@ -218,3 +218,45 @@
   justify-content: flex-end;
 }
 
+/* ... [keep all existing CSS rules] ... */
+
+/* Add these new styles at the end */
+
+.item-image {
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.item-image:hover {
+  transform: scale(1.5);
+}
+
+.image-preview {
+  max-width: 150px;
+  max-height: 150px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+/* View button specific styles */
+.btn-info.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-radius: 0.2rem;
+}
+
+/* Expanded row details styling */
+.expanded-row .row {
+  margin-bottom: 1rem;
+}
+
+.expanded-row p {
+  margin-bottom: 0.5rem;
+}
+
