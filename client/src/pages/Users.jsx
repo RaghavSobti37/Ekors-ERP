@@ -42,7 +42,7 @@ const Users = () => {
         } catch (err) {
             console.error("Error fetching users:", err);
             setError(err.response?.data?.error || "Failed to fetch users");
-            
+
             if (err.response?.status === 401) {
                 // Token expired or invalid
                 localStorage.removeItem("token");
@@ -83,7 +83,7 @@ const Users = () => {
             } catch (err) {
                 console.error("Error deleting user:", err);
                 alert(err.response?.data?.error || "Failed to delete user");
-                
+
                 if (err.response?.status === 401) {
                     navigate("/login");
                 }
@@ -93,7 +93,7 @@ const Users = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({...prev, [name]: value}));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSave = async () => {
@@ -107,14 +107,14 @@ const Users = () => {
             }
 
             let response;
-            
+
             if (selectedUser) {
                 // Update existing user
                 response = await api.put(
                     `/api/users/${selectedUser._id}`,
                     formData
                 );
-                setUsers(users.map(user => 
+                setUsers(users.map(user =>
                     user._id === selectedUser._id ? response.data : user
                 ));
             } else {
@@ -136,13 +136,13 @@ const Users = () => {
             });
             setShowEditModal(false);
             setSelectedUser(null);
-            
+
             // Refresh the list
             fetchUsers();
         } catch (err) {
             console.error("Error saving user:", err);
             alert(err.response?.data?.error || err.message || "Failed to save user");
-            
+
             if (err.response?.status === 401) {
                 navigate("/login");
             }
@@ -155,7 +155,7 @@ const Users = () => {
         return date.toLocaleString();
     };
 
-    const filteredUsers = users.filter(user => 
+    const filteredUsers = users.filter(user =>
         user.firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.lastname.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -172,18 +172,20 @@ const Users = () => {
             <div className="users-page">
                 <div className="users-header">
                     <h1>User Management</h1>
-                    <div className="users-actions">
+
+                    <div className="search-container">
                         <input
                             type="text"
-                            placeholder="Search users..."
+                            placeholder="Search Users..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input"
                         />
-                        <button className="add-user-btn" onClick={() => handleEdit(null)}>
-                            + Add New User
-                        </button>
                     </div>
+
+                    <button className="add-user-btn" onClick={() => handleEdit(null)}>
+                        + Add New User
+                    </button>
                 </div>
 
                 <div className="users-table-container">
@@ -221,22 +223,22 @@ const Users = () => {
                                         <td>{formatDate(user.createdAt)}</td>
                                         <td>
                                             <div className="action-buttons">
-                                                <button 
-                                                    className="view-btn" 
+                                                <button
+                                                    className="view-btn"
                                                     onClick={() => handleView(user)}
                                                     title="View"
                                                 >
                                                     👁️
                                                 </button>
-                                                <button 
-                                                    className="edit-btn" 
+                                                <button
+                                                    className="edit-btn"
                                                     onClick={() => handleEdit(user)}
                                                     title="Edit"
                                                 >
                                                     ✏️
                                                 </button>
-                                                <button 
-                                                    className="delete-btn" 
+                                                <button
+                                                    className="delete-btn"
                                                     onClick={() => handleDelete(user._id)}
                                                     title="Delete"
                                                     disabled={user.role === "super-admin"}
@@ -408,8 +410,8 @@ const Users = () => {
                             </div>
 
                             <div className="modal-footer">
-                                <button 
-                                    className="cancel-btn" 
+                                <button
+                                    className="cancel-btn"
                                     onClick={() => {
                                         setShowEditModal(false);
                                         setSelectedUser(null);
