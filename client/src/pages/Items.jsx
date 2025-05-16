@@ -793,13 +793,15 @@ export default function Items() {
                             </>
                           ) : (
                             <>
-                              <button
+                            <button
                                 onClick={() => toggleDetails(item._id)}
                                 className="btn btn-info btn-sm"
                                 disabled={isSubmitting}
                               >
                                 👁️
                               </button>
+
+                          
                               <button
                                 onClick={() => handleEdit(item)}
                                 className="btn btn-primary btn-sm"
@@ -814,6 +816,7 @@ export default function Items() {
                               >
                                 🗑️
                               </button>
+                              
                             </>
                           )}
                         </div>
