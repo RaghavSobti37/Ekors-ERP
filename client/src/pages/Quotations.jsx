@@ -911,7 +911,7 @@ export default function Quotations() {
           >
             <Form.Control
               type="search"
-              placeholder="Search here"
+              placeholder="🔍 Search here"
               className="me-2"
               aria-label="Search"
               value={searchTerm}

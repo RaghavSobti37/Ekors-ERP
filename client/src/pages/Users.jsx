@@ -185,7 +185,7 @@ const Users = () => {
                     <div className="search-container">
                         <input
                             type="text"
-                            placeholder="Search Users..."
+                            placeholder="🔍 Search Users..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="search-input"

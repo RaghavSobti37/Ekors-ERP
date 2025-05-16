@@ -187,7 +187,7 @@ export default function PurchaseHistory() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Search by company, invoice..."
+                placeholder="🔍 Search by company, invoice..."
                 value={searchTerm}
                 onChange={handleSearchChange}
               />

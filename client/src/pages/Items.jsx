@@ -642,7 +642,7 @@ export default function Items() {
 
             <input
               type="text"
-              placeholder="Search items or HSN codes..."
+              placeholder="🔍 Search items or HSN codes..."
               value={searchTerm}
               onChange={handleSearchChange}
               className="form-control search-input"

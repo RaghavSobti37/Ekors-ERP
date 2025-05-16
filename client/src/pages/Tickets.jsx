@@ -766,7 +766,7 @@ export default function Dashboard() {
           <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
             <Form.Control
               type="search"
-              placeholder="Search here"
+              placeholder="🔍 Search here"
               className="me-2"
               aria-label="Search"
               value={searchTerm}
