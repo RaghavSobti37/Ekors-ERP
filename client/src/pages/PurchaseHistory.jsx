@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "../css/Items.css";
 import Navbar from "../components/Navbar.jsx";
+import Pagination from '../components/Pagination';
 
 export default function PurchaseHistory() {
   const [purchases, setPurchases] = useState([]);
@@ -21,7 +22,7 @@ export default function PurchaseHistory() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Add error handling and timeout
       const response = await axios.get("http://localhost:3000/api/items/purchases/all", {
         timeout: 10000, // 10 second timeout
@@ -30,12 +31,12 @@ export default function PurchaseHistory() {
           // Add any auth headers if needed
         }
       });
-      
+
       setPurchases(response.data);
       console.log("Purchases fetched:", response.data.length);
     } catch (err) {
       console.error("Error fetching purchases:", err);
-      
+
       // More detailed error handling
       if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
         setError("Cannot connect to the server. Please check if the backend is running.");
@@ -55,7 +56,7 @@ export default function PurchaseHistory() {
 
   useEffect(() => {
     fetchPurchases();
-    
+
     return () => {
       setPurchases([]);
     };
@@ -90,25 +91,25 @@ export default function PurchaseHistory() {
   // Apply filters
   const filteredPurchases = purchases.filter((purchase) => {
     // Search term filter
-    const matchesSearch = 
-      purchase.companyName.toLowerCase().includes(searchTerm) || 
+    const matchesSearch =
+      purchase.companyName.toLowerCase().includes(searchTerm) ||
       purchase.invoiceNumber.toString().toLowerCase().includes(searchTerm) ||
       (purchase.gstNumber && purchase.gstNumber.toLowerCase().includes(searchTerm));
-    
+
     // Date filter
     const purchaseDate = new Date(purchase.date);
-    const matchesStartDate = dateFilter.startDate 
-      ? purchaseDate >= new Date(dateFilter.startDate) 
+    const matchesStartDate = dateFilter.startDate
+      ? purchaseDate >= new Date(dateFilter.startDate)
       : true;
-    const matchesEndDate = dateFilter.endDate 
-      ? purchaseDate <= new Date(dateFilter.endDate) 
+    const matchesEndDate = dateFilter.endDate
+      ? purchaseDate <= new Date(dateFilter.endDate)
       : true;
-    
+
     // Vendor filter
-    const matchesVendor = vendorFilter 
-      ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase()) 
+    const matchesVendor = vendorFilter
+      ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase())
       : true;
-    
+
     return matchesSearch && matchesStartDate && matchesEndDate && matchesVendor;
   });
 
@@ -133,14 +134,14 @@ export default function PurchaseHistory() {
   // const exportToCSV = () => {
   //   // Create CSV headers
   //   let csv = "Date,Invoice Number,Vendor,GST Number,Item Count,Total Amount\n";
-    
+
   //   // Add data rows
   //   filteredPurchases.forEach(purchase => {
   //     const date = new Date(purchase.date).toLocaleDateString();
   //     const total = calculatePurchaseTotal(purchase).toFixed(2);
   //     csv += `"${date}","${purchase.invoiceNumber}","${purchase.companyName}","${purchase.gstNumber || ''}",${purchase.items.length},${total}\n`;
   //   });
-    
+
   //   // Create download link
   //   // const blob = new Blob([csv], { type: 'text/csv' });
   //   const url = window.URL.createObjectURL(blob);
@@ -171,7 +172,7 @@ export default function PurchaseHistory() {
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}
-            <button 
+            <button
               className="btn btn-sm btn-outline-danger ms-3"
               onClick={handleRetry}
             >
@@ -331,7 +332,7 @@ export default function PurchaseHistory() {
                                       const itemSubtotal = item.quantity * item.price;
                                       const itemGst = itemSubtotal * (item.gstRate / 100);
                                       const itemTotal = itemSubtotal + itemGst;
-                                      
+
                                       return (
                                         <tr key={idx}>
                                           <td>{item.description}</td>
@@ -370,32 +371,15 @@ export default function PurchaseHistory() {
               </table>
             </div>
 
-            {filteredPurchases.length > 0 && (
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  Showing {indexOfFirstPurchase + 1} to {Math.min(indexOfLastPurchase, filteredPurchases.length)} of {filteredPurchases.length} entries
-                </div>
-                <div>
-                  <button
-                    className="btn btn-sm btn-outline-dark me-2"
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </button>
-                  <span className="me-2">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    className="btn btn-sm btn-outline-dark"
-                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => {
+                if (page >= 1 && page <= totalPages) setCurrentPage(page);
+              }}
+            />
+
+
           </>
         )}
       </div>

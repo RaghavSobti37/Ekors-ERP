@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import "../css/Items.css";
 import Navbar from "../components/Navbar.jsx";
+import Pagination from '../components/Pagination';
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -793,7 +794,7 @@ export default function Items() {
                             </>
                           ) : (
                             <>
-                            <button
+                              <button
                                 onClick={() => toggleDetails(item._id)}
                                 className="btn btn-info btn-sm"
                                 disabled={isSubmitting}
@@ -801,7 +802,7 @@ export default function Items() {
                                 👁️
                               </button>
 
-                          
+
                               <button
                                 onClick={() => handleEdit(item)}
                                 className="btn btn-primary btn-sm"
@@ -816,7 +817,7 @@ export default function Items() {
                               >
                                 🗑️
                               </button>
-                              
+
                             </>
                           )}
                         </div>
@@ -921,30 +922,15 @@ export default function Items() {
               )}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => {
+              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+            }}
+          />
 
-          {filteredItems.length > 0 && (
-            <div className="d-flex justify-content-center gap-3 mt-2">
-              <button
-                className="btn btn-sm btn-outline-dark"
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1 || isSubmitting}
-              >
-                ← Prev
-              </button>
-              <span>
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                className="btn btn-sm btn-outline-dark"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
-                disabled={currentPage === totalPages || isSubmitting}
-              >
-                Next →
-              </button>
-            </div>
-          )}
+
         </div>
 
         {/* Add/Edit Item Modal */}

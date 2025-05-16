@@ -4,6 +4,7 @@ import "../css/Logtime.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
+import Pagination from '../components/Pagination';
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -48,7 +49,7 @@ export default function History() {
       if (!token) {
         throw new Error('No authentication token found');
       }
-      
+
       const response = await fetch("http://localhost:3000/api/logtime/all", {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -118,7 +119,7 @@ export default function History() {
         if (!token) {
           throw new Error('No authentication token found');
         }
-        
+
         const response = await fetch(`http://localhost:3000/api/logtime/${entryId}`, {
           method: 'DELETE',
           headers: {
@@ -210,7 +211,7 @@ export default function History() {
         <div className="history-header">
           <h2>Time Log History</h2>
           <div className="header-buttons">
-            <button 
+            <button
               className="add-btn"
               onClick={handleAddNewEntry}
             >
@@ -218,7 +219,7 @@ export default function History() {
             </button>
           </div>
         </div>
-        
+
         <table className="log-time-table">
           <thead>
             <tr>
@@ -237,22 +238,22 @@ export default function History() {
                 <td className="centered">{entry.totalTime}</td>
                 <td className="centered">{entry.taskCount}</td>
                 <td className="centered action-buttons">
-                  <button 
-                    className="view-btn" 
+                  <button
+                    className="view-btn"
                     onClick={() => handleView(entry)}
                     title="View"
                   >
                     👁️
                   </button>
-                  <button 
-                    className="edit-btn" 
+                  <button
+                    className="edit-btn"
                     onClick={() => handleEdit(entry)}
                     title="Edit"
                   >
                     ✏️
                   </button>
-                  <button 
-                    className="delete-btn" 
+                  <button
+                    className="delete-btn"
                     onClick={() => handleDelete(entry._id)}
                     title="Delete"
                   >
@@ -263,33 +264,15 @@ export default function History() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => {
+            if (page >= 1 && page <= totalPages) setCurrentPage(page);
+          }}
+        />
 
-        {/* Pagination */}
-        {historyData.length > 0 && (
-          <div className="pagination-footer" style={{ marginTop: "15px", textAlign: "center" }}>
-            <button 
-              onClick={() => goToPage(currentPage - 1)} 
-              disabled={currentPage === 1}
-              className="pagination-btn"
-            >
-              ◀️ Prev
-            </button>
-            <span style={{ margin: "0 10px" }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button 
-              onClick={() => goToPage(currentPage + 1)} 
-              disabled={currentPage === totalPages}
-              className="pagination-btn"
-            >
-              Next ▶️
-            </button>
-          </div>
-        )}
 
-        {historyData.length === 0 && !isLoading && (
-          <div className="no-records">No history records found</div>
-        )}
       </div>
 
       {/* Modal for log details */}
@@ -326,7 +309,7 @@ export default function History() {
 
       {/* Modal for adding new entry */}
       {showAddModal && (
-        <LogtimeModal 
+        <LogtimeModal
           date={selectedDate}
           onClose={() => setShowAddModal(false)}
           onSave={handleSaveSuccess}
@@ -335,7 +318,7 @@ export default function History() {
 
       {/* Modal for editing existing entry */}
       {editingEntry && (
-        <LogtimeModal 
+        <LogtimeModal
           date={editingEntry.date}
           entryData={editingEntry}
           onClose={closeModal}
