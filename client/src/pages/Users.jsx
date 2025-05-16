@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEdit, FaTrash, FaTimes } from "react-icons/fa";
+import { FaEye, FaEdit, FaTrash, FaTimes, FaUserShield } from "react-icons/fa";
+import axios from "axios";
 import Navbar from "../components/Navbar";
+import Pagination from "../components/Pagination";
 import "../css/Users.css";
 
 const Users = () => {
@@ -9,62 +11,53 @@ const Users = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [designations, setDesignations] = useState([
-        "Director",
-        "Manager",
-        "Sales and Marketing",
-        "Account",
-        "Dispatch",
-        "Other"
-    ]);
-    const [showOtherInput, setShowOtherInput] = useState(false);
-    const [otherDesignation, setOtherDesignation] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
+        firstname: "",
+        lastname: "",
         email: "",
-        designation: "User",
-        status: "Active",
-        scope: "Read Only",
-        lastLogin: ""
+        phone: "",
+        role: "user",
+        password: ""
     });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        // Mock data - replace with actual API call
-        const mockUsers = [
-            {
-                id: 1,
-                username: "john_doe",
-                email: "john@example.com",
-                createdAt: "2023-01-15",
-                designation: "Admin",
-                scope: "Full Access",
-                status: "Active",
-                lastLogin: "2023-06-20 14:30"
-            },
-            {
-                id: 2,
-                username: "jane_smith",
-                email: "jane@example.com",
-                createdAt: "2023-02-20",
-                designation: "Manager",
-                scope: "Limited Access",
-                status: "Active",
-                lastLogin: "2023-06-19 09:15"
-            },
-            {
-                id: 3,
-                username: "bob_johnson",
-                email: "bob@example.com",
-                createdAt: "2023-03-10",
-                designation: "User",
-                scope: "Read Only",
-                status: "Inactive",
-                lastLogin: "2023-05-28 16:45"
+    // Axios instance with base URL and auth header
+    const api = axios.create({
+        baseURL: "http://localhost:3000",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+    });
+
+    // Fetch users from backend
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/api/users");
+            setUsers(response.data);
+            setLoading(false);
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            setError(err.response?.data?.error || "Failed to fetch users");
+
+            if (err.response?.status === 401) {
+                // Token expired or invalid
+                localStorage.removeItem("token");
+                navigate("/login");
+            } else {
+                setLoading(false);
             }
-        ];
-        setUsers(mockUsers);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
     }, []);
 
     const handleView = (user) => {
@@ -75,92 +68,111 @@ const Users = () => {
     const handleEdit = (user) => {
         setSelectedUser(user);
         setFormData({
-            firstName: user?.username.split('_')[0] || "",
-            lastName: user?.username.split('_')[1] || "",
+            firstname: user?.firstname || "",
+            lastname: user?.lastname || "",
             email: user?.email || "",
-            designation: user?.designation || "User",
-            status: user?.status || "Active",
-            scope: user?.scope || "Read Only",
-            lastLogin: user?.lastLogin || ""
+            phone: user?.phone || "",
+            role: user?.role || "user",
+            password: ""
         });
-        setShowOtherInput(user?.designation && !designations.includes(user.designation));
-        setOtherDesignation(user?.designation && !designations.includes(user.designation) ? user.designation : "");
         setShowEditModal(true);
     };
 
-    const handleDelete = (userId) => {
+    const handleDelete = async (userId) => {
         if (window.confirm("Are you sure you want to delete this user?")) {
-            setUsers(users.filter(user => user.id !== userId));
-        }
-    };
+            try {
+                await api.delete(`/api/users/${userId}`);
+                setUsers(users.filter(user => user._id !== userId));
+            } catch (err) {
+                console.error("Error deleting user:", err);
+                alert(err.response?.data?.error || "Failed to delete user");
 
-    const handleDesignationChange = (e) => {
-        const value = e.target.value;
-        setFormData({...formData, designation: value});
-        
-        if (value === "Other") {
-            setShowOtherInput(true);
-            setFormData({...formData, designation: ""});
-        } else {
-            setShowOtherInput(false);
-            setOtherDesignation("");
+                if (err.response?.status === 401) {
+                    navigate("/login");
+                }
+            }
         }
-    };
-
-    const handleOtherDesignationChange = (e) => {
-        const value = e.target.value;
-        setOtherDesignation(value);
-        setFormData({...formData, designation: value});
-    };
-
-    const handleAddNewDesignation = () => {
-        if (otherDesignation.trim() && !designations.includes(otherDesignation)) {
-            setDesignations([...designations.filter(d => d !== "Other"), otherDesignation, "Other"]);
-        }
-        setShowOtherInput(false);
     };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData({...formData, [name]: value});
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = () => {
-        // In a real app, you would send this data to your API
-        const newUser = {
-            id: users.length + 1,
-            username: `${formData.firstName}_${formData.lastName}`,
-            email: formData.email,
-            createdAt: new Date().toISOString().split('T')[0],
-            designation: formData.designation,
-            scope: formData.scope,
-            status: formData.status,
-            lastLogin: formData.lastLogin || "Never"
-        };
+    const handleSave = async () => {
+        try {
+            if (!formData.firstname || !formData.lastname || !formData.email) {
+                throw new Error("Required fields are missing");
+            }
 
-        if (selectedUser) {
-            // Update existing user
-            setUsers(users.map(user => user.id === selectedUser.id ? newUser : user));
-        } else {
-            // Add new user
-            setUsers([...users, newUser]);
+            if (!selectedUser && !formData.password) {
+                throw new Error("Password is required for new users");
+            }
+
+            let response;
+
+            if (selectedUser) {
+                // Update existing user
+                response = await api.put(
+                    `/api/users/${selectedUser._id}`,
+                    formData
+                );
+                setUsers(users.map(user =>
+                    user._id === selectedUser._id ? response.data : user
+                ));
+            } else {
+                // Add new user
+                response = await api.post(
+                    "/api/users/register",
+                    formData
+                );
+                setUsers([...users, response.data]);
+            }
+
+            setFormData({
+                firstname: "",
+                lastname: "",
+                email: "",
+                phone: "",
+                role: "user",
+                password: ""
+            });
+            setShowEditModal(false);
+            setSelectedUser(null);
+
+            // Refresh the list
+            fetchUsers();
+        } catch (err) {
+            console.error("Error saving user:", err);
+            alert(err.response?.data?.error || err.message || "Failed to save user");
+
+            if (err.response?.status === 401) {
+                navigate("/login");
+            }
         }
-
-        // Reset form and close modal
-        setFormData({
-            firstName: "",
-            lastName: "",
-            email: "",
-            designation: "User",
-            status: "Active",
-            scope: "Read Only",
-            lastLogin: ""
-        });
-        setShowOtherInput(false);
-        setOtherDesignation("");
-        setShowEditModal(false);
-        setSelectedUser(null);
     };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "Never";
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    };
+
+    const filteredUsers = users.filter(user =>
+        user.firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lastname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Pagination calculations
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+    if (loading) return <div className="loading">Loading users...</div>;
+    if (error) return <div className="error">{error}</div>;
 
     return (
         <div>
@@ -169,6 +181,17 @@ const Users = () => {
             <div className="users-page">
                 <div className="users-header">
                     <h1>User Management</h1>
+
+                    <div className="search-container">
+                        <input
+                            type="text"
+                            placeholder="Search Users..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+
                     <button className="add-user-btn" onClick={() => handleEdit(null)}>
                         + Add New User
                     </button>
@@ -178,52 +201,82 @@ const Users = () => {
                     <table className="users-table">
                         <thead>
                             <tr>
-                                <th>Username</th>
+                                <th>Name</th>
                                 <th>Email</th>
-                                <th>Designation</th>
-                                <th>Status</th>
-                                <th>Last Login</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Created At</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map((user) => (
-                                <tr key={user.id}>
-                                    <td>
-                                        <div className="user-avatar">
-                                            <span>{user.username.charAt(0).toUpperCase()}</span>
-                                            {user.username}
-                                        </div>
-                                    </td>
-                                    <td>{user.email}</td>
-                                    <td>
-                                        <span className={`designation-badge ${user.designation.toLowerCase().replace(/\s+/g, '-')}`}>
-                                            {user.designation}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`status-badge ${user.status.toLowerCase()}`}>
-                                            {user.status}
-                                        </span>
-                                    </td>
-                                    <td>{user.lastLogin}</td>
-                                    <td>
-                                        <div className="action-buttons">
-                                            <button className="view-btn" onClick={() => handleView(user)}>
-                                            👁️
-                                            </button>
-                                            <button className="edit-btn" onClick={() => handleEdit(user)}>
-                                            ✏️
-                                            </button>
-                                            <button className="delete-btn" onClick={() => handleDelete(user.id)}>
-                                            🗑️
-                                            </button>
-                                        </div>
+                            {currentItems.length > 0 ? (
+                                currentItems.map((user) => (
+                                    <tr key={user._id}>
+                                        <td>
+                                            <div className="user-avatar">
+                                                <span>{user.firstname?.charAt(0).toUpperCase()}</span>
+                                                {user.firstname} {user.lastname}
+                                                {user.role === "super-admin" && (
+                                                    <FaUserShield className="super-admin-icon" title="Super Admin" />
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>{user.email}</td>
+                                        <td>{user.phone || "-"}</td>
+                                        <td>
+                                            <span className={`role-badge ${user.role.toLowerCase()}`}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td>{formatDate(user.createdAt)}</td>
+                                        <td>
+                                            <div className="action-buttons">
+                                                <button
+                                                    className="view-btn"
+                                                    onClick={() => handleView(user)}
+                                                    title="View"
+                                                >
+                                                    👁️
+                                                </button>
+                                                <button
+                                                    className="edit-btn"
+                                                    onClick={() => handleEdit(user)}
+                                                    title="Edit"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    className="delete-btn"
+                                                    onClick={() => handleDelete(user._id)}
+                                                    title="Delete"
+                                                    disabled={user.role === "super-admin"}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="no-users">
+                                        No users found
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
+
+                    {filteredUsers.length > 0 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={(page) => {
+                                if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                            }}
+                        />
+                    )}
                 </div>
 
                 {/* View Modal */}
@@ -240,34 +293,37 @@ const Users = () => {
                             <div className="modal-content">
                                 <div className="user-profile">
                                     <div className="avatar-large">
-                                        {selectedUser.username.charAt(0).toUpperCase()}
+                                        {selectedUser.firstname?.charAt(0).toUpperCase()}
+                                        {selectedUser.role === "super-admin" && (
+                                            <FaUserShield className="super-admin-badge" title="Super Admin" />
+                                        )}
                                     </div>
-                                    <h3>{selectedUser.username}</h3>
+                                    <h3>{selectedUser.firstname} {selectedUser.lastname}</h3>
                                     <p className="user-email">{selectedUser.email}</p>
                                 </div>
 
                                 <div className="user-details-grid">
                                     <div className="detail-item">
-                                        <span className="detail-label">Designation:</span>
-                                        <span className="detail-value">{selectedUser.designation}</span>
+                                        <span className="detail-label">Phone:</span>
+                                        <span className="detail-value">{selectedUser.phone || "-"}</span>
                                     </div>
                                     <div className="detail-item">
-                                        <span className="detail-label">Status:</span>
-                                        <span className={`detail-value status-badge ${selectedUser.status.toLowerCase()}`}>
-                                            {selectedUser.status}
+                                        <span className="detail-label">Role:</span>
+                                        <span className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}>
+                                            {selectedUser.role}
                                         </span>
                                     </div>
                                     <div className="detail-item">
                                         <span className="detail-label">Created At:</span>
-                                        <span className="detail-value">{selectedUser.createdAt}</span>
+                                        <span className="detail-value">
+                                            {formatDate(selectedUser.createdAt)}
+                                        </span>
                                     </div>
                                     <div className="detail-item">
-                                        <span className="detail-label">Last Login:</span>
-                                        <span className="detail-value">{selectedUser.lastLogin}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">Access Scope:</span>
-                                        <span className="detail-value">{selectedUser.scope}</span>
+                                        <span className="detail-label">Last Updated:</span>
+                                        <span className="detail-value">
+                                            {formatDate(selectedUser.updatedAt)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -290,8 +346,6 @@ const Users = () => {
                                 <button className="close-btn" onClick={() => {
                                     setShowEditModal(false);
                                     setSelectedUser(null);
-                                    setShowOtherInput(false);
-                                    setOtherDesignation("");
                                 }}>
                                     <FaTimes />
                                 </button>
@@ -300,115 +354,92 @@ const Users = () => {
                             <div className="modal-content">
                                 <div className="form-grid">
                                     <div className="form-group">
-                                        <label>First Name</label>
+                                        <label>First Name *</label>
                                         <input
                                             type="text"
-                                            name="firstName"
-                                            value={formData.firstName}
+                                            name="firstname"
+                                            value={formData.firstname}
                                             onChange={handleInputChange}
                                             placeholder="Enter First Name"
+                                            required
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>Last Name</label>
+                                        <label>Last Name *</label>
                                         <input
                                             type="text"
-                                            name="lastName"
-                                            value={formData.lastName}
+                                            name="lastname"
+                                            value={formData.lastname}
                                             onChange={handleInputChange}
                                             placeholder="Enter Last Name"
+                                            required
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>Email</label>
+                                        <label>Email *</label>
                                         <input
                                             type="email"
                                             name="email"
                                             value={formData.email}
                                             onChange={handleInputChange}
                                             placeholder="Enter email"
+                                            required
+                                            disabled={!!selectedUser}
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>Designation</label>
-                                        <select 
-                                            name="designation"
-                                            value={formData.designation === otherDesignation ? "Other" : formData.designation}
-                                            onChange={handleDesignationChange}
-                                        >
-                                            {designations.map((designation) => (
-                                                <option key={designation} value={designation}>
-                                                    {designation}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {showOtherInput && (
-                                            <div className="other-designation-container">
-                                                <input
-                                                    type="text"
-                                                    value={otherDesignation}
-                                                    onChange={handleOtherDesignationChange}
-                                                    placeholder="Enter your designation"
-                                                    className="other-designation-input"
-                                                />
-                                                <button 
-                                                    onClick={handleAddNewDesignation}
-                                                    className="add-designation-btn"
-                                                >
-                                                    Add Designation
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Status</label>
-                                        <select
-                                            name="status"
-                                            value={formData.status}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="Active">Active</option>
-                                            <option value="Inactive">Inactive</option>
-                                            <option value="Suspended">Suspended</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Scope (Role)</label>
-                                        <select
-                                            name="scope"
-                                            value={formData.scope}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="Super-Admin">Super-Admin</option>
-                                            <option value="Admin">Admin</option>
-                                            <option value="User">User</option>
-                                            <option value="Read Only">Read Only</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Last Login</label>
+                                        <label>Phone</label>
                                         <input
                                             type="text"
-                                            name="lastLogin"
-                                            value={formData.lastLogin}
+                                            name="phone"
+                                            value={formData.phone}
                                             onChange={handleInputChange}
-                                            placeholder="YYYY-MM-DD HH:MM"
+                                            placeholder="Enter phone number"
                                         />
                                     </div>
+                                    <div className="form-group">
+                                        <label>Role *</label>
+                                        <select
+                                            name="role"
+                                            value={formData.role}
+                                            onChange={handleInputChange}
+                                            disabled={selectedUser?.role === "super-admin"}
+                                        >
+                                            <option value="user">User</option>
+                                            <option value="admin">Admin</option>
+                                            {!selectedUser && (
+                                                <option value="super-admin">Super Admin</option>
+                                            )}
+                                        </select>
+                                    </div>
+                                    {!selectedUser && (
+                                        <div className="form-group">
+                                            <label>Password *</label>
+                                            <input
+                                                type="password"
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleInputChange}
+                                                placeholder="Enter password"
+                                                required
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="modal-footer">
-                                <button className="cancel-btn" onClick={() => {
-                                    setShowEditModal(false);
-                                    setSelectedUser(null);
-                                    setShowOtherInput(false);
-                                    setOtherDesignation("");
-                                }}>
+                                <button
+                                    className="cancel-btn"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedUser(null);
+                                    }}
+                                >
                                     Cancel
                                 </button>
                                 <button className="save-btn" onClick={handleSave}>
-                                    Save
+                                    {selectedUser ? "Update User" : "Create User"}
                                 </button>
                             </div>
                         </div>
