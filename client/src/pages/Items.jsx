@@ -814,7 +814,6 @@ export default function Items() {
                               >
                                 🗑️
                               </button>
-
                             </>
                           )}
                         </div>
