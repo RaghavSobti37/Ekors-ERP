@@ -33,6 +33,17 @@ const AddNewItem = ({ onClose }) => {
         }
     };
 
+    const handleView = (id) => {
+        const itemToView = items.find(item => item.id === id);
+        alert(`Viewing item:\nName: ${itemToView.name}\nCategory: ${itemToView.category}\nPrice: ${itemToView.price}`);
+    };
+
+    const handleEdit = (id) => {
+        const itemToEdit = items.find(item => item.id === id);
+        alert(`Editing item with ID: ${id}`);
+        // You would typically set some state here to enter edit mode
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         // Here you would typically send the data to your backend
@@ -139,13 +150,29 @@ const AddNewItem = ({ onClose }) => {
                                                 </select>
                                             </td>
                                             <td>
-                                                <button
-                                                    type="button"
-                                                    className="delete-btn"
-                                                    onClick={() => removeRow(item.id)}
-                                                >
-                                                    🗑️
-                                                </button>
+                                                <div className="action-buttons">
+                                                    <button
+                                                        type="button"
+                                                        className="view-btn"
+                                                        onClick={() => handleView(item.id)}
+                                                    >
+                                                        👁️
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="edit-btn"
+                                                        onClick={() => handleEdit(item.id)}
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="delete-btn"
+                                                        onClick={() => removeRow(item.id)}
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
