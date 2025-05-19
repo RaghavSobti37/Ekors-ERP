@@ -1,25 +1,25 @@
 const express = require('express');
 require("dotenv").config(); 
-console.log("JWT_SECRET is:", process.env.JWT_SECRET);
-
 const connectDB = require('./db.js');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const path = require('path');
+const morgan = require('morgan'); // HTTP request logger
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid'); // For unique file names
-const authRoutes = require("./routes/authRoutes");
 const userModel = require('./models/users.js');
 const OpenticketModel = require('./models/opentickets.js');
-
+require("dotenv").config(); // Make sure this is at the top before any usage
 
 // Routes
+const authRoutes = require("./routes/authRoutes");
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init');
+// const userRoutes = require('./routes/userRoutes');
 
 // Check if tickets route file exists before requiring it
 let ticketsRouter;
@@ -267,7 +267,12 @@ app.post('/api/users/register', async (req, res) => {
   }
 });
 
-// Add similar PUT and DELETE endpoints
+// Log HTTP requests
+app.use(morgan('dev'));
+
+// Body parser
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ----------------------------
 // API Route Mounts
@@ -277,10 +282,14 @@ app.use('/api/init', initRouter);
 app.use('/api/logtime', logtimeRoutes);
 app.use('/api/challans', challanRoutes);
 app.use('/api/quotations', quotationRoutes);
-app.use(authRoutes);
+
+app.use('/api/auth', authRoutes);
+// app.use('/api/users', userRoutes);
 
 // ----------------------------
 // Start server
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`[INFO] Server running on port ${PORT}`);
+  console.log(`[DEBUG] JWT_SECRET: ${process.env.JWT_SECRET ? 'set' : 'not set'}`);
 });

@@ -5,37 +5,48 @@ import '../css/Signup.css';
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Signup() {
-  const [firstname, setFirstname] = useState('');
-  const [lastname, setLastname] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [repeatPassword, setRepeatPassword] = useState('');
+  const [formData, setFormData] = useState({
+    firstname: '',
+    lastname: '',
+    email: '',
+    phone: '',
+    password: '',
+    repeatPassword: ''
+  });
   const [error, setError] = useState('');
-
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (password !== repeatPassword) {
+    console.log("[DEBUG] Signup form submitted:", formData);
+    
+    if (formData.password !== formData.repeatPassword) {
       setError("Passwords don't match!");
       return;
     }
 
     try {
-      await axios.post('http://localhost:3000/register', {
-        firstname,
-        lastname,
-        email,
-        phone,
-        password,
+      console.log("[DEBUG] Sending registration request to server...");
+      const response = await axios.post('http://localhost:3000/register', {
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
       });
 
-      console.log('Form submitted:', { firstname, lastname, email, phone, password });
+      console.log("[DEBUG] Registration successful, response:", response.data);
+      alert('Registration successful! Please login.');
       navigate('/login');
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error("[ERROR] Registration failed:", error.response?.data || error.message);
+      setError(error.response?.data?.error || "Registration failed. Please try again.");
     }
   };
 
@@ -43,105 +54,104 @@ export default function Signup() {
     <div className="d-flex justify-content-center align-items-center vh-100">
       <div className="card p-4 shadow-lg signup-card">
         <h2 className="text-center mb-4">Sign Up</h2>
+        {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="row">
-            {/* Column 1 */}
-            <div className="col-md-4">
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  First Name <span className="text-danger">*</span>
-                </label>
+            <div className="col-md-6">
+              <div className="form-group mb-3">
+                <label>First Name <span className="text-danger">*</span></label>
                 <input
                   type="text"
-                  placeholder="First Name"
+                  name="firstname"
                   className="form-control"
-                  value={firstname}
-                  onChange={(e) => setFirstname(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  Last Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  className="form-control"
-                  value={lastname}
-                  onChange={(e) => setLastname(e.target.value)}
+                  value={formData.firstname}
+                  onChange={handleChange}
                   required
                 />
               </div>
             </div>
-
-            {/* Column 2 */}
-            <div className="col-md-4">
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  Email <span className="text-danger">*</span>
-                </label>
+            
+            <div className="col-md-6">
+              <div className="form-group mb-3">
+                <label>Last Name <span className="text-danger">*</span></label>
+                <input
+                  type="text"
+                  name="lastname"
+                  className="form-control"
+                  value={formData.lastname}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="col-md-6">
+              <div className="form-group mb-3">
+                <label>Email <span className="text-danger">*</span></label>
                 <input
                   type="email"
-                  placeholder="Email"
+                  name="email"
                   className="form-control"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  Mobile Number <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Mobile Number"
-                  className="form-control"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={formData.email}
+                  onChange={handleChange}
                   required
                 />
               </div>
             </div>
-
-            {/* Column 3 */}
-            <div className="col-md-4">
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  Password <span className="text-danger">*</span>
-                </label>
+            
+            <div className="col-md-6">
+              <div className="form-group mb-3">
+                <label>Phone</label>
                 <input
-                  type="password"
-                  placeholder="Password"
+                  type="text"
+                  name="phone"
                   className="form-control"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  value={formData.phone}
+                  onChange={handleChange}
                 />
               </div>
-
-              <div className="form-outline mb-3">
-                <label className="form-label">
-                  Repeat Password <span className="text-danger">*</span>
-                </label>
+            </div>
+            
+            <div className="col-md-6">
+              <div className="form-group mb-3 position-relative">
+                <label>Password <span className="text-danger">*</span></label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  className="form-control"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="btn position-absolute"
+                  style={{ right: "10px", top: "70%" }}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="col-md-6">
+              <div className="form-group mb-3">
+                <label>Repeat Password <span className="text-danger">*</span></label>
                 <input
                   type="password"
-                  placeholder="Repeat Password"
+                  name="repeatPassword"
                   className="form-control"
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  value={formData.repeatPassword}
+                  onChange={handleChange}
                   required
                 />
               </div>
             </div>
           </div>
 
-          {error && <p className="text-danger text-center">{error}</p>}
-
-          <button type="submit" className="btn btn-primary btn-block w-100 mt-2">Sign Up</button>
+          <button type="submit" className="btn btn-primary btn-block w-100 mt-2">
+            Sign Up
+          </button>
         </form>
         <p className="text-center mt-3">
           Already have an account? <a href="/login">Login</a>
