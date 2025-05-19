@@ -15,17 +15,16 @@ import {
   PDFViewer,
   PDFDownloadLink,
 } from "@react-pdf/renderer";
-import "../css/Ticket.css";
+import "../css/Style.css";
 import QuotationPDF from "../components/QuotationPDF.jsx";
 import PIPDF from "../components/PIPDF.jsx";
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
-  if (sortConfig.key !== columnKey) return <span>↕️</span>;
-  return sortConfig.direction === "ascending" ? (
-    <span>⬆️</span>
-  ) : (
-    <span>⬇️</span>
-  );
+  if (sortConfig.key !== columnKey) {
+    return null; // Don't show any indicator if not the active sort column
+  }
+  // Use the same emojis as in Items.jsx
+  return sortConfig.direction === "ascending" ? <span> ↑</span> : <span> ↓</span>;
 };
 
 const ItemSearchComponent = ({ onItemSelect, index }) => {
@@ -283,7 +282,7 @@ export default function Dashboard() {
   const [documentType, setDocumentType] = useState(null);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(4);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentReference, setPaymentReference] = useState('');
@@ -1278,23 +1277,12 @@ export default function Dashboard() {
         <Modal
           show={showTransferModal}
           onHide={() => setShowTransferModal(false)}
-          dialogClassName="custom-modal"
           centered
         >
-          <Modal.Header
-            closeButton
-            className="modal-header-custom"
-            style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 1050,
-              backgroundColor: 'white',
-              borderBottom: '1px solid #dee2e6'
-            }}
-          >
+          <Modal.Header closeButton>
             <Modal.Title>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
           </Modal.Header>
-          <Modal.Body className="modal-body-custom" style={{ overflowY: 'auto' }}>
+          <Modal.Body>
             <div className="mb-3">
               <h5>Search User to Transfer To</h5>
               <UserSearchComponent onUserSelect={handleUserSelect} />
@@ -1309,34 +1297,17 @@ export default function Dashboard() {
               </div>
             )}
           </Modal.Body>
-          <Modal.Footer
-            className="modal-footer-custom"
-            style={{
-              position: 'sticky',
-              bottom: 0,
-              zIndex: 1050,
-              backgroundColor: 'white',
-              borderTop: '1px solid #dee2e6',
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}
-          >
-            <div>
-              <Button
-                variant="secondary"
-                onClick={() => setShowTransferModal(false)}
-                style={{ marginRight: '10px' }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleTransferTicket}
-                disabled={!selectedUser}
-              >
-                Transfer Ticket
-              </Button>
-            </div>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowTransferModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleTransferTicket}
+              disabled={!selectedUser}
+            >
+              Transfer Ticket
+            </Button>
           </Modal.Footer>
         </Modal>
 

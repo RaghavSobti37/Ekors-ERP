@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-import "../css/Logtime.css";
+import "../css/Style.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
+import { Table, Button, Alert } from "react-bootstrap";
 import Pagination from '../components/Pagination';
 
 const formatDisplayDate = (dateString) => {
@@ -37,7 +38,7 @@ export default function History() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [editingEntry, setEditingEntry] = useState(null);
-  const entriesPerPage = 5;
+  const itemsPerPage = 4; // Hardcoded to 4
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -169,10 +170,10 @@ export default function History() {
     fetchHistory(); // Refresh the history data
   };
 
-  const totalPages = Math.ceil(historyData.length / entriesPerPage);
+  const totalPages = Math.ceil(historyData.length / itemsPerPage);
   const currentEntries = historyData.slice(
-    (currentPage - 1) * entriesPerPage,
-    currentPage * entriesPerPage
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const goToPage = (page) => {
@@ -207,28 +208,31 @@ export default function History() {
   return (
     <div>
       <Navbar />
-      <div className="log-time-container">
-        <div className="history-header">
-          <h2>Time Log History</h2>
-          <div className="header-buttons">
-            <button
-              className="add-btn"
+      <div className="container mt-4">
+        {error && !selectedEntry && !showAddModal && !editingEntry && (
+          <Alert variant="danger" onClose={() => setError(null)} dismissible>
+            {error}
+          </Alert>
+        )}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 style={{ color: "black" }}>Time Log History</h2>
+          <Button
+              variant="primary"
               onClick={handleAddNewEntry}
             >
               + Add New Entry
-            </button>
-          </div>
+            </Button>
         </div>
 
-        <table className="log-time-table">
-          <thead>
+        <Table striped bordered hover responsive className="mt-3">
+          <thead className="table-dark">
             <tr>
               <th className="centered" onClick={handleSort} style={{ cursor: "pointer" }}>
-                Date {sortOrder === "asc" ? "⬆️" : "⬇️"}
+                Date {sortOrder === "asc" ? "↑" : "↓"}
               </th>
               <th className="centered">Total Time</th>
               <th className="centered">Tasks</th>
-              <th className="centered">Actions</th>
+              <th className="centered" style={{minWidth: "120px"}}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -237,33 +241,38 @@ export default function History() {
                 <td className="centered">{formatDisplayDate(entry.date)}</td>
                 <td className="centered">{entry.totalTime}</td>
                 <td className="centered">{entry.taskCount}</td>
-                <td className="centered action-buttons">
-                  <button
-                    className="view-btn"
-                    onClick={() => handleView(entry)}
-                    title="View"
-                  >
-                    👁️
-                  </button>
-                  <button
-                    className="edit-btn"
-                    onClick={() => handleEdit(entry)}
-                    title="Edit"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDelete(entry._id)}
-                    title="Delete"
-                  >
-                    🗑️
-                  </button>
+                <td className="centered">
+                   <div className="d-flex gap-2 justify-content-center">
+                    <Button
+                      variant="info"
+                      size="sm"
+                      onClick={() => handleView(entry)}
+                      title="View"
+                    >
+                      👁️
+                    </Button>
+                    <Button
+                      variant="warning"
+                      size="sm"
+                      onClick={() => handleEdit(entry)}
+                      title="Edit"
+                    >
+                      ✏️
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(entry._id)}
+                      title="Delete"
+                    >
+                      🗑️
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
@@ -271,17 +280,20 @@ export default function History() {
             if (page >= 1 && page <= totalPages) setCurrentPage(page);
           }}
         />
-
-
       </div>
 
       {/* Modal for log details */}
       {selectedEntry && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Details for {formatDisplayDate(selectedEntry.date)}</h3>
-            <table className="log-time-table">
-              <thead>
+        <div className="popup-overlay" onClick={closeModal}>
+          <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-header">
+              <h3>Details for {formatDisplayDate(selectedEntry.date)}</h3>
+              <button className="close-btn" onClick={closeModal}>✖</button>
+            </div>
+            <div className="form-content"> {/* Use form-content for padding like in Challan */}
+              {error && <Alert variant="danger">{error}</Alert>}
+              <Table striped bordered hover responsive>
+                <thead className="table-dark">
                 <tr>
                   <th>Task</th>
                   <th>Start Time</th>
@@ -289,7 +301,7 @@ export default function History() {
                   <th>Time Spent</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-center">
                 {selectedEntry.logs.map((log, i) => (
                   <tr key={i}>
                     <td>{log.task}</td>
@@ -299,32 +311,52 @@ export default function History() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-            <button className="close-btn" onClick={closeModal}>
-              ❌ Close
-            </button>
+            </Table>
+            <div className="form-actions">
+              <Button variant="secondary" onClick={closeModal}>
+                Close
+              </Button>
+            </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Modal for adding new entry */}
       {showAddModal && (
-        <LogtimeModal
-          date={selectedDate}
-          onClose={() => setShowAddModal(false)}
-          onSave={handleSaveSuccess}
-        />
+        <div className="popup-overlay" onClick={() => setShowAddModal(false)}>
+            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
+              <div className="popup-header">
+                <h3>Add New Log Entry</h3>
+                <button className="close-btn" onClick={() => setShowAddModal(false)}>✖</button>
+              </div>
+              {/* Assuming LogtimeModal is just the form content, not a full modal itself */}
+              <LogtimeModal
+                date={selectedDate}
+                onClose={() => setShowAddModal(false)}
+                onSave={handleSaveSuccess}
+              />
+            </div>
+        </div>
       )}
 
       {/* Modal for editing existing entry */}
       {editingEntry && (
-        <LogtimeModal
-          date={editingEntry.date}
-          entryData={editingEntry}
-          onClose={closeModal}
-          onSave={handleSaveSuccess}
-          isEditMode={true}
-        />
+         <div className="popup-overlay" onClick={closeModal}>
+            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
+              <div className="popup-header">
+                <h3>Edit Log Entry for {formatDisplayDate(editingEntry.date)}</h3>
+                <button className="close-btn" onClick={closeModal}>✖</button>
+              </div>
+              <LogtimeModal
+                date={editingEntry.date}
+                entryData={editingEntry}
+                onClose={closeModal}
+                onSave={handleSaveSuccess}
+                isEditMode={true}
+              />
+            </div>
+        </div>
       )}
     </div>
   );

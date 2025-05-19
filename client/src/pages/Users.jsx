@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash, FaTimes, FaUserShield } from "react-icons/fa";
 import axios from "axios";
 import Navbar from "../components/Navbar";
+import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
 import Pagination from "../components/Pagination";
 import "../css/Users.css";
+import "../css/Style.css";
 
 const Users = () => {
     const [users, setUsers] = useState([]);
@@ -23,7 +25,7 @@ const Users = () => {
     });
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const itemsPerPage = 4; // Hardcoded to 4
     const navigate = useNavigate();
 
     const getAuthToken = () => {
@@ -220,34 +222,36 @@ const Users = () => {
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    if (error) return <div className="error">{error}</div>;
+    // if (error && !showViewModal && !showEditModal) return <div className="container mt-4"><Alert variant="danger">{error}</Alert></div>;
 
     return (
         <div>
             <Navbar />
 
-            <div className="users-page">
-                <div className="users-header">
-                    <h1>User Management</h1>
-
-                    <div className="search-container">
-                        <input
+            <div className="container mt-4"> {/* Changed from users-page to container mt-4 */}
+                {error && !showViewModal && !showEditModal && (
+                    <Alert variant="danger" onClose={() => setError("")} dismissible>
+                        {error}
+                    </Alert>
+                )}
+                <div className="d-flex justify-content-between align-items-center mb-4"> {/* Standard header */}
+                    <h2 style={{color: "black"}}>User Management</h2>
+                    <div className="d-flex align-items-center">
+                        <Form.Control // Using Form.Control for search
                             type="text"
                             placeholder="🔍 Search Users..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
+                            className="me-2" // search-input class can be used for further styling if needed
                         />
+                        <BsButton variant="primary" onClick={() => handleEdit(null)}>
+                            + Add New User
+                        </BsButton>
                     </div>
-
-                    <button className="add-user-btn" onClick={() => handleEdit(null)}>
-                        + Add New User
-                    </button>
                 </div>
-
-                <div className="users-table-container">
-                    <table className="users-table">
-                        <thead>
+                {/* users-table-container can be removed or kept if it adds specific styling not covered by Bootstrap */}
+                <Table striped bordered hover responsive className="mt-3">
+                    <thead className="table-dark">
                             <tr>
                                 <th>Name</th>
                                 <th>Email</th>
@@ -257,7 +261,7 @@ const Users = () => {
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="text-center">
                             {currentItems.length > 0 ? (
                                 currentItems.map((user) => (
                                     <tr key={user._id}>
@@ -279,29 +283,32 @@ const Users = () => {
                                         </td>
                                         <td>{formatDate(user.createdAt)}</td>
                                         <td>
-                                            <div className="action-buttons">
-                                                <button
-                                                    className="view-btn"
+                                            <div className="d-flex gap-2 justify-content-center">
+                                                <BsButton
+                                                    variant="info"
+                                                    size="sm"
                                                     onClick={() => handleView(user)}
                                                     title="View"
                                                 >
-                                                    👁️
-                                                </button>
-                                                <button
-                                                    className="edit-btn"
+                                                    <FaEye />
+                                                </BsButton>
+                                                <BsButton
+                                                    variant="warning"
+                                                    size="sm"
                                                     onClick={() => handleEdit(user)}
                                                     title="Edit"
                                                 >
-                                                    ✏️
-                                                </button>
-                                                <button
-                                                    className="delete-btn"
+                                                    <FaEdit />
+                                                </BsButton>
+                                                <BsButton
+                                                    variant="danger"
+                                                    size="sm"
                                                     onClick={() => handleDelete(user._id)}
                                                     title="Delete"
                                                     disabled={user.role === "super-admin"}
                                                 >
-                                                    🗑️
-                                                </button>
+                                                    <FaTrash />
+                                                </BsButton>
                                             </div>
                                         </td>
                                     </tr>
@@ -314,8 +321,7 @@ const Users = () => {
                                 </tr>
                             )}
                         </tbody>
-                    </table>
-
+                    </Table>
                     {filteredUsers.length > 0 && (
                         <Pagination
                             currentPage={currentPage}
@@ -325,20 +331,18 @@ const Users = () => {
                             }}
                         />
                     )}
-                </div>
 
                 {/* View Modal */}
                 {showViewModal && selectedUser && (
-                    <div className="modal-overlay">
-                        <div className="user-modal">
-                            <div className="modal-header">
+                    <div className="popup-overlay" onClick={() => setShowViewModal(false)}>
+                        <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
+                            <div className="popup-header">
                                 <h2>User Details</h2>
-                                <button className="close-btn" onClick={() => setShowViewModal(false)}>
+                                <button className="close-btn" onClick={() => setShowViewModal(false)}> {/* Using existing close-btn class for '✖' */}
                                     <FaTimes />
                                 </button>
                             </div>
-
-                            <div className="modal-content">
+                            <div className="form-content"> {/* Use form-content for padding */}
                                 <div className="user-profile">
                                     <div className="avatar-large">
                                         {selectedUser.firstname?.charAt(0).toUpperCase()}
@@ -376,10 +380,10 @@ const Users = () => {
                                 </div>
                             </div>
 
-                            <div className="modal-footer">
-                                <button className="close-modal-btn" onClick={() => setShowViewModal(false)}>
+                            <div className="form-actions"> {/* Use form-actions for consistency */}
+                                <BsButton variant="secondary" onClick={() => setShowViewModal(false)}>
                                     Close
-                                </button>
+                                </BsButton>
                             </div>
                         </div>
                     </div>
@@ -387,19 +391,18 @@ const Users = () => {
 
                 {/* Edit Modal */}
                 {showEditModal && (
-                    <div className="modal-overlay">
-                        <div className="user-modal edit-modal">
-                            <div className="modal-header">
+                    <div className="popup-overlay" onClick={() => { setShowEditModal(false); setSelectedUser(null); }}>
+                        <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
+                            <div className="popup-header">
                                 <h2>{selectedUser ? "Edit User" : "Add New User"}</h2>
-                                <button className="close-btn" onClick={() => {
+                                <button className="close-btn" onClick={() => { /* Using existing close-btn class for '✖' */
                                     setShowEditModal(false);
                                     setSelectedUser(null);
                                 }}>
                                     <FaTimes />
                                 </button>
                             </div>
-
-                            <div className="modal-content">
+                            <div className="form-content"> {/* Use form-content for padding */}
                                 <div className="form-grid">
                                     <div className="form-group">
                                         <label>First Name *</label>
@@ -475,20 +478,19 @@ const Users = () => {
                                     )}
                                 </div>
                             </div>
-
-                            <div className="modal-footer">
-                                <button
-                                    className="cancel-btn"
+                            <div className="form-actions"> {/* Use form-actions for consistency */}
+                                <BsButton
+                                    variant="secondary"
                                     onClick={() => {
                                         setShowEditModal(false);
                                         setSelectedUser(null);
                                     }}
                                 >
                                     Cancel
-                                </button>
-                                <button className="save-btn" onClick={handleSave}>
+                                </BsButton>
+                                <BsButton variant="success" onClick={handleSave}>
                                     {selectedUser ? "Update User" : "Create User"}
-                                </button>
+                                </BsButton>
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import "../css/Items.css";
+import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from '../components/Pagination';
 

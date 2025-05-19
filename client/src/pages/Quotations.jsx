@@ -8,6 +8,7 @@ import ItemSearchComponent from "../components/ItemSearch";
 import QuotationPDF from "../components/QuotationPDF";
 import CreateTicketModal from "../components/CreateTicketModal";
 import "../css/Quotation.css";
+import "../css/Style.css";
 import Pagination from '../components/Pagination';
 import "../css/Items.css";
 
@@ -293,12 +294,11 @@ const GoodsTable = ({
 };
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
-  if (sortConfig.key !== columnKey) return <span>↕️</span>;
-  return sortConfig.direction === "ascending" ? (
-    <span>⬆️</span>
-  ) : (
-    <span>⬇️</span>
-  );
+  if (sortConfig.key !== columnKey) {
+    return null; // Don't show any indicator if not the active sort column
+  }
+  // Use the same emojis as in Items.jsx
+  return sortConfig.direction === "ascending" ? <span> ↑</span> : <span> ↓</span>;
 };
 
 export default function Quotations() {
@@ -311,7 +311,7 @@ export default function Quotations() {
   const [formValidated, setFormValidated] = useState(false);
   const [quotationsCount, setQuotationsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(4);
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",

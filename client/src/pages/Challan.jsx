@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import "../css/Style.css";
 import "../css/Challan.css";
 import Pagination from '../components/Pagination';
+import { Table, Button, Form, Alert } from "react-bootstrap";
 import axios from "axios";
 
 const API_URL = "http://localhost:3000/api/challans";
@@ -16,7 +18,8 @@ export default function Challan() {
     billNumber: "",
     media: null,
   });
-  const [challanData, setChallanData] = useState([]);
+  const itemsPerPage = 4; // Hardcoded to 4
+  const [allChallans, setAllChallans] = useState([]);
   const [viewMode, setViewMode] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -24,9 +27,8 @@ export default function Challan() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [notification, setNotification] = useState(null);
-  const [documentPreview, setDocumentPreview] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState({ url: null, type: null });
 
   // Show notification
   const showNotification = (message, isSuccess = true) => {
@@ -43,8 +45,7 @@ export default function Challan() {
     try {
       setLoading(true);
       const response = await axios.get(API_URL);
-      setChallanData(response.data);
-      setTotalPages(Math.ceil(response.data.length / 10));
+      setAllChallans(response.data);
       setError(null);
     } catch (err) {
       console.error("Error fetching challans:", err);
@@ -60,7 +61,7 @@ export default function Challan() {
         setLoading(true);
         await axios.delete(`${API_URL}/${id}`);
         showNotification("Challan deleted successfully!");
-        fetchChallans();
+        fetchChallans(); // Refreshes the list
       } catch (err) {
         console.error("Error deleting challan:", err);
         setError("Failed to delete challan. Please try again.");
@@ -102,16 +103,15 @@ export default function Challan() {
         submitData.append("media", formData.media);
       }
 
-      let response;
       if (editMode && editId) {
-        response = await axios.put(`${API_URL}/${editId}`, submitData, {
+        await axios.put(`${API_URL}/${editId}`, submitData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
         showNotification("Challan updated successfully!");
       } else {
-        response = await axios.post(API_URL, submitData, {
+        await axios.post(API_URL, submitData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -135,7 +135,7 @@ export default function Challan() {
     setEditMode(false);
     setEditId(null);
     setViewData(null);
-    setDocumentPreview(null);
+    setDocumentPreview({ url: null, type: null });
     setFormData({
       companyName: "",
       phone: "",
@@ -166,16 +166,17 @@ export default function Challan() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/${challan._id}`);
-      const challanData = response.data;
+      const challanDataFromServer = response.data;
 
       setFormData({
-        companyName: challanData.companyName,
-        phone: challanData.phone,
-        email: challanData.email,
-        totalBilling: challanData.totalBilling,
-        billNumber: challanData.billNumber || "",
-        media: null,
+        companyName: challanDataFromServer.companyName,
+        phone: challanDataFromServer.phone,
+        email: challanDataFromServer.email,
+        totalBilling: challanDataFromServer.totalBilling,
+        billNumber: challanDataFromServer.billNumber || "",
+        media: null, // User must re-upload if they want to change the file
       });
+      setViewData(challanDataFromServer); // Store for displaying current doc name if needed
 
       setEditId(challan._id);
       setEditMode(true);
@@ -192,27 +193,40 @@ export default function Challan() {
   const previewDocument = async (challanId) => {
     try {
       setLoading(true);
+      // Clear previous errors before attempting fetch
+      setError(null); 
       const response = await axios.get(`${API_URL}/${challanId}/document`, {
         responseType: 'blob'
       });
-      
-      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+
+      const contentType = response.headers['content-type'];
+      const blob = new Blob([response.data], { type: contentType });
       const url = window.URL.createObjectURL(blob);
-      setDocumentPreview(url);
+      setDocumentPreview({ url, type: contentType });
     } catch (err) {
       console.error("Error fetching document:", err);
-      setError("Failed to load document");
+      // Set error state to display on the page
+      const errorMessage = err.response?.data?.error || "Failed to load document. Please check the server.";
+      setError(errorMessage); 
+      // Ensure preview state is cleared on error
+      setDocumentPreview({ url: null, type: null });
     } finally {
       setLoading(false);
     }
   };
 
   const closePreview = () => {
-    if (documentPreview) {
-      window.URL.revokeObjectURL(documentPreview);
-      setDocumentPreview(null);
+    if (documentPreview && documentPreview.url) {
+      window.URL.revokeObjectURL(documentPreview.url);
     }
+    setDocumentPreview({ url: null, type: null });
   };
+
+  // Pagination calculations
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = allChallans.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(allChallans.length / itemsPerPage);
 
   const renderForm = () => {
     return (
@@ -294,13 +308,14 @@ export default function Challan() {
                 {viewData.document ? (
                   <div className="document-item">
                     <span className="document-name">{viewData.document.originalName}</span>
-                    <button
+                    <Button
+                      variant="info" // Using Bootstrap button
+                      size="sm"
                       type="button"
-                      className="view-document-btn"
                       onClick={() => previewDocument(viewData._id)}
                     >
                       View Document
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <p>No document uploaded</p>
@@ -318,7 +333,7 @@ export default function Challan() {
                 name="media"
                 accept="image/*,application/pdf"
                 onChange={handleFileChange}
-                required={!editMode && !formData.media}
+                required={!editMode && !formData.media} 
               />
               
               {formData.media && (
@@ -327,7 +342,7 @@ export default function Challan() {
                 </div>
               )}
               
-              {editMode && viewData?.document && (
+              {editMode && viewData?.document && !formData.media && (
                 <div className="uploaded-files">
                   <p>Current file: {viewData.document.originalName}</p>
                   <p className="note">Upload a new file to replace the existing one</p>
@@ -338,21 +353,21 @@ export default function Challan() {
 
           <div className="form-actions">
             {!viewMode && (
-              <button type="submit" className="submit-btn" disabled={loading}>
+              <Button type="submit" variant="success" disabled={loading}>
                 {loading ? "Processing..." : (editMode ? "UPDATE" : "SUBMIT")}
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               type="button"
-              className="cancel-btn"
+              variant="secondary"
               onClick={resetForm}
             >
               CANCEL
-            </button>
+            </Button>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
         </div>
       </form>
     );
@@ -361,74 +376,95 @@ export default function Challan() {
   return (
     <div>
       <Navbar />
-      <div className="challan-container">
+      <div className="container mt-4">
         {notification && (
-          <div className={`notification ${notification.isSuccess ? 'success' : 'error'}`}>
+          <Alert variant={notification.isSuccess ? 'success' : 'danger'} className="mb-3">
             {notification.message}
-          </div>
+          </Alert>
         )}
         
-        <div className="challan-header">
-          <h2>Challan Records</h2>
-          <button
-            className="create-challan-btn"
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2 style={{ color: "black" }}>Challan Records</h2>
+          <Button
+            variant="primary"
             onClick={() => {
               resetForm();
               setShowPopup(true);
             }}
           >
-            + Create Challan
-          </button>
+            + Add New Challan
+          </Button>
         </div>
 
-        {loading && !showPopup && <div className="loading">Loading...</div>}
-        {error && !showPopup && <div className="error-message">{error}</div>}
+        {loading && !showPopup && <div className="text-center my-3">Loading...</div>}
+        {/* Display main error state here */}
+        {error && !showPopup && <Alert variant="danger">{error}</Alert>}
 
-        <table className="challan-table">
-          <thead>
+        <Table striped bordered hover responsive className="mt-3">
+          <thead className="table-dark">
             <tr>
               <th>Company Name</th>
+              <th>Phone</th>
+              <th>Email</th>
               <th>Total Bill (₹)</th>
+              <th>Bill Number</th>
+              {/* <th>Document</th> */}
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {challanData.length === 0 && !loading ? (
+            {currentItems.length === 0 && !loading ? (
               <tr>
-                <td colSpan="3" className="no-data">No challans found</td>
+                <td colSpan="7" className="text-center">No challans found</td>
               </tr>
             ) : (
-              challanData.map((challan) => (
+              currentItems.map((challan) => (
                 <tr key={challan._id}>
                   <td>{challan.companyName}</td>
+                  <td>{challan.phone}</td>
+                  <td>{challan.email}</td>
                   <td>{challan.totalBilling}</td>
+                  <td>{challan.billNumber || "-"}</td>
+                  {/* <td>
+                    {challan.document ? (
+                       <Button variant="link" size="sm" onClick={() => previewDocument(challan._id)}>
+                         View Document
+                       </Button>
+                    ) : "No Document"}
+                  </td> */}
                   <td>
-                    <div className="action-buttons">
-                      <button
-                        className="view-btn"
+                    <div className="d-flex gap-2">
+                      <Button
+                        variant="info"
+                        size="sm"
                         onClick={() => openViewPopup(challan)}
+                        title="View Challan"
                       >
                         👁️
-                      </button>
-                      <button
-                        className="edit-btn"
+                      </Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
                         onClick={() => openEditPopup(challan)}
+                        title="Edit Challan"
                       >
                         ✏️
-                      </button>
-                      <button
-                        className="delete-btn"
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => handleDelete(challan._id)}
+                        title="Delete Challan"
                       >
                         🗑️
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
+        </Table>
 
         {showPopup && (
           <div className="popup-overlay" onClick={resetForm}>
@@ -447,19 +483,24 @@ export default function Challan() {
           </div>
         )}
 
-        {documentPreview && (
+        {/* This modal shows when documentPreview.url is set */}
+        {documentPreview && documentPreview.url && (
           <div className="document-preview-overlay" onClick={closePreview}>
             <div className="document-preview-container" onClick={(e) => e.stopPropagation()}>
               <button className="close-preview-btn" onClick={closePreview}>✖</button>
-              {documentPreview.type?.includes('pdf') || documentPreview.includes('pdf') ? (
+              {/* Check if type is PDF to use iframe, otherwise use img */}
+              { documentPreview.type && documentPreview.type.includes('application/pdf') ? (
                 <iframe 
-                  src={documentPreview} 
+                  src={documentPreview.url}
                   title="Document Preview" 
                   className="document-preview"
+                  // Add sandbox attribute for security if needed, depending on source
+                  // sandbox="allow-scripts allow-same-origin" 
                 />
               ) : (
+                // Assume other types are images
                 <img 
-                  src={documentPreview} 
+                  src={documentPreview.url}
                   alt="Document Preview" 
                   className="document-preview"
                 />

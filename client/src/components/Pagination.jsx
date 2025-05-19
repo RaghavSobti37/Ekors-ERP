@@ -50,53 +50,53 @@ const getPaginationItems = (currentPage, totalPages, siblingCount = 1) => {
 const Pagination = ({ 
   currentPage, 
   totalPages, 
-  onPageChange, 
-  rowsPerPage, 
-  onRowsPerPageChange,
-  rowsPerPageOptions = [5] // Changed to only offer 5 rows per page by default
+  onPageChange
 }) => {
   const pageItems = React.useMemo(() => {
     if (totalPages === 0) return []; // No pages to show if totalPages is 0
     return getPaginationItems(currentPage, totalPages, 1);
   }, [currentPage, totalPages]);
 
+  // Basic styling for the new elements (can be moved to Pagination.css)
+  // .pagination-controls { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px; } /* Centered */
+
   return (
     <div className="pagination-wrapper">
-      <div className="pagination-container">
-        <button
-          className="pagination-arrow"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          ← Prev
-        </button>
-        <div className="page-numbers">
-          {pageItems.map((item, index) => {
-            if (item === DOTS) {
-              return <span key={`${item}-${index}`} className="pagination-item dots">{DOTS}</span>;
-            }
-            return (
-              <button
-                key={item}
-                className={`pagination-item ${currentPage === item ? 'active' : ''}`}
-                onClick={() => onPageChange(item)}
-                disabled={currentPage === item}
-              >
-                {item}
-              </button>
-            );
-          })}
+      <div className="pagination-controls"> {/* Wrapper for layout, now just centers the pagination */}
+        <div className="pagination-container">
+          <button
+            className="pagination-arrow"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1 || totalPages === 0}
+          >
+            ← Prev
+          </button>
+          <div className="page-numbers">
+            {pageItems.map((item, index) => {
+              if (item === DOTS) {
+                return <span key={`${item}-${index}`} className="pagination-item dots">{DOTS}</span>;
+              }
+              return (
+                <button
+                  key={item}
+                  className={`pagination-item ${currentPage === item ? 'active' : ''}`}
+                  onClick={() => onPageChange(item)}
+                  disabled={currentPage === item}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="pagination-arrow"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || totalPages === 0}
+          >
+            Next →
+          </button>
         </div>
-        <button
-          className="pagination-arrow"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || totalPages === 0}
-        >
-          Next →
-        </button>
       </div>
-      
-      
     </div>
   );
 };

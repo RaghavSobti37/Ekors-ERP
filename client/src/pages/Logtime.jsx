@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "../css/Logtime.css";
+import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
