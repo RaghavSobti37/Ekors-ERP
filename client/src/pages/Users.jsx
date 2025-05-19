@@ -26,33 +26,57 @@ const Users = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const navigate = useNavigate();
 
+    const getAuthToken = () => {
+        const userDataString = localStorage.getItem("erp-user");
+        console.log("[Users.jsx] getAuthToken: Raw data from localStorage:", userDataString);
+        if (userDataString) {
+            try {
+                const userData = JSON.parse(userDataString);
+                console.log("[Users.jsx] getAuthToken: Parsed userData:", userData);
+                return userData.token;
+            } catch (e) {
+                console.error("[Users.jsx] getAuthToken: Failed to parse user data from localStorage", e);
+                return null;
+            }
+        }
+        return null;
+    };
+
     // Axios instance with base URL and auth header
     const api = axios.create({
         baseURL: "http://localhost:3000",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
+        headers: { "Content-Type": "application/json" }
     });
 
     // Fetch users from backend
     const fetchUsers = async () => {
         try {
+            console.log("[Users.jsx] fetchUsers: Attempting to fetch users.");
+            const token = localStorage.getItem("erp-user"); // Use the correct key
+            const authTokenString = getAuthToken();
+            if (!authTokenString) {
+                console.error("[Users.jsx] fetchUsers: No token found in localStorage. Redirecting to login might be needed.");
+                setError("Authentication token not found. Please log in again.");
+                // navigate("/login"); // Optional: redirect to login
+                return;
+            }
             setLoading(true);
+            // Ensure the API instance uses the latest token if it could have changed
+            api.defaults.headers.common['Authorization'] = `Bearer ${authTokenString}`;
+            console.log("[Users.jsx] fetchUsers: Axios instance headers:", api.defaults.headers);
             const response = await api.get("/api/users");
+            console.log("[Users.jsx] fetchUsers: Successfully fetched users:", response.data);
             setUsers(response.data);
             setLoading(false);
         } catch (err) {
-            console.error("Error fetching users:", err);
+            console.error("[Users.jsx] fetchUsers: Error fetching users:", err.response || err);
             setError(err.response?.data?.error || "Failed to fetch users");
-
             if (err.response?.status === 401) {
-                // Token expired or invalid
-                localStorage.removeItem("token");
-                navigate("/login");
-            } else {
-                setLoading(false);
+                console.error("[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired.");
+                // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
+                // navigate("/login");
             }
+            setLoading(false);
         }
     };
 
@@ -80,15 +104,22 @@ const Users = () => {
 
     const handleDelete = async (userId) => {
         if (window.confirm("Are you sure you want to delete this user?")) {
+            console.log(`[Users.jsx] handleDelete: Attempting to delete user ${userId}`);
+            const authTokenString = getAuthToken();
+            if (!authTokenString) {
+                console.error("[Users.jsx] handleDelete: No token found. Aborting delete.");
+                alert("Authentication token not found. Please log in again.");
+                return;
+            }
             try {
+                api.defaults.headers.common['Authorization'] = `Bearer ${authTokenString}`;
                 await api.delete(`/api/users/${userId}`);
+                console.log(`[Users.jsx] handleDelete: Successfully deleted user ${userId}`);
                 setUsers(users.filter(user => user._id !== userId));
             } catch (err) {
-                console.error("Error deleting user:", err);
+                console.error("[Users.jsx] handleDelete: Error deleting user:", err.response || err);
                 alert(err.response?.data?.error || "Failed to delete user");
-
                 if (err.response?.status === 401) {
-                    navigate("/login");
                 }
             }
         }
@@ -101,16 +132,24 @@ const Users = () => {
 
     const handleSave = async () => {
         try {
+            console.log("[Users.jsx] handleSave: Attempting to save user. SelectedUser:", selectedUser, "FormData:", formData);
+            const authTokenString = getAuthToken();
+
+            if (!authTokenString) {
+                console.error("[Users.jsx] handleSave: No token found. Aborting save.");
+                alert("Authentication token not found. Please log in again.");
+                return;
+            }
+
             if (!formData.firstname || !formData.lastname || !formData.email) {
-                throw new Error("Required fields are missing");
+                throw new Error("[Users.jsx] handleSave: Validation Error - Required fields are missing");
             }
 
             if (!selectedUser && !formData.password) {
-                throw new Error("Password is required for new users");
+                throw new Error("[Users.jsx] handleSave: Validation Error - Password is required for new users");
             }
-
             let response;
-
+            api.defaults.headers.common['Authorization'] = `Bearer ${authTokenString}`;
             if (selectedUser) {
                 // Update existing user
                 response = await api.put(
@@ -120,13 +159,15 @@ const Users = () => {
                 setUsers(users.map(user =>
                     user._id === selectedUser._id ? response.data : user
                 ));
+                console.log("[Users.jsx] handleSave: User updated successfully:", response.data);
             } else {
                 // Add new user
                 response = await api.post(
-                    "/api/users/register",
+                    "/api/users", // Changed from /api/users/register
                     formData
                 );
                 setUsers([...users, response.data]);
+                console.log("[Users.jsx] handleSave: User created successfully:", response.data);
             }
 
             setFormData({
@@ -143,11 +184,20 @@ const Users = () => {
             // Refresh the list
             fetchUsers();
         } catch (err) {
-            console.error("Error saving user:", err);
-            alert(err.response?.data?.error || err.message || "Failed to save user");
-
+            let errorMessage = "Failed to save user. Please check console for details.";
+            if (err.response && err.response.data) {
+                console.error("[Users.jsx] handleSave: Server responded with error:", err.response.data);
+                // Prefer server's specific error message if available
+                errorMessage = err.response.data.error || (typeof err.response.data === 'string' ? err.response.data : "An unknown server error occurred.");
+                if (err.response.data.errors && Array.isArray(err.response.data.errors)) { // For express-validator type errors
+                    errorMessage = err.response.data.errors.map(e => e.msg).join(', ');
+                }
+            } else {
+                console.error("[Users.jsx] handleSave: Error saving user (no server response data):", err.message || err);
+                errorMessage = err.message || "An unexpected error occurred.";
+            }
+            alert(errorMessage);
             if (err.response?.status === 401) {
-                navigate("/login");
             }
         }
     };
@@ -170,8 +220,6 @@ const Users = () => {
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-
-    if (loading) return <div className="loading">Loading users...</div>;
     if (error) return <div className="error">{error}</div>;
 
     return (
