@@ -1278,12 +1278,23 @@ export default function Dashboard() {
         <Modal
           show={showTransferModal}
           onHide={() => setShowTransferModal(false)}
+          dialogClassName="custom-modal"
           centered
         >
-          <Modal.Header closeButton>
+          <Modal.Header
+            closeButton
+            className="modal-header-custom"
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 1050,
+              backgroundColor: 'white',
+              borderBottom: '1px solid #dee2e6'
+            }}
+          >
             <Modal.Title>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
           </Modal.Header>
-          <Modal.Body>
+          <Modal.Body className="modal-body-custom" style={{ overflowY: 'auto' }}>
             <div className="mb-3">
               <h5>Search User to Transfer To</h5>
               <UserSearchComponent onUserSelect={handleUserSelect} />
@@ -1298,17 +1309,34 @@ export default function Dashboard() {
               </div>
             )}
           </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowTransferModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleTransferTicket}
-              disabled={!selectedUser}
-            >
-              Transfer Ticket
-            </Button>
+          <Modal.Footer
+            className="modal-footer-custom"
+            style={{
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 1050,
+              backgroundColor: 'white',
+              borderTop: '1px solid #dee2e6',
+              display: 'flex',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div>
+              <Button
+                variant="secondary"
+                onClick={() => setShowTransferModal(false)}
+                style={{ marginRight: '10px' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleTransferTicket}
+                disabled={!selectedUser}
+              >
+                Transfer Ticket
+              </Button>
+            </div>
           </Modal.Footer>
         </Modal>
 

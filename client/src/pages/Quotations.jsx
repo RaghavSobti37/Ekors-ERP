@@ -1233,7 +1233,7 @@ export default function Quotations() {
                   </div>
                 </div>
               </Modal.Body>
-              <Modal.Footer>
+              <Modal.Footer style={{ position: 'sticky', bottom: 0, zIndex: 1050, backgroundColor: 'white' }}>
                 <Button
                   variant="secondary"
                   onClick={() => {
