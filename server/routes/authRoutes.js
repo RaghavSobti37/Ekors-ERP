@@ -8,7 +8,6 @@ router.post("/login", loginUser);
 
 const User = require('../models/users');
 const Ticket = require('../models/opentickets');
-const auth = require('../middleware/auth');
 const { check, validationResult } = require('express-validator');
 
 // Get all users (only for super-admin)
