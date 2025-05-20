@@ -997,16 +997,14 @@ export default function Dashboard() {
                     <td>
                       <div className="d-flex gap-2">
                         {/* <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
-                          <i className="bi bi-pencil me-1"></i>Edit
+                          <i className="bi bi-pencil me-1"></i>✏️
                         </Button> */}
-                        <Button
-                          variant="warning"
-                          size="sm"
-                          onClick={() => openEditPopup(challan)}
-                          title="Edit Challan"
-                        >
-                          ✏️
+                        <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
+                          <i className="bi bi-pencil me-1"></i>✏️
                         </Button>
+                        {/* <Button variant="outline-secondary" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
+                          <i className="bi bi-arrow-left-right me-1"></i>Transfer
+                        </Button> */}
                         <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
                           <i className="bi bi-arrow-left-right me-1"></i>Transfer
                         </Button>
