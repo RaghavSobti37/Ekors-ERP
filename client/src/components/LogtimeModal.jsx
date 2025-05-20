@@ -343,7 +343,7 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
               disabled={isSaving}
               style={{ marginRight: '10px' }}
             >
-              Cancel
+              
             </button>
             <button
               className="save-btn"

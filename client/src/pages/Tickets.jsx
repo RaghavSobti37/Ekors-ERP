@@ -1474,13 +1474,13 @@ export default function Dashboard() {
           </Modal.Footer>
         </Modal>
 
-        <Pagination
+        {/* <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={(page) => {
             if (page >= 1 && page <= totalPages) setCurrentPage(page);
           }}
-        />
+        /> */}
       </div>
     </div>
   );
