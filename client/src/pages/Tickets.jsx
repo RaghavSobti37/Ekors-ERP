@@ -9,6 +9,10 @@ import {
   ProgressBar,
   Alert,
   Dropdown,
+  Badge,
+  Card,
+  Row,
+  Col,
 } from "react-bootstrap";
 import Navbar from "../components/Navbar.jsx";
 import {
@@ -21,9 +25,8 @@ import PIPDF from "../components/PIPDF.jsx";
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) {
-    return null; // Don't show any indicator if not the active sort column
+    return null;
   }
-  // Use the same emojis as in Items.jsx
   return sortConfig.direction === "ascending" ? <span> ↑</span> : <span> ↓</span>;
 };
 
@@ -280,7 +283,6 @@ export default function Dashboard() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [documentType, setDocumentType] = useState(null);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -289,34 +291,17 @@ export default function Dashboard() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: {
-      address1: "",
-      address2: "",
-      city: "",
-      state: "",
-      pincode: ""
-    },
-    shippingAddress: {
-      address1: "",
-      address2: "",
-      city: "",
-      state: "",
-      pincode: ""
-    },
+    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
+    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
-    status: "Quotation Sent",
-    documents: {
-      quotation: "",
-      po: "",
-      pi: "",
-      challan: "",
-      packingList: "",
-      feedback: "",
-    },
+    status: "Quotation Sent", // Default status
+    documents: { quotation: "", po: "", pi: "", challan: "", packingList: "", invoice: "", feedback: "" },
+    dispatchDays: "7-10 working", // Default for new tickets
+    validityDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(), // Default for new tickets
   });
   const [sortConfig, setSortConfig] = useState({
     key: null,
@@ -332,6 +317,63 @@ export default function Dashboard() {
     "Invoice Sent",
     "Completed",
   ];
+
+  // Enhanced document status mapping
+  const documentStatusMap = {
+    quotation: "Quotation Sent",
+    po: "PO Received",
+    pi: "Payment Pending",
+    challan: "Inspection",
+    packingList: "Packing List",
+    invoice: "Invoice Sent",
+    feedback: "Completed"
+  };
+
+  // Document icon mapping
+  const documentIconMap = {
+    quotation: "bi-file-earmark-text",
+    po: "bi-file-earmark-check",
+    pi: "bi-file-earmark-medical",
+    challan: "bi-truck",
+    packingList: "bi-box-seam",
+    invoice: "bi-file-earmark-ruled",
+    feedback: "bi-chat-square-text"
+  };
+
+  // Document color mapping
+  const documentColorMap = {
+    quotation: "primary",
+    po: "success",
+    pi: "warning",
+    challan: "info",
+    packingList: "dark",
+    invoice: "danger",
+    feedback: "secondary"
+  };
+
+  // Automatically update status in ticketData based on editTicket.documents when modal opens
+  useEffect(() => {
+    if (editTicket && editTicket.documents) {
+      let highestStatusAchieved = statusStages[0]; // Default to the first status
+      let highestStatusIndex = 0;
+
+      // Determine the highest status based on existing documents in editTicket
+      Object.entries(documentStatusMap).forEach(([docType, expectedStatus]) => {
+        if (editTicket.documents[docType]) { // If the document exists
+          const expectedStatusIndex = statusStages.indexOf(expectedStatus);
+          if (expectedStatusIndex > highestStatusIndex) {
+            highestStatusAchieved = expectedStatus;
+            highestStatusIndex = expectedStatusIndex;
+          }
+        }
+      });
+      
+      // If the calculated highest status is different from current ticketData.status, update it.
+      if (ticketData.status !== highestStatusAchieved && statusStages.indexOf(highestStatusAchieved) > statusStages.indexOf(ticketData.status)) {
+         setTicketData(prev => ({ ...prev, status: highestStatusAchieved }));
+      }
+    }
+  }, [editTicket]); // Rerun when editTicket changes (modal opens/ticket changes)
 
   const getAuthToken = () => {
     try {
@@ -354,13 +396,9 @@ export default function Dashboard() {
       if (!token) {
         throw new Error("No authentication token found");
       }
-
       const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-
       setTickets(response.data);
     } catch (error) {
       const errorMsg = error.response?.data?.error || "Failed to load tickets";
@@ -381,21 +419,11 @@ export default function Dashboard() {
     try {
       const token = getAuthToken();
       if (!token) throw new Error("No authentication token found");
-
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${selectedTicket._id}/payments`,
-        {
-          amount: paymentAmount,
-          date: paymentDate,
-          reference: paymentReference
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { amount: paymentAmount, date: paymentDate, reference: paymentReference },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
       if (response.status === 200) {
         await fetchTickets();
         setShowPaymentModal(false);
@@ -409,46 +437,33 @@ export default function Dashboard() {
 
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
-
     return [...tickets].sort((a, b) => {
       if (sortConfig.key === "date") {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
-        return sortConfig.direction === "ascending"
-          ? dateA - dateB
-          : dateB - dateA;
+        return sortConfig.direction === "ascending" ? dateA - dateB : dateB - dateA;
       }
       if (sortConfig.key === "grandTotal") {
-        return sortConfig.direction === "ascending"
-          ? a.grandTotal - b.grandTotal
-          : b.grandTotal - a.grandTotal;
+        return sortConfig.direction === "ascending" ? a.grandTotal - b.grandTotal : b.grandTotal - a.grandTotal;
       }
-
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === "ascending" ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === "ascending" ? 1 : -1;
-      }
+      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "ascending" ? -1 : 1;
+      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "ascending" ? 1 : -1;
       return 0;
     });
   }, [tickets, sortConfig]);
 
   const filteredTickets = useMemo(() => {
     if (!searchTerm) return sortedTickets;
-
     const term = searchTerm.toLowerCase();
-    return sortedTickets.filter(
-      (ticket) =>
-        ticket.ticketNumber?.toLowerCase().includes(term) ||
-        ticket.quotationNumber?.toLowerCase().includes(term) ||
-        ticket.companyName?.toLowerCase().includes(term) ||
-        ticket.client?.companyName?.toLowerCase().includes(term) ||
-        ticket.goods.some(
-          (item) =>
-            item.description?.toLowerCase().includes(term) ||
-            item.hsnSacCode?.toLowerCase().includes(term)
-        )
+    return sortedTickets.filter(ticket =>
+      ticket.ticketNumber?.toLowerCase().includes(term) ||
+      ticket.quotationNumber?.toLowerCase().includes(term) ||
+      ticket.companyName?.toLowerCase().includes(term) ||
+      ticket.client?.companyName?.toLowerCase().includes(term) ||
+      ticket.goods.some(item =>
+        item.description?.toLowerCase().includes(term) ||
+        item.hsnSacCode?.toLowerCase().includes(term)
+      )
     );
   }, [sortedTickets, searchTerm]);
 
@@ -466,101 +481,68 @@ export default function Dashboard() {
   };
 
   const addRow = () => {
-    setTicketData({
-      ...ticketData,
-      goods: [
-        ...ticketData.goods,
-        {
-          srNo: ticketData.goods.length + 1,
-          description: "",
-          hsnSacCode: "",
-          quantity: 1,
-          price: 0,
-          amount: 0,
-        },
-      ],
-    });
+    setTicketData(prev => ({
+      ...prev,
+      goods: [...prev.goods, { srNo: prev.goods.length + 1, description: "", hsnSacCode: "", quantity: 1, price: 0, amount: 0 }],
+    }));
   };
 
   const handleItemSelect = (item, index) => {
     const updatedGoods = [...ticketData.goods];
-    updatedGoods[index] = {
-      ...updatedGoods[index],
-      description: item.name,
-      hsnSacCode: item.hsnCode,
-      price: item.price,
-      amount: updatedGoods[index].quantity * item.price
-    };
-
+    updatedGoods[index] = { ...updatedGoods[index], description: item.name, hsnSacCode: item.hsnCode, price: item.price, amount: updatedGoods[index].quantity * item.price };
     updateTotals(updatedGoods);
   };
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
     updatedGoods[index][field] = value;
-
     if (field === 'quantity' || field === 'price') {
-      updatedGoods[index].amount = updatedGoods[index].quantity * updatedGoods[index].price;
+      updatedGoods[index].amount = (Number(updatedGoods[index].quantity) || 0) * (Number(updatedGoods[index].price) || 0);
     }
-
     updateTotals(updatedGoods);
   };
 
   const updateTotals = (goods) => {
-    const totalQuantity = goods.reduce(
-      (sum, item) => sum + Number(item.quantity),
-      0
-    );
-    const totalAmount = goods.reduce(
-      (sum, item) => sum + Number(item.amount),
-      0
-    );
+    const totalQuantity = goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const totalAmount = goods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
-
-    setTicketData({
-      ...ticketData,
-      goods,
-      totalQuantity,
-      totalAmount,
-      gstAmount,
-      grandTotal,
-    });
+    setTicketData(prev => ({ ...prev, goods, totalQuantity, totalAmount, gstAmount, grandTotal }));
   };
 
   const handleEdit = (ticket) => {
     setEditTicket(ticket);
+    // Convert array address to object if needed
+    const billingAddress = Array.isArray(ticket.billingAddress) ? {
+      address1: ticket.billingAddress[0] || '',
+      address2: ticket.billingAddress[1] || '',
+      city: ticket.billingAddress[3] || '',
+      state: ticket.billingAddress[2] || '',
+      pincode: ticket.billingAddress[4] || ''
+    } : ticket.billingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+
+    const shippingAddress = Array.isArray(ticket.shippingAddress) ? {
+      address1: ticket.shippingAddress[0] || '',
+      address2: ticket.shippingAddress[1] || '',
+      city: ticket.shippingAddress[3] || '',
+      state: ticket.shippingAddress[2] || '',
+      pincode: ticket.shippingAddress[4] || ''
+    } : ticket.shippingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+
     setTicketData({
-      companyName: ticket.companyName,
-      quotationNumber: ticket.quotationNumber,
-      billingAddress: ticket.billingAddress || {
-        address1: "",
-        address2: "",
-        city: "",
-        state: "",
-        pincode: ""
-      },
-      shippingAddress: ticket.shippingAddress || {
-        address1: "",
-        address2: "",
-        city: "",
-        state: "",
-        pincode: ""
-      },
-      goods: ticket.goods,
-      totalQuantity: ticket.totalQuantity,
-      totalAmount: ticket.totalAmount,
-      gstAmount: ticket.gstAmount,
-      grandTotal: ticket.grandTotal,
-      status: ticket.status,
-      documents: ticket.documents || {
-        quotation: "",
-        po: "",
-        pi: "",
-        challan: "",
-        packingList: "",
-        feedback: "",
-      },
+      companyName: ticket.companyName || "",
+      quotationNumber: ticket.quotationNumber || "",
+      billingAddress,
+      shippingAddress,
+      goods: ticket.goods || [],
+      totalQuantity: ticket.totalQuantity || 0,
+      totalAmount: ticket.totalAmount || 0,
+      gstAmount: ticket.gstAmount || 0,
+      grandTotal: ticket.grandTotal || 0,
+      status: ticket.status || statusStages[0],
+      documents: ticket.documents || { quotation: "", po: "", pi: "", challan: "", packingList: "", invoice: "", feedback: "" },
+      dispatchDays: ticket.dispatchDays || "7-10 working",
+      validityDate: ticket.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
     });
     setShowEditModal(true);
   };
@@ -568,39 +550,49 @@ export default function Dashboard() {
   const handleTransfer = (ticket) => {
     setTransferTicket(ticket);
     setSelectedUser(null);
+    setError(null);
     setShowTransferModal(true);
   };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
+    setError(null);
   };
 
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
-    setShowStatusDropdown(false);
   };
 
   const handleUpdateTicket = async () => {
     try {
-      const updateData = {
-        ...ticketData,
-        _id: undefined,
-        __v: undefined,
-        createdAt: undefined,
-        updatedAt: undefined
+      // Convert address objects back to arrays if needed by backend
+      const updateData = { 
+        ...ticketData, 
+        _id: undefined, 
+        __v: undefined, 
+        createdAt: undefined, 
+        updatedAt: undefined,
+        billingAddress: [
+          ticketData.billingAddress.address1,
+          ticketData.billingAddress.address2,
+          ticketData.billingAddress.state,
+          ticketData.billingAddress.city,
+          ticketData.billingAddress.pincode
+        ],
+        shippingAddress: [
+          ticketData.shippingAddress.address1,
+          ticketData.shippingAddress.address2,
+          ticketData.shippingAddress.state,
+          ticketData.shippingAddress.city,
+          ticketData.shippingAddress.pincode
+        ]
       };
-
+      
       const response = await axios.put(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
         updateData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${getAuthToken()}`
-          }
-        }
+        { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` } }
       );
-
       if (response.status === 200) {
         fetchTickets();
         setShowEditModal(false);
@@ -617,19 +609,12 @@ export default function Dashboard() {
       setError("Please select a user to transfer the ticket to");
       return;
     }
-
     try {
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
         { userId: selectedUser._id },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${getAuthToken()}`
-          }
-        }
+        { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` } }
       );
-
       if (response.status === 200) {
         setError(null);
         await fetchTickets();
@@ -645,68 +630,77 @@ export default function Dashboard() {
   const renderDocumentSection = () => {
     if (!documentType || !editTicket) return null;
 
+    const getAddressString = (addressObj) => {
+      if (!addressObj) return 'N/A';
+      if (Array.isArray(addressObj)) {
+        return addressObj.filter(Boolean).join(', ');
+      }
+      let parts = [];
+      if (addressObj.address1) parts.push(addressObj.address1);
+      if (addressObj.address2) parts.push(addressObj.address2);
+      if (addressObj.city) parts.push(addressObj.city);
+      if (addressObj.state) parts.push(addressObj.state);
+      if (addressObj.pincode) parts.push(addressObj.pincode);
+      return parts.join(', ').replace(/ ,/g, ',');
+    };
+
+    const quotationDataForPDF = editTicket ? {
+      referenceNumber: editTicket.quotationNumber,
+      date: editTicket.createdAt,
+      client: {
+        companyName: editTicket.companyName,
+        siteLocation: getAddressString(editTicket.shippingAddress || editTicket.billingAddress),
+      },
+      goods: editTicket.goods.map(item => ({ ...item, unit: item.unit || 'Nos' })),
+      totalAmount: editTicket.totalAmount,
+      dispatchDays: ticketData.dispatchDays || editTicket.dispatchDays || "7-10 working",
+      validityDate: ticketData.validityDate || editTicket.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+    } : null;
+
     return (
-      <div className="mt-4 p-3 border rounded">
-        <h5 className="mt-4">{documentType.toUpperCase()} Document</h5>
-        {documentType === "quotation" && (
-          <>
+      <div className="mt-4 p-3 border rounded bg-light">
+        <h5 className="mb-3">
+          <i className={`bi ${documentIconMap[documentType]}`}></i>{" "}
+          {documentType.toUpperCase()} Document
+        </h5>
+        {documentType === "quotation" && quotationDataForPDF && (
+          <div className="document-preview-container">
             <PDFViewer width="100%" height="500px" className="mb-3">
-              <QuotationPDF quotation={editTicket} />
+              <QuotationPDF quotation={quotationDataForPDF} />
             </PDFViewer>
-            <div className="d-flex justify-content-center gap-2">
-              <PDFDownloadLink
-                document={<QuotationPDF quotation={editTicket} />}
-                fileName={`quotation_${editTicket.quotationNumber}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="primary" disabled={loading}>
-                    {loading ? "Generating PDF..." : "Download Quotation"}
-                  </Button>
-                )}
+            <div className="d-flex justify-content-center gap-2 mt-3">
+              <PDFDownloadLink document={<QuotationPDF quotation={quotationDataForPDF} />} fileName={`quotation_${quotationDataForPDF.referenceNumber}.pdf`}>
+                {({ loading }) => <Button variant="primary" disabled={loading}>
+                  <i className="bi bi-download me-2"></i>{loading ? "Generating..." : "Download Quotation"}
+                </Button>}
               </PDFDownloadLink>
-              <Button
-                variant="secondary"
-                onClick={() => setDocumentType(null)}
-              >
-                Close
+              <Button variant="secondary" onClick={() => setDocumentType(null)}>
+                <i className="bi bi-x-circle me-2"></i>Close Preview
               </Button>
             </div>
-          </>
+          </div>
         )}
-        {documentType === "pi" && (
-          <>
+        {documentType === "pi" && editTicket && (
+          <div className="document-preview-container">
             <PDFViewer width="100%" height="500px" className="mb-3">
               <PIPDF ticket={editTicket} />
             </PDFViewer>
-            <div className="d-flex justify-content-center gap-2">
-              <PDFDownloadLink
-                document={<PIPDF ticket={editTicket} />}
-                fileName={`pi_${editTicket.quotationNumber}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="primary" disabled={loading}>
-                    {loading ? "Generating PDF..." : "Download PI"}
-                  </Button>
-                )}
+            <div className="d-flex justify-content-center gap-2 mt-3">
+              <PDFDownloadLink document={<PIPDF ticket={editTicket} />} fileName={`pi_${editTicket.quotationNumber}.pdf`}>
+                {({ loading }) => <Button variant="primary" disabled={loading}>
+                  <i className="bi bi-download me-2"></i>{loading ? "Generating..." : "Download PI"}
+                </Button>}
               </PDFDownloadLink>
-              <Button
-                variant="secondary"
-                onClick={() => setDocumentType(null)}
-              >
-                Close
+              <Button variant="secondary" onClick={() => setDocumentType(null)}>
+                <i className="bi bi-x-circle me-2"></i>Close Preview
               </Button>
             </div>
-          </>
+          </div>
         )}
         {!["quotation", "pi"].includes(documentType) && ticketData.documents?.[documentType] && (
-          <div className="text-center">
-            <a
-              href={`http://localhost:3000/${ticketData.documents[documentType]}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary"
-            >
-              View {documentType.toUpperCase()} Document
+          <div className="text-center p-4">
+            <a href={`http://localhost:3000/${ticketData.documents[documentType]}`} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg">
+              <i className="bi bi-eye me-2"></i>View {documentType.toUpperCase()} Document
             </a>
           </div>
         )}
@@ -714,37 +708,29 @@ export default function Dashboard() {
     );
   };
 
-  const handleDocumentUpload = async (file, documentType) => {
+  const handleDocumentUpload = async (file, docType) => {
     try {
       const formData = new FormData();
       formData.append("document", file);
-      formData.append("documentType", documentType);
-
+      formData.append("documentType", docType);
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${editTicket._id}/documents`,
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${getAuthToken()}`
-          }
-        }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${getAuthToken()}` } }
       );
 
-      setTicketData((prev) => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          [documentType]: response.data.documents[documentType],
-        },
-      }));
+      const newStatus = documentStatusMap[docType] || ticketData.status;
+      const newDocumentPath = response.data.documents[docType];
 
-      setEditTicket((prev) => ({
+      setTicketData(prev => ({
         ...prev,
-        documents: {
-          ...prev.documents,
-          [documentType]: response.data.documents[documentType],
-        },
+        status: (statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)) ? newStatus : prev.status,
+        documents: { ...prev.documents, [docType]: newDocumentPath },
+      }));
+      // Also update editTicket to reflect the change immediately if needed for other operations
+      setEditTicket(prev => ({
+        ...prev,
+        documents: { ...(prev?.documents || {}), [docType]: newDocumentPath }
       }));
 
       return true;
@@ -755,31 +741,222 @@ export default function Dashboard() {
     }
   };
 
+  const renderAddressFields = (type) => {
+    const addressKey = `${type}Address`;
+    const address = ticketData[addressKey] || {};
+    const handleChange = (field, value) => {
+      setTicketData(prev => ({ ...prev, [addressKey]: { ...(prev[addressKey] || {}), [field]: value } }));
+    };
+    return (
+      <div className="mb-3">
+        <div className="row g-2">
+          <Form.Group className="col-md-6">
+            <Form.Control 
+              placeholder="Address Line 1" 
+              value={address.address1 || ''} 
+              onChange={(e) => handleChange('address1', e.target.value)} 
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Control 
+              placeholder="Address Line 2" 
+              value={address.address2 || ''} 
+              onChange={(e) => handleChange('address2', e.target.value)} 
+            />
+          </Form.Group>
+          <Form.Group className="col-md-4">
+            <Form.Control 
+              placeholder="City" 
+              value={address.city || ''} 
+              onChange={(e) => handleChange('city', e.target.value)} 
+            />
+          </Form.Group>
+          <Form.Group className="col-md-4">
+            <Form.Control 
+              placeholder="State" 
+              value={address.state || ''} 
+              onChange={(e) => handleChange('state', e.target.value)} 
+            />
+          </Form.Group>
+          <Form.Group className="col-md-4">
+            <Form.Control 
+              placeholder="Pincode" 
+              value={address.pincode || ''} 
+              onChange={(e) => handleChange('pincode', e.target.value)} 
+            />
+          </Form.Group>
+        </div>
+      </div>
+    );
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case 'Quotation Sent': return 'info';
+      case 'PO Received': return 'primary';
+      case 'Payment Pending': return 'warning';
+      case 'Inspection': return 'secondary';
+      case 'Packing List': return 'dark';
+      case 'Invoice Sent': return 'success';
+      case 'Completed': return 'success';
+      default: return 'light';
+    }
+  };
+
+  const ProgressBarWithStages = () => (
+    <div className="mb-4">
+      <ProgressBar style={{ height: "30px" }}>
+        {statusStages.map((stage, index) => {
+          const currentStatusIndex = statusStages.indexOf(ticketData.status);
+          const isCompleted = currentStatusIndex >= index;
+          const isCurrent = ticketData.status === stage;
+          return (
+            <ProgressBar
+              key={stage}
+              now={100 / statusStages.length}
+              variant={isCompleted ? "success" : "secondary"}
+              label={isCurrent ? stage : ""}
+              animated={isCurrent}
+              onClick={() => handleStatusChange(stage)}
+              style={{ cursor: 'pointer' }}
+            />);
+        })}
+      </ProgressBar>
+      <div className="d-flex justify-content-between mt-2">
+        {statusStages.map((stage) => (
+          <small key={stage} className={`text-center ${ticketData.status === stage ? 'fw-bold text-primary' : 'text-muted'}`}
+            style={{ width: `${100 / statusStages.length}%`, cursor: 'pointer' }} onClick={() => handleStatusChange(stage)}>
+            {stage.split(' ')[0]}
+          </small>
+        ))}
+      </div>
+    </div>
+  );
+
+  const DocumentUploadSection = () => (
+    <div className="mt-4">
+      <h4><i className="bi bi-files me-2"></i>Documents</h4>
+      <div className="d-flex flex-wrap gap-3 mb-3">
+        {Object.entries({
+          quotation: "Quotation", po: "PO", pi: "PI", challan: "Challan",
+          packingList: "Packing List", invoice: "Invoice", feedback: "Feedback",
+        }).map(([docKey, docName]) => (
+          <div key={docKey} className="document-button-group d-flex align-items-center">
+            <Button 
+              variant={documentType === docKey ? documentColorMap[docKey] : `outline-${documentColorMap[docKey]}`} 
+              onClick={() => setDocumentType(docKey)} 
+              className="text-nowrap me-1"
+            >
+              <i className={`bi ${documentIconMap[docKey]} me-2`}></i>
+              {docName}
+            </Button>
+            {["quotation", "pi"].includes(docKey) ? (
+              <Button 
+                variant={documentColorMap[docKey]} 
+                onClick={() => setDocumentType(docKey)} 
+                className="ms-1" 
+                title={docName === "Quotation" ? "Preview/Download Quotation" : "Preview/Download PI"}
+              >
+                <i className="bi bi-eye"></i>
+              </Button>
+            ) : (
+              ticketData.documents?.[docKey] && (
+                <a 
+                  href={ticketData.documents[docKey].startsWith('/') ? `http://localhost:3000${ticketData.documents[docKey]}` : `http://localhost:3000/${ticketData.documents[docKey]}`}
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className={`btn btn-${documentColorMap[docKey]} ms-1`} 
+                  title={`View ${docName}`}
+                >
+                  <i className="bi bi-eye"></i>
+                </a>
+              )
+            )}
+            {!["quotation", "pi"].includes(docKey) && (
+              <>
+                <input 
+                  type="file" 
+                  id={`upload-${docKey}`} 
+                  style={{ display: "none" }}
+                  onChange={(e) => handleDocumentUpload(e.target.files[0], docKey)}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpeg,.jpg,.png" 
+                />
+                <label 
+                  htmlFor={`upload-${docKey}`} 
+                  className={`btn btn-${documentColorMap[docKey]} ms-1`} 
+                  title={`Upload ${docName}`}
+                >
+                  <i className="bi bi-upload"></i>
+                </label>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      {renderDocumentSection()}
+    </div>
+  );
+
+  const TransferModal = () => (
+    <Modal show={showTransferModal} onHide={() => { setShowTransferModal(false); setError(null); setSelectedUser(null);}} size="lg" centered dialogClassName="transfer-modal">
+      <Modal.Header closeButton className="bg-primary text-white">
+        <Modal.Title><i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="p-4">
+        <div className="mb-4">
+          <h5 className="mb-3"><i className="bi bi-search me-2"></i>Search User to Transfer To</h5>
+          <UserSearchComponent onUserSelect={handleUserSelect} />
+        </div>
+        {selectedUser && (
+          <div className="selected-user-info p-4 border rounded bg-light">
+            <h6 className="mb-3"><i className="bi bi-person-circle me-2"></i>Selected User Details:</h6>
+            <div className="row">
+              <div className="col-md-6">
+                <p><i className="bi bi-person me-2"></i><strong>Name:</strong> {selectedUser.firstname} {selectedUser.lastname}</p>
+                <p><i className="bi bi-envelope me-2"></i><strong>Email:</strong> {selectedUser.email}</p>
+              </div>
+              <div className="col-md-6">
+                <p><i className="bi bi-person-badge me-2"></i><strong>Role:</strong> <Badge bg="info">{selectedUser.role}</Badge></p>
+                <p><strong>Department:</strong> {selectedUser.department || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {error && !selectedUser && <Alert variant="danger" className="mt-3">{error}</Alert>}
+        {transferTicket && (
+          <div className="ticket-summary mt-4 p-3 border rounded">
+            <h6 className="mb-3">Ticket Summary</h6>
+            <div className="row">
+              <div className="col-md-6">
+                <p><strong>Company:</strong> {transferTicket.companyName}</p>
+                <p><strong>Quotation:</strong> {transferTicket.quotationNumber}</p>
+              </div>
+              <div className="col-md-6">
+                <p><strong>Status:</strong> <Badge bg={getStatusBadgeColor(transferTicket.status)}>{transferTicket.status}</Badge></p>
+                <p><strong>Amount:</strong> ₹{transferTicket.grandTotal?.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal.Body>
+      <Modal.Footer className="justify-content-between">
+        <Button variant="outline-secondary" onClick={() => { setShowTransferModal(false); setError(null); setSelectedUser(null);}}>Cancel</Button>
+        <Button variant="primary" onClick={handleTransferTicket} disabled={!selectedUser} className="px-4">Confirm Transfer</Button>
+      </Modal.Footer>
+    </Modal>
+  );
+
+
   return (
     <div>
       <Navbar />
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-
           <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
-            <Form.Control
-              type="search"
-              placeholder="🔍 Search here"
-              className="me-2"
-              aria-label="Search"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              style={{
-                borderRadius: "20px",
-                padding: "8px 20px",
-                border: "1px solid #ced4da",
-                boxShadow: "none",
-              }}
-            />
+            <Form.Control type="search" placeholder="🔍 Search here" className="me-2" aria-label="Search" value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              style={{ borderRadius: "20px", padding: "8px 20px", border: "1px solid #ced4da", boxShadow: "none" }}/>
           </div>
         </div>
 
@@ -788,699 +965,153 @@ export default function Dashboard() {
         <Table striped bordered hover responsive className="mt-3">
           <thead className="table-dark">
             <tr>
-              <th
-                onClick={() => requestSort("ticketNumber")}
-                style={{ cursor: "pointer" }}
-              >
-                Ticket Number{" "}
-                <SortIndicator
-                  columnKey="ticketNumber"
-                  sortConfig={sortConfig}
-                />
-              </th>
-              <th
-                onClick={() => requestSort("quotationNumber")}
-                style={{ cursor: "pointer" }}
-              >
-                Quotation No{" "}
-                <SortIndicator
-                  columnKey="quotationNumber"
-                  sortConfig={sortConfig}
-                />
-              </th>
-              <th
-                onClick={() => requestSort("companyName")}
-                style={{ cursor: "pointer" }}
-              >
-                Company Name{" "}
-                <SortIndicator
-                  columnKey="companyName"
-                  sortConfig={sortConfig}
-                />
-              </th>
-              <th
-                onClick={() => requestSort("date")}
-                style={{ cursor: "pointer" }}
-              >
-                Date <SortIndicator columnKey="date" sortConfig={sortConfig} />
-              </th>
-              <th
-                onClick={() => requestSort("grandTotal")}
-                style={{ cursor: "pointer" }}
-              >
-                Grand Total (₹){" "}
-                <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
-              </th>
+              <th onClick={() => requestSort("ticketNumber")} style={{ cursor: "pointer" }}>Ticket Number <SortIndicator columnKey="ticketNumber" sortConfig={sortConfig} /></th>
+              <th onClick={() => requestSort("quotationNumber")} style={{ cursor: "pointer" }}>Quotation No <SortIndicator columnKey="quotationNumber" sortConfig={sortConfig} /></th>
+              <th onClick={() => requestSort("companyName")} style={{ cursor: "pointer" }}>Company Name <SortIndicator columnKey="companyName" sortConfig={sortConfig} /></th>
+              <th onClick={() => requestSort("date")} style={{ cursor: "pointer" }}>Date <SortIndicator columnKey="date" sortConfig={sortConfig} /></th>
+              <th onClick={() => requestSort("grandTotal")} style={{ cursor: "pointer" }}>Grand Total (₹) <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} /></th>
               <th>Progress</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  Loading tickets...
-                </td>
-              </tr>
+              <tr><td colSpan="7" className="text-center"><div className="d-flex justify-content-center align-items-center" style={{ height: '100px' }}><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div></div></td></tr>
             ) : currentItems.length > 0 ? (
               currentItems.map((ticket) => {
-                const progressPercentage = Math.round(
-                  ((statusStages.indexOf(ticket.status) + 1) /
-                    statusStages.length * 100
-                  ));
+                const currentStatusIndex = statusStages.indexOf(ticket.status);
+                const progressPercentage = currentStatusIndex !== -1 ? Math.round(((currentStatusIndex + 1) / statusStages.length) * 100) : 0;
                 return (
                   <tr key={ticket.ticketNumber}>
                     <td>{ticket.ticketNumber}</td>
                     <td>{ticket.quotationNumber}</td>
                     <td>{ticket.companyName}</td>
-                    <td>
-                      {new Date(ticket.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </td>
+                    <td>{new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
-                      <div
-                        className="d-flex flex-column clickable-progress"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProgressClick(ticket);
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <ProgressBar
-                          now={progressPercentage}
-                          label={`${progressPercentage}%`}
-                          variant={getProgressBarVariant(progressPercentage)}
-                          className="mb-1"
-                          style={{ height: "20px" }}
-                        />
-                        <small className="text-center fw-bold">
-                          {ticket.status}
-                        </small>
+                      <Badge bg={getStatusBadgeColor(ticket.status)} className="mb-1 d-block text-center">{ticket.status}</Badge>
+                      <div className="d-flex flex-column clickable-progress" onClick={(e) => { e.stopPropagation(); handleProgressClick(ticket); }} style={{ cursor: 'pointer' }}>
+                        <ProgressBar now={progressPercentage} label={`${progressPercentage}%`} variant={getProgressBarVariant(progressPercentage)} style={{ height: "20px" }} />
                       </div>
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        <Button
-                          variant="info"
-                          size="sm"
-                          onClick={() => handleEdit(ticket)}
-                        >
-                          ✏️
-                        </Button>
-                        <Button
-                          variant="warning"
-                          size="sm"
-                          onClick={() => handleTransfer(ticket)}
-                        >
-                          Transfer
-                        </Button>
+                        <Button variant="info" size="sm" onClick={() => handleEdit(ticket)} title="Edit"><i className="bi bi-pencil"></i></Button>
+                        <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer"><i className="bi bi-arrow-left-right"></i></Button>
                       </div>
                     </td>
-                  </tr>
-                );
+                  </tr>);
               })
             ) : (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  No tickets found.
-                </td>
-              </tr>
+              <tr><td colSpan="7" className="text-center py-4"><div className="d-flex flex-column align-items-center"><i className="bi bi-folder-x text-muted" style={{ fontSize: '2rem' }}></i><p className="mt-2">No tickets found</p><Button variant="primary" size="sm" className="mt-2" onClick={() => alert("Create New Ticket functionality to be implemented.")}>Create New Ticket</Button></div></td></tr>
             )}
           </tbody>
         </Table>
 
-        {filteredTickets.length > itemsPerPage && (
-          <div className="d-flex justify-content-center mt-3">
-            <nav>
-              <ul className="pagination">
-                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                  <button
-                    className="page-link"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                  >
-                    Previous
-                  </button>
-                </li>
-
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <li
-                    key={i + 1}
-                    className={`page-item ${currentPage === i + 1 ? "active" : ""
-                      }`}
-                  >
-                    <button
-                      className="page-link"
-                      onClick={() => setCurrentPage(i + 1)}
-                    >
-                      {i + 1}
-                    </button>
-                  </li>
-                ))}
-
-                <li
-                  className={`page-item ${currentPage === totalPages ? "disabled" : ""
-                    }`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                  >
-                    Next
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        )}
-
-        {/* Edit Ticket Modal */}
-        <Modal
-          show={showEditModal}
-          onHide={() => setShowEditModal(false)}
-          size="xl"
-          centered
-          dialogClassName="modal-95w"
-          style={{ maxWidth: '95vw', width: '95%', height: '95vh' }}
-          contentClassName="h-100"
-        >
-          <Modal.Header closeButton>
+        <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" centered dialogClassName="modal-95w" style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} contentClassName="h-100">
+          <Modal.Header closeButton className="bg-primary text-white">
             <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
           </Modal.Header>
           <Modal.Body style={{ overflowY: 'auto' }}>
-            {/* Status Progress Bar */}
-            <div className="mb-4">
-              <ProgressBar style={{ height: "30px" }}>
-                {statusStages.map((stage, index) => {
-                  const isCompleted =
-                    statusStages.indexOf(ticketData.status) >= index;
-                  const isCurrent = ticketData.status === stage;
-                  return (
-                    <ProgressBar
-                      key={stage}
-                      now={100 / statusStages.length}
-                      variant={isCompleted ? "success" : "secondary"}
-                      label={isCurrent ? stage : ""}
-                      animated={isCurrent}
-                    />
-                  );
-                })}
-              </ProgressBar>
-            </div>
-
-            {/* Status Update Dropdown */}
+            <ProgressBarWithStages />
             <div className="row mb-4">
               <Form.Group className="col-md-6">
-                <Form.Label>Update Status</Form.Label>
-                <Dropdown
-                  show={showStatusDropdown}
-                  onToggle={(isOpen) => setShowStatusDropdown(isOpen)}
-                >
-                  <Dropdown.Toggle variant="primary" id="status-dropdown">
-                    {ticketData.status}
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    {statusStages.map((stage) => (
-                      <Dropdown.Item
-                        key={stage}
-                        onClick={() => handleStatusChange(stage)}
-                      >
-                        {stage}
-                      </Dropdown.Item>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>
-              </Form.Group>
-              <Form.Group className="col-md-6">
                 <Form.Label>Date</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={new Date(editTicket?.createdAt).toLocaleDateString()}
-                  readOnly
-                  disabled
-                />
+                <Form.Control type="text" value={editTicket?.createdAt ? new Date(editTicket.createdAt).toLocaleDateString() : ''} readOnly disabled />
               </Form.Group>
             </div>
-
-            {/* Company and Quotation Info */}
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Company Name*</Form.Label>
-                <Form.Control
-                  required
-                  type="text"
-                  value={ticketData.companyName}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      companyName: e.target.value,
-                    })
-                  }
-                />
+                <Form.Control required type="text" value={ticketData.companyName} onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })} />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Quotation Number*</Form.Label>
-                <Form.Control
-                  required
-                  type="text"
-                  value={ticketData.quotationNumber}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      quotationNumber: e.target.value,
-                    })
-                  }
-                  readOnly
-                  disabled
-                />
+                <Form.Control required type="text" value={ticketData.quotationNumber} readOnly disabled />
               </Form.Group>
             </div>
-
-            {/* Address Information */}
             <div className="row">
-              <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Billing Address*</Form.Label>
-                <Form.Control
-                  required
-                  as="textarea"
-                  rows={3}
-                  value={ticketData.billingAddress}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      billingAddress: e.target.value,
-                    })
-                  }
-                />
-              </Form.Group>
-              <Form.Group className="mb-3 col-md-6">
-                <Form.Label>Shipping Address*</Form.Label>
-                <Form.Control
-                  required
-                  as="textarea"
-                  rows={3}
-                  value={ticketData.shippingAddress}
-                  onChange={(e) =>
-                    setTicketData({
-                      ...ticketData,
-                      shippingAddress: e.target.value,
-                    })
-                  }
-                />
-              </Form.Group>
+              <div className="col-md-6"><h5>Billing Address</h5>{renderAddressFields('billing')}</div>
+              <div className="col-md-6"><h5>Shipping Address</h5>{renderAddressFields('shipping')}</div>
             </div>
-
-            {/* Goods Details */}
             <h5 className="mt-4">Goods Details*</h5>
             <div className="table-responsive">
               <Table bordered className="mb-3">
-                <thead>
-                  <tr>
-                    <th>Sr No.</th>
-                    <th>Description*</th>
-                    <th>HSN/SAC*</th>
-                    <th>Qty*</th>
-                    <th>Price*</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Sr No.</th><th>Description*</th><th>HSN/SAC*</th><th>Qty*</th><th>Price*</th><th>Amount</th></tr></thead>
                 <tbody>
                   {ticketData.goods.map((item, index) => (
                     <tr key={index}>
                       <td className="align-middle">{item.srNo}</td>
-                      <td>
-                        {index === ticketData.goods.length - 1 && !item.description ? (
-                          <ItemSearchComponent
-                            onItemSelect={handleItemSelect}
-                            index={index}
-                          />
-                        ) : (
-                          <Form.Control
-                            type="text"
-                            value={item.description}
-                            readOnly
-                            disabled
-                          />
-                        )}
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="text"
-                          value={item.hsnSacCode}
-                          readOnly
-                          disabled
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          required
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleGoodsChange(index, "quantity", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.price}
-                          readOnly
-                          disabled
-                        />
-                      </td>
-                      <td className="align-middle">
-                        ₹{item.amount.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                      <td>{index === ticketData.goods.length - 1 && !item.description ? <ItemSearchComponent onItemSelect={handleItemSelect} index={index} /> : <Form.Control type="text" value={item.description} readOnly disabled />}</td>
+                      <td><Form.Control type="text" value={item.hsnSacCode} readOnly disabled /></td>
+                      <td><Form.Control required type="number" min="1" value={item.quantity} onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)} /></td>
+                      <td><Form.Control type="number" min="0" step="0.01" value={item.price} readOnly disabled /></td>
+                      <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+                    </tr>))}
                 </tbody>
               </Table>
             </div>
-            <Button variant="outline-primary" onClick={addRow} className="mb-3">
-              + Add Item
-            </Button>
-
-            {/* Totals Section */}
+            <Button variant="outline-primary" onClick={addRow} className="mb-3">+ Add Item</Button>
             <div className="bg-light p-3 rounded">
               <div className="row">
-                <div className="col-md-4">
-                  <p>
-                    Total Quantity: <strong>{ticketData.totalQuantity}</strong>
-                  </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    Total Amount:{" "}
-                    <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                  </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    GST (18%):{" "}
-                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                  </p>
-                </div>
+                <div className="col-md-4"><p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p></div>
+                <div className="col-md-4"><p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p></div>
+                <div className="col-md-4"><p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p></div>
               </div>
-              <div className="row">
-                <div className="col-md-12">
-                  <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
-                </div>
-              </div>
+              <div className="row"><div className="col-md-12"><h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5></div></div>
             </div>
-
-            {/* Documents Section */}
-            <div className="mt-4">
-              <h4>Documents</h4>
-              <div className="d-flex flex-wrap gap-2 mb-3">
-                {Object.entries({
-                  quotation: "Quotation",
-                  po: "PO",
-                  pi: "PI",
-                  challan: "Challan",
-                  packingList: "Packing List",
-                  feedback: "Feedback",
-                }).map(([docKey, docName]) => (
-                  <div key={docKey} className="d-flex align-items-center gap-2">
-                    <Button
-                      variant={
-                        documentType === docKey ? "primary" : "outline-primary"
-                      }
-                      onClick={() => setDocumentType(docKey)}
-                    >
-                      {docName}
-                    </Button>
-                    {["quotation", "pi"].includes(docKey) ? (
-                      <Button
-                        variant="success"
-                        onClick={() => setDocumentType(docKey)}
-                      >
-                        Download
-                      </Button>
-                    ) : (
-                      ticketData.documents?.[docKey] && (
-                        <a
-                          href={ticketData.documents[docKey].startsWith('/')
-                            ? `http://localhost:3000${ticketData.documents[docKey]}`
-                            : `http://localhost:3000/${ticketData.documents[docKey]}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-success btn-sm"
-                        >
-                          View
-                        </a>
-                      )
-                    )}
-                    {!["quotation", "pi"].includes(docKey) && (
-                      <>
-                        <input
-                          type="file"
-                          id={`upload-${docKey}`}
-                          style={{ display: "none" }}
-                          onChange={(e) =>
-                            handleDocumentUpload(e.target.files[0], docKey)
-                          }
-                          accept=".pdf,.doc,.docx,.xls,.xlsx"
-                        />
-                        <label
-                          htmlFor={`upload-${docKey}`}
-                          className="btn btn-info btn-sm mb-0"
-                        >
-                          Upload
-                        </label>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {renderDocumentSection()}
-            </div>
+            <DocumentUploadSection />
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleUpdateTicket}>
-              Update Ticket
-            </Button>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleUpdateTicket}>Update Ticket</Button>
           </Modal.Footer>
         </Modal>
 
-        {/* Transfer Ticket Modal */}
-        <Modal
-          show={showTransferModal}
-          onHide={() => setShowTransferModal(false)}
-          centered
-        >
-          <Modal.Header closeButton>
-            <Modal.Title>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="mb-3">
-              <h5>Search User to Transfer To</h5>
-              <UserSearchComponent onUserSelect={handleUserSelect} />
-            </div>
+        <TransferModal />
 
-            {selectedUser && (
-              <div className="selected-user-info p-3 border rounded mt-3">
-                <h6>Selected User:</h6>
-                <p><strong>Name:</strong> {selectedUser.firstname} {selectedUser.lastname}</p>
-                <p><strong>Email:</strong> {selectedUser.email}</p>
-                <p><strong>Role:</strong> {selectedUser.role}</p>
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowTransferModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleTransferTicket}
-              disabled={!selectedUser}
-            >
-              Transfer Ticket
-            </Button>
-          </Modal.Footer>
-        </Modal>
-
-        {/* Payment Modal */}
-        <Modal
-          show={showPaymentModal}
-          onHide={() => setShowPaymentModal(false)}
-          size="xl"
-          centered
-          dialogClassName="custom-modal" // Add this class
-          style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} // Add these styles
-          contentClassName="h-100" // Ensure full height
-        >
-          <Modal.Header closeButton className="modal-header-custom">
-            <Modal.Title>Payment Details - {selectedTicket?.ticketNumber}</Modal.Title>
-          </Modal.Header>
+        <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)} size="xl" centered dialogClassName="custom-modal" style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} contentClassName="h-100">
+          <Modal.Header closeButton className="modal-header-custom"><Modal.Title>Payment Details - {selectedTicket?.ticketNumber}</Modal.Title></Modal.Header>
           <Modal.Body className="modal-body-custom" style={{ overflowY: 'auto' }}>
             <div className="d-flex justify-content-between mb-4">
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
-                <h6>Quotation</h6>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    handleEdit(selectedTicket);
-                    setDocumentType('quotation');
-                  }}
-                >
-                  View
-                </Button>
-              </div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
-                <h6>PI</h6>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    handleEdit(selectedTicket);
-                    setDocumentType('pi');
-                  }}
-                >
-                  View
-                </Button>
-              </div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
-                <h6>PO</h6>
-                {selectedTicket?.documents?.po ? (
-                  <a
-                    href={`http://localhost:3000/${selectedTicket.documents.po}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline-primary btn-sm"
-                  >
-                    View
-                  </a>
-                ) : (
-                  <span className="text-muted">N/A</span>
-                )}
-              </div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
-                <h6>Dispatch</h6>
-                {selectedTicket?.documents?.challan ? (
-                  <a
-                    href={`http://localhost:3000/${selectedTicket.documents.challan}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline-primary btn-sm"
-                  >
-                    View
-                  </a>
-                ) : (
-                  <span className="text-muted">N/A</span>
-                )}
-              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>Quotation</h6><Button variant="outline-primary" size="sm" onClick={() => { setShowPaymentModal(false); handleEdit(selectedTicket); setDocumentType('quotation'); }}>View</Button></div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>PI</h6><Button variant="outline-primary" size="sm" onClick={() => { setShowPaymentModal(false); handleEdit(selectedTicket); setDocumentType('pi'); }}>View</Button></div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>PO</h6>{selectedTicket?.documents?.po ? <a href={`http://localhost:3000/${selectedTicket.documents.po}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">View</a> : <span className="text-muted">N/A</span>}</div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>Dispatch</h6>{selectedTicket?.documents?.challan ? <a href={`http://localhost:3000/${selectedTicket.documents.challan}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">View</a> : <span className="text-muted">N/A</span>}</div>
             </div>
-
             <div className="row">
               <div className="col-md-8">
                 <h5 className="mt-3">Payment Information</h5>
                 <div className="bg-light p-3 rounded mb-3">
                   <div className="row">
-                    <div className="col-md-6">
-                      <p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p>
-                    </div>
-                    <div className="col-md-6">
-                      <p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p>
-                    </div>
-                    <div className="col-md-12">
-                      <p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p>
-                    </div>
+                    <div className="col-md-6"><p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p></div>
+                    <div className="col-md-6"><p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p></div>
+                    <div className="col-md-12"><p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p></div>
                   </div>
                 </div>
-
                 <Form>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Payment Amount (₹)*</Form.Label>
-                    <Form.Control
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
-                      min="0"
-                      max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)}
-                      step="0.01"
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Payment Date*</Form.Label>
-                    <Form.Control
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Reference/Notes</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={paymentReference}
-                      onChange={(e) => setPaymentReference(e.target.value)}
-                      placeholder="Payment reference number or notes"
-                    />
-                  </Form.Group>
+                  <Form.Group className="mb-3"><Form.Label>Payment Amount (₹)*</Form.Label><Form.Control type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(parseFloat(e.target.value))} min="0" max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)} step="0.01" /></Form.Group>
+                  <Form.Group className="mb-3"><Form.Label>Payment Date*</Form.Label><Form.Control type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></Form.Group>
+                  <Form.Group className="mb-3"><Form.Label>Reference/Notes</Form.Label><Form.Control as="textarea" rows={3} value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Payment reference number or notes" /></Form.Group>
                 </Form>
               </div>
-
               <div className="col-md-4">
                 <h5 className="mt-3">Payment History</h5>
                 {selectedTicket?.payments?.length > 0 ? (
                   <div className="payment-history-container">
                     {selectedTicket.payments.map((payment, index) => (
                       <div key={index} className="payment-history-item p-3 mb-2 border rounded">
-                        <div className="d-flex justify-content-between">
-                          <span className="fw-bold">₹{payment.amount.toFixed(2)}</span>
-                          <span className="text-muted small">
-                            {new Date(payment.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {payment.reference && (
-                          <div className="mt-1 small text-muted">
-                            Ref: {payment.reference}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center p-4 border rounded bg-light">
-                    No payment history found
-                  </div>
-                )}
+                        <div className="d-flex justify-content-between"><span className="fw-bold">₹{payment.amount.toFixed(2)}</span><span className="text-muted small">{new Date(payment.date).toLocaleDateString()}</span></div>
+                        {payment.reference && (<div className="mt-1 small text-muted">Ref: {payment.reference}</div>)}
+                      </div>))}
+                  </div>) : (<div className="text-center p-4 border rounded bg-light">No payment history found</div>)}
               </div>
             </div>
           </Modal.Body>
-          <Modal.Footer className="modal-footer-custom">
-            <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handlePaymentSubmit}>
-              Record Payment
-            </Button>
-          </Modal.Footer>
+          <Modal.Footer className="modal-footer-custom"><Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button><Button variant="primary" onClick={handlePaymentSubmit}>Record Payment</Button></Modal.Footer>
         </Modal>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            if (page >= 1 && page <= totalPages) setCurrentPage(page);
-          }}
-        />
+        {totalPages > 1 && (<Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => { if (page >= 1 && page <= totalPages) setCurrentPage(page); }} />)}
       </div>
     </div>
   );
