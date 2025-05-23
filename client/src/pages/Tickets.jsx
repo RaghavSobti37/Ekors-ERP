@@ -367,10 +367,10 @@ export default function Dashboard() {
           }
         }
       });
-      
+
       // If the calculated highest status is different from current ticketData.status, update it.
       if (ticketData.status !== highestStatusAchieved && statusStages.indexOf(highestStatusAchieved) > statusStages.indexOf(ticketData.status)) {
-         setTicketData(prev => ({ ...prev, status: highestStatusAchieved }));
+        setTicketData(prev => ({ ...prev, status: highestStatusAchieved }));
       }
     }
   }, [editTicket]); // Rerun when editTicket changes (modal opens/ticket changes)
@@ -566,11 +566,11 @@ export default function Dashboard() {
   const handleUpdateTicket = async () => {
     try {
       // Convert address objects back to arrays if needed by backend
-      const updateData = { 
-        ...ticketData, 
-        _id: undefined, 
-        __v: undefined, 
-        createdAt: undefined, 
+      const updateData = {
+        ...ticketData,
+        _id: undefined,
+        __v: undefined,
+        createdAt: undefined,
         updatedAt: undefined,
         billingAddress: [
           ticketData.billingAddress.address1,
@@ -587,7 +587,7 @@ export default function Dashboard() {
           ticketData.shippingAddress.pincode
         ]
       };
-      
+
       const response = await axios.put(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
         updateData,
@@ -751,38 +751,38 @@ export default function Dashboard() {
       <div className="mb-3">
         <div className="row g-2">
           <Form.Group className="col-md-6">
-            <Form.Control 
-              placeholder="Address Line 1" 
-              value={address.address1 || ''} 
-              onChange={(e) => handleChange('address1', e.target.value)} 
+            <Form.Control
+              placeholder="Address Line 1"
+              value={address.address1 || ''}
+              onChange={(e) => handleChange('address1', e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-6">
-            <Form.Control 
-              placeholder="Address Line 2" 
-              value={address.address2 || ''} 
-              onChange={(e) => handleChange('address2', e.target.value)} 
+            <Form.Control
+              placeholder="Address Line 2"
+              value={address.address2 || ''}
+              onChange={(e) => handleChange('address2', e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
-            <Form.Control 
-              placeholder="City" 
-              value={address.city || ''} 
-              onChange={(e) => handleChange('city', e.target.value)} 
+            <Form.Control
+              placeholder="City"
+              value={address.city || ''}
+              onChange={(e) => handleChange('city', e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
-            <Form.Control 
-              placeholder="State" 
-              value={address.state || ''} 
-              onChange={(e) => handleChange('state', e.target.value)} 
+            <Form.Control
+              placeholder="State"
+              value={address.state || ''}
+              onChange={(e) => handleChange('state', e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
-            <Form.Control 
-              placeholder="Pincode" 
-              value={address.pincode || ''} 
-              onChange={(e) => handleChange('pincode', e.target.value)} 
+            <Form.Control
+              placeholder="Pincode"
+              value={address.pincode || ''}
+              onChange={(e) => handleChange('pincode', e.target.value)}
             />
           </Form.Group>
         </div>
@@ -842,30 +842,30 @@ export default function Dashboard() {
           packingList: "Packing List", invoice: "Invoice", feedback: "Feedback",
         }).map(([docKey, docName]) => (
           <div key={docKey} className="document-button-group d-flex align-items-center">
-            <Button 
-              variant={documentType === docKey ? documentColorMap[docKey] : `outline-${documentColorMap[docKey]}`} 
-              onClick={() => setDocumentType(docKey)} 
+            <Button
+              variant={documentType === docKey ? documentColorMap[docKey] : `outline-${documentColorMap[docKey]}`}
+              onClick={() => setDocumentType(docKey)}
               className="text-nowrap me-1"
             >
               <i className={`bi ${documentIconMap[docKey]} me-2`}></i>
               {docName}
             </Button>
             {["quotation", "pi"].includes(docKey) ? (
-              <Button 
-                variant={documentColorMap[docKey]} 
-                onClick={() => setDocumentType(docKey)} 
-                className="ms-1" 
+              <Button
+                variant={documentColorMap[docKey]}
+                onClick={() => setDocumentType(docKey)}
+                className="ms-1"
                 title={docName === "Quotation" ? "Preview/Download Quotation" : "Preview/Download PI"}
               >
                 <i className="bi bi-eye"></i>
               </Button>
             ) : (
               ticketData.documents?.[docKey] && (
-                <a 
+                <a
                   href={ticketData.documents[docKey].startsWith('/') ? `http://localhost:3000${ticketData.documents[docKey]}` : `http://localhost:3000/${ticketData.documents[docKey]}`}
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className={`btn btn-${documentColorMap[docKey]} ms-1`} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`btn btn-${documentColorMap[docKey]} ms-1`}
                   title={`View ${docName}`}
                 >
                   <i className="bi bi-eye"></i>
@@ -874,16 +874,16 @@ export default function Dashboard() {
             )}
             {!["quotation", "pi"].includes(docKey) && (
               <>
-                <input 
-                  type="file" 
-                  id={`upload-${docKey}`} 
+                <input
+                  type="file"
+                  id={`upload-${docKey}`}
                   style={{ display: "none" }}
                   onChange={(e) => handleDocumentUpload(e.target.files[0], docKey)}
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpeg,.jpg,.png" 
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpeg,.jpg,.png"
                 />
-                <label 
-                  htmlFor={`upload-${docKey}`} 
-                  className={`btn btn-${documentColorMap[docKey]} ms-1`} 
+                <label
+                  htmlFor={`upload-${docKey}`}
+                  className={`btn btn-${documentColorMap[docKey]} ms-1`}
                   title={`Upload ${docName}`}
                 >
                   <i className="bi bi-upload"></i>
@@ -898,7 +898,7 @@ export default function Dashboard() {
   );
 
   const TransferModal = () => (
-    <Modal show={showTransferModal} onHide={() => { setShowTransferModal(false); setError(null); setSelectedUser(null);}} size="lg" centered dialogClassName="transfer-modal">
+    <Modal show={showTransferModal} onHide={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); }} size="lg" centered dialogClassName="transfer-modal">
       <Modal.Header closeButton className="bg-primary text-white">
         <Modal.Title><i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
       </Modal.Header>
@@ -940,7 +940,7 @@ export default function Dashboard() {
         )}
       </Modal.Body>
       <Modal.Footer className="justify-content-between">
-        <Button variant="outline-secondary" onClick={() => { setShowTransferModal(false); setError(null); setSelectedUser(null);}}>Cancel</Button>
+        <Button variant="outline-secondary" onClick={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); }}>Cancel</Button>
         <Button variant="primary" onClick={handleTransferTicket} disabled={!selectedUser} className="px-4">Confirm Transfer</Button>
       </Modal.Footer>
     </Modal>
@@ -956,7 +956,7 @@ export default function Dashboard() {
           <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
             <Form.Control type="search" placeholder="🔍 Search here" className="me-2" aria-label="Search" value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              style={{ borderRadius: "20px", padding: "8px 20px", border: "1px solid #ced4da", boxShadow: "none" }}/>
+              style={{ borderRadius: "20px", padding: "8px 20px", border: "1px solid #ced4da", boxShadow: "none" }} />
           </div>
         </div>
 
@@ -996,8 +996,18 @@ export default function Dashboard() {
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        <Button variant="info" size="sm" onClick={() => handleEdit(ticket)} title="Edit"><i className="bi bi-pencil"></i></Button>
-                        <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer"><i className="bi bi-arrow-left-right"></i></Button>
+                        {/* <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
+                          <i className="bi bi-pencil me-1"></i>✏️
+                        </Button> */}
+                        <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
+                          <i className="bi bi-pencil me-1"></i>✏️
+                        </Button>
+                        {/* <Button variant="outline-secondary" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
+                          <i className="bi bi-arrow-left-right me-1"></i>Transfer
+                        </Button> */}
+                        <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
+                          <i className="bi bi-arrow-left-right me-1"></i>Transfer
+                        </Button>
                       </div>
                     </td>
                   </tr>);
