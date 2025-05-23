@@ -69,7 +69,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Removed explicit index creation since 'unique: true' already creates it
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
     return `${this.firstname} ${this.lastname}`;

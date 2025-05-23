@@ -15,17 +15,18 @@ const goodsItemSchema = new mongoose.Schema(
 const quotationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    orderIssuedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     date: { type: Date, required: true },
     referenceNumber: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
-      index: true,
     },
     validityDate: { type: Date, required: true },
-    dispatchDays: { type: Number, required: true, min: 1 },
-    orderIssuedBy: { type: String, trim: true },
     goods: [goodsItemSchema],
     totalQuantity: { type: Number, required: true, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
@@ -44,7 +45,6 @@ const quotationSchema = new mongoose.Schema(
   }
 );
 
-quotationSchema.index({ user: 1, referenceNumber: 1 });
-//quotationSchema.index({ user: 1, client: 1 });
+quotationSchema.index({ user: 1, referenceNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model("Quotation", quotationSchema);

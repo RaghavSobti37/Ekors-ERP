@@ -88,9 +88,9 @@ export default function Login() {
             Sign In
           </button>
         </form>
-        <p className="text-center mt-3">
+        {/* <p className="text-center mt-3">
           Don't have an account? <a href="/register">Register</a>
-        </p>
+        </p> */}
       </div>
     </div>
   );

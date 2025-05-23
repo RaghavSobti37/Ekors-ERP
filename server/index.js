@@ -19,7 +19,8 @@ const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init');
-const userRoutes = require('./routes/userRoutes'); // Import user routes
+const userRoutes = require('./routes/userRoutes'); 
+const clientRoutes = require('./routes/clients');
 
 // Check if tickets route file exists before requiring it
 let ticketsRouter;
@@ -207,7 +208,7 @@ app.use('/api/init', initRouter);
 app.use('/api/logtime', logtimeRoutes);
 app.use('/api/challans', challanRoutes);
 app.use('/api/quotations', quotationRoutes);
-
+app.use('/api/clients', clientRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes); // Mount user routes
 

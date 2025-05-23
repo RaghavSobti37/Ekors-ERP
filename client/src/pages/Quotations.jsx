@@ -4,12 +4,13 @@ import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import ClientSearchComponent from "../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../components/ItemSearch";
 import QuotationPDF from "../components/QuotationPDF";
 import CreateTicketModal from "../components/CreateTicketModal";
 import "../css/Quotation.css";
 import "../css/Style.css";
-import Pagination from '../components/Pagination';
+import Pagination from "../components/Pagination";
 import "../css/Items.css";
 
 import {
@@ -23,16 +24,16 @@ import {
 } from "@react-pdf/renderer";
 
 const fullScreenModalStyle = {
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '95vw',
-  height: '95vh',
-  maxWidth: 'none',
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "95vw",
+  height: "95vh",
+  maxWidth: "none",
   margin: 0,
   padding: 0,
-  overflow: 'auto'
+  overflow: "auto",
 };
 
 // PDF Document Styles
@@ -88,89 +89,6 @@ const pdfStyles = StyleSheet.create({
   },
 });
 
-// Quotation PDF Template
-const QuotationTemplate = ({ quotation }) => (
-  <Document>
-    <Page size="A4" style={pdfStyles.page}>
-      <Text style={pdfStyles.header}>Quotation</Text>
-
-      <View style={pdfStyles.section}>
-        <Text>Quotation Number: {quotation.referenceNumber}</Text>
-        <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
-        <Text>
-          Validity Date: {new Date(quotation.validityDate).toLocaleDateString()}
-        </Text>
-      </View>
-
-      <View style={pdfStyles.section}>
-        <Text>To:</Text>
-        <Text>{quotation.client.companyName}</Text>
-        <Text>GST: {quotation.client.gstNumber}</Text>
-      </View>
-
-      <View style={pdfStyles.table}>
-        <View style={[pdfStyles.tableRow, { backgroundColor: "#f0f0f0" }]}>
-          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>S.No</Text>
-          <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
-            Description
-          </Text>
-          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>HSN/SAC</Text>
-          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Qty</Text>
-          <Text style={[pdfStyles.tableCol, { width: "15%" }]}>Rate</Text>
-          <Text style={[pdfStyles.tableCol, { width: "10%" }]}>Amount</Text>
-        </View>
-
-        {quotation.goods.map((item, index) => (
-          <View style={pdfStyles.tableRow} key={index}>
-            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
-              {index + 1}
-            </Text>
-            <Text style={[pdfStyles.tableCol, { width: "40%" }]}>
-              {item.description}
-            </Text>
-            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
-              {item.hsnSacCode}
-            </Text>
-            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
-              {item.quantity}
-            </Text>
-            <Text style={[pdfStyles.tableCol, { width: "15%" }]}>
-              ₹{item.price.toFixed(2)}
-            </Text>
-            <Text style={[pdfStyles.tableCol, { width: "10%" }]}>
-              ₹{item.amount.toFixed(2)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={pdfStyles.totalRow}>
-        <Text>Sub Total: ₹{quotation.totalAmount.toFixed(2)}</Text>
-      </View>
-      <View style={pdfStyles.totalRow}>
-        <Text>GST (18%): ₹{quotation.gstAmount.toFixed(2)}</Text>
-      </View>
-      <View style={pdfStyles.totalRow}>
-        <Text>Grand Total: ₹{quotation.grandTotal.toFixed(2)}</Text>
-      </View>
-
-      <View style={pdfStyles.section}>
-        <Text>Terms & Conditions:</Text>
-        <Text>- Payment: 100% advance</Text>
-        <Text>- Delivery: Within {quotation.dispatchDays} days</Text>
-        <Text>
-          - Validity: {new Date(quotation.validityDate).toLocaleDateString()}
-        </Text>
-      </View>
-
-      <View style={pdfStyles.footer}>
-        <Text>For {quotation.client.companyName}</Text>
-        <Text>Authorized Signatory</Text>
-      </View>
-    </Page>
-  </Document>
-);
-
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -189,6 +107,7 @@ const GoodsTable = ({
   currentQuotation,
   isEditing,
   onAddItem,
+  onDeleteItem, // Add onDeleteItem to props
 }) => {
   return (
     <div className="table-responsive">
@@ -196,88 +115,99 @@ const GoodsTable = ({
         <thead>
           <tr>
             <th>Sr No.</th>
-            <th>Description <span className="text-danger">*</span></th>
+            <th>
+              Description <span className="text-danger">*</span>
+            </th>
             <th>HSN/SAC</th>
-            <th>Qty <span className="text-danger">*</span></th>
-            <th>Price <span className="text-danger">*</span></th>
+            <th>
+              Qty <span className="text-danger">*</span>
+            </th>
+            <th>
+              Unit <span className="text-danger">*</span>
+            </th>
+            <th>
+              Price <span className="text-danger">*</span>
+            </th>
             <th>Amount</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {goods.map((item, index) => (
-            <tr key={index}>
-              <td>{item.srNo}</td>
-              <td>
-                <Form.Control
-                  plaintext
-                  readOnly
-                  value={item.description}
-                />
-              </td>
-              <td>
-                {/* Made HSN/SAC non-editable */}
-                <Form.Control
-                  plaintext
-                  readOnly
-                  value={item.hsnSacCode}
-                />
-              </td>
-              <td>
-                {!isEditing ? (
-                  item.quantity
-                ) : (
-                  <Form.Control
-                    required
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "quantity", e.target.value)
-                    }
-                  />
-                )}
-              </td>
-              <td>
-                {!isEditing ? (
-                  item.unit
-                ) : (
-                  <Form.Control
-                    as="select"
-                    value={item.unit || "Nos"}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "unit", e.target.value)
-                    }
-                  >
-                    <option value="Nos">Nos</option>
-                    <option value="Mtr">Mtr</option>
-                    <option value="PKT">PKT</option>
-                    <option value="Pair">Pair</option>
-                    <option value="Set">Set</option>
-                    <option value="Bottle">Bottle</option>
-                    <option value="KG">KG</option>
-                  </Form.Control>
-                )}
-              </td>
-              <td>
-                {!isEditing ? (
-                  item.price.toFixed(2)
-                ) : (
-                  <Form.Control
-                    required
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.price}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "price", e.target.value)
-                    }
-                  />
-                )}
-              </td>
-              <td className="align-middle">₹{item.amount.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
+  {goods.map((item, index) => (
+    <tr key={index}>
+      <td>{item.srNo}</td>
+      <td>
+        <Form.Control plaintext readOnly value={item.description} />
+      </td>
+      <td>
+        <Form.Control plaintext readOnly value={item.hsnSacCode} />
+      </td>
+      <td>
+        {!isEditing ? (
+          item.quantity
+        ) : (
+          <Form.Control
+            required
+            type="number"
+            min="1"
+            value={item.quantity}
+            onChange={(e) =>
+              handleGoodsChange(index, "quantity", e.target.value)
+            }
+          />
+        )}
+      </td>
+      <td>
+        {!isEditing ? (
+          item.unit
+        ) : (
+          <Form.Control
+            as="select"
+            value={item.unit || "Nos"}
+            onChange={(e) =>
+              handleGoodsChange(index, "unit", e.target.value)
+            }
+          >
+            <option value="Nos">Nos</option>
+            <option value="Mtr">Mtr</option>
+            <option value="PKT">PKT</option>
+            <option value="Pair">Pair</option>
+            <option value="Set">Set</option>
+            <option value="Bottle">Bottle</option>
+            <option value="KG">KG</option>
+          </Form.Control>
+        )}
+      </td>
+      <td>
+        {!isEditing ? (
+          item.price.toFixed(2)
+        ) : (
+          <Form.Control
+            required
+            type="number"
+            min="0"
+            step="0.01"
+            value={item.price}
+            onChange={(e) =>
+              handleGoodsChange(index, "price", e.target.value)
+            }
+          />
+        )}
+      </td>
+      <td className="align-middle">₹{item.amount.toFixed(2)}</td>
+      <td className="align-middle">
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => onDeleteItem(index)} // Use the onDeleteItem prop
+        >
+          Delete
+        </Button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
       </Table>
 
       {isEditing && (
@@ -298,7 +228,11 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
     return null; // Don't show any indicator if not the active sort column
   }
   // Use the same emojis as in Items.jsx
-  return sortConfig.direction === "ascending" ? <span> ↑</span> : <span> ↓</span>;
+  return sortConfig.direction === "ascending" ? (
+    <span> ↑</span>
+  ) : (
+    <span> ↓</span>
+  );
 };
 
 export default function Quotations() {
@@ -318,6 +252,7 @@ export default function Quotations() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -352,7 +287,6 @@ export default function Quotations() {
     validityDate: formatDateForInput(
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
-    dispatchDays: 7,
     orderIssuedBy: "",
     goods: [],
     totalQuantity: 0,
@@ -360,6 +294,7 @@ export default function Quotations() {
     gstAmount: 0,
     grandTotal: 0,
     client: {
+      _id: null, // Add _id field for client
       companyName: "",
       gstNumber: "",
       email: "",
@@ -404,8 +339,8 @@ export default function Quotations() {
       console.error("Error fetching quotations:", error);
       setError(
         error.response?.data?.message ||
-        error.message ||
-        "Failed to load quotations. Please try again."
+          error.message ||
+          "Failed to load quotations. Please try again."
       );
 
       if (error.response?.status === 401) {
@@ -568,8 +503,8 @@ export default function Quotations() {
         updatedGoods[index].quantity * updatedGoods[index].price;
     }
 
-    updatedGoods.forEach(item => {
-      if (!item.unit) item.unit = 'Nos';
+    updatedGoods.forEach((item) => {
+      if (!item.unit) item.unit = "Nos";
     });
 
     const totalQuantity = updatedGoods.reduce(
@@ -600,7 +535,8 @@ export default function Quotations() {
       const field = name.split(".")[1];
 
       // Convert GST number to uppercase
-      const processedValue = field === "gstNumber" ? value.toUpperCase() : value;
+      const processedValue =
+        field === "gstNumber" ? value.toUpperCase() : value;
 
       setQuotationData((prev) => ({
         ...prev,
@@ -615,6 +551,37 @@ export default function Quotations() {
         [name]: value,
       }));
     }
+  };
+
+  const handleDeleteItem = (indexToDelete) => {
+    const updatedGoods = quotationData.goods.filter((_, index) => index !== indexToDelete);
+
+    // Re-number SrNo after deletion
+    const renumberedGoods = updatedGoods.map((item, index) => ({
+      ...item,
+      srNo: index + 1,
+    }));
+
+    // Recalculate totals
+    const totalQuantity = renumberedGoods.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = renumberedGoods.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    const gstAmount = totalAmount * 0.18; // Assuming 18% GST
+    const grandTotal = totalAmount + gstAmount;
+
+    setQuotationData(prevData => ({
+      ...prevData,
+      goods: renumberedGoods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -635,12 +602,9 @@ export default function Quotations() {
       }
 
       const submissionData = {
-        referenceNumber: currentQuotation
-          ? quotationData.referenceNumber
-          : generateQuotationNumber(),
+        referenceNumber: quotationData.referenceNumber, // Use the reference number from the state
         date: new Date(quotationData.date).toISOString(),
         validityDate: new Date(quotationData.validityDate).toISOString(),
-        dispatchDays: Number(quotationData.dispatchDays),
         orderIssuedBy: quotationData.orderIssuedBy,
         goods: quotationData.goods.map((item) => ({
           srNo: item.srNo,
@@ -710,6 +674,7 @@ export default function Quotations() {
   const resetForm = () => {
     setQuotationData(initialQuotationData);
     setFormValidated(false);
+    setSelectedClientIdForForm(null);
   };
 
   const generateTicketNumber = async () => {
@@ -810,7 +775,7 @@ export default function Quotations() {
         throw new Error("No authentication token found");
       }
 
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      const userData = JSON.parse(localStorage.getItem("erp-user"));
       if (!userData) {
         throw new Error("User data not found");
       }
@@ -818,19 +783,21 @@ export default function Quotations() {
       const completeTicketData = {
         ...ticketData,
         createdBy: userData.id,
-        statusHistory: [{
-          status: ticketData.status,
-          changedAt: new Date(),
-          changedBy: userData.id
-        }],
+        statusHistory: [
+          {
+            status: ticketData.status,
+            changedAt: new Date(),
+            changedBy: userData.id,
+          },
+        ],
         documents: {
           quotation: "",
           po: "",
           pi: "",
           challan: "",
           packingList: "",
-          feedback: ""
-        }
+          feedback: "",
+        },
       };
 
       const response = await axios.post(
@@ -848,14 +815,14 @@ export default function Quotations() {
         setShowTicketModal(false);
         setError(null);
         alert(`Ticket ${response.data.ticketNumber} created successfully!`);
-        navigate('/tickets');
+        navigate("/tickets");
       }
     } catch (error) {
       console.error("Error creating ticket:", error);
       setError(
         error.response?.data?.message ||
-        error.message ||
-        "Failed to create ticket. Please try again."
+          error.message ||
+          "Failed to create ticket. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -864,12 +831,17 @@ export default function Quotations() {
 
   const handleEdit = (quotation) => {
     setCurrentQuotation(quotation);
+    // Ensure orderIssuedBy has the necessary fields, or provide fallbacks
+    const orderIssuedById = quotation.orderIssuedBy?._id || "";
+    // const orderIssuedByName = quotation.orderIssuedBy 
+    //   ? `${quotation.orderIssuedBy.firstname || ''} ${quotation.orderIssuedBy.lastname || ''}`.trim() 
+    //   : "N/A";
+
     setQuotationData({
       date: formatDateForInput(quotation.date),
       referenceNumber: quotation.referenceNumber,
       validityDate: formatDateForInput(quotation.validityDate),
-      dispatchDays: quotation.dispatchDays,
-      orderIssuedBy: quotation.orderIssuedBy,
+      orderIssuedBy: orderIssuedById, // Store the ID
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -885,19 +857,98 @@ export default function Quotations() {
         gstNumber: quotation.client?.gstNumber || "",
         email: quotation.client?.email || "",
         phone: quotation.client?.phone || "",
+        _id: quotation.client?._id || null,
       },
     });
     setShowModal(true);
   };
 
   const openCreateModal = async () => {
+    if (!user) {
+      setError("User data is not available. Please log in again.");
+      // Optionally, navigate to login
+      // navigate("/login", { state: { from: "/quotations" } });
+      return;
+    }
     setCurrentQuotation(null);
     setQuotationData({
       ...initialQuotationData,
       referenceNumber: generateQuotationNumber(),
+      orderIssuedBy: user.id, 
+      client: { ...initialQuotationData.client, _id: null } // Ensure client _id is null for new
     });
+    setSelectedClientIdForForm(null);
+    setFormValidated(false); // Reset validation state for new form
     setShowModal(true);
   };
+
+
+ const handleDeleteQuotation = async (quotation) => {
+  if (!quotation || !quotation._id) {
+    setError("Invalid quotation selected for deletion.");
+    return;
+  }
+
+  const confirmDelete = window.confirm(
+    `Are you sure you want to delete quotation ${quotation.referenceNumber}? This action cannot be undone.`
+  );
+
+  if (!confirmDelete) return;
+
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("No authentication token found");
+
+    await axios.delete(`http://localhost:3000/api/quotations/${quotation._id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // ✅ Success actions
+    setError(null);
+    setCurrentQuotation(null);
+    setShowModal(false);
+    resetForm(); // Reset form if used in UI
+    fetchQuotations(); // Refresh data
+  } catch (error) {
+    console.error("Error deleting quotation:", error);
+    let errorMessage = "Failed to delete quotation. Please try again.";
+
+    if (error.response) {
+      if (error.response.status === 401) {
+        navigate("/login", { state: { from: "/quotations" } });
+        setIsLoading(false);
+        return;
+      }
+      errorMessage = error.response.data.message || errorMessage;
+    } else if (error.request) {
+      errorMessage = "No response from server. Check your network connection.";
+    }
+
+    setError(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const handleClientSelect = (client) => {
+    setQuotationData(prev => ({
+      ...prev,
+      client: {
+        _id: client._id,
+        companyName: client.companyName || '',
+        gstNumber: client.gstNumber || '',
+        email: client.email || '',
+        phone: client.phone || '',
+      }
+    }));
+    setSelectedClientIdForForm(client._id);
+  };
+
 
   return (
     <div>
@@ -1004,19 +1055,31 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => handleCreateTicket(quotation)}
                       >
-                        Create Ticket
+                        ➕
                       </Button>
                       <Button
                         variant="primary"
                         size="sm"
                         onClick={() => {
                           setCurrentQuotation(quotation);
-                          console.log("Quotation goods with units:", quotation.goods);
+                          console.log(
+                            "Quotation goods with units:",
+                            quotation.goods
+                          );
                           setShowPdfModal(true);
                         }}
                       >
-                        View PDF
+                        👁️
                       </Button>
+                     <Button
+  variant="danger"
+  size="sm"
+  onClick={() => handleDeleteQuotation(quotation)}
+  disabled={isLoading}
+>
+  🗑️
+</Button>
+
                     </div>
                   </td>
                 </tr>
@@ -1088,17 +1151,37 @@ export default function Quotations() {
           dialogClassName="custom-modal"
           centered
         >
-          <Modal.Header closeButton style={{ borderBottom: '1px solid #dee2e6' }}>
+          <Modal.Header
+            closeButton
+            style={{ borderBottom: "1px solid #dee2e6" }}
+          >
             <Modal.Title>
-              {currentQuotation ? "Edit Quotation" : "Create New Quotation"}
+              {currentQuotation
+                ? `Edit Quotation - ${quotationData.referenceNumber}`
+                : `Create New Quotation - ${quotationData.referenceNumber}`}
             </Modal.Title>
           </Modal.Header>
           <div style={fullScreenModalStyle}>
+            {(() => {
+                let orderIssuedByNameDisplay = 'N/A';
+                if (currentQuotation && currentQuotation.orderIssuedBy) {
+                  // When editing, use populated data from currentQuotation
+                  orderIssuedByNameDisplay = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim() || 'Details unavailable';
+                } else if (!currentQuotation && user) {
+                  // When creating, use logged-in user's data from AuthContext
+                  orderIssuedByNameDisplay = `${user.firstname || ''} ${user.lastname || ''}`.trim() || 'Logged-in user';
+                }
+
+                // This block is for variable declaration, actual usage is in the Form.Control below
+                return null; 
+            })()}
             <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
               <Modal.Body>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Date <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Date <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       required
                       type="date"
@@ -1117,7 +1200,9 @@ export default function Quotations() {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Validity Date <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Validity Date <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       required
                       type="date"
@@ -1130,68 +1215,103 @@ export default function Quotations() {
 
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Dispatch Days <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      required
-                      type="number"
-                      min="1"
-                      name="dispatchDays"
-                      value={quotationData.dispatchDays}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Order Issued By <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      name="orderIssuedBy"
-                      value={quotationData.orderIssuedBy}
-                      onChange={handleInputChange}
-                    />
+                    <Form.Label>
+                      Order Issued By <span className="text-danger">*</span>
+                    </Form.Label>
+                    {/* Determine the display name for Order Issued By */}
+                    {(() => {
+                      let nameToShow = 'Loading...';
+                      if (currentQuotation && currentQuotation.orderIssuedBy) {
+                        nameToShow = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim();
+                      } else if (!currentQuotation && user) {
+                        nameToShow = `${user.firstname || ''} ${user.lastname || ''}`.trim();
+                      }
+                      return (
+                        <Form.Control
+                          required
+                          type="text"
+                          name="orderIssuedBy" // Name matches the ID field in quotationData
+                          value={nameToShow || 'N/A'} // Display the derived name
+                          readOnly // Make the field non-editable
+                          onChange={handleInputChange} // Kept for consistency, but readOnly prevents user changes
+                        />
+                      );
+                    })()}
                   </Form.Group>
                 </div>
 
                 <h5>Client Details</h5>
+                <ClientSearchComponent
+                  onClientSelect={handleClientSelect}
+                  placeholder="Search & select client or enter details manually"
+                  currentClientId={selectedClientIdForForm}
+                />
+                {selectedClientIdForForm && (
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="mb-2 d-block" // d-block for full width if desired, or adjust styling
+                    onClick={() => {
+                      setSelectedClientIdForForm(null);
+                      setQuotationData(prev => ({
+                        ...prev,
+                        client: { ...initialQuotationData.client, _id: null } 
+                      }));
+                    }}
+                  > Clear Selected Client & Enter Manually
+                  </Button>
+                )}
                 <div className="row">
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Company Name <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       required
                       type="text"
                       name="client.companyName"
                       value={quotationData.client.companyName}
                       onChange={handleInputChange}
+                      readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>GST Number <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      GST Number <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       required
                       type="text"
                       name="client.gstNumber"
                       value={quotationData.client.gstNumber}
                       onChange={handleInputChange}
+                      readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
                 </div>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Email <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Email <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       type="email"
                       name="client.email"
                       value={quotationData.client.email}
                       onChange={handleInputChange}
+                      readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
                   <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>Phone <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>
+                      Phone <span className="text-danger">*</span>
+                    </Form.Label>
                     <Form.Control
                       type="tel"
                       name="client.phone"
                       value={quotationData.client.phone}
                       onChange={handleInputChange}
+                      readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
                 </div>
@@ -1202,7 +1322,8 @@ export default function Quotations() {
                   handleGoodsChange={handleGoodsChange}
                   currentQuotation={currentQuotation}
                   isEditing={true}
-                  onAddItem={handleAddItem} // Pass the handler here
+                  onAddItem={handleAddItem}
+                  onDeleteItem={handleDeleteItem} // Pass the new handler here
                 />
 
                 <div className="bg-light p-3 rounded">
@@ -1228,12 +1349,21 @@ export default function Quotations() {
                   </div>
                   <div className="row">
                     <div className="col-md-12">
-                      <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                      <h5>
+                        Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
+                      </h5>
                     </div>
                   </div>
                 </div>
               </Modal.Body>
-              <Modal.Footer style={{ position: 'sticky', bottom: 0, zIndex: 1050, backgroundColor: 'white' }}>
+              <Modal.Footer
+                style={{
+                  position: "sticky",
+                  bottom: 0,
+                  zIndex: 1050,
+                  backgroundColor: "white",
+                }}
+              >
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -1241,11 +1371,18 @@ export default function Quotations() {
                     setCurrentQuotation(null);
                     resetForm();
                   }}
+                  disabled={isLoading}
                 >
                   Close
                 </Button>
-                <Button variant="primary" type="submit">
-                  {currentQuotation ? "Update Quotation" : "Save Quotation"}
+                <Button variant="primary" type="submit" disabled={isLoading}>
+                  {isLoading
+                    ? currentQuotation
+                      ? "Updating..."
+                      : "Saving..."
+                    : currentQuotation
+                    ? "Update Quotation"
+                    : "Save Quotation"}
                 </Button>
               </Modal.Footer>
             </Form>
@@ -1274,7 +1411,10 @@ export default function Quotations() {
               Quotation PDF - {currentQuotation?.referenceNumber}
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body className="pdf-viewer-container" style={{ height: "600px" }}>
+          <Modal.Body
+            className="pdf-viewer-container"
+            style={{ height: "600px" }}
+          >
             {currentQuotation && (
               <>
                 <div style={{ height: "500px", width: "100%" }}>

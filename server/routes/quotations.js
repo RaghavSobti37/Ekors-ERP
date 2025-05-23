@@ -56,9 +56,23 @@ const handleQuotationUpsert = async (req, res) => {
 
     const populated = await Quotation.findById(quotation._id)
       .populate('client')
-      .populate('user', 'name email');
-      
+      .populate('user', 'name email')
+      .populate('orderIssuedBy', 'firstname lastname');
+
+    if (populated && savedClient) {
+      try {
+        await Client.findByIdAndUpdate(
+          savedClient._id,
+          { $addToSet: { quotations: populated._id } },
+          { new: true }
+        );
+      } catch (clientUpdateError) {
+        console.error("Error updating client with quotation ID:", clientUpdateError);
+        // Log this error, but don't let it fail the main quotation creation/update response
+      }
+    }
     res.status(id ? 200 : 201).json(populated);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -125,7 +139,8 @@ router.get('/:id', auth, async (req, res) => {
     const quotation = await Quotation.findOne({
       _id: req.params.id,
       user: req.user._id
-    }).populate('client');
+    }).populate('client')
+    .populate('orderIssuedBy', 'firstname lastname');
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found' });
@@ -147,6 +162,19 @@ router.delete('/:id', auth, async (req, res) => {
 
     if (!quotation) {
       return res.status(404).json({ message: 'Quotation not found' });
+    }
+
+    // If quotation had a client, remove this quotation from that client's list
+    if (quotation.client) {
+      try {
+        await Client.findByIdAndUpdate(
+          quotation.client, // This is the client's ID
+          { $pull: { quotations: quotation._id } }
+        );
+      } catch (clientUpdateError) {
+        console.error("Error removing quotation from client's list during delete:", clientUpdateError);
+        // Log and continue, as quotation deletion was successful
+      }
     }
 
     res.json({ message: 'Quotation deleted successfully' });
