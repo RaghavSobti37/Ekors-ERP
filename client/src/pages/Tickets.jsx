@@ -429,39 +429,39 @@ export default function Dashboard() {
     }
   };
 
-useEffect(() => {
-  const fetchTickets = async () => {
-    setIsLoading(true);
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token found");
+  useEffect(() => {
+    const fetchTickets = async () => {
+      setIsLoading(true);
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+
+        const response = await axios.get("http://localhost:3000/api/tickets", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            populate:
+              "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy",
+          },
+        });
+
+        setTickets(response.data);
+      } catch (error) {
+        const errorMsg =
+          error.response?.data?.error || "Failed to load tickets";
+        setError(errorMsg);
+        console.error("Error fetching tickets:", error);
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          populate:
-            "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy",
-        },
-      });
-
-      setTickets(response.data);
-    } catch (error) {
-      const errorMsg = error.response?.data?.error || "Failed to load tickets";
-      setError(errorMsg);
-      console.error("Error fetching tickets:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  setLoggedInUser(getLoggedInUserData()); // if this is synchronous, it's fine here
-  fetchTickets(); // this is safe here because it's inside useEffect
-}, []);
-
+    setLoggedInUser(getLoggedInUserData()); // if this is synchronous, it's fine here
+    fetchTickets(); // this is safe here because it's inside useEffect
+  }, []);
 
   const handleProgressClick = (ticket) => {
     setSelectedTicket(ticket);
@@ -764,8 +764,8 @@ useEffect(() => {
         const updatedTicketFromServer = response.data.ticket;
 
         // Update the main tickets list in the UI
-        setTickets(prevTickets =>
-          prevTickets.map(t =>
+        setTickets((prevTickets) =>
+          prevTickets.map((t) =>
             t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
           )
         );
@@ -1375,7 +1375,6 @@ useEffect(() => {
               </th>
               <th>Progress</th>
               <th>Actions</th>
-              
             </tr>
           </thead>
           <tbody>
@@ -1402,18 +1401,24 @@ useEffect(() => {
                         ((currentStatusIndex + 1) / statusStages.length) * 100
                       )
                     : 0;
+
+                const isUserAdmin = loggedInUser?.role === "admin";
+                const isUserCurrentAssignee = ticket.currentAssignee?._id === loggedInUser?.id;
+                const canModifyTicket = isUserAdmin || isUserCurrentAssignee;
+
                 return (
                   <tr key={ticket.ticketNumber}>
                     <td>{ticket.ticketNumber}</td>
                     {/* <td>{ticket.quotationNumber}</td> */}
-                     <td>
+                    <td>
                       {ticket.currentAssignee ? (
                         <>
                           {ticket.currentAssignee.firstname}{" "}
                           {ticket.currentAssignee.lastname}
                         </>
                       ) : (
-                        "Created by me")}
+                        "Created by me"
+                      )}
                     </td>
                     <td>{ticket.companyName}</td>
                     <td>
@@ -1453,8 +1458,8 @@ useEffect(() => {
                           variant="primary"
                           size="sm"
                           onClick={() => handleEdit(ticket)}
-                          title="Edit"
-                          disabled={!ticket.currentAssignee || ticket.currentAssignee._id !== loggedInUser?._id}
+                          disabled={!canModifyTicket}
+                          title={!canModifyTicket ? "Only admin or current assignee can edit this ticket" : "Edit"}
                         >
                           <i className="bi bi-pencil me-1"></i>✏️
                         </Button>
@@ -1463,15 +1468,14 @@ useEffect(() => {
                           variant="warning"
                           size="sm"
                           onClick={() => handleTransfer(ticket)}
-                          title="Transfer"
-                          disabled={!ticket.currentAssignee || ticket.currentAssignee._id !== loggedInUser?._id}
+                          disabled={!canModifyTicket}
+                          title={!canModifyTicket ? "Only admin or current assignee can transfer this ticket" : "Transfer"}
                         >
                           <i className="bi bi-arrow-left-right me-1"></i>
                           Transfer
                         </Button>
                       </div>
                     </td>
-                   
                   </tr>
                 );
               })

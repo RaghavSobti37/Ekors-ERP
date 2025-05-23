@@ -99,8 +99,6 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
-// ... (keep all the imports and other code the same until GoodsTable component)
-
 const GoodsTable = ({
   goods,
   handleGoodsChange,
@@ -246,14 +244,15 @@ export default function Quotations() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
   const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: "ascending",
+    key: "date", // Default sort key to 'date'
+    direction: "descending", // Default sort direction to 'descending' (newest first)
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
 
   const getAuthToken = () => {
     try {
@@ -270,7 +269,7 @@ export default function Quotations() {
 
   const generateQuotationNumber = () => {
     const now = new Date();
-    const year = now.getFullYear();
+    const year = now.getFullYear().toString().slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
@@ -339,8 +338,8 @@ export default function Quotations() {
       console.error("Error fetching quotations:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to load quotations. Please try again."
+        error.message ||
+        "Failed to load quotations. Please try again."
       );
 
       if (error.response?.status === 401) {
@@ -416,9 +415,9 @@ export default function Quotations() {
   const totalPages = Math.ceil(filteredQuotations.length / itemsPerPage);
 
   const requestSort = (key) => {
-    let direction = "ascending";
-    if (sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending";
+    let direction = "descending";
+    if (sortConfig.key === key && sortConfig.direction === "descending") {
+      direction = "ascending";
     }
     setSortConfig({ key, direction });
   };
@@ -699,7 +698,7 @@ export default function Quotations() {
     } catch (error) {
       console.error("Error generating ticket number:", error);
       const now = new Date();
-     const year = now.getFullYear();
+     const year = now.getFullYear().toString().slice(-2);
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const day = String(now.getDate()).padStart(2, "0");
       const hours = String(now.getHours()).padStart(2, "0");
@@ -824,8 +823,8 @@ export default function Quotations() {
       console.error("Error creating ticket:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to create ticket. Please try again."
+        error.message ||
+        "Failed to create ticket. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -835,10 +834,10 @@ export default function Quotations() {
   const handleEdit = (quotation) => {
     setCurrentQuotation(quotation);
     // Ensure orderIssuedBy has the necessary fields, or provide fallbacks
-    const orderIssuedById = quotation.orderIssuedBy?._id || "";
-    // const orderIssuedByName = quotation.orderIssuedBy
-    //   ? `${quotation.orderIssuedBy.firstname || ''} ${quotation.orderIssuedBy.lastname || ''}`.trim()
-    //   : "N/A";
+    // If quotation.orderIssuedBy exists and has an _id, use it.
+    // Otherwise, set to null to avoid sending an empty string "" for an ObjectId,
+    // which can cause backend validation/cast errors.
+    const orderIssuedById = quotation.orderIssuedBy?._id || null;
 
     setQuotationData({
       date: formatDateForInput(quotation.date),
@@ -1155,37 +1154,46 @@ export default function Quotations() {
           dialogClassName="custom-modal"
           centered
         >
+          {/* Updated Modal Header with same styling as CreateTicketModal */}
           <Modal.Header
-            closeButton
-            style={{ borderBottom: "1px solid #dee2e6" }}
-          >
-            <Modal.Title>
-              {currentQuotation
-                ? `Edit Quotation - ${quotationData.referenceNumber}`
-                : `Create New Quotation - ${quotationData.referenceNumber}`}
-            </Modal.Title>
-          </Modal.Header>
-          <div style={fullScreenModalStyle}>
-            {(() => {
-              let orderIssuedByNameDisplay = "N/A";
-              if (currentQuotation && currentQuotation.orderIssuedBy) {
-                // When editing, use populated data from currentQuotation
-                orderIssuedByNameDisplay =
-                  `${currentQuotation.orderIssuedBy.firstname || ""} ${
-                    currentQuotation.orderIssuedBy.lastname || ""
-                  }`.trim() || "Details unavailable";
-              } else if (!currentQuotation && user) {
-                // When creating, use logged-in user's data from AuthContext
-                orderIssuedByNameDisplay =
-                  `${user.firstname || ""} ${user.lastname || ""}`.trim() ||
-                  "Logged-in user";
-              }
-
-              // This block is for variable declaration, actual usage is in the Form.Control below
-              return null;
-            })()}
-            <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
-              <Modal.Body>
+    closeButton
+    onHide={() => {
+      setShowModal(false);
+      setCurrentQuotation(null);
+      resetForm();
+    }}
+    style={{
+      borderBottom: '1px solid #dee2e6',
+      padding: '1rem',
+      flexShrink: 0 // Prevent header from shrinking
+    }}
+  >
+    <Modal.Title>
+      {currentQuotation
+        ? `Edit Quotation - ${quotationData.referenceNumber}`
+        : `Create New Quotation - ${quotationData.referenceNumber}`}
+      <br />
+    </Modal.Title>
+  </Modal.Header>          
+            {/* The div with fullScreenModalStyle and the unused IIFE were removed.
+                The Form is now a direct child of Modal's content area.
+                Its style is adjusted to correctly fill space and manage layout. */}
+            <Form 
+              noValidate 
+              validated={formValidated} 
+              onSubmit={handleSubmit} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                flexGrow: 1, // Make form take available vertical space
+                overflow: 'hidden' // Prevent form itself from scrolling; Modal.Body will scroll
+              }}
+            >
+              <Modal.Body style={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                padding: '20px'
+              }}>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
                     <Form.Label>
@@ -1222,39 +1230,6 @@ export default function Quotations() {
                   </Form.Group>
                 </div>
 
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Order Issued By <span className="text-danger">*</span>
-                    </Form.Label>
-                    {/* Determine the display name for Order Issued By */}
-                    {(() => {
-                      let nameToShow = "Loading...";
-                      if (currentQuotation && currentQuotation.orderIssuedBy) {
-                        nameToShow = `${
-                          currentQuotation.orderIssuedBy.firstname || ""
-                        } ${
-                          currentQuotation.orderIssuedBy.lastname || ""
-                        }`.trim();
-                      } else if (!currentQuotation && user) {
-                        nameToShow = `${user.firstname || ""} ${
-                          user.lastname || ""
-                        }`.trim();
-                      }
-                      return (
-                        <Form.Control
-                          required
-                          type="text"
-                          name="orderIssuedBy" // Name matches the ID field in quotationData
-                          value={nameToShow || "N/A"} // Display the derived name
-                          readOnly // Make the field non-editable
-                          onChange={handleInputChange} // Kept for consistency, but readOnly prevents user changes
-                        />
-                      );
-                    })()}
-                  </Form.Group>
-                </div>
-
                 <h5>Client Details</h5>
                 <ClientSearchComponent
                   onClientSelect={handleClientSelect}
@@ -1265,7 +1240,7 @@ export default function Quotations() {
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    className="mb-2 d-block" // d-block for full width if desired, or adjust styling
+                    className="mb-2 d-block"
                     onClick={() => {
                       setSelectedClientIdForForm(null);
                       setQuotationData((prev) => ({
@@ -1340,7 +1315,7 @@ export default function Quotations() {
                   currentQuotation={currentQuotation}
                   isEditing={true}
                   onAddItem={handleAddItem}
-                  onDeleteItem={handleDeleteItem} // Pass the new handler here
+                  onDeleteItem={handleDeleteItem}
                 />
 
                 <div className="bg-light p-3 rounded">
@@ -1373,14 +1348,11 @@ export default function Quotations() {
                   </div>
                 </div>
               </Modal.Body>
-              <Modal.Footer
-                style={{
-                  position: "sticky",
-                  bottom: 0,
-                  zIndex: 1050,
-                  backgroundColor: "white",
-                }}
-              >
+              <Modal.Footer style={{
+                borderTop: '1px solid #dee2e6',
+                padding: '15px',
+                flexShrink: 0
+              }}>
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -1398,12 +1370,11 @@ export default function Quotations() {
                       ? "Updating..."
                       : "Saving..."
                     : currentQuotation
-                    ? "Update Quotation"
-                    : "Save Quotation"}
+                      ? "Update Quotation"
+                      : "Save Quotation"}
                 </Button>
               </Modal.Footer>
             </Form>
-          </div>
         </Modal>
 
         {/* Create Ticket Modal */}
