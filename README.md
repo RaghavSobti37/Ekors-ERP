@@ -1,127 +1,189 @@
 # ERP System Documentation
 
 ## Overview
-This ERP (Enterprise Resource Planning) system is a comprehensive solution designed to manage various business operations including client management, inventory, quotations, ticketing, and time logging. The system consists of a React-based frontend (client) and a Node.js backend (server).
 
-## File Structure
+This ERP (Enterprise Resource Planning) system is a full-stack solution built to streamline business operations such as client management, inventory, quotations, ticketing, purchases, time logging, and challan generation. The frontend is developed using **React.js**, and the backend is built on **Node.js**, **Express**, and **MongoDB**.
 
-### Client Side
+---
+
+## 📁 File Structure
+
+### 🖥️ Client (Frontend)
+
 ```
 client/
-├── node_modules/          # Project dependencies
-├── public/                # Static assets
+├── public/                  # Static files
 ├── src/
-│   ├── assets/            # Images, fonts, etc.
-│   ├── components/        # Reusable UI components
-│   ├── css/               # Stylesheets
-│   ├── templates/         # Template files
-│   ├── App.jsx            # Main application component
-│   ├── Challan.jsx        # Challan management component
-│   ├── History.jsx        # History tracking component
-│   ├── Itemslist.jsx      # Inventory management component
-│   ├── Login.jsx          # Authentication component
-│   ├── Logtime.jsx        # Time logging component
-│   ├── main.jsx          # Application entry point
-│   ├── Quotations.jsx     # Quotation management component
-│   ├── Signup.jsx         # User registration component
-│   └── Tickets.jsx        # Ticket management component
-├── .gitignore             # Git ignore rules
-├── eslint.config.js       # ESLint configuration
-├── index.html             # Main HTML file
-├── package-lock.json      # NPM dependency tree
-├── package.json           # Project metadata and scripts
-├── README.md              # Client documentation
-├── vite.config.js         # Vite configuration
-└── yarn.lock              # Yarn dependency tree
+│   ├── assets/              # Images, logos, etc.
+│   ├── components/          # Reusable UI components
+│   ├── context/             # React context for global state
+│   ├── hooks/               # Custom React hooks
+│   ├── pages/               # Page-level components
+│   │   ├── Challan.jsx
+│   │   ├── History.jsx
+│   │   ├── Itemslist.jsx
+│   │   ├── Login.jsx
+│   │   ├── Logtime.jsx
+│   │   ├── Quotations.jsx
+│   │   ├── Signup.jsx
+│   │   └── Tickets.jsx
+│   ├── services/            # API service handlers
+│   ├── utils/               # Utility functions
+│   ├── App.jsx              # App layout and routing
+│   └── main.jsx             # Entry point
+├── vite.config.js           # Vite bundler config
+├── package.json             # Project metadata
+├── package-lock.json
+├── README.md
+└── .gitignore
 ```
 
-### Server Side
+### 🖥️ Server (Backend)
+
 ```
 server/
-├── middleware/            # Express middleware
-├── models/                # Database models
-│   ├── client.js          # Client model
-│   ├── item.js            # Login model
-│   ├── itemlist.js        # Item list model
-│   ├── LogTime.js         # Time logging model
-│   ├── opentickets.js     # Ticket model
-│   └── quotation.js       # Quotation model
-├── node_modules/          # Project dependencies
-├── routes/                # API routes
-│   ├── itemlistRoutes.js  # Item list routes
-│   ├── logTimeRoutes.js   # Time logging routes
-│   ├── quotations.js      # Quotation routes
-│   └── ticketRoutes.js    # Ticket routes
-├── uploads/               # File uploads directory
-├── db.js                  # Database connection
-├── index.js               # Server entry point
-├── package-lock.json      # NPM dependency tree
-├── package.json           # Project metadata and scripts
-├── yarn.lock              # Yarn dependency tree
-└── README.md              # Server documentation
+├── middleware/              # Express middlewares
+├── models/                  # Mongoose schemas
+│   ├── challan.js
+│   ├── client.js
+│   ├── item.js
+│   ├── logTime.js
+│   ├── opentickets.js
+│   ├── purchase.js
+│   ├── quotation.js
+│   ├── supplier.js
+│   └── user.js
+├── routes/                  # API routes
+│   ├── challanRoutes.js
+│   ├── clientRoutes.js
+│   ├── itemRoutes.js
+│   ├── logTimeRoutes.js
+│   ├── purchaseRoutes.js
+│   ├── quotationRoutes.js
+│   ├── supplierRoutes.js
+│   ├── ticketRoutes.js
+│   └── userRoutes.js
+├── controllers/             # Logic for route handlers
+├── utils/                   # Utility functions
+├── uploads/                 # Uploaded documents & files
+├── db.js                    # MongoDB connection setup
+├── index.js                 # Entry point for Express server
+├── .env                     # Environment variables
+├── package.json
+├── package-lock.json
+└── README.md
 ```
 
-## Key Features
+---
 
-1. **Client Management**
-   - Create and manage client records
-   - Track client interactions and history
+## ⚙️ Key Features
 
-2. **Inventory Management**
-   - Maintain item lists and stock levels
-   - Generate challans for items
+* **Client Management** – Create and manage clients with contact history.
+* **Inventory Management** – Track and update item stock levels.
+* **Quotations** – Generate and manage item quotations.
+* **Ticketing System** – Create and track client tickets.
+* **Challan System** – Issue challans tied to clients/tickets.
+* **Purchase System** – Manage procurement from suppliers.
+* **Time Logging** – Track employee hours and activities.
+* **Authentication** – Secure login/signup with JWT.
 
-3. **Quotation System**
-   - Create and manage price quotations
-   - Track quotation history
+---
 
-4. **Ticketing System**
-   - Create and manage support tickets
-   - Track open tickets and resolutions
-
-5. **Time Logging**
-   - Record and manage employee work hours
-   - Generate time reports
-
-6. **Authentication**
-   - Secure login and signup functionality
-   - User session management
-
-## Installation
+## 🚀 Getting Started
 
 ### Client
-1. Navigate to the client directory: `cd client`
-2. Install dependencies: `npm install` or `yarn install`
-3. Start development server: `npm run dev` or `yarn dev`
+
+```bash
+cd client
+npm install      # or yarn install
+npm run dev      # or yarn dev
+```
 
 ### Server
-1. Navigate to the server directory: `cd server`
-2. Install dependencies: `npm install` or `yarn install`
-3. Start the server: `npm start` or `yarn start`
 
-## Configuration
+```bash
+cd server
+npm install      # or yarn install
+npm start        # or yarn start
+```
 
-1. Create a `.env` file in the server directory with your database credentials:
-   ```
-   DB_HOST=your_database_host
-   DB_USER=your_database_user
-   DB_PASS=your_database_password
-   DB_NAME=your_database_name
-   JWT_SECRET=your_jwt_secret_key
-   ```
+### .env Configuration (in `server/`)
 
-## API Documentation
+```env
+MONGO_URI=mongodb://your_db_url
+JWT_SECRET=your_jwt_secret
+PORT=5000
+```
 
-The server provides RESTful API endpoints for all major functionalities. Refer to the individual route files in `server/routes/` for detailed endpoint documentation.
+---
 
-## Contributing
+## 🔌 API
 
-1. Fork the repository
-2. Create a new branch for your feature
+All APIs follow REST conventions. Refer to route/controller files in `server/routes/` and `server/controllers/` for detailed endpoints.
+
+---
+
+## 🧠 MongoDB Schema Relationship Summary
+
+### Core Entities
+
+* **User** – Central entity owning clients, tickets, items, and logs.
+* **Client** – Has multiple quotations and tickets.
+* **Supplier** – Provides items, used in purchases.
+* **Item** – Part of quotations and purchases.
+
+### Transactional
+
+* **Quotation** → Converts into **Ticket**
+* **Ticket** → Can generate **Challan**
+* **Purchase** → Updates **Item** stock
+* **LogTime** → Tracks time, optionally linked to Ticket
+
+---
+
+## 🧭 Visual Flow Diagram
+
+```
+    User
+     │
+     ├────> Client ─────> Quotation ─────┐
+     │                                   ↓
+     │                             Ticket 
+     │                                   ↑
+     ├────> Supplier ─────> Purchase ────┘
+     │                                   ↑
+     ├────> Item ────────────────────────┘
+     │
+     └────> LogTime 
+```
+
+---
+
+## 🔄 Business Flow Examples
+
+1. **Quotation → Ticket**
+
+   * Create a quotation for a client → Approve → Convert to ticket
+
+2. **Procurement Flow**
+
+   * Record purchase from supplier → Update item stock → Use in quotations.
+
+3. **Time Tracking**
+
+   * Log employee hours → Attach to ticket → Generate monthly reports.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a new branch (`git checkout -b feature-name`)
 3. Commit your changes
-4. Push to the branch
-5. Create a pull request
+4. Push and create a PR
 
-## Support
+---
 
-For any issues or questions, please open an issue in the repository or contact the development team.
+## 📫 Support
+
+For questions or bugs, raise an issue or contact the dev team directly.
