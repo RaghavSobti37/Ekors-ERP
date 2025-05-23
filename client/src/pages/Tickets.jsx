@@ -1488,18 +1488,6 @@ export default function Dashboard() {
                       style={{ fontSize: "2rem" }}
                     ></i>
                     <p className="mt-2">No tickets found</p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() =>
-                        alert(
-                          "Create New Ticket functionality to be implemented."
-                        )
-                      }
-                    >
-                      Create New Ticket
-                    </Button>
                   </div>
                 </td>
               </tr>
