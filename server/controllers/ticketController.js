@@ -1,7 +1,6 @@
 const Ticket = require("../models/opentickets");
 const User = require("../models/users");
 
-
 // Then modify the ticket creation endpoint to use the actual counter
 exports.createTicket = async (req, res) => {
   try {

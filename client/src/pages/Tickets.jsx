@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import Pagination from '../components/Pagination';
+import Pagination from "../components/Pagination";
 import axios from "axios";
 import {
   Modal,
@@ -15,10 +15,7 @@ import {
   Col,
 } from "react-bootstrap";
 import Navbar from "../components/Navbar.jsx";
-import {
-  PDFViewer,
-  PDFDownloadLink,
-} from "@react-pdf/renderer";
+import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import "../css/Style.css";
 import QuotationPDF from "../components/QuotationPDF.jsx";
 import PIPDF from "../components/PIPDF.jsx";
@@ -27,7 +24,11 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) {
     return null;
   }
-  return sortConfig.direction === "ascending" ? <span> ↑</span> : <span> ↓</span>;
+  return sortConfig.direction === "ascending" ? (
+    <span> ↑</span>
+  ) : (
+    <span> ↓</span>
+  );
 };
 
 const ItemSearchComponent = ({ onItemSelect, index }) => {
@@ -40,10 +41,10 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
 
   const getAuthToken = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      const userData = JSON.parse(localStorage.getItem("erp-user"));
       return userData?.token || null;
     } catch (e) {
-      console.error('Failed to parse user data:', e);
+      console.error("Failed to parse user data:", e);
       return null;
     }
   };
@@ -80,8 +81,8 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
 
       const response = await axios.get("http://localhost:3000/api/items", {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       setItems(response.data);
     } catch (err) {
@@ -160,10 +161,10 @@ const UserSearchComponent = ({ onUserSelect }) => {
 
   const getAuthToken = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      const userData = JSON.parse(localStorage.getItem("erp-user"));
       return userData?.token || null;
     } catch (e) {
-      console.error('Failed to parse user data:', e);
+      console.error("Failed to parse user data:", e);
       return null;
     }
   };
@@ -200,8 +201,8 @@ const UserSearchComponent = ({ onUserSelect }) => {
 
       const response = await axios.get("http://localhost:3000/api/users", {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       setUsers(response.data);
     } catch (err) {
@@ -252,12 +253,12 @@ const UserSearchComponent = ({ onUserSelect }) => {
               className="search-suggestion-item"
               onClick={() => handleUserClick(user)}
             >
-              <strong>{user.firstname} {user.lastname}</strong>
+              <strong>
+                {user.firstname} {user.lastname}
+              </strong>
               <span className="text-muted"> - {user.email}</span>
               <br />
-              <small>
-                Role: {user.role}
-              </small>
+              <small>Role: {user.role}</small>
             </div>
           ))}
         </div>
@@ -286,27 +287,52 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
   const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentDate, setPaymentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [paymentReference, setPaymentReference] = useState("");
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
-    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
+    billingAddress: {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
+    shippingAddress: {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
     status: "Quotation Sent", // Default status
-    documents: { quotation: "", po: "", pi: "", challan: "", packingList: "", invoice: "", feedback: "" },
+    documents: {
+      quotation: "",
+      po: "",
+      pi: "",
+      challan: "",
+      packingList: "",
+      invoice: "",
+      feedback: "",
+    },
     dispatchDays: "7-10 working", // Default for new tickets
-    validityDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(), // Default for new tickets
+    validityDate: new Date(
+      new Date().setDate(new Date().getDate() + 15)
+    ).toISOString(), // Default for new tickets
   });
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",
   });
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
   const statusStages = [
     "Quotation Sent",
@@ -326,7 +352,7 @@ export default function Dashboard() {
     challan: "Inspection",
     packingList: "Packing List",
     invoice: "Invoice Sent",
-    feedback: "Completed"
+    feedback: "Completed",
   };
 
   // Document icon mapping
@@ -337,7 +363,7 @@ export default function Dashboard() {
     challan: "bi-truck",
     packingList: "bi-box-seam",
     invoice: "bi-file-earmark-ruled",
-    feedback: "bi-chat-square-text"
+    feedback: "bi-chat-square-text",
   };
 
   // Document color mapping
@@ -348,7 +374,7 @@ export default function Dashboard() {
     challan: "info",
     packingList: "dark",
     invoice: "danger",
-    feedback: "secondary"
+    feedback: "secondary",
   };
 
   // Automatically update status in ticketData based on editTicket.documents when modal opens
@@ -359,7 +385,8 @@ export default function Dashboard() {
 
       // Determine the highest status based on existing documents in editTicket
       Object.entries(documentStatusMap).forEach(([docType, expectedStatus]) => {
-        if (editTicket.documents[docType]) { // If the document exists
+        if (editTicket.documents[docType]) {
+          // If the document exists
           const expectedStatusIndex = statusStages.indexOf(expectedStatus);
           if (expectedStatusIndex > highestStatusIndex) {
             highestStatusAchieved = expectedStatus;
@@ -369,49 +396,79 @@ export default function Dashboard() {
       });
 
       // If the calculated highest status is different from current ticketData.status, update it.
-      if (ticketData.status !== highestStatusAchieved && statusStages.indexOf(highestStatusAchieved) > statusStages.indexOf(ticketData.status)) {
-        setTicketData(prev => ({ ...prev, status: highestStatusAchieved }));
+      if (
+        ticketData.status !== highestStatusAchieved &&
+        statusStages.indexOf(highestStatusAchieved) >
+          statusStages.indexOf(ticketData.status)
+      ) {
+        setTicketData((prev) => ({ ...prev, status: highestStatusAchieved }));
       }
     }
   }, [editTicket]); // Rerun when editTicket changes (modal opens/ticket changes)
 
   const getAuthToken = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('erp-user'));
+      const userData = JSON.parse(localStorage.getItem("erp-user"));
       return userData?.token || null;
     } catch (e) {
-      console.error('Failed to parse user data:', e);
+      console.error("Failed to parse user data:", e);
+      return null;
+    }
+  };
+
+  const getLoggedInUserData = () => {
+    try {
+      const userDataString = localStorage.getItem("erp-user");
+      if (userDataString) {
+        return JSON.parse(userDataString);
+      }
+      return null;
+    } catch (e) {
+      console.error("Failed to parse user data from localStorage:", e);
       return null;
     }
   };
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    const fetchTickets = async () => {
+      setIsLoading(true);
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
 
-  const fetchTickets = async () => {
-    setIsLoading(true);
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token found");
+        const response = await axios.get("http://localhost:3000/api/tickets", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            populate:
+              "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy",
+          },
+        });
+
+        setTickets(response.data);
+      } catch (error) {
+        const errorMsg =
+          error.response?.data?.error || "Failed to load tickets";
+        setError(errorMsg);
+        console.error("Error fetching tickets:", error);
+      } finally {
+        setIsLoading(false);
       }
-      const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTickets(response.data);
-    } catch (error) {
-      const errorMsg = error.response?.data?.error || "Failed to load tickets";
-      setError(errorMsg);
-      console.error("Error fetching tickets:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    setLoggedInUser(getLoggedInUserData()); // if this is synchronous, it's fine here
+    fetchTickets(); // this is safe here because it's inside useEffect
+  }, []);
 
   const handleProgressClick = (ticket) => {
     setSelectedTicket(ticket);
-    setPaymentAmount(ticket.grandTotal - (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0));
+    setPaymentAmount(
+      ticket.grandTotal -
+        (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
+    );
     setShowPaymentModal(true);
   };
 
@@ -421,17 +478,25 @@ export default function Dashboard() {
       if (!token) throw new Error("No authentication token found");
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${selectedTicket._id}/payments`,
-        { amount: paymentAmount, date: paymentDate, reference: paymentReference },
+        {
+          amount: paymentAmount,
+          date: paymentDate,
+          reference: paymentReference,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.status === 200) {
         await fetchTickets();
         setShowPaymentModal(false);
-        alert('Payment recorded successfully!');
+        alert("Payment recorded successfully!");
       }
     } catch (error) {
       console.error("Error recording payment:", error);
-      setError(`Failed to record payment: ${error.response?.data?.message || error.message}`);
+      setError(
+        `Failed to record payment: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
@@ -441,13 +506,19 @@ export default function Dashboard() {
       if (sortConfig.key === "date") {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
-        return sortConfig.direction === "ascending" ? dateA - dateB : dateB - dateA;
+        return sortConfig.direction === "ascending"
+          ? dateA - dateB
+          : dateB - dateA;
       }
       if (sortConfig.key === "grandTotal") {
-        return sortConfig.direction === "ascending" ? a.grandTotal - b.grandTotal : b.grandTotal - a.grandTotal;
+        return sortConfig.direction === "ascending"
+          ? a.grandTotal - b.grandTotal
+          : b.grandTotal - a.grandTotal;
       }
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "ascending" ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "ascending" ? 1 : -1;
+      if (a[sortConfig.key] < b[sortConfig.key])
+        return sortConfig.direction === "ascending" ? -1 : 1;
+      if (a[sortConfig.key] > b[sortConfig.key])
+        return sortConfig.direction === "ascending" ? 1 : -1;
       return 0;
     });
   }, [tickets, sortConfig]);
@@ -455,15 +526,17 @@ export default function Dashboard() {
   const filteredTickets = useMemo(() => {
     if (!searchTerm) return sortedTickets;
     const term = searchTerm.toLowerCase();
-    return sortedTickets.filter(ticket =>
-      ticket.ticketNumber?.toLowerCase().includes(term) ||
-      ticket.quotationNumber?.toLowerCase().includes(term) ||
-      ticket.companyName?.toLowerCase().includes(term) ||
-      ticket.client?.companyName?.toLowerCase().includes(term) ||
-      ticket.goods.some(item =>
-        item.description?.toLowerCase().includes(term) ||
-        item.hsnSacCode?.toLowerCase().includes(term)
-      )
+    return sortedTickets.filter(
+      (ticket) =>
+        ticket.ticketNumber?.toLowerCase().includes(term) ||
+        ticket.quotationNumber?.toLowerCase().includes(term) ||
+        ticket.companyName?.toLowerCase().includes(term) ||
+        ticket.client?.companyName?.toLowerCase().includes(term) ||
+        ticket.goods.some(
+          (item) =>
+            item.description?.toLowerCase().includes(term) ||
+            item.hsnSacCode?.toLowerCase().includes(term)
+        )
     );
   }, [sortedTickets, searchTerm]);
 
@@ -481,53 +554,100 @@ export default function Dashboard() {
   };
 
   const addRow = () => {
-    setTicketData(prev => ({
+    setTicketData((prev) => ({
       ...prev,
-      goods: [...prev.goods, { srNo: prev.goods.length + 1, description: "", hsnSacCode: "", quantity: 1, price: 0, amount: 0 }],
+      goods: [
+        ...prev.goods,
+        {
+          srNo: prev.goods.length + 1,
+          description: "",
+          hsnSacCode: "",
+          quantity: 1,
+          price: 0,
+          amount: 0,
+        },
+      ],
     }));
   };
 
   const handleItemSelect = (item, index) => {
     const updatedGoods = [...ticketData.goods];
-    updatedGoods[index] = { ...updatedGoods[index], description: item.name, hsnSacCode: item.hsnCode, price: item.price, amount: updatedGoods[index].quantity * item.price };
+    updatedGoods[index] = {
+      ...updatedGoods[index],
+      description: item.name,
+      hsnSacCode: item.hsnCode,
+      price: item.price,
+      amount: updatedGoods[index].quantity * item.price,
+    };
     updateTotals(updatedGoods);
   };
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
     updatedGoods[index][field] = value;
-    if (field === 'quantity' || field === 'price') {
-      updatedGoods[index].amount = (Number(updatedGoods[index].quantity) || 0) * (Number(updatedGoods[index].price) || 0);
+    if (field === "quantity" || field === "price") {
+      updatedGoods[index].amount =
+        (Number(updatedGoods[index].quantity) || 0) *
+        (Number(updatedGoods[index].price) || 0);
     }
     updateTotals(updatedGoods);
   };
 
   const updateTotals = (goods) => {
-    const totalQuantity = goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const totalAmount = goods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const totalQuantity = goods.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = goods.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
     const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
-    setTicketData(prev => ({ ...prev, goods, totalQuantity, totalAmount, gstAmount, grandTotal }));
+    setTicketData((prev) => ({
+      ...prev,
+      goods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
+    }));
   };
 
   const handleEdit = (ticket) => {
     setEditTicket(ticket);
     // Convert array address to object if needed
-    const billingAddress = Array.isArray(ticket.billingAddress) ? {
-      address1: ticket.billingAddress[0] || '',
-      address2: ticket.billingAddress[1] || '',
-      city: ticket.billingAddress[3] || '',
-      state: ticket.billingAddress[2] || '',
-      pincode: ticket.billingAddress[4] || ''
-    } : ticket.billingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+    const billingAddress = Array.isArray(ticket.billingAddress)
+      ? {
+          address1: ticket.billingAddress[0] || "",
+          address2: ticket.billingAddress[1] || "",
+          city: ticket.billingAddress[3] || "",
+          state: ticket.billingAddress[2] || "",
+          pincode: ticket.billingAddress[4] || "",
+        }
+      : ticket.billingAddress || {
+          address1: "",
+          address2: "",
+          city: "",
+          state: "",
+          pincode: "",
+        };
 
-    const shippingAddress = Array.isArray(ticket.shippingAddress) ? {
-      address1: ticket.shippingAddress[0] || '',
-      address2: ticket.shippingAddress[1] || '',
-      city: ticket.shippingAddress[3] || '',
-      state: ticket.shippingAddress[2] || '',
-      pincode: ticket.shippingAddress[4] || ''
-    } : ticket.shippingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+    const shippingAddress = Array.isArray(ticket.shippingAddress)
+      ? {
+          address1: ticket.shippingAddress[0] || "",
+          address2: ticket.shippingAddress[1] || "",
+          city: ticket.shippingAddress[3] || "",
+          state: ticket.shippingAddress[2] || "",
+          pincode: ticket.shippingAddress[4] || "",
+        }
+      : ticket.shippingAddress || {
+          address1: "",
+          address2: "",
+          city: "",
+          state: "",
+          pincode: "",
+        };
 
     setTicketData({
       companyName: ticket.companyName || "",
@@ -540,9 +660,19 @@ export default function Dashboard() {
       gstAmount: ticket.gstAmount || 0,
       grandTotal: ticket.grandTotal || 0,
       status: ticket.status || statusStages[0],
-      documents: ticket.documents || { quotation: "", po: "", pi: "", challan: "", packingList: "", invoice: "", feedback: "" },
+      documents: ticket.documents || {
+        quotation: "",
+        po: "",
+        pi: "",
+        challan: "",
+        packingList: "",
+        invoice: "",
+        feedback: "",
+      },
       dispatchDays: ticket.dispatchDays || "7-10 working",
-      validityDate: ticket.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+      validityDate:
+        ticket.validityDate ||
+        new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
     });
     setShowEditModal(true);
   };
@@ -577,21 +707,26 @@ export default function Dashboard() {
           ticketData.billingAddress.address2,
           ticketData.billingAddress.state,
           ticketData.billingAddress.city,
-          ticketData.billingAddress.pincode
+          ticketData.billingAddress.pincode,
         ],
         shippingAddress: [
           ticketData.shippingAddress.address1,
           ticketData.shippingAddress.address2,
           ticketData.shippingAddress.state,
           ticketData.shippingAddress.city,
-          ticketData.shippingAddress.pincode
-        ]
+          ticketData.shippingAddress.pincode,
+        ],
       };
 
       const response = await axios.put(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
         updateData,
-        { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` } }
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
       );
       if (response.status === 200) {
         fetchTickets();
@@ -600,30 +735,60 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Error updating ticket:", error);
-      setError(`Failed to update ticket: ${error.response?.data?.message || error.message}`);
+      setError(
+        `Failed to update ticket: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
-  const handleTransferTicket = async () => {
-    if (!selectedUser) {
+  const handleTransferTicket = async (user, note) => {
+    if (!user) {
       setError("Please select a user to transfer the ticket to");
       return;
     }
     try {
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
-        { userId: selectedUser._id },
-        { headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` } }
+        { userId: user._id, note },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
       );
+
       if (response.status === 200) {
+        const updatedTicketFromServer = response.data.ticket;
+
+        // Update the main tickets list in the UI
+        setTickets((prevTickets) =>
+          prevTickets.map((t) =>
+            t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
+          )
+        );
+
+        // Update the transferTicket state (source for the modal, though it will close)
+        // Ensure to use the latest full transfer history from the server response
+        setTransferTicket((prev) => ({
+          ...updatedTicketFromServer, // This ensures all fields are up-to-date
+        }));
+
         setError(null);
-        await fetchTickets();
-        setShowTransferModal(false);
-        alert(`Ticket successfully transferred to ${selectedUser.firstname} ${selectedUser.lastname}`);
+        setShowTransferModal(false); // Close the modal on successful transfer
+        alert(
+          `Ticket successfully transferred to ${updatedTicketFromServer.currentAssignee.firstname} ${updatedTicketFromServer.currentAssignee.lastname}`
+        );
       }
     } catch (error) {
       console.error("Error transferring ticket:", error);
-      setError(`Failed to transfer ticket: ${error.response?.data?.message || error.message}`);
+      setError(
+        `Failed to transfer ticket: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
@@ -631,9 +796,9 @@ export default function Dashboard() {
     if (!documentType || !editTicket) return null;
 
     const getAddressString = (addressObj) => {
-      if (!addressObj) return 'N/A';
+      if (!addressObj) return "N/A";
       if (Array.isArray(addressObj)) {
-        return addressObj.filter(Boolean).join(', ');
+        return addressObj.filter(Boolean).join(", ");
       }
       let parts = [];
       if (addressObj.address1) parts.push(addressObj.address1);
@@ -641,21 +806,36 @@ export default function Dashboard() {
       if (addressObj.city) parts.push(addressObj.city);
       if (addressObj.state) parts.push(addressObj.state);
       if (addressObj.pincode) parts.push(addressObj.pincode);
-      return parts.join(', ').replace(/ ,/g, ',');
+      return parts.join(", ").replace(/ ,/g, ",");
     };
 
-    const quotationDataForPDF = editTicket ? {
-      referenceNumber: editTicket.quotationNumber,
-      date: editTicket.createdAt,
-      client: {
-        companyName: editTicket.companyName,
-        siteLocation: getAddressString(editTicket.shippingAddress || editTicket.billingAddress),
-      },
-      goods: editTicket.goods.map(item => ({ ...item, unit: item.unit || 'Nos' })),
-      totalAmount: editTicket.totalAmount,
-      dispatchDays: ticketData.dispatchDays || editTicket.dispatchDays || "7-10 working",
-      validityDate: ticketData.validityDate || editTicket.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-    } : null;
+    const quotationDataForPDF = editTicket
+      ? {
+          referenceNumber: editTicket.quotationNumber,
+          date: editTicket.createdAt,
+          client: {
+            companyName: editTicket.companyName,
+            siteLocation: getAddressString(
+              editTicket.shippingAddress || editTicket.billingAddress
+            ),
+          },
+          goods: editTicket.goods.map((item) => ({
+            ...item,
+            unit: item.unit || "Nos",
+          })),
+          totalAmount: editTicket.totalAmount,
+          dispatchDays:
+            ticketData.dispatchDays ||
+            editTicket.dispatchDays ||
+            "7-10 working",
+          validityDate:
+            ticketData.validityDate ||
+            editTicket.validityDate ||
+            new Date(
+              new Date().setDate(new Date().getDate() + 15)
+            ).toISOString(),
+        }
+      : null;
 
     return (
       <div className="mt-4 p-3 border rounded bg-light">
@@ -669,10 +849,16 @@ export default function Dashboard() {
               <QuotationPDF quotation={quotationDataForPDF} />
             </PDFViewer>
             <div className="d-flex justify-content-center gap-2 mt-3">
-              <PDFDownloadLink document={<QuotationPDF quotation={quotationDataForPDF} />} fileName={`quotation_${quotationDataForPDF.referenceNumber}.pdf`}>
-                {({ loading }) => <Button variant="primary" disabled={loading}>
-                  <i className="bi bi-download me-2"></i>{loading ? "Generating..." : "Download Quotation"}
-                </Button>}
+              <PDFDownloadLink
+                document={<QuotationPDF quotation={quotationDataForPDF} />}
+                fileName={`quotation_${quotationDataForPDF.referenceNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    <i className="bi bi-download me-2"></i>
+                    {loading ? "Generating..." : "Download Quotation"}
+                  </Button>
+                )}
               </PDFDownloadLink>
               <Button variant="secondary" onClick={() => setDocumentType(null)}>
                 <i className="bi bi-x-circle me-2"></i>Close Preview
@@ -686,10 +872,16 @@ export default function Dashboard() {
               <PIPDF ticket={editTicket} />
             </PDFViewer>
             <div className="d-flex justify-content-center gap-2 mt-3">
-              <PDFDownloadLink document={<PIPDF ticket={editTicket} />} fileName={`pi_${editTicket.quotationNumber}.pdf`}>
-                {({ loading }) => <Button variant="primary" disabled={loading}>
-                  <i className="bi bi-download me-2"></i>{loading ? "Generating..." : "Download PI"}
-                </Button>}
+              <PDFDownloadLink
+                document={<PIPDF ticket={editTicket} />}
+                fileName={`pi_${editTicket.quotationNumber}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="primary" disabled={loading}>
+                    <i className="bi bi-download me-2"></i>
+                    {loading ? "Generating..." : "Download PI"}
+                  </Button>
+                )}
               </PDFDownloadLink>
               <Button variant="secondary" onClick={() => setDocumentType(null)}>
                 <i className="bi bi-x-circle me-2"></i>Close Preview
@@ -697,13 +889,20 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        {!["quotation", "pi"].includes(documentType) && ticketData.documents?.[documentType] && (
-          <div className="text-center p-4">
-            <a href={`http://localhost:3000/${ticketData.documents[documentType]}`} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-lg">
-              <i className="bi bi-eye me-2"></i>View {documentType.toUpperCase()} Document
-            </a>
-          </div>
-        )}
+        {!["quotation", "pi"].includes(documentType) &&
+          ticketData.documents?.[documentType] && (
+            <div className="text-center p-4">
+              <a
+                href={`http://localhost:3000/${ticketData.documents[documentType]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-lg"
+              >
+                <i className="bi bi-eye me-2"></i>View{" "}
+                {documentType.toUpperCase()} Document
+              </a>
+            </div>
+          )}
       </div>
     );
   };
@@ -716,21 +915,29 @@ export default function Dashboard() {
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${editTicket._id}/documents`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${getAuthToken()}` } }
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${getAuthToken()}`,
+          },
+        }
       );
 
       const newStatus = documentStatusMap[docType] || ticketData.status;
       const newDocumentPath = response.data.documents[docType];
 
-      setTicketData(prev => ({
+      setTicketData((prev) => ({
         ...prev,
-        status: (statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)) ? newStatus : prev.status,
+        status:
+          statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)
+            ? newStatus
+            : prev.status,
         documents: { ...prev.documents, [docType]: newDocumentPath },
       }));
       // Also update editTicket to reflect the change immediately if needed for other operations
-      setEditTicket(prev => ({
+      setEditTicket((prev) => ({
         ...prev,
-        documents: { ...(prev?.documents || {}), [docType]: newDocumentPath }
+        documents: { ...(prev?.documents || {}), [docType]: newDocumentPath },
       }));
 
       return true;
@@ -745,7 +952,10 @@ export default function Dashboard() {
     const addressKey = `${type}Address`;
     const address = ticketData[addressKey] || {};
     const handleChange = (field, value) => {
-      setTicketData(prev => ({ ...prev, [addressKey]: { ...(prev[addressKey] || {}), [field]: value } }));
+      setTicketData((prev) => ({
+        ...prev,
+        [addressKey]: { ...(prev[addressKey] || {}), [field]: value },
+      }));
     };
     return (
       <div className="mb-3">
@@ -753,36 +963,36 @@ export default function Dashboard() {
           <Form.Group className="col-md-6">
             <Form.Control
               placeholder="Address Line 1"
-              value={address.address1 || ''}
-              onChange={(e) => handleChange('address1', e.target.value)}
+              value={address.address1 || ""}
+              onChange={(e) => handleChange("address1", e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-6">
             <Form.Control
               placeholder="Address Line 2"
-              value={address.address2 || ''}
-              onChange={(e) => handleChange('address2', e.target.value)}
+              value={address.address2 || ""}
+              onChange={(e) => handleChange("address2", e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
             <Form.Control
               placeholder="City"
-              value={address.city || ''}
-              onChange={(e) => handleChange('city', e.target.value)}
+              value={address.city || ""}
+              onChange={(e) => handleChange("city", e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
             <Form.Control
               placeholder="State"
-              value={address.state || ''}
-              onChange={(e) => handleChange('state', e.target.value)}
+              value={address.state || ""}
+              onChange={(e) => handleChange("state", e.target.value)}
             />
           </Form.Group>
           <Form.Group className="col-md-4">
             <Form.Control
               placeholder="Pincode"
-              value={address.pincode || ''}
-              onChange={(e) => handleChange('pincode', e.target.value)}
+              value={address.pincode || ""}
+              onChange={(e) => handleChange("pincode", e.target.value)}
             />
           </Form.Group>
         </div>
@@ -792,14 +1002,22 @@ export default function Dashboard() {
 
   const getStatusBadgeColor = (status) => {
     switch (status) {
-      case 'Quotation Sent': return 'info';
-      case 'PO Received': return 'primary';
-      case 'Payment Pending': return 'warning';
-      case 'Inspection': return 'secondary';
-      case 'Packing List': return 'dark';
-      case 'Invoice Sent': return 'success';
-      case 'Completed': return 'success';
-      default: return 'light';
+      case "Quotation Sent":
+        return "info";
+      case "PO Received":
+        return "primary";
+      case "Payment Pending":
+        return "warning";
+      case "Inspection":
+        return "secondary";
+      case "Packing List":
+        return "dark";
+      case "Invoice Sent":
+        return "success";
+      case "Completed":
+        return "success";
+      default:
+        return "light";
     }
   };
 
@@ -818,15 +1036,27 @@ export default function Dashboard() {
               label={isCurrent ? stage : ""}
               animated={isCurrent}
               onClick={() => handleStatusChange(stage)}
-              style={{ cursor: 'pointer' }}
-            />);
+              style={{ cursor: "pointer" }}
+            />
+          );
         })}
       </ProgressBar>
       <div className="d-flex justify-content-between mt-2">
         {statusStages.map((stage) => (
-          <small key={stage} className={`text-center ${ticketData.status === stage ? 'fw-bold text-primary' : 'text-muted'}`}
-            style={{ width: `${100 / statusStages.length}%`, cursor: 'pointer' }} onClick={() => handleStatusChange(stage)}>
-            {stage.split(' ')[0]}
+          <small
+            key={stage}
+            className={`text-center ${
+              ticketData.status === stage
+                ? "fw-bold text-primary"
+                : "text-muted"
+            }`}
+            style={{
+              width: `${100 / statusStages.length}%`,
+              cursor: "pointer",
+            }}
+            onClick={() => handleStatusChange(stage)}
+          >
+            {stage.split(" ")[0]}
           </small>
         ))}
       </div>
@@ -835,15 +1065,29 @@ export default function Dashboard() {
 
   const DocumentUploadSection = () => (
     <div className="mt-4">
-      <h4><i className="bi bi-files me-2"></i>Documents</h4>
+      <h4>
+        <i className="bi bi-files me-2"></i>Documents
+      </h4>
       <div className="d-flex flex-wrap gap-3 mb-3">
         {Object.entries({
-          quotation: "Quotation", po: "PO", pi: "PI", challan: "Challan",
-          packingList: "Packing List", invoice: "Invoice", feedback: "Feedback",
+          quotation: "Quotation",
+          po: "PO",
+          pi: "PI",
+          challan: "Challan",
+          packingList: "Packing List",
+          invoice: "Invoice",
+          feedback: "Feedback",
         }).map(([docKey, docName]) => (
-          <div key={docKey} className="document-button-group d-flex align-items-center">
+          <div
+            key={docKey}
+            className="document-button-group d-flex align-items-center"
+          >
             <Button
-              variant={documentType === docKey ? documentColorMap[docKey] : `outline-${documentColorMap[docKey]}`}
+              variant={
+                documentType === docKey
+                  ? documentColorMap[docKey]
+                  : `outline-${documentColorMap[docKey]}`
+              }
               onClick={() => setDocumentType(docKey)}
               className="text-nowrap me-1"
             >
@@ -855,14 +1099,22 @@ export default function Dashboard() {
                 variant={documentColorMap[docKey]}
                 onClick={() => setDocumentType(docKey)}
                 className="ms-1"
-                title={docName === "Quotation" ? "Preview/Download Quotation" : "Preview/Download PI"}
+                title={
+                  docName === "Quotation"
+                    ? "Preview/Download Quotation"
+                    : "Preview/Download PI"
+                }
               >
                 <i className="bi bi-eye"></i>
               </Button>
             ) : (
               ticketData.documents?.[docKey] && (
                 <a
-                  href={ticketData.documents[docKey].startsWith('/') ? `http://localhost:3000${ticketData.documents[docKey]}` : `http://localhost:3000/${ticketData.documents[docKey]}`}
+                  href={
+                    ticketData.documents[docKey].startsWith("/")
+                      ? `http://localhost:3000${ticketData.documents[docKey]}`
+                      : `http://localhost:3000/${ticketData.documents[docKey]}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`btn btn-${documentColorMap[docKey]} ms-1`}
@@ -878,7 +1130,9 @@ export default function Dashboard() {
                   type="file"
                   id={`upload-${docKey}`}
                   style={{ display: "none" }}
-                  onChange={(e) => handleDocumentUpload(e.target.files[0], docKey)}
+                  onChange={(e) =>
+                    handleDocumentUpload(e.target.files[0], docKey)
+                  }
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpeg,.jpg,.png"
                 />
                 <label
@@ -897,55 +1151,148 @@ export default function Dashboard() {
     </div>
   );
 
-  const TransferModal = () => (
-    <Modal show={showTransferModal} onHide={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); }} size="lg" centered dialogClassName="transfer-modal">
-      <Modal.Header closeButton className="bg-primary text-white">
-        <Modal.Title><i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket - {transferTicket?.ticketNumber}</Modal.Title>
-      </Modal.Header>
-      <Modal.Body className="p-4">
-        <div className="mb-4">
-          <h5 className="mb-3"><i className="bi bi-search me-2"></i>Search User to Transfer To</h5>
-          <UserSearchComponent onUserSelect={handleUserSelect} />
-        </div>
-        {selectedUser && (
-          <div className="selected-user-info p-4 border rounded bg-light">
-            <h6 className="mb-3"><i className="bi bi-person-circle me-2"></i>Selected User Details:</h6>
-            <div className="row">
-              <div className="col-md-6">
-                <p><i className="bi bi-person me-2"></i><strong>Name:</strong> {selectedUser.firstname} {selectedUser.lastname}</p>
-                <p><i className="bi bi-envelope me-2"></i><strong>Email:</strong> {selectedUser.email}</p>
-              </div>
-              <div className="col-md-6">
-                <p><i className="bi bi-person-badge me-2"></i><strong>Role:</strong> <Badge bg="info">{selectedUser.role}</Badge></p>
-                <p><strong>Department:</strong> {selectedUser.department || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-        )}
-        {error && !selectedUser && <Alert variant="danger" className="mt-3">{error}</Alert>}
-        {transferTicket && (
-          <div className="ticket-summary mt-4 p-3 border rounded">
-            <h6 className="mb-3">Ticket Summary</h6>
-            <div className="row">
-              <div className="col-md-6">
-                <p><strong>Company:</strong> {transferTicket.companyName}</p>
-                <p><strong>Quotation:</strong> {transferTicket.quotationNumber}</p>
-              </div>
-              <div className="col-md-6">
-                <p><strong>Status:</strong> <Badge bg={getStatusBadgeColor(transferTicket.status)}>{transferTicket.status}</Badge></p>
-                <p><strong>Amount:</strong> ₹{transferTicket.grandTotal?.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal.Body>
-      <Modal.Footer className="justify-content-between">
-        <Button variant="outline-secondary" onClick={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); }}>Cancel</Button>
-        <Button variant="primary" onClick={handleTransferTicket} disabled={!selectedUser} className="px-4">Confirm Transfer</Button>
-      </Modal.Footer>
-    </Modal>
-  );
+  const TransferModal = () => {
+    const [transferNote, setTransferNote] = useState("");
 
+    return (
+      <Modal
+        show={showTransferModal}
+        onHide={() => {
+          setShowTransferModal(false);
+          setError(null);
+          setSelectedUser(null);
+        }}
+        size="lg"
+        centered
+        dialogClassName="transfer-modal"
+      >
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title>
+            <i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket -{" "}
+            {transferTicket?.ticketNumber}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <div className="mb-4">
+            <h5 className="mb-3">
+              <i className="bi bi-search me-2"></i>Search User to Transfer To
+            </h5>
+            <UserSearchComponent onUserSelect={handleUserSelect} />
+          </div>
+
+          {selectedUser && (
+            <>
+              <div className="selected-user-info p-4 border rounded bg-light">
+                <h6 className="mb-3">
+                  <i className="bi bi-person-circle me-2"></i>Selected User
+                  Details:
+                </h6>
+                <div className="row">
+                  <div className="col-md-6">
+                    <p>
+                      <i className="bi bi-person me-2"></i>
+                      <strong>Name:</strong> {selectedUser.firstname}{" "}
+                      {selectedUser.lastname}
+                    </p>
+                    <p>
+                      <i className="bi bi-envelope me-2"></i>
+                      <strong>Email:</strong> {selectedUser.email}
+                    </p>
+                  </div>
+                  <div className="col-md-6">
+                    <p>
+                      <i className="bi bi-person-badge me-2"></i>
+                      <strong>Role:</strong>{" "}
+                      <Badge bg="info">{selectedUser.role}</Badge>
+                    </p>
+                    <p>
+                      <strong>Department:</strong>{" "}
+                      {selectedUser.department || "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Form.Group className="mt-3">
+                <Form.Label>Transfer Note (Optional)</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={transferNote}
+                  onChange={(e) => setTransferNote(e.target.value)}
+                  placeholder="Add any notes about this transfer..."
+                />
+              </Form.Group>
+            </>
+          )}
+
+          {error && !selectedUser && (
+            <Alert variant="danger" className="mt-3">
+              {error}
+            </Alert>
+          )}
+
+          {transferTicket && (
+            <div className="ticket-summary mt-4 p-3 border rounded">
+              <h6 className="mb-3">Ticket Summary</h6>
+              <div className="row">
+                <div className="col-md-6">
+                  <p>
+                    <strong>Company:</strong> {transferTicket.companyName}
+                  </p>
+                  <p>
+                    <strong>Quotation:</strong> {transferTicket.quotationNumber}
+                  </p>
+                  <p>
+                    <strong>Current Assignee:</strong>{" "}
+                    {transferTicket.currentAssignee?.firstname}{" "}
+                    {transferTicket.currentAssignee?.lastname || "N/A"}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    <Badge bg={getStatusBadgeColor(transferTicket.status)}>
+                      {transferTicket.status}
+                    </Badge>
+                  </p>
+                  <p>
+                    <strong>Amount:</strong> ₹
+                    {transferTicket.grandTotal?.toFixed(2)}
+                  </p>
+                  <p>
+                    <strong>Created By:</strong>{" "}
+                    {transferTicket.createdBy?.firstname}{" "}
+                    {transferTicket.createdBy?.lastname || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="justify-content-between">
+          <Button
+            variant="outline-secondary"
+            onClick={() => {
+              setShowTransferModal(false);
+              setError(null);
+              setSelectedUser(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => handleTransferTicket(selectedUser, transferNote)}
+            disabled={!selectedUser}
+            className="px-4"
+          >
+            Confirm Transfer
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    );
+  };
 
   return (
     <div>
@@ -953,10 +1300,27 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
-            <Form.Control type="search" placeholder="🔍 Search here" className="me-2" aria-label="Search" value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              style={{ borderRadius: "20px", padding: "8px 20px", border: "1px solid #ced4da", boxShadow: "none" }} />
+          <div
+            className="d-flex align-items-center gap-3"
+            style={{ width: "50%" }}
+          >
+            <Form.Control
+              type="search"
+              placeholder="🔍 Search here"
+              className="me-2"
+              aria-label="Search"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{
+                borderRadius: "20px",
+                padding: "8px 20px",
+                border: "1px solid #ced4da",
+                boxShadow: "none",
+              }}
+            />
           </div>
         </div>
 
@@ -965,141 +1329,536 @@ export default function Dashboard() {
         <Table striped bordered hover responsive className="mt-3">
           <thead className="table-dark">
             <tr>
-              <th onClick={() => requestSort("ticketNumber")} style={{ cursor: "pointer" }}>Ticket Number <SortIndicator columnKey="ticketNumber" sortConfig={sortConfig} /></th>
-              <th onClick={() => requestSort("quotationNumber")} style={{ cursor: "pointer" }}>Quotation No <SortIndicator columnKey="quotationNumber" sortConfig={sortConfig} /></th>
-              <th onClick={() => requestSort("companyName")} style={{ cursor: "pointer" }}>Company Name <SortIndicator columnKey="companyName" sortConfig={sortConfig} /></th>
-              <th onClick={() => requestSort("date")} style={{ cursor: "pointer" }}>Date <SortIndicator columnKey="date" sortConfig={sortConfig} /></th>
-              <th onClick={() => requestSort("grandTotal")} style={{ cursor: "pointer" }}>Grand Total (₹) <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} /></th>
+              <th
+                onClick={() => requestSort("ticketNumber")}
+                style={{ cursor: "pointer" }}
+              >
+                Ticket Number{" "}
+                <SortIndicator
+                  columnKey="ticketNumber"
+                  sortConfig={sortConfig}
+                />
+              </th>
+              {/* <th
+                onClick={() => requestSort("quotationNumber")}
+                style={{ cursor: "pointer" }}
+              >
+                Quotation No{" "}
+                <SortIndicator
+                  columnKey="quotationNumber"
+                  sortConfig={sortConfig}
+                />
+              </th> */}
+              <th>Assigned To</th>
+              <th
+                onClick={() => requestSort("companyName")}
+                style={{ cursor: "pointer" }}
+              >
+                Company Name{" "}
+                <SortIndicator
+                  columnKey="companyName"
+                  sortConfig={sortConfig}
+                />
+              </th>
+              <th
+                onClick={() => requestSort("date")}
+                style={{ cursor: "pointer" }}
+              >
+                Date <SortIndicator columnKey="date" sortConfig={sortConfig} />
+              </th>
+              <th
+                onClick={() => requestSort("grandTotal")}
+                style={{ cursor: "pointer" }}
+              >
+                Grand Total (₹){" "}
+                <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
+              </th>
               <th>Progress</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan="7" className="text-center"><div className="d-flex justify-content-center align-items-center" style={{ height: '100px' }}><div className="spinner-border text-primary" role="status"><span className="visually-hidden">Loading...</span></div></div></td></tr>
+              <tr>
+                <td colSpan="7" className="text-center">
+                  <div
+                    className="d-flex justify-content-center align-items-center"
+                    style={{ height: "100px" }}
+                  >
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             ) : currentItems.length > 0 ? (
               currentItems.map((ticket) => {
                 const currentStatusIndex = statusStages.indexOf(ticket.status);
-                const progressPercentage = currentStatusIndex !== -1 ? Math.round(((currentStatusIndex + 1) / statusStages.length) * 100) : 0;
+                const progressPercentage =
+                  currentStatusIndex !== -1
+                    ? Math.round(
+                        // Ensure statusStages is not empty to avoid division by zero
+                        ((currentStatusIndex + 1) / statusStages.length) * 100
+                      )
+                    : 0;
+
+                const isUserAdmin = loggedInUser?.role === "admin";
+                const isUserCurrentAssignee = ticket.currentAssignee?._id === loggedInUser?.id;
+                const canModifyTicket = isUserAdmin || isUserCurrentAssignee;
+
                 return (
                   <tr key={ticket.ticketNumber}>
                     <td>{ticket.ticketNumber}</td>
-                    <td>{ticket.quotationNumber}</td>
+                    {/* <td>{ticket.quotationNumber}</td> */}
+                    <td>
+                      {ticket.currentAssignee ? (
+                        <>
+                          {ticket.currentAssignee.firstname}{" "}
+                          {ticket.currentAssignee.lastname}
+                        </>
+                      ) : (
+                        "Created by me"
+                      )}
+                    </td>
                     <td>{ticket.companyName}</td>
-                    <td>{new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</td>
+                    <td>
+                      {new Date(ticket.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
                     <td>
-                      <Badge bg={getStatusBadgeColor(ticket.status)} className="mb-1 d-block text-center">{ticket.status}</Badge>
-                      <div className="d-flex flex-column clickable-progress" onClick={(e) => { e.stopPropagation(); handleProgressClick(ticket); }} style={{ cursor: 'pointer' }}>
-                        <ProgressBar now={progressPercentage} label={`${progressPercentage}%`} variant={getProgressBarVariant(progressPercentage)} style={{ height: "20px" }} />
+                      <Badge
+                        bg={getStatusBadgeColor(ticket.status)}
+                        className="mb-1 d-block text-center"
+                      >
+                        {ticket.status}
+                      </Badge>
+                      <div
+                        className="d-flex flex-column clickable-progress"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProgressClick(ticket);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <ProgressBar
+                          now={progressPercentage}
+                          label={`${progressPercentage}%`}
+                          variant={getProgressBarVariant(progressPercentage)}
+                          style={{ height: "20px" }}
+                        />
                       </div>
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        
-                        <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleEdit(ticket)}
+                          disabled={!canModifyTicket}
+                          title={!canModifyTicket ? "Only admin or current assignee can edit this ticket" : "Edit"}
+                        >
                           <i className="bi bi-pencil me-1"></i>✏️
                         </Button>
-                        
-                        <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
-                          <i className="bi bi-arrow-left-right me-1"></i>Transfer
+
+                        <Button
+                          variant="warning"
+                          size="sm"
+                          onClick={() => handleTransfer(ticket)}
+                          disabled={!canModifyTicket}
+                          title={!canModifyTicket ? "Only admin or current assignee can transfer this ticket" : "Transfer"}
+                        >
+                          <i className="bi bi-arrow-left-right me-1"></i>
+                          Transfer
                         </Button>
                       </div>
                     </td>
-                  </tr>);
+                  </tr>
+                );
               })
             ) : (
-              <tr><td colSpan="7" className="text-center py-4"><div className="d-flex flex-column align-items-center"><i className="bi bi-folder-x text-muted" style={{ fontSize: '2rem' }}></i><p className="mt-2">No tickets found</p><Button variant="primary" size="sm" className="mt-2" onClick={() => alert("Create New Ticket functionality to be implemented.")}>Create New Ticket</Button></div></td></tr>
+              <tr>
+                <td colSpan="7" className="text-center py-4">
+                  <div className="d-flex flex-column align-items-center">
+                    <i
+                      className="bi bi-folder-x text-muted"
+                      style={{ fontSize: "2rem" }}
+                    ></i>
+                    <p className="mt-2">No tickets found</p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() =>
+                        alert(
+                          "Create New Ticket functionality to be implemented."
+                        )
+                      }
+                    >
+                      Create New Ticket
+                    </Button>
+                  </div>
+                </td>
+              </tr>
             )}
           </tbody>
         </Table>
 
-        <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="xl" centered dialogClassName="modal-95w" style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} contentClassName="h-100">
+        <Modal
+          show={showEditModal}
+          onHide={() => setShowEditModal(false)}
+          size="xl"
+          centered
+          dialogClassName="modal-95w"
+          style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
+          contentClassName="h-100"
+        >
           <Modal.Header closeButton className="bg-primary text-white">
-            <Modal.Title>Edit Ticket - {editTicket?.ticketNumber}</Modal.Title>
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <Modal.Title>
+                Edit Ticket - {editTicket?.ticketNumber}
+              </Modal.Title>
+              <div className="assignee-info">
+                <Badge bg="info">
+                  <i className="bi bi-person-fill me-1"></i>
+                  {editTicket?.currentAssignee?.firstname}{" "}
+                  {editTicket?.currentAssignee?.lastname || "Unassigned"}
+                </Badge>
+                <small className="d-block text-white-50">
+                  Currently Assigned
+                </small>
+              </div>
+            </div>
           </Modal.Header>
-          <Modal.Body style={{ overflowY: 'auto' }}>
+          <Modal.Body style={{ overflowY: "auto" }}>
             <ProgressBarWithStages />
             <DocumentUploadSection />
             <div className="row mb-4">
               <Form.Group className="col-md-6">
                 <Form.Label>Date</Form.Label>
-                <Form.Control type="text" value={editTicket?.createdAt ? new Date(editTicket.createdAt).toLocaleDateString() : ''} readOnly disabled />
+                <Form.Control
+                  type="text"
+                  value={
+                    editTicket?.createdAt
+                      ? new Date(editTicket.createdAt).toLocaleDateString()
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                />
               </Form.Group>
             </div>
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Company Name*</Form.Label>
-                <Form.Control required type="text" value={ticketData.companyName} onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })} />
+                <Form.Control
+                  required
+                  type="text"
+                  value={ticketData.companyName}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      companyName: e.target.value,
+                    })
+                  }
+                />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Quotation Number*</Form.Label>
-                <Form.Control required type="text" value={ticketData.quotationNumber} readOnly disabled />
+                <Form.Control
+                  required
+                  type="text"
+                  value={ticketData.quotationNumber}
+                  readOnly
+                  disabled
+                />
               </Form.Group>
             </div>
             <div className="row">
-              <div className="col-md-6"><h5>Billing Address</h5>{renderAddressFields('billing')}</div>
-              <div className="col-md-6"><h5>Shipping Address</h5>{renderAddressFields('shipping')}</div>
+              <div className="col-md-6">
+                <h5>Billing Address</h5>
+                {renderAddressFields("billing")}
+              </div>
+              <div className="col-md-6">
+                <h5>Shipping Address</h5>
+                {renderAddressFields("shipping")}
+              </div>
             </div>
             <h5 className="mt-4">Goods Details*</h5>
             <div className="table-responsive">
               <Table bordered className="mb-3">
-                <thead><tr><th>Sr No.</th><th>Description*</th><th>HSN/SAC*</th><th>Qty*</th><th>Price*</th><th>Amount</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Sr No.</th>
+                    <th>Description*</th>
+                    <th>HSN/SAC*</th>
+                    <th>Qty*</th>
+                    <th>Price*</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {ticketData.goods.map((item, index) => (
                     <tr key={index}>
                       <td className="align-middle">{item.srNo}</td>
-                      <td>{index === ticketData.goods.length - 1 && !item.description ? <ItemSearchComponent onItemSelect={handleItemSelect} index={index} /> : <Form.Control type="text" value={item.description} readOnly disabled />}</td>
-                      <td><Form.Control type="text" value={item.hsnSacCode} readOnly disabled /></td>
-                      <td><Form.Control required type="number" min="1" value={item.quantity} onChange={(e) => handleGoodsChange(index, "quantity", e.target.value)} /></td>
-                      <td><Form.Control type="number" min="0" step="0.01" value={item.price} readOnly disabled /></td>
-                      <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
-                    </tr>))}
+                      <td>
+                        {index === ticketData.goods.length - 1 &&
+                        !item.description ? (
+                          <ItemSearchComponent
+                            onItemSelect={handleItemSelect}
+                            index={index}
+                          />
+                        ) : (
+                          <Form.Control
+                            type="text"
+                            value={item.description}
+                            readOnly
+                            disabled
+                          />
+                        )}
+                      </td>
+                      <td>
+                        <Form.Control
+                          type="text"
+                          value={item.hsnSacCode}
+                          readOnly
+                          disabled
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          required
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleGoodsChange(index, "quantity", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.price}
+                          readOnly
+                          disabled
+                        />
+                      </td>
+                      <td className="align-middle">
+                        ₹{(item.amount || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </Table>
             </div>
-            <Button variant="outline-primary" onClick={addRow} className="mb-3">+ Add Item</Button>
+            <Button variant="outline-primary" onClick={addRow} className="mb-3">
+              + Add Item
+            </Button>
             <div className="bg-light p-3 rounded">
               <div className="row">
-                <div className="col-md-4"><p>Total Quantity: <strong>{ticketData.totalQuantity}</strong></p></div>
-                <div className="col-md-4"><p>Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong></p></div>
-                <div className="col-md-4"><p>GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong></p></div>
+                <div className="col-md-4">
+                  <p>
+                    Total Quantity: <strong>{ticketData.totalQuantity}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    Total Amount:{" "}
+                    <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    GST (18%):{" "}
+                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
               </div>
-              <div className="row"><div className="col-md-12"><h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5></div></div>
+              <div className="row">
+                <div className="col-md-12">
+                  <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
+                </div>
+              </div>
             </div>
-            
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleUpdateTicket}>Update Ticket</Button>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleUpdateTicket}>
+              Update Ticket
+            </Button>
           </Modal.Footer>
         </Modal>
 
         <TransferModal />
 
-        <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)} size="xl" centered dialogClassName="custom-modal" style={{ maxWidth: '95vw', width: '95%', height: '95vh' }} contentClassName="h-100">
-          <Modal.Header closeButton className="modal-header-custom"><Modal.Title>Payment Details - {selectedTicket?.ticketNumber}</Modal.Title></Modal.Header>
-          <Modal.Body className="modal-body-custom" style={{ overflowY: 'auto' }}>
+        <Modal
+          show={showPaymentModal}
+          onHide={() => setShowPaymentModal(false)}
+          size="xl"
+          centered
+          dialogClassName="custom-modal"
+          style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
+          contentClassName="h-100"
+        >
+          <Modal.Header closeButton className="modal-header-custom">
+            <Modal.Title>
+              Payment Details - {selectedTicket?.ticketNumber}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body
+            className="modal-body-custom"
+            style={{ overflowY: "auto" }}
+          >
             <div className="d-flex justify-content-between mb-4">
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>Quotation</h6><Button variant="outline-primary" size="sm" onClick={() => { setShowPaymentModal(false); handleEdit(selectedTicket); setDocumentType('quotation'); }}>View</Button></div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>PI</h6><Button variant="outline-primary" size="sm" onClick={() => { setShowPaymentModal(false); handleEdit(selectedTicket); setDocumentType('pi'); }}>View</Button></div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>PO</h6>{selectedTicket?.documents?.po ? <a href={`http://localhost:3000/${selectedTicket.documents.po}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">View</a> : <span className="text-muted">N/A</span>}</div>
-              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box"><h6>Dispatch</h6>{selectedTicket?.documents?.challan ? <a href={`http://localhost:3000/${selectedTicket.documents.challan}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">View</a> : <span className="text-muted">N/A</span>}</div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>Quotation</h6>
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    handleEdit(selectedTicket);
+                    setDocumentType("quotation");
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>PI</h6>
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    handleEdit(selectedTicket);
+                    setDocumentType("pi");
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>PO</h6>
+                {selectedTicket?.documents?.po ? (
+                  <a
+                    href={`http://localhost:3000/${selectedTicket.documents.po}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    View
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </div>
+              <div className="text-center p-2 border rounded flex-grow-1 mx-1 payment-document-box">
+                <h6>Dispatch</h6>
+                {selectedTicket?.documents?.challan ? (
+                  <a
+                    href={`http://localhost:3000/${selectedTicket.documents.challan}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    View
+                  </a>
+                ) : (
+                  <span className="text-muted">N/A</span>
+                )}
+              </div>
             </div>
             <div className="row">
               <div className="col-md-8">
                 <h5 className="mt-3">Payment Information</h5>
                 <div className="bg-light p-3 rounded mb-3">
                   <div className="row">
-                    <div className="col-md-6"><p>Grand Total: <strong>₹{selectedTicket?.grandTotal?.toFixed(2)}</strong></p></div>
-                    <div className="col-md-6"><p>Paid Amount: <strong>₹{(selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</strong></p></div>
-                    <div className="col-md-12"><p>Balance Due: <strong>₹{(selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)).toFixed(2)}</strong></p></div>
+                    <div className="col-md-6">
+                      <p>
+                        Grand Total:{" "}
+                        <strong>
+                          ₹{selectedTicket?.grandTotal?.toFixed(2)}
+                        </strong>
+                      </p>
+                    </div>
+                    <div className="col-md-6">
+                      <p>
+                        Paid Amount:{" "}
+                        <strong>
+                          ₹
+                          {(
+                            selectedTicket?.payments?.reduce(
+                              (sum, p) => sum + p.amount,
+                              0
+                            ) || 0
+                          ).toFixed(2)}
+                        </strong>
+                      </p>
+                    </div>
+                    <div className="col-md-12">
+                      <p>
+                        Balance Due:{" "}
+                        <strong>
+                          ₹
+                          {(
+                            selectedTicket?.grandTotal -
+                            (selectedTicket?.payments?.reduce(
+                              (sum, p) => sum + p.amount,
+                              0
+                            ) || 0)
+                          ).toFixed(2)}
+                        </strong>
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <Form>
-                  <Form.Group className="mb-3"><Form.Label>Payment Amount (₹)*</Form.Label><Form.Control type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(parseFloat(e.target.value))} min="0" max={selectedTicket?.grandTotal - (selectedTicket?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)} step="0.01" /></Form.Group>
-                  <Form.Group className="mb-3"><Form.Label>Payment Date*</Form.Label><Form.Control type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></Form.Group>
-                  <Form.Group className="mb-3"><Form.Label>Reference/Notes</Form.Label><Form.Control as="textarea" rows={3} value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Payment reference number or notes" /></Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Payment Amount (₹)*</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={paymentAmount}
+                      onChange={(e) =>
+                        setPaymentAmount(parseFloat(e.target.value))
+                      }
+                      min="0"
+                      max={
+                        selectedTicket?.grandTotal -
+                        (selectedTicket?.payments?.reduce(
+                          (sum, p) => sum + p.amount,
+                          0
+                        ) || 0)
+                      }
+                      step="0.01"
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Payment Date*</Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={paymentDate}
+                      onChange={(e) => setPaymentDate(e.target.value)}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Reference/Notes</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      placeholder="Payment reference number or notes"
+                    />
+                  </Form.Group>
                 </Form>
               </div>
               <div className="col-md-4">
@@ -1107,18 +1866,56 @@ export default function Dashboard() {
                 {selectedTicket?.payments?.length > 0 ? (
                   <div className="payment-history-container">
                     {selectedTicket.payments.map((payment, index) => (
-                      <div key={index} className="payment-history-item p-3 mb-2 border rounded">
-                        <div className="d-flex justify-content-between"><span className="fw-bold">₹{payment.amount.toFixed(2)}</span><span className="text-muted small">{new Date(payment.date).toLocaleDateString()}</span></div>
-                        {payment.reference && (<div className="mt-1 small text-muted">Ref: {payment.reference}</div>)}
-                      </div>))}
-                  </div>) : (<div className="text-center p-4 border rounded bg-light">No payment history found</div>)}
+                      <div
+                        key={index}
+                        className="payment-history-item p-3 mb-2 border rounded"
+                      >
+                        <div className="d-flex justify-content-between">
+                          <span className="fw-bold">
+                            ₹{payment.amount.toFixed(2)}
+                          </span>
+                          <span className="text-muted small">
+                            {new Date(payment.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {payment.reference && (
+                          <div className="mt-1 small text-muted">
+                            Ref: {payment.reference}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-4 border rounded bg-light">
+                    No payment history found
+                  </div>
+                )}
               </div>
             </div>
           </Modal.Body>
-          <Modal.Footer className="modal-footer-custom"><Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button><Button variant="primary" onClick={handlePaymentSubmit}>Record Payment</Button></Modal.Footer>
+          <Modal.Footer className="modal-footer-custom">
+            <Button
+              variant="secondary"
+              onClick={() => setShowPaymentModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handlePaymentSubmit}>
+              Record Payment
+            </Button>
+          </Modal.Footer>
         </Modal>
 
-        {totalPages > 1 && (<Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(page) => { if (page >= 1 && page <= totalPages) setCurrentPage(page); }} />)}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => {
+              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+            }}
+          />
+        )}
       </div>
     </div>
   );

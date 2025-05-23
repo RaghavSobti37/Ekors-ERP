@@ -99,8 +99,6 @@ const formatDateForInput = (dateString) => {
   return `${year}-${month}-${day}`;
 };
 
-// ... (keep all the imports and other code the same until GoodsTable component)
-
 const GoodsTable = ({
   goods,
   handleGoodsChange,
@@ -207,7 +205,6 @@ const GoodsTable = ({
             </tr>
           ))}
         </tbody>
-
       </Table>
 
       {isEditing && (
@@ -247,14 +244,15 @@ export default function Quotations() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
   const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: "ascending",
+    key: "date", // Default sort key to 'date'
+    direction: "descending", // Default sort direction to 'descending' (newest first)
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
 
   const getAuthToken = () => {
     try {
@@ -271,14 +269,15 @@ export default function Quotations() {
 
   const generateQuotationNumber = () => {
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
+    const year = now.getFullYear().toString().slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const seconds = String(now.getSeconds()).padStart(2, "0");
-    const milliseconds = String(now.getMilliseconds()).padStart(3, "0");
 
-    return `Q-${day}${month}-${hours}${minutes}${seconds}${milliseconds}`;
+    // New format: Q-YYYYMMDD-HHMMSS
+    return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
   };
 
   const initialQuotationData = {
@@ -416,9 +415,9 @@ export default function Quotations() {
   const totalPages = Math.ceil(filteredQuotations.length / itemsPerPage);
 
   const requestSort = (key) => {
-    let direction = "ascending";
-    if (sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending";
+    let direction = "descending";
+    if (sortConfig.key === key && sortConfig.direction === "descending") {
+      direction = "ascending";
     }
     setSortConfig({ key, direction });
   };
@@ -554,7 +553,9 @@ export default function Quotations() {
   };
 
   const handleDeleteItem = (indexToDelete) => {
-    const updatedGoods = quotationData.goods.filter((_, index) => index !== indexToDelete);
+    const updatedGoods = quotationData.goods.filter(
+      (_, index) => index !== indexToDelete
+    );
 
     // Re-number SrNo after deletion
     const renumberedGoods = updatedGoods.map((item, index) => ({
@@ -574,7 +575,7 @@ export default function Quotations() {
     const gstAmount = totalAmount * 0.18; // Assuming 18% GST
     const grandTotal = totalAmount + gstAmount;
 
-    setQuotationData(prevData => ({
+    setQuotationData((prevData) => ({
       ...prevData,
       goods: renumberedGoods,
       totalQuantity,
@@ -697,12 +698,13 @@ export default function Quotations() {
     } catch (error) {
       console.error("Error generating ticket number:", error);
       const now = new Date();
-      return `T-${now.getFullYear()}${String(now.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}${String(now.getDate()).padStart(2, "0")}-${String(now.getTime()).slice(
-        -6
-      )}`;
+     const year = now.getFullYear().toString().slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const seconds = String(now.getSeconds()).padStart(2, "0");
+      return `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     }
   };
 
@@ -832,10 +834,10 @@ export default function Quotations() {
   const handleEdit = (quotation) => {
     setCurrentQuotation(quotation);
     // Ensure orderIssuedBy has the necessary fields, or provide fallbacks
-    const orderIssuedById = quotation.orderIssuedBy?._id || "";
-    // const orderIssuedByName = quotation.orderIssuedBy 
-    //   ? `${quotation.orderIssuedBy.firstname || ''} ${quotation.orderIssuedBy.lastname || ''}`.trim() 
-    //   : "N/A";
+    // If quotation.orderIssuedBy exists and has an _id, use it.
+    // Otherwise, set to null to avoid sending an empty string "" for an ObjectId,
+    // which can cause backend validation/cast errors.
+    const orderIssuedById = quotation.orderIssuedBy?._id || null;
 
     setQuotationData({
       date: formatDateForInput(quotation.date),
@@ -875,13 +877,12 @@ export default function Quotations() {
       ...initialQuotationData,
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
-      client: { ...initialQuotationData.client, _id: null } // Ensure client _id is null for new
+      client: { ...initialQuotationData.client, _id: null }, // Ensure client _id is null for new
     });
     setSelectedClientIdForForm(null);
     setFormValidated(false); // Reset validation state for new form
     setShowModal(true);
   };
-
 
   const handleDeleteQuotation = async (quotation) => {
     if (!quotation || !quotation._id) {
@@ -902,11 +903,14 @@ export default function Quotations() {
       const token = getAuthToken();
       if (!token) throw new Error("No authentication token found");
 
-      await axios.delete(`http://localhost:3000/api/quotations/${quotation._id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await axios.delete(
+        `http://localhost:3000/api/quotations/${quotation._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       // ✅ Success actions
       setError(null);
@@ -926,7 +930,8 @@ export default function Quotations() {
         }
         errorMessage = error.response.data.message || errorMessage;
       } else if (error.request) {
-        errorMessage = "No response from server. Check your network connection.";
+        errorMessage =
+          "No response from server. Check your network connection.";
       }
 
       setError(errorMessage);
@@ -936,19 +941,18 @@ export default function Quotations() {
   };
 
   const handleClientSelect = (client) => {
-    setQuotationData(prev => ({
+    setQuotationData((prev) => ({
       ...prev,
       client: {
         _id: client._id,
-        companyName: client.companyName || '',
-        gstNumber: client.gstNumber || '',
-        email: client.email || '',
-        phone: client.phone || '',
-      }
+        companyName: client.companyName || "",
+        gstNumber: client.gstNumber || "",
+        email: client.email || "",
+        phone: client.phone || "",
+      },
     }));
     setSelectedClientIdForForm(client._id);
   };
-
 
   return (
     <div>
@@ -1083,7 +1087,6 @@ export default function Quotations() {
                       >
                         🗑️
                       </Button>
-
                     </div>
                   </td>
                 </tr>
@@ -1157,55 +1160,39 @@ export default function Quotations() {
         >
           {/* Updated Modal Header with same styling as CreateTicketModal */}
           <Modal.Header
-            closeButton
-            onHide={() => {
-              setShowModal(false);
-              setCurrentQuotation(null);
-              resetForm();
-            }}
-            style={{
-              borderBottom: '1px solid #dee2e6',
-              padding: '1rem',
-              flexShrink: 0 // Prevent header from shrinking
-            }}
-          >
-            <Modal.Title>
-              {currentQuotation
-                ? `Edit Quotation - ${quotationData.referenceNumber}`
-                : `Create New Quotation - ${quotationData.referenceNumber}`}
-            </Modal.Title>
-          </Modal.Header>
-
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '95vw',
-            height: '95vh',
-            maxWidth: 'none',
-            margin: 0,
-            padding: 0,
-            backgroundColor: 'white',
-            border: '1px solid #dee2e6',
-            borderRadius: '0.3rem',
-            boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
-            zIndex: 1050,
-            display: showModal ? 'flex' : 'none',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
-            {(() => {
-              let orderIssuedByNameDisplay = 'N/A';
-              if (currentQuotation && currentQuotation.orderIssuedBy) {
-                orderIssuedByNameDisplay = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim() || 'Details unavailable';
-              } else if (!currentQuotation && user) {
-                orderIssuedByNameDisplay = `${user.firstname || ''} ${user.lastname || ''}`.trim() || 'Logged-in user';
-              }
-              return null;
-            })()}
-
-            <Form noValidate validated={formValidated} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    closeButton
+    onHide={() => {
+      setShowModal(false);
+      setCurrentQuotation(null);
+      resetForm();
+    }}
+    style={{
+      borderBottom: '1px solid #dee2e6',
+      padding: '1rem',
+      flexShrink: 0 // Prevent header from shrinking
+    }}
+  >
+    <Modal.Title>
+      {currentQuotation
+        ? `Edit Quotation - ${quotationData.referenceNumber}`
+        : `Create New Quotation - ${quotationData.referenceNumber}`}
+      <br />
+    </Modal.Title>
+  </Modal.Header>          
+            {/* The div with fullScreenModalStyle and the unused IIFE were removed.
+                The Form is now a direct child of Modal's content area.
+                Its style is adjusted to correctly fill space and manage layout. */}
+            <Form 
+              noValidate 
+              validated={formValidated} 
+              onSubmit={handleSubmit} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                flexGrow: 1, // Make form take available vertical space
+                overflow: 'hidden' // Prevent form itself from scrolling; Modal.Body will scroll
+              }}
+            >
               <Modal.Body style={{
                 flexGrow: 1,
                 overflowY: 'auto',
@@ -1247,32 +1234,6 @@ export default function Quotations() {
                   </Form.Group>
                 </div>
 
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Order Issued By <span className="text-danger">*</span>
-                    </Form.Label>
-                    {(() => {
-                      let nameToShow = 'Loading...';
-                      if (currentQuotation && currentQuotation.orderIssuedBy) {
-                        nameToShow = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim();
-                      } else if (!currentQuotation && user) {
-                        nameToShow = `${user.firstname || ''} ${user.lastname || ''}`.trim();
-                      }
-                      return (
-                        <Form.Control
-                          required
-                          type="text"
-                          name="orderIssuedBy"
-                          value={nameToShow || 'N/A'}
-                          readOnly
-                          onChange={handleInputChange}
-                        />
-                      );
-                    })()}
-                  </Form.Group>
-                </div>
-
                 <h5>Client Details</h5>
                 <ClientSearchComponent
                   onClientSelect={handleClientSelect}
@@ -1286,12 +1247,14 @@ export default function Quotations() {
                     className="mb-2 d-block"
                     onClick={() => {
                       setSelectedClientIdForForm(null);
-                      setQuotationData(prev => ({
+                      setQuotationData((prev) => ({
                         ...prev,
-                        client: { ...initialQuotationData.client, _id: null }
+                        client: { ...initialQuotationData.client, _id: null },
                       }));
                     }}
-                  > Clear Selected Client & Enter Manually
+                  >
+                    {" "}
+                    Clear Selected Client & Enter Manually
                   </Button>
                 )}
                 <div className="row">
@@ -1416,7 +1379,6 @@ export default function Quotations() {
                 </Button>
               </Modal.Footer>
             </Form>
-          </div>
         </Modal>
 
         {/* Create Ticket Modal */}
