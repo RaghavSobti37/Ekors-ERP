@@ -383,15 +383,17 @@ const CreateTicketModal = ({
               </div>
             </div>
           </div>
-        </Modal.Body>
-        <Modal.Footer style={modalFooterStyle}>
+          <Modal.Footer style={modalFooterStyle}>
           <Button variant="secondary" onClick={onHide}>
             Cancel
           </Button>
           <Button variant="primary" type="submit" disabled={isLoading || isFetchingAddress}>
+            Create Ticket
             {isLoading ? "Creating..." : "Create Ticket"}
           </Button>
         </Modal.Footer>
+        </Modal.Body>
+        
       </Form>
     </div>
   );

@@ -52,27 +52,35 @@ const ticketSchema = new mongoose.Schema({
   },
   statusHistory: [{
     status: { type: String },
-    changedAt: { type: Date, default: Date.now }
+    changedAt: { type: Date, default: Date.now },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  assignedTo: {
+ currentAssignee: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: true
+  },
+   assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User' // No longer strictly required, will default to createdBy if not provided
   },
   transferHistory: [{
     from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     transferredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    transferredAt: Date
+    transferredAt: { type: Date, default: Date.now },
+    note: String
   }],
-  statusHistory: [{
-    status: String,
-    changedAt: Date,
-    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  assignmentLog: [{
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date, default: Date.now },
+    action: String // 'created', 'transferred', etc.
   }]
 }, { timestamps: true });
 
@@ -83,8 +91,11 @@ function arrayLimit(val) {
 
 // Add a pre-save hook to automatically populate the status history
 ticketSchema.pre('save', function(next) {
-  // If this is a new document or the status has changed
-  if (this.isNew || this.isModified('status')) {
+  // Only add to history if status is modified on an existing document
+  // and not during initial creation as the POST route handles the first entry.
+  // Note: This entry will not have 'changedBy' as req.user is not available here.
+  // For full 'changedBy' tracking, status updates should explicitly add to statusHistory in route handlers.
+  if (!this.isNew && this.isModified('status')) {
     this.statusHistory.push({
       status: this.status,
       changedAt: new Date()
