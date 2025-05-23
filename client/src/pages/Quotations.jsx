@@ -1047,6 +1047,7 @@ export default function Quotations() {
                         variant="info"
                         size="sm"
                         onClick={() => handleEdit(quotation)}
+                        title="Edit"
                       >
                         ✏️
                       </Button>
@@ -1054,6 +1055,7 @@ export default function Quotations() {
                         variant="success"
                         size="sm"
                         onClick={() => handleCreateTicket(quotation)}
+                        title="Create Ticket"
                       >
                         ➕
                       </Button>
@@ -1068,6 +1070,7 @@ export default function Quotations() {
                           );
                           setShowPdfModal(true);
                         }}
+                        title="View"
                       >
                         👁️
                       </Button>
@@ -1076,6 +1079,7 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => handleDeleteQuotation(quotation)}
                         disabled={isLoading}
+                        title="Delete"
                       >
                         🗑️
                       </Button>
