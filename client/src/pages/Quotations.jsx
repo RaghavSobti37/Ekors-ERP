@@ -133,80 +133,80 @@ const GoodsTable = ({
           </tr>
         </thead>
         <tbody>
-  {goods.map((item, index) => (
-    <tr key={index}>
-      <td>{item.srNo}</td>
-      <td>
-        <Form.Control plaintext readOnly value={item.description} />
-      </td>
-      <td>
-        <Form.Control plaintext readOnly value={item.hsnSacCode} />
-      </td>
-      <td>
-        {!isEditing ? (
-          item.quantity
-        ) : (
-          <Form.Control
-            required
-            type="number"
-            min="1"
-            value={item.quantity}
-            onChange={(e) =>
-              handleGoodsChange(index, "quantity", e.target.value)
-            }
-          />
-        )}
-      </td>
-      <td>
-        {!isEditing ? (
-          item.unit
-        ) : (
-          <Form.Control
-            as="select"
-            value={item.unit || "Nos"}
-            onChange={(e) =>
-              handleGoodsChange(index, "unit", e.target.value)
-            }
-          >
-            <option value="Nos">Nos</option>
-            <option value="Mtr">Mtr</option>
-            <option value="PKT">PKT</option>
-            <option value="Pair">Pair</option>
-            <option value="Set">Set</option>
-            <option value="Bottle">Bottle</option>
-            <option value="KG">KG</option>
-          </Form.Control>
-        )}
-      </td>
-      <td>
-        {!isEditing ? (
-          item.price.toFixed(2)
-        ) : (
-          <Form.Control
-            required
-            type="number"
-            min="0"
-            step="0.01"
-            value={item.price}
-            onChange={(e) =>
-              handleGoodsChange(index, "price", e.target.value)
-            }
-          />
-        )}
-      </td>
-      <td className="align-middle">₹{item.amount.toFixed(2)}</td>
-      <td className="align-middle">
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => onDeleteItem(index)} // Use the onDeleteItem prop
-        >
-          Delete
-        </Button>
-      </td>
-    </tr>
-  ))}
-</tbody>
+          {goods.map((item, index) => (
+            <tr key={index}>
+              <td>{item.srNo}</td>
+              <td>
+                <Form.Control plaintext readOnly value={item.description} />
+              </td>
+              <td>
+                <Form.Control plaintext readOnly value={item.hsnSacCode} />
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.quantity
+                ) : (
+                  <Form.Control
+                    required
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "quantity", e.target.value)
+                    }
+                  />
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.unit
+                ) : (
+                  <Form.Control
+                    as="select"
+                    value={item.unit || "Nos"}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
+                  >
+                    <option value="Nos">Nos</option>
+                    <option value="Mtr">Mtr</option>
+                    <option value="PKT">PKT</option>
+                    <option value="Pair">Pair</option>
+                    <option value="Set">Set</option>
+                    <option value="Bottle">Bottle</option>
+                    <option value="KG">KG</option>
+                  </Form.Control>
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.price.toFixed(2)
+                ) : (
+                  <Form.Control
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.price}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "price", e.target.value)
+                    }
+                  />
+                )}
+              </td>
+              <td className="align-middle">₹{item.amount.toFixed(2)}</td>
+              <td className="align-middle">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => onDeleteItem(index)} // Use the onDeleteItem prop
+                >
+                  Delete
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
 
       </Table>
 
@@ -339,8 +339,8 @@ export default function Quotations() {
       console.error("Error fetching quotations:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to load quotations. Please try again."
+        error.message ||
+        "Failed to load quotations. Please try again."
       );
 
       if (error.response?.status === 401) {
@@ -821,8 +821,8 @@ export default function Quotations() {
       console.error("Error creating ticket:", error);
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Failed to create ticket. Please try again."
+        error.message ||
+        "Failed to create ticket. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -874,7 +874,7 @@ export default function Quotations() {
     setQuotationData({
       ...initialQuotationData,
       referenceNumber: generateQuotationNumber(),
-      orderIssuedBy: user.id, 
+      orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null } // Ensure client _id is null for new
     });
     setSelectedClientIdForForm(null);
@@ -883,57 +883,57 @@ export default function Quotations() {
   };
 
 
- const handleDeleteQuotation = async (quotation) => {
-  if (!quotation || !quotation._id) {
-    setError("Invalid quotation selected for deletion.");
-    return;
-  }
-
-  const confirmDelete = window.confirm(
-    `Are you sure you want to delete quotation ${quotation.referenceNumber}? This action cannot be undone.`
-  );
-
-  if (!confirmDelete) return;
-
-  setIsLoading(true);
-  setError(null);
-
-  try {
-    const token = getAuthToken();
-    if (!token) throw new Error("No authentication token found");
-
-    await axios.delete(`http://localhost:3000/api/quotations/${quotation._id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    // ✅ Success actions
-    setError(null);
-    setCurrentQuotation(null);
-    setShowModal(false);
-    resetForm(); // Reset form if used in UI
-    fetchQuotations(); // Refresh data
-  } catch (error) {
-    console.error("Error deleting quotation:", error);
-    let errorMessage = "Failed to delete quotation. Please try again.";
-
-    if (error.response) {
-      if (error.response.status === 401) {
-        navigate("/login", { state: { from: "/quotations" } });
-        setIsLoading(false);
-        return;
-      }
-      errorMessage = error.response.data.message || errorMessage;
-    } else if (error.request) {
-      errorMessage = "No response from server. Check your network connection.";
+  const handleDeleteQuotation = async (quotation) => {
+    if (!quotation || !quotation._id) {
+      setError("Invalid quotation selected for deletion.");
+      return;
     }
 
-    setError(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete quotation ${quotation.referenceNumber}? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
+
+      await axios.delete(`http://localhost:3000/api/quotations/${quotation._id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // ✅ Success actions
+      setError(null);
+      setCurrentQuotation(null);
+      setShowModal(false);
+      resetForm(); // Reset form if used in UI
+      fetchQuotations(); // Refresh data
+    } catch (error) {
+      console.error("Error deleting quotation:", error);
+      let errorMessage = "Failed to delete quotation. Please try again.";
+
+      if (error.response) {
+        if (error.response.status === 401) {
+          navigate("/login", { state: { from: "/quotations" } });
+          setIsLoading(false);
+          return;
+        }
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = "No response from server. Check your network connection.";
+      }
+
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleClientSelect = (client) => {
     setQuotationData(prev => ({
@@ -1071,14 +1071,14 @@ export default function Quotations() {
                       >
                         👁️
                       </Button>
-                     <Button
-  variant="danger"
-  size="sm"
-  onClick={() => handleDeleteQuotation(quotation)}
-  disabled={isLoading}
->
-  🗑️
-</Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDeleteQuotation(quotation)}
+                        disabled={isLoading}
+                      >
+                        🗑️
+                      </Button>
 
                     </div>
                   </td>
@@ -1151,9 +1151,19 @@ export default function Quotations() {
           dialogClassName="custom-modal"
           centered
         >
+          {/* Updated Modal Header with same styling as CreateTicketModal */}
           <Modal.Header
             closeButton
-            style={{ borderBottom: "1px solid #dee2e6" }}
+            onHide={() => {
+              setShowModal(false);
+              setCurrentQuotation(null);
+              resetForm();
+            }}
+            style={{
+              borderBottom: '1px solid #dee2e6',
+              padding: '1rem',
+              flexShrink: 0 // Prevent header from shrinking
+            }}
           >
             <Modal.Title>
               {currentQuotation
@@ -1161,22 +1171,42 @@ export default function Quotations() {
                 : `Create New Quotation - ${quotationData.referenceNumber}`}
             </Modal.Title>
           </Modal.Header>
-          <div style={fullScreenModalStyle}>
-            {(() => {
-                let orderIssuedByNameDisplay = 'N/A';
-                if (currentQuotation && currentQuotation.orderIssuedBy) {
-                  // When editing, use populated data from currentQuotation
-                  orderIssuedByNameDisplay = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim() || 'Details unavailable';
-                } else if (!currentQuotation && user) {
-                  // When creating, use logged-in user's data from AuthContext
-                  orderIssuedByNameDisplay = `${user.firstname || ''} ${user.lastname || ''}`.trim() || 'Logged-in user';
-                }
 
-                // This block is for variable declaration, actual usage is in the Form.Control below
-                return null; 
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '95vw',
+            height: '95vh',
+            maxWidth: 'none',
+            margin: 0,
+            padding: 0,
+            backgroundColor: 'white',
+            border: '1px solid #dee2e6',
+            borderRadius: '0.3rem',
+            boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
+            zIndex: 1050,
+            display: showModal ? 'flex' : 'none',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {(() => {
+              let orderIssuedByNameDisplay = 'N/A';
+              if (currentQuotation && currentQuotation.orderIssuedBy) {
+                orderIssuedByNameDisplay = `${currentQuotation.orderIssuedBy.firstname || ''} ${currentQuotation.orderIssuedBy.lastname || ''}`.trim() || 'Details unavailable';
+              } else if (!currentQuotation && user) {
+                orderIssuedByNameDisplay = `${user.firstname || ''} ${user.lastname || ''}`.trim() || 'Logged-in user';
+              }
+              return null;
             })()}
-            <Form noValidate validated={formValidated} onSubmit={handleSubmit}>
-              <Modal.Body>
+
+            <Form noValidate validated={formValidated} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <Modal.Body style={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                padding: '20px'
+              }}>
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
                     <Form.Label>
@@ -1218,7 +1248,6 @@ export default function Quotations() {
                     <Form.Label>
                       Order Issued By <span className="text-danger">*</span>
                     </Form.Label>
-                    {/* Determine the display name for Order Issued By */}
                     {(() => {
                       let nameToShow = 'Loading...';
                       if (currentQuotation && currentQuotation.orderIssuedBy) {
@@ -1230,10 +1259,10 @@ export default function Quotations() {
                         <Form.Control
                           required
                           type="text"
-                          name="orderIssuedBy" // Name matches the ID field in quotationData
-                          value={nameToShow || 'N/A'} // Display the derived name
-                          readOnly // Make the field non-editable
-                          onChange={handleInputChange} // Kept for consistency, but readOnly prevents user changes
+                          name="orderIssuedBy"
+                          value={nameToShow || 'N/A'}
+                          readOnly
+                          onChange={handleInputChange}
                         />
                       );
                     })()}
@@ -1250,12 +1279,12 @@ export default function Quotations() {
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    className="mb-2 d-block" // d-block for full width if desired, or adjust styling
+                    className="mb-2 d-block"
                     onClick={() => {
                       setSelectedClientIdForForm(null);
                       setQuotationData(prev => ({
                         ...prev,
-                        client: { ...initialQuotationData.client, _id: null } 
+                        client: { ...initialQuotationData.client, _id: null }
                       }));
                     }}
                   > Clear Selected Client & Enter Manually
@@ -1323,7 +1352,7 @@ export default function Quotations() {
                   currentQuotation={currentQuotation}
                   isEditing={true}
                   onAddItem={handleAddItem}
-                  onDeleteItem={handleDeleteItem} // Pass the new handler here
+                  onDeleteItem={handleDeleteItem}
                 />
 
                 <div className="bg-light p-3 rounded">
@@ -1356,14 +1385,11 @@ export default function Quotations() {
                   </div>
                 </div>
               </Modal.Body>
-              <Modal.Footer
-                style={{
-                  position: "sticky",
-                  bottom: 0,
-                  zIndex: 1050,
-                  backgroundColor: "white",
-                }}
-              >
+              <Modal.Footer style={{
+                borderTop: '1px solid #dee2e6',
+                padding: '15px',
+                flexShrink: 0
+              }}>
                 <Button
                   variant="secondary"
                   onClick={() => {
@@ -1381,8 +1407,8 @@ export default function Quotations() {
                       ? "Updating..."
                       : "Saving..."
                     : currentQuotation
-                    ? "Update Quotation"
-                    : "Save Quotation"}
+                      ? "Update Quotation"
+                      : "Save Quotation"}
                 </Button>
               </Modal.Footer>
             </Form>
