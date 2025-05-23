@@ -1089,8 +1089,8 @@ export default function Quotations() {
           centered
         >
           <Modal.Header closeButton style={{ borderBottom: '1px solid #dee2e6' }}>
-            <Modal.Title>
-              {currentQuotation ? "Edit Quotation" : "Create New Quotation"}
+            <Modal.Title> 
+              Create Quotations - {currentQuotation?.referenceNumber}
             </Modal.Title>
           </Modal.Header>
           <div style={fullScreenModalStyle}>

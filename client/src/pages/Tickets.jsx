@@ -996,15 +996,11 @@ export default function Dashboard() {
                     </td>
                     <td>
                       <div className="d-flex gap-2">
-                        {/* <Button variant="outline-secondary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
-                          <i className="bi bi-pencil me-1"></i>✏️
-                        </Button> */}
+                        
                         <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} title="Edit">
                           <i className="bi bi-pencil me-1"></i>✏️
                         </Button>
-                        {/* <Button variant="outline-secondary" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
-                          <i className="bi bi-arrow-left-right me-1"></i>Transfer
-                        </Button> */}
+                        
                         <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} title="Transfer">
                           <i className="bi bi-arrow-left-right me-1"></i>Transfer
                         </Button>
@@ -1024,6 +1020,7 @@ export default function Dashboard() {
           </Modal.Header>
           <Modal.Body style={{ overflowY: 'auto' }}>
             <ProgressBarWithStages />
+            <DocumentUploadSection />
             <div className="row mb-4">
               <Form.Group className="col-md-6">
                 <Form.Label>Date</Form.Label>
@@ -1070,7 +1067,7 @@ export default function Dashboard() {
               </div>
               <div className="row"><div className="col-md-12"><h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5></div></div>
             </div>
-            <DocumentUploadSection />
+            
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
