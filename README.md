@@ -106,17 +106,6 @@ cd server
 npm install      # or yarn install
 npm start        # or yarn start
 ```
-
-### .env Configuration (in `server/`)
-
-```env
-MONGO_URI=mongodb://your_db_url
-JWT_SECRET=your_jwt_secret
-PORT=5000
-```
-
----
-
 ## 🔌 API
 
 All APIs follow REST conventions. Refer to route/controller files in `server/routes/` and `server/controllers/` for detailed endpoints.
