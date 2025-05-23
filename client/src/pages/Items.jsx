@@ -798,6 +798,8 @@ export default function Items() {
                                 onClick={() => toggleDetails(item._id)}
                                 className="btn btn-info btn-sm"
                                 disabled={isSubmitting}
+                                title="View"
+
                               >
                                 👁️
                               </button>
@@ -807,6 +809,7 @@ export default function Items() {
                                 onClick={() => handleEdit(item)}
                                 className="btn btn-primary btn-sm"
                                 disabled={isSubmitting}
+                                title="Edit"
                               >
                                 ✏️
                               </button>
@@ -814,6 +817,7 @@ export default function Items() {
                                 onClick={() => handleDelete(item._id)}
                                 className="btn btn-danger btn-sm"
                                 disabled={isSubmitting}
+                                title="Delete"
                               >
                                 🗑️
                               </button>

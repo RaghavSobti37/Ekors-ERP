@@ -160,13 +160,6 @@ export default function PurchaseHistory() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2>Purchase History</h2>
-          {/* <button 
-            className="btn btn-success" 
-            onClick={exportToCSV}
-            disabled={filteredPurchases.length === 0}
-          >
-            Export to CSV
-          </button> */}
         </div>
 
         {error && (
@@ -280,6 +273,7 @@ export default function PurchaseHistory() {
                               <button
                                 onClick={() => window.location.href = `/purchase-detail/${purchase._id}`}
                                 className="btn btn-outline-primary btn-sm"
+                                title="View"
                               >
                                 👁️
                               </button>
