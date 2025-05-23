@@ -117,7 +117,7 @@ export default function Navbar({ showPurchaseModal }) {
                     onClick={showPurchaseModal}
                     style={{ cursor: "pointer", padding: "10px 15px" }}
                   >
-                    Add Purchase
+                    Update Stock
                   </div>
                   <div
                     onClick={handlePurchaseHistoryClick}

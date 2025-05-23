@@ -155,6 +155,7 @@ const AddNewItem = ({ onClose }) => {
                                                         type="button"
                                                         className="view-btn"
                                                         onClick={() => handleView(item.id)}
+                                                        title="View"
                                                     >
                                                         👁️
                                                     </button>
@@ -162,6 +163,7 @@ const AddNewItem = ({ onClose }) => {
                                                         type="button"
                                                         className="edit-btn"
                                                         onClick={() => handleEdit(item.id)}
+                                                        title="Edit"
                                                     >
                                                         ✏️
                                                     </button>
@@ -169,6 +171,7 @@ const AddNewItem = ({ onClose }) => {
                                                         type="button"
                                                         className="delete-btn"
                                                         onClick={() => removeRow(item.id)}
+                                                        title="Delete"
                                                     >
                                                         🗑️
                                                     </button>
