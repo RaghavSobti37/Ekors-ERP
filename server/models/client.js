@@ -27,6 +27,10 @@ const clientSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  quotations: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Quotation'
+  }]
 }, { timestamps: true });
 
 // Create a compound index for user+email uniqueness

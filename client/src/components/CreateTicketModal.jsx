@@ -14,6 +14,48 @@ const CreateTicketModal = ({
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [sameAsBilling, setSameAsBilling] = useState(false);
 
+  // Full screen modal style
+  const fullScreenModalStyle = {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '95vw',
+    height: '95vh',
+    maxWidth: 'none',
+    margin: 0,
+    padding: 0,
+    backgroundColor: 'white',
+    border: '1px solid #dee2e6',
+    borderRadius: '0.3rem',
+    boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
+    zIndex: 1050,
+    display: show ? 'flex' : 'none',
+    flexDirection: 'column',
+    overflow: 'hidden' // Prevent double scroll bars
+  };
+
+  // Modal header style
+  const modalHeaderStyle = {
+    borderBottom: '1px solid #dee2e6',
+    padding: '1rem',
+    flexShrink: 0 // Prevent header from shrinking
+  };
+
+  // Modal body style with single scroll
+  const modalBodyStyle = {
+    flexGrow: 1,
+    overflowY: 'auto', // Only scroll the body
+    padding: '20px'
+  };
+
+  // Modal footer style (sticky at bottom)
+  const modalFooterStyle = {
+    borderTop: '1px solid #dee2e6',
+    padding: '15px',
+    flexShrink: 0 // Prevent footer from shrinking
+  };
+
   // Update shipping address when billing address changes and sameAsBilling is checked
   useEffect(() => {
     if (sameAsBilling) {
@@ -75,9 +117,7 @@ const CreateTicketModal = ({
       [addressType]: newAddress
     });
 
-    // Use the current pincode value, not the potentially stale state value
     if (pincode.length === 6) {
-      // Small delay to ensure state is updated before fetching
       setTimeout(() => {
         fetchAddressFromPincode(pincode, addressType);
       }, 0);
@@ -94,7 +134,6 @@ const CreateTicketModal = ({
       [addressType]: newAddress
     });
 
-    // If same as billing is checked and we're updating billing, also update shipping
     if (sameAsBilling && addressType === 'billingAddress') {
       const newShippingAddress = [...ticketData.shippingAddress];
       newShippingAddress[index] = value;
@@ -119,12 +158,12 @@ const CreateTicketModal = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} dialogClassName="modal-fullscreen">
-      <Modal.Header closeButton>
+    <div style={fullScreenModalStyle}>
+      <Modal.Header closeButton onHide={onHide} style={modalHeaderStyle}>
         <Modal.Title>Create Ticket from Quotation</Modal.Title>
       </Modal.Header>
-      <Form onSubmit={handleTicketSubmit}>
-        <Modal.Body>
+      <Form onSubmit={handleTicketSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Modal.Body style={modalBodyStyle}>
           {error && <div className="alert alert-danger">{error}</div>}
           
           <div className="row">
@@ -345,7 +384,7 @@ const CreateTicketModal = ({
             </div>
           </div>
         </Modal.Body>
-        <Modal.Footer>
+        <Modal.Footer style={modalFooterStyle}>
           <Button variant="secondary" onClick={onHide}>
             Cancel
           </Button>
@@ -354,7 +393,7 @@ const CreateTicketModal = ({
           </Button>
         </Modal.Footer>
       </Form>
-    </Modal>
+    </div>
   );
 };
 
