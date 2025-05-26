@@ -35,7 +35,7 @@ router.post(
         check('firstname', 'First name is required').not().isEmpty(),
         check('lastname', 'Last name is required').not().isEmpty(),
         check('email', 'Please include a valid email').isEmail(),
-        check('password', 'Password is required and must be at least 6 characters').isLength({ min: 6 }),
+        check('password', 'Password is required and must be at least 5 characters').isLength({ min: 5 }),
         check('role', 'Role is required').isIn(['user', 'admin', 'super-admin']),
     ],
     async (req, res) => {
@@ -52,25 +52,19 @@ router.post(
                 return res.status(400).json({ error: 'User already exists with this email' });
             }
 
-            // Ensure only a super-admin can create another super-admin
-            if (role === 'super-admin' && req.user.role !== 'super-admin') {
-                return res.status(403).json({ error: 'Forbidden: Only super-admins can create other super-admins.' });
-            }
-
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
             user = new User({
                 firstname,
                 lastname,
                 email,
                 phone,
                 role,
-                password: hashedPassword,
+                password,
+                isActive: true // Make sure this is set
             });
 
             await user.save();
 
+            // Don't send back password hash
             const userResponse = user.toObject();
             delete userResponse.password;
             delete userResponse.__v;
@@ -82,7 +76,6 @@ router.post(
         }
     }
 );
-
 // PUT /api/users/:id - Update a user (Super-admin only)
 router.put(
     '/:id',
@@ -130,10 +123,6 @@ router.put(
             if (phone !== undefined) updateFields.phone = phone;
             if (role) updateFields.role = role;
 
-            if (password && password.trim() !== "") {
-                const salt = await bcrypt.genSalt(10);
-                updateFields.password = await bcrypt.hash(password, salt);
-            }
 
             const updatedUser = await User.findByIdAndUpdate(
                 userIdToUpdate,

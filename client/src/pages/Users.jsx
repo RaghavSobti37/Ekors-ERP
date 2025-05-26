@@ -99,7 +99,8 @@ const Users = () => {
             email: user?.email || "",
             phone: user?.phone || "",
             role: user?.role || "user",
-            password: ""
+            password: "",
+            isActive: true
         });
         setShowEditModal(true);
     };
@@ -133,76 +134,68 @@ const Users = () => {
     };
 
     const handleSave = async () => {
-        try {
-            console.log("[Users.jsx] handleSave: Attempting to save user. SelectedUser:", selectedUser, "FormData:", formData);
-            const authTokenString = getAuthToken();
+    try {
+        console.log("[Users.jsx] handleSave: Attempting to save user. SelectedUser:", selectedUser, "FormData:", formData);
+        const authTokenString = getAuthToken();
 
-            if (!authTokenString) {
-                console.error("[Users.jsx] handleSave: No token found. Aborting save.");
-                alert("Authentication token not found. Please log in again.");
-                return;
-            }
-
-            if (!formData.firstname || !formData.lastname || !formData.email) {
-                throw new Error("[Users.jsx] handleSave: Validation Error - Required fields are missing");
-            }
-
-            if (!selectedUser && !formData.password) {
-                throw new Error("[Users.jsx] handleSave: Validation Error - Password is required for new users");
-            }
-            let response;
-            api.defaults.headers.common['Authorization'] = `Bearer ${authTokenString}`;
-            if (selectedUser) {
-                // Update existing user
-                response = await api.put(
-                    `/api/users/${selectedUser._id}`,
-                    formData
-                );
-                setUsers(users.map(user =>
-                    user._id === selectedUser._id ? response.data : user
-                ));
-                console.log("[Users.jsx] handleSave: User updated successfully:", response.data);
-            } else {
-                // Add new user
-                response = await api.post(
-                    "/api/users", // Changed from /api/users/register
-                    formData
-                );
-                setUsers([...users, response.data]);
-                console.log("[Users.jsx] handleSave: User created successfully:", response.data);
-            }
-
-            setFormData({
-                firstname: "",
-                lastname: "",
-                email: "",
-                phone: "",
-                role: "user",
-                password: ""
-            });
-            setShowEditModal(false);
-            setSelectedUser(null);
-
-            // Refresh the list
-            fetchUsers();
-        } catch (err) {
-            let errorMessage = "Failed to save user. Please check console for details.";
-            if (err.response && err.response.data) {
-                console.error("[Users.jsx] handleSave: Server responded with error:", err.response.data);
-                // Prefer server's specific error message if available
-                errorMessage = err.response.data.error || (typeof err.response.data === 'string' ? err.response.data : "An unknown server error occurred.");
-                if (err.response.data.errors && Array.isArray(err.response.data.errors)) { // For express-validator type errors
-                    errorMessage = err.response.data.errors.map(e => e.msg).join(', ');
-                }
-            } else {
-                console.error("[Users.jsx] handleSave: Error saving user (no server response data):", err.message || err);
-                errorMessage = err.message || "An unexpected error occurred.";
-            }
-            alert(errorMessage);
-            if (err.response?.status === 401) {
-            }
+        if (!authTokenString) {
+            console.error("[Users.jsx] handleSave: No token found. Aborting save.");
+            alert("Authentication token not found. Please log in again.");
+            return;
         }
-    };
+
+        if (!formData.firstname || !formData.lastname || !formData.email) {
+            throw new Error("First name, last name and email are required");
+        }
+
+        if (!selectedUser && !formData.password) {
+            throw new Error("Password is required for new users");
+        }
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${authTokenString}`;
+        
+        if (selectedUser) {
+            // Update existing user
+            const response = await api.put(
+                `/api/users/${selectedUser._id}`,
+                formData
+            );
+            setUsers(users.map(user =>
+                user._id === selectedUser._id ? response.data : user
+            ));
+        } else {
+            // Add new user - ensure password is included
+            const userData = {
+                ...formData,
+                isActive: true // Ensure new users are active
+            };
+            
+            const response = await api.post(
+                "/api/users",
+                userData
+            );
+            setUsers([...users, response.data]);
+        }
+
+        // Reset form and close modal
+        setFormData({
+            firstname: "",
+            lastname: "",
+            email: "",
+            phone: "",
+            role: "user",
+            password: ""
+        });
+        setShowEditModal(false);
+        setSelectedUser(null);
+
+        // Refresh the list
+        fetchUsers();
+    } catch (err) {
+        console.error("[Users.jsx] handleSave: Error saving user:", err);
+        alert(err.response?.data?.error || err.message || "Failed to save user");
+    }
+};
 
     const formatDate = (dateString) => {
         if (!dateString) return "Never";
@@ -305,7 +298,7 @@ const Users = () => {
                                                     size="sm"
                                                     onClick={() => handleDelete(user._id)}
                                                     title="Delete"
-                                                    disabled={user.role === "super-admin"}
+                                                    // disabled={user.role === "super-admin"}
                                                 >
                                                     <FaTrash />
                                                 </BsButton>

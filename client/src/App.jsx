@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import QuotationPDF from "./components/QuotationPDF";
 import PIPDF from "./components/PIPDF";
-import Signup from "./pages/Signup.jsx";
 import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
-import Logtime from "./pages/Logtime";
 import History from "./pages/History";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
@@ -41,7 +39,6 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/register" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/quotationpdf" element={<QuotationPDF />} />
           <Route path="/pipdf" element={<PIPDF />} />
