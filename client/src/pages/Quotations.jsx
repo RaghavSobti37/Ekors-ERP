@@ -105,7 +105,7 @@ const GoodsTable = ({
   currentQuotation,
   isEditing,
   onAddItem,
-  onDeleteItem, // Add onDeleteItem to props
+  onDeleteItem,
 }) => {
   return (
     <div className="table-responsive">
@@ -135,20 +135,28 @@ const GoodsTable = ({
             <tr key={index}>
               <td>{item.srNo}</td>
               <td>
-                <Form.Control plaintext readOnly value={item.description} />
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.description || ""}
+                />
               </td>
               <td>
-                <Form.Control plaintext readOnly value={item.hsnSacCode} />
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.hsnSacCode || ""}
+                />
               </td>
               <td>
                 {!isEditing ? (
-                  item.quantity
+                  item.quantity || 0
                 ) : (
                   <Form.Control
                     required
                     type="number"
                     min="1"
-                    value={item.quantity}
+                    value={item.quantity || 1}
                     onChange={(e) =>
                       handleGoodsChange(index, "quantity", e.target.value)
                     }
@@ -157,7 +165,7 @@ const GoodsTable = ({
               </td>
               <td>
                 {!isEditing ? (
-                  item.unit
+                  item.unit || "Nos"
                 ) : (
                   <Form.Control
                     as="select"
@@ -178,29 +186,31 @@ const GoodsTable = ({
               </td>
               <td>
                 {!isEditing ? (
-                  item.price.toFixed(2)
+                  (item.price || 0).toFixed(2)
                 ) : (
                   <Form.Control
                     required
                     type="number"
                     min="0"
                     step="0.01"
-                    value={item.price}
+                    value={item.price || 0}
                     onChange={(e) =>
                       handleGoodsChange(index, "price", e.target.value)
                     }
                   />
                 )}
               </td>
-              <td className="align-middle">₹{item.amount.toFixed(2)}</td>
+              <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
               <td className="align-middle">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => onDeleteItem(index)} // Use the onDeleteItem prop
-                >
-                  Delete
-                </Button>
+                {isEditing && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onDeleteItem(index)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
@@ -251,8 +261,8 @@ export default function Quotations() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
+  const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
-
 
   const getAuthToken = () => {
     try {
@@ -292,6 +302,7 @@ export default function Quotations() {
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
+    status: "open",
     client: {
       _id: null, // Add _id field for client
       companyName: "",
@@ -315,40 +326,49 @@ export default function Quotations() {
     status: "Quotation Sent",
   });
 
-  const fetchQuotations = useCallback(async () => {
-    if (loading || !user) return;
+const fetchQuotations = useCallback(async () => {
+  if (loading || !user) return;
 
-    setIsLoading(true);
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
+  setIsLoading(true);
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
 
-      const response = await axios.get("http://localhost:3000/api/quotations", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") {
+      params.append("status", statusFilter);
+    }
 
-      setQuotations(response.data);
-      setQuotationsCount(response.data.length);
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching quotations:", error);
-      setError(
-        error.response?.data?.message ||
+    // Construct URL with query parameters
+    const url = `http://localhost:3000/api/quotations${params.toString() ? `?${params.toString()}` : ''}`;
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setQuotations(response.data);
+    setQuotationsCount(response.data.length);
+    setError(null);
+  } catch (error) {
+    console.error("Error fetching quotations:", error);
+    setError(
+      error.response?.data?.message ||
         error.message ||
         "Failed to load quotations. Please try again."
-      );
+    );
 
-      if (error.response?.status === 401) {
-        navigate("/login", { state: { from: "/quotations" } });
-      }
-    } finally {
-      setIsLoading(false);
+    if (error.response?.status === 401) {
+      navigate("/login", { state: { from: "/quotations" } });
     }
-  }, [user, loading, navigate]);
+  } finally {
+    setIsLoading(false);
+  }
+}, [user, loading, navigate, statusFilter]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -389,11 +409,18 @@ export default function Quotations() {
     });
   }, [quotations, sortConfig]);
 
-  const filteredQuotations = useMemo(() => {
-    if (!searchTerm) return sortedQuotations;
+const filteredQuotations = useMemo(() => {
+  let filtered = sortedQuotations;
 
+  // Apply status filter first
+  if (statusFilter !== "all") {
+    filtered = filtered.filter(quotation => quotation.status === statusFilter);
+  }
+
+  // Apply search term filter
+  if (searchTerm) {
     const term = searchTerm.toLowerCase();
-    return sortedQuotations.filter(
+    filtered = filtered.filter(
       (quotation) =>
         quotation.referenceNumber?.toLowerCase().includes(term) ||
         quotation.client?.companyName?.toLowerCase().includes(term) ||
@@ -404,7 +431,10 @@ export default function Quotations() {
             item.hsnSacCode?.toLowerCase().includes(term)
         )
     );
-  }, [sortedQuotations, searchTerm]);
+  }
+
+  return filtered;
+}, [sortedQuotations, searchTerm, statusFilter]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -459,7 +489,7 @@ export default function Quotations() {
         description: item.name,
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
-        unit: item.unit || "Nos",
+        unit: item.unit || "Nos", // Ensure unit is included
         price: item.price,
         amount: item.price,
       },
@@ -485,7 +515,7 @@ export default function Quotations() {
       gstAmount,
       grandTotal,
     });
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const handleGoodsChange = (index, field, value) => {
@@ -590,12 +620,33 @@ export default function Quotations() {
     setFormValidated(true);
 
     const form = event.currentTarget;
-    if (form.checkValidity() === false || quotationData.goods.length === 0) {
+
+    // Check form validity and ensure we have goods
+    if (form.checkValidity() === false) {
       event.stopPropagation();
+      setError("Please fill in all required fields.");
       return;
     }
 
+    if (!quotationData.goods || quotationData.goods.length === 0) {
+      setError("Please add at least one item to the quotation.");
+      return;
+    }
+
+    // Validate goods items
+    for (let i = 0; i < quotationData.goods.length; i++) {
+      const item = quotationData.goods[i];
+      if (!item.description || !item.quantity || !item.price || !item.unit) {
+        setError(
+          `Item ${i + 1} is incomplete. Please fill all required fields.`
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
+    setError(null);
+
     try {
       const token = getAuthToken();
       if (!token) {
@@ -603,15 +654,16 @@ export default function Quotations() {
       }
 
       const submissionData = {
-        referenceNumber: quotationData.referenceNumber, // Use the reference number from the state
+        referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
         validityDate: new Date(quotationData.validityDate).toISOString(),
         orderIssuedBy: quotationData.orderIssuedBy,
         goods: quotationData.goods.map((item) => ({
           srNo: item.srNo,
           description: item.description,
-          hsnSacCode: item.hsnSacCode,
+          hsnSacCode: item.hsnSacCode || "",
           quantity: Number(item.quantity),
+          unit: item.unit || "Nos", // Ensure unit is included
           price: Number(item.price),
           amount: Number(item.amount),
         })),
@@ -619,13 +671,17 @@ export default function Quotations() {
         totalAmount: Number(quotationData.totalAmount),
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
+        status: quotationData.status || "open",
         client: {
+          _id: quotationData.client._id || null,
           companyName: quotationData.client.companyName,
           gstNumber: quotationData.client.gstNumber,
           email: quotationData.client.email,
           phone: String(quotationData.client.phone),
         },
       };
+
+      console.log("Submitting quotation data:", submissionData);
 
       const url = currentQuotation
         ? `http://localhost:3000/api/quotations/${currentQuotation._id}`
@@ -698,7 +754,7 @@ export default function Quotations() {
     } catch (error) {
       console.error("Error generating ticket number:", error);
       const now = new Date();
-     const year = now.getFullYear().toString().slice(-2);
+      const year = now.getFullYear().toString().slice(-2);
       const month = String(now.getMonth() + 1).padStart(2, "0");
       const day = String(now.getDate()).padStart(2, "0");
       const hours = String(now.getHours()).padStart(2, "0");
@@ -823,8 +879,8 @@ export default function Quotations() {
       console.error("Error creating ticket:", error);
       setError(
         error.response?.data?.message ||
-        error.message ||
-        "Failed to create ticket. Please try again."
+          error.message ||
+          "Failed to create ticket. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -833,27 +889,26 @@ export default function Quotations() {
 
   const handleEdit = (quotation) => {
     setCurrentQuotation(quotation);
-    // Ensure orderIssuedBy has the necessary fields, or provide fallbacks
-    // If quotation.orderIssuedBy exists and has an _id, use it.
-    // Otherwise, set to null to avoid sending an empty string "" for an ObjectId,
-    // which can cause backend validation/cast errors.
+
     const orderIssuedById = quotation.orderIssuedBy?._id || null;
 
     setQuotationData({
       date: formatDateForInput(quotation.date),
       referenceNumber: quotation.referenceNumber,
       validityDate: formatDateForInput(quotation.validityDate),
-      orderIssuedBy: orderIssuedById, // Store the ID
+      orderIssuedBy: orderIssuedById,
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
         price: Number(item.price),
         amount: Number(item.amount),
+        unit: item.unit || "Nos", // Ensure unit field exists
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
       gstAmount: Number(quotation.gstAmount),
       grandTotal: Number(quotation.grandTotal),
+      status: quotation.status || "open",
       client: {
         companyName: quotation.client?.companyName || "",
         gstNumber: quotation.client?.gstNumber || "",
@@ -862,9 +917,9 @@ export default function Quotations() {
         _id: quotation.client?._id || null,
       },
     });
+    setSelectedClientIdForForm(quotation.client?._id || null);
     setShowModal(true);
   };
-
   const openCreateModal = async () => {
     if (!user) {
       setError("User data is not available. Please log in again.");
@@ -962,7 +1017,7 @@ export default function Quotations() {
           <h2 style={{ color: "black" }}>Quotations</h2>
           <div
             className="d-flex align-items-center gap-3"
-            style={{ width: "50%" }}
+            style={{ width: "80%" }}
           >
             <Form.Control
               type="search"
@@ -978,6 +1033,57 @@ export default function Quotations() {
                 boxShadow: "none",
               }}
             />
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                inline
+                label="All"
+                name="statusFilter"
+                type="radio"
+                id="status-all"
+                checked={statusFilter === "all"}
+                onChange={() => {
+                  setStatusFilter("all");
+                  setCurrentPage(1); 
+                }}
+              />
+              <Form.Check
+                inline
+                label="Open"
+                name="statusFilter"
+                type="radio"
+                id="status-open"
+                checked={statusFilter === "open"}
+                onChange={() => {
+                  setStatusFilter("open");
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                inline
+                label="Closed"
+                name="statusFilter"
+                type="radio"
+                id="status-closed"
+                checked={statusFilter === "closed"}
+                onChange={() => {
+                  setStatusFilter("closed");
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                inline
+                label="Hold"
+                name="statusFilter"
+                type="radio"
+                id="status-hold"
+                checked={statusFilter === "hold"}
+                onChange={() => {
+                  setStatusFilter("hold");
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+
             <Button variant="primary" onClick={openCreateModal}>
               Create New Quotation
             </Button>
@@ -1009,6 +1115,18 @@ export default function Quotations() {
                   sortConfig={sortConfig}
                 />
               </th>
+              {user?.role === "super-admin" && (
+                <th
+                  onClick={() => requestSort("user.firstname")}
+                  style={{ cursor: "pointer" }}
+                >
+                  Created By{" "}
+                  <SortIndicator
+                    columnKey="user.firstname"
+                    sortConfig={sortConfig}
+                  />
+                </th>
+              )}
               <th
                 onClick={() => requestSort("client.gstNumber")}
                 style={{ cursor: "pointer" }}
@@ -1019,12 +1137,20 @@ export default function Quotations() {
                   sortConfig={sortConfig}
                 />
               </th>
+
               <th
                 onClick={() => requestSort("grandTotal")}
                 style={{ cursor: "pointer" }}
               >
                 Grand Total (₹){" "}
                 <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
+              </th>
+              <th
+                onClick={() => requestSort("status")}
+                style={{ cursor: "pointer" }}
+              >
+                Status{" "}
+                <SortIndicator columnKey="status" sortConfig={sortConfig} />
               </th>
               <th>Actions</th>
             </tr>
@@ -1041,9 +1167,27 @@ export default function Quotations() {
                 <tr key={quotation._id}>
                   <td>{quotation.referenceNumber}</td>
                   <td>{quotation.client?.companyName}</td>
+                  {user?.role === "super-admin" && (
+                    <td>
+                      {quotation.user?.firstname} {quotation.user?.lastname}
+                    </td>
+                  )}
                   <td>{quotation.client?.gstNumber}</td>
                   <td className="text-end">
                     {quotation.grandTotal.toFixed(2)}
+                  </td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        quotation.status === "open"
+                          ? "bg-primary"
+                          : quotation.status === "closed"
+                          ? "bg-success"
+                          : "bg-warning"
+                      }`}
+                    >
+                      {quotation.status}
+                    </span>
                   </td>
                   <td>
                     <div className="d-flex gap-2">
@@ -1078,15 +1222,17 @@ export default function Quotations() {
                       >
                         👁️
                       </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDeleteQuotation(quotation)}
-                        disabled={isLoading}
-                        title="Delete"
-                      >
-                        🗑️
-                      </Button>
+                      {user?.role === "super-admin" && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDeleteQuotation(quotation)}
+                          disabled={isLoading}
+                          title="Delete"
+                        >
+                          🗑️
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1160,225 +1306,242 @@ export default function Quotations() {
         >
           {/* Updated Modal Header with same styling as CreateTicketModal */}
           <Modal.Header
-    closeButton
-    onHide={() => {
-      setShowModal(false);
-      setCurrentQuotation(null);
-      resetForm();
-    }}
-    style={{
-      borderBottom: '1px solid #dee2e6',
-      padding: '1rem',
-      flexShrink: 0 // Prevent header from shrinking
-    }}
-  >
-    <Modal.Title>
-      {currentQuotation
-        ? `Edit Quotation - ${quotationData.referenceNumber}`
-        : `Create New Quotation - ${quotationData.referenceNumber}`}
-      <br />
-    </Modal.Title>
-  </Modal.Header>          
-            {/* The div with fullScreenModalStyle and the unused IIFE were removed.
+            closeButton
+            onHide={() => {
+              setShowModal(false);
+              setCurrentQuotation(null);
+              resetForm();
+            }}
+            style={{
+              borderBottom: "1px solid #dee2e6",
+              padding: "1rem",
+              flexShrink: 0, // Prevent header from shrinking
+            }}
+          >
+            <Modal.Title>
+              {currentQuotation
+                ? `Edit Quotation - ${quotationData.referenceNumber}`
+                : `Create New Quotation - ${quotationData.referenceNumber}`}
+              <br />
+            </Modal.Title>
+          </Modal.Header>
+          {/* The div with fullScreenModalStyle and the unused IIFE were removed.
                 The Form is now a direct child of Modal's content area.
                 Its style is adjusted to correctly fill space and manage layout. */}
-            <Form 
-              noValidate 
-              validated={formValidated} 
-              onSubmit={handleSubmit} 
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                flexGrow: 1, // Make form take available vertical space
-                overflow: 'hidden' // Prevent form itself from scrolling; Modal.Body will scroll
+          <Form
+            noValidate
+            validated={formValidated}
+            onSubmit={handleSubmit}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              flexGrow: 1, // Make form take available vertical space
+              overflow: "hidden", // Prevent form itself from scrolling; Modal.Body will scroll
+            }}
+          >
+            <Modal.Body
+              style={{
+                flexGrow: 1,
+                overflowY: "auto",
+                padding: "20px",
               }}
             >
-              <Modal.Body style={{
-                flexGrow: 1,
-                overflowY: 'auto',
-                padding: '20px'
-              }}>
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Date <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="date"
-                      name="date"
-                      value={quotationData.date}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>Reference Number</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="referenceNumber"
-                      value={quotationData.referenceNumber}
-                      readOnly
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Validity Date <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="date"
-                      name="validityDate"
-                      value={quotationData.validityDate}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                </div>
-
-                <h5>Client Details</h5>
-                <ClientSearchComponent
-                  onClientSelect={handleClientSelect}
-                  placeholder="Search & select client or enter details manually"
-                  currentClientId={selectedClientIdForForm}
-                />
-                {selectedClientIdForForm && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="mb-2 d-block"
-                    onClick={() => {
-                      setSelectedClientIdForForm(null);
-                      setQuotationData((prev) => ({
-                        ...prev,
-                        client: { ...initialQuotationData.client, _id: null },
-                      }));
-                    }}
+              <div className="row">
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>
+                    Date <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    required
+                    type="date"
+                    name="date"
+                    value={quotationData.date}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                {/* <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>Reference Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="referenceNumber"
+                    value={quotationData.referenceNumber}
+                    readOnly
+                  />
+                </Form.Group> */}
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>
+                    Validity Date <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    required
+                    type="date"
+                    name="validityDate"
+                    value={quotationData.validityDate}
+                    onChange={handleInputChange}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-4">
+                  <Form.Label>
+                    Status <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Select
+                    required
+                    name="status"
+                    value={quotationData.status}
+                    onChange={handleInputChange}
                   >
-                    {" "}
-                    Clear Selected Client & Enter Manually
-                  </Button>
-                )}
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Company Name <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      name="client.companyName"
-                      value={quotationData.client.companyName}
-                      onChange={handleInputChange}
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      GST Number <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      name="client.gstNumber"
-                      value={quotationData.client.gstNumber}
-                      onChange={handleInputChange}
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                </div>
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Email <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="email"
-                      name="client.email"
-                      value={quotationData.client.email}
-                      onChange={handleInputChange}
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Phone <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="tel"
-                      name="client.phone"
-                      value={quotationData.client.phone}
-                      onChange={handleInputChange}
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                </div>
+                    <option value="open">Open</option>
+                    <option value="closed">Closed</option>
+                    <option value="hold">Hold</option>
+                  </Form.Select>
+                </Form.Group>
+              </div>
 
-                <h5>Goods Details</h5>
-                <GoodsTable
-                  goods={quotationData.goods}
-                  handleGoodsChange={handleGoodsChange}
-                  currentQuotation={currentQuotation}
-                  isEditing={true}
-                  onAddItem={handleAddItem}
-                  onDeleteItem={handleDeleteItem}
-                />
-
-                <div className="bg-light p-3 rounded">
-                  <div className="row">
-                    <div className="col-md-4">
-                      <p>
-                        Total Quantity:{" "}
-                        <strong>{quotationData.totalQuantity}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        Total Amount:{" "}
-                        <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        GST (18%):{" "}
-                        <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-md-12">
-                      <h5>
-                        Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
-                      </h5>
-                    </div>
-                  </div>
-                </div>
-              </Modal.Body>
-              <Modal.Footer style={{
-                borderTop: '1px solid #dee2e6',
-                padding: '15px',
-                flexShrink: 0
-              }}>
+              <h5>Client Details</h5>
+              <ClientSearchComponent
+                onClientSelect={handleClientSelect}
+                placeholder="Search & select client or enter details manually"
+                currentClientId={selectedClientIdForForm}
+              />
+              {selectedClientIdForForm && (
                 <Button
-                  variant="secondary"
+                  variant="outline-secondary"
+                  size="sm"
+                  className="mb-2 d-block"
                   onClick={() => {
-                    setShowModal(false);
-                    setCurrentQuotation(null);
-                    resetForm();
+                    setSelectedClientIdForForm(null);
+                    setQuotationData((prev) => ({
+                      ...prev,
+                      client: { ...initialQuotationData.client, _id: null },
+                    }));
                   }}
-                  disabled={isLoading}
                 >
-                  Close
+                  {" "}
+                  Clear Selected Client & Enter Manually
                 </Button>
-                <Button variant="primary" type="submit" disabled={isLoading}>
-                  {isLoading
-                    ? currentQuotation
-                      ? "Updating..."
-                      : "Saving..."
-                    : currentQuotation
-                      ? "Update Quotation"
-                      : "Save Quotation"}
-                </Button>
-              </Modal.Footer>
-            </Form>
+              )}
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>
+                    Company Name <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="client.companyName"
+                    value={quotationData.client.companyName}
+                    onChange={handleInputChange}
+                    readOnly={!!selectedClientIdForForm}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>
+                    GST Number <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    required
+                    type="text"
+                    name="client.gstNumber"
+                    value={quotationData.client.gstNumber}
+                    onChange={handleInputChange}
+                    readOnly={!!selectedClientIdForForm}
+                  />
+                </Form.Group>
+              </div>
+              <div className="row">
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>
+                    Email <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="client.email"
+                    value={quotationData.client.email}
+                    onChange={handleInputChange}
+                    readOnly={!!selectedClientIdForForm}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3 col-md-6">
+                  <Form.Label>
+                    Phone <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    type="tel"
+                    name="client.phone"
+                    value={quotationData.client.phone}
+                    onChange={handleInputChange}
+                    readOnly={!!selectedClientIdForForm}
+                  />
+                </Form.Group>
+              </div>
+
+              <h5>Goods Details</h5>
+              <GoodsTable
+                goods={quotationData.goods}
+                handleGoodsChange={handleGoodsChange}
+                currentQuotation={currentQuotation}
+                isEditing={true}
+                onAddItem={handleAddItem}
+                onDeleteItem={handleDeleteItem}
+              />
+
+              <div className="bg-light p-3 rounded">
+                <div className="row">
+                  <div className="col-md-4">
+                    <p>
+                      Total Quantity:{" "}
+                      <strong>{quotationData.totalQuantity}</strong>
+                    </p>
+                  </div>
+                  <div className="col-md-4">
+                    <p>
+                      Total Amount:{" "}
+                      <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                    </p>
+                  </div>
+                  <div className="col-md-4">
+                    <p>
+                      GST (18%):{" "}
+                      <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="col-md-12">
+                    <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                  </div>
+                </div>
+              </div>
+            </Modal.Body>
+            <Modal.Footer
+              style={{
+                borderTop: "1px solid #dee2e6",
+                padding: "15px",
+                flexShrink: 0,
+              }}
+            >
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowModal(false);
+                  setCurrentQuotation(null);
+                  resetForm();
+                }}
+                disabled={isLoading}
+              >
+                Close
+              </Button>
+              <Button variant="primary" type="submit" disabled={isLoading}>
+                {isLoading
+                  ? currentQuotation
+                    ? "Updating..."
+                    : "Saving..."
+                  : currentQuotation
+                  ? "Update Quotation"
+                  : "Save Quotation"}
+              </Button>
+            </Modal.Footer>
+          </Form>
         </Modal>
 
         {/* Create Ticket Modal */}

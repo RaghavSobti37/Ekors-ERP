@@ -26,12 +26,25 @@ const handleQuotationUpsert = async (req, res) => {
       return res.status(400).json({ message: 'Reference number already exists' });
     }
 
-    // Upsert client
-    const savedClient = await Client.findOneAndUpdate(
-      { email: client.email, user: req.user._id },
-      { ...client, user: req.user._id },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+   let savedClient = await Client.findOne({
+      email: client.email,
+      user: req.user._id
+    });
+
+     if (savedClient) {
+      savedClient = await Client.findByIdAndUpdate(
+        savedClient._id,
+        { ...client, user: req.user._id },
+        { new: true }
+      );
+    } else {
+      // Create new client if doesn't exist
+      savedClient = new Client({
+        ...client,
+        user: req.user._id
+      });
+      await savedClient.save();
+    }
 
     // Prepare quotation data
     const data = {
@@ -91,11 +104,24 @@ router.get('/next-number', auth, async (req, res) => {
   }
 });
 
-// Get all quotations for current user
+// Replace the existing GET /quotations route with this:
 router.get('/', auth, async (req, res) => {
   try {
-    const quotations = await Quotation.find({ user: req.user._id })
+    let query = {};
+    
+    // For non-superadmin users, only show their own quotations
+    if (req.user.role !== 'super-admin') {
+      query.user = req.user._id;
+    }
+
+    // Handle status filter if provided
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+
+    const quotations = await Quotation.find(query)
       .populate('client')
+      .populate('user', 'firstname lastname')
       .sort({ date: -1 });
 
     res.json(quotations);
@@ -152,12 +178,16 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete quotation
+// Replace the existing DELETE route with this:
 router.delete('/:id', auth, async (req, res) => {
   try {
+    // Only superadmin can delete quotations
+    if (req.user.role !== 'super-admin') {
+      return res.status(403).json({ message: 'Only superadmin can delete quotations' });
+    }
+
     const quotation = await Quotation.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id
+      _id: req.params.id
     });
 
     if (!quotation) {
@@ -168,12 +198,11 @@ router.delete('/:id', auth, async (req, res) => {
     if (quotation.client) {
       try {
         await Client.findByIdAndUpdate(
-          quotation.client, // This is the client's ID
+          quotation.client,
           { $pull: { quotations: quotation._id } }
         );
       } catch (clientUpdateError) {
         console.error("Error removing quotation from client's list during delete:", clientUpdateError);
-        // Log and continue, as quotation deletion was successful
       }
     }
 

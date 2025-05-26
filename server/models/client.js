@@ -10,7 +10,8 @@ const clientSchema = new mongoose.Schema({
     type: String, 
     required: true, 
     trim: true,
-    lowercase: true
+    lowercase: true,
+    index: true
   },
   companyName: { 
     type: String, 
@@ -33,7 +34,7 @@ const clientSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Create a compound index for user+email uniqueness
-clientSchema.index({ user: 1, email: 1 }, { unique: true });
+// Compound index to ensure unique email per user
+clientSchema.index({ email: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Client', clientSchema);
