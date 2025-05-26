@@ -319,10 +319,6 @@ export default function Dashboard() {
       quotation: "",
       po: "",
       pi: "",
-      challan: "",
-      packingList: "",
-      invoice: "",
-      feedback: "",
     },
     dispatchDays: "7-10 working",
     validityDate: new Date(
@@ -350,30 +346,18 @@ export default function Dashboard() {
     quotation: "Quotation Sent",
     po: "PO Received",
     pi: "Payment Pending",
-    challan: "Inspection",
-    packingList: "Packing List",
-    invoice: "Invoice Sent",
-    feedback: "Closed",
   };
 
   const documentIconMap = {
     quotation: "bi-file-earmark-text",
     po: "bi-file-earmark-check",
     pi: "bi-file-earmark-medical",
-    challan: "bi-truck",
-    packingList: "bi-box-seam",
-    invoice: "bi-file-earmark-ruled",
-    feedback: "bi-chat-square-text",
   };
 
   const documentColorMap = {
     quotation: "primary",
     po: "success",
     pi: "warning",
-    challan: "info",
-    packingList: "dark",
-    invoice: "danger",
-    feedback: "secondary",
   };
 
   useEffect(() => {
@@ -540,9 +524,9 @@ export default function Dashboard() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(ticket => {
         if (statusFilter === 'open') {
-          return ticket.status !== 'Completed' && ticket.status !== 'Hold';
+          return ticket.status !== 'Closed' && ticket.status !== 'Hold';
         } else if (statusFilter === 'closed') {
-          return ticket.status === 'Completed';
+          return ticket.status === 'Closed';
         } else if (statusFilter === 'hold') {
           return ticket.status === 'Hold';
         }
@@ -676,10 +660,6 @@ export default function Dashboard() {
         quotation: "",
         po: "",
         pi: "",
-        challan: "",
-        packingList: "",
-        invoice: "",
-        feedback: "",
       },
       dispatchDays: ticket.dispatchDays || "7-10 working",
       validityDate:
@@ -1023,10 +1003,10 @@ export default function Dashboard() {
         return "success";
       case "Hold":
         return "warning";
-      case "Completed":
+      case "Closed": // Aligning with statusStages for consistency
         return "success";
       default:
-        return "light";
+        return "dark";
     }
   };
 
@@ -1082,10 +1062,6 @@ export default function Dashboard() {
           quotation: "Quotation",
           po: "PO",
           pi: "PI",
-          challan: "Challan",
-          packingList: "Packing List",
-          invoice: "Invoice",
-          feedback: "Feedback",
         }).map(([docKey, docName]) => (
           <div
             key={docKey}
