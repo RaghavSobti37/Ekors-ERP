@@ -1309,7 +1309,7 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
+          <div className="d-flex align-items-center gap-3" style={{ width: "80%" }}>
             <Form.Control
               type="search"
               placeholder="🔍 Search here"
