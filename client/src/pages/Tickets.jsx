@@ -343,7 +343,7 @@ export default function Dashboard() {
     "Packing List",
     "Invoice Sent",
     "Hold",
-    "Completed",
+    "Closed",
   ];
 
   const documentStatusMap = {
@@ -353,7 +353,7 @@ export default function Dashboard() {
     challan: "Inspection",
     packingList: "Packing List",
     invoice: "Invoice Sent",
-    feedback: "Completed",
+    feedback: "Closed",
   };
 
   const documentIconMap = {
@@ -424,36 +424,36 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    const fetchTickets = async () => {
-      setIsLoading(true);
-      try {
-        const token = getAuthToken();
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-
-        const response = await axios.get("http://localhost:3000/api/tickets", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            populate:
-              "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy",
-          },
-        });
-
-        setTickets(response.data);
-      } catch (error) {
-        const errorMsg =
-          error.response?.data?.error || "Failed to load tickets";
-        setError(errorMsg);
-        console.error("Error fetching tickets:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchTickets = async () => {
+    setIsLoading(true);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No authentication token found");
       }
-    };
 
+      const response = await axios.get("http://localhost:3000/api/tickets", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+          populate:
+            "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy",
+        },
+      });
+
+      setTickets(response.data);
+    } catch (error) {
+      const errorMsg =
+        error.response?.data?.error || "Failed to load tickets";
+      setError(errorMsg);
+      console.error("Error fetching tickets:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     setLoggedInUser(getLoggedInUserData());
     fetchTickets();
   }, []);
@@ -1419,7 +1419,6 @@ export default function Dashboard() {
                 Grand Total (₹){" "}
                 <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
               </th>
-              <th>Status</th>
               <th>Progress</th>
               <th>Actions</th>
             </tr>
@@ -1474,18 +1473,7 @@ export default function Dashboard() {
                       })}
                     </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
-                    <td>
-                      <Badge 
-                        bg={
-                          ticket.status === 'Completed' ? 'success' : 
-                          ticket.status === 'Hold' ? 'warning' : 'primary'
-                        }
-                        className="text-capitalize"
-                      >
-                        {ticket.status === 'Completed' ? 'Closed' : 
-                         ticket.status === 'Hold' ? 'Hold' : 'Open'}
-                      </Badge>
-                    </td>
+                    
                     <td>
                       <Badge
                         bg={getStatusBadgeColor(ticket.status)}

@@ -212,6 +212,9 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes); // Mount user routes
 
+const reportRoutes = require("./routes/reportRoutes");
+app.use("/api/reports", reportRoutes);
+
 // ----------------------------
 // Start server
 const PORT = process.env.PORT || 3000;

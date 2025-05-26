@@ -38,7 +38,8 @@ const ticketSchema = new mongoose.Schema({
       "Inspection",
       "Packing List",
       "Invoice Sent",
-      "Completed"
+      "Hold", // Added Hold
+      "Closed"  // Changed from Completed
     ],
     default: "Quotation Sent"
   },

@@ -12,7 +12,6 @@ router.get('/search', auth, async (req, res) => {
     }
 
     const clients = await Client.find({
-      user: req.user._id, // Ensure clients are scoped to the logged-in user
       $or: [
         { companyName: { $regex: searchTerm, $options: 'i' } },
         { email: { $regex: searchTerm, $options: 'i' } },
@@ -29,32 +28,31 @@ router.get('/search', auth, async (req, res) => {
   }
 });
 
-// In your backend routes
+// POST /api/clients
 router.post('/', auth, async (req, res) => {
   try {
     const { companyName, gstNumber, email, phone } = req.body;
-    
+
     // Check if client already exists
-    const existingClient = await Client.findOne({ 
-      $or: [{ email }, { gstNumber }] 
+    const existingClient = await Client.findOne({
+      $or: [{ email }, { gstNumber }],
     });
-    
+
     if (existingClient) {
-      return res.status(400).json({ 
-        message: 'Client with this email or GST number already exists' 
-      });
+      // ✅ Return the existing client with status 200
+      return res.status(200).json(existingClient);
     }
 
+    // Create and save a new client
     const newClient = new Client({
       companyName,
       gstNumber,
       email,
       phone,
-      user: req.user.id
     });
 
     await newClient.save();
-    res.status(201).json(newClient);
+    res.status(201).json(newClient); // Newly created
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

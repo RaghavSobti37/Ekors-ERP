@@ -515,5 +515,71 @@
     transform: translateY(-2px);
 }
 
+/* Report Modal Styles */
+.report-summary {
+  padding: 15px;
+}
 
+.report-header {
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card h5 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #0d6efd;
+  margin: 10px 0;
+}
+
+.stat-details {
+  display: flex;
+  justify-content: space-around;
+  margin: 15px 0;
+  font-size: 0.9rem;
+}
+
+.stat-amount {
+  font-weight: bold;
+  color: #28a745;
+}
+
+.chart-container {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-container h5 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
   
