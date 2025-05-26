@@ -29,4 +29,35 @@ router.get('/search', auth, async (req, res) => {
   }
 });
 
+// In your backend routes
+router.post('/', auth, async (req, res) => {
+  try {
+    const { companyName, gstNumber, email, phone } = req.body;
+    
+    // Check if client already exists
+    const existingClient = await Client.findOne({ 
+      $or: [{ email }, { gstNumber }] 
+    });
+    
+    if (existingClient) {
+      return res.status(400).json({ 
+        message: 'Client with this email or GST number already exists' 
+      });
+    }
+
+    const newClient = new Client({
+      companyName,
+      gstNumber,
+      email,
+      phone,
+      user: req.user.id
+    });
+
+    await newClient.save();
+    res.status(201).json(newClient);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

@@ -11,7 +11,8 @@ const clientSchema = new mongoose.Schema({
     required: true, 
     trim: true,
     lowercase: true,
-    index: true
+    index: true,
+    unique: true 
   },
   companyName: { 
     type: String, 
@@ -21,7 +22,8 @@ const clientSchema = new mongoose.Schema({
   gstNumber: { 
     type: String, 
     required: true,
-    trim: true
+    trim: true,
+    unique: true 
   },
   phone: { 
     type: String, 
@@ -33,8 +35,5 @@ const clientSchema = new mongoose.Schema({
     ref: 'Quotation'
   }]
 }, { timestamps: true });
-
-// Compound index to ensure unique email per user
-clientSchema.index({ email: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Client', clientSchema);
