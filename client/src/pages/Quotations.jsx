@@ -257,6 +257,14 @@ export default function Quotations() {
     key: "date", // Default sort key to 'date'
     direction: "descending", // Default sort direction to 'descending' (newest first)
   });
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [newClientData, setNewClientData] = useState({
+    companyName: "",
+    gstNumber: "",
+    email: "",
+    phone: "",
+  });
+  const [clientCreationMode, setClientCreationMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
@@ -288,6 +296,49 @@ export default function Quotations() {
 
     // New format: Q-YYYYMMDD-HHMMSS
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  };
+
+  const handleSaveNewClient = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
+
+      const response = await axios.post(
+        "http://localhost:3000/api/clients",
+        newClientData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        // Set the newly created client in the quotation form
+        setQuotationData((prev) => ({
+          ...prev,
+          client: {
+            _id: response.data._id,
+            companyName: response.data.companyName,
+            gstNumber: response.data.gstNumber,
+            email: response.data.email,
+            phone: response.data.phone,
+          },
+        }));
+        setSelectedClientIdForForm(response.data._id);
+        setClientCreationMode("existing");
+        setShowClientModal(false);
+        setError(null);
+      }
+    } catch (error) {
+      console.error("Error creating client:", error);
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to create client. Please try again."
+      );
+    }
   };
 
   const initialQuotationData = {
@@ -326,49 +377,51 @@ export default function Quotations() {
     status: "Quotation Sent",
   });
 
-const fetchQuotations = useCallback(async () => {
-  if (loading || !user) return;
+  const fetchQuotations = useCallback(async () => {
+    if (loading || !user) return;
 
-  setIsLoading(true);
-  try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error("No authentication token found");
+    setIsLoading(true);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+
+      // Construct URL with query parameters
+      const url = `http://localhost:3000/api/quotations${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setQuotations(response.data);
+      setQuotationsCount(response.data.length);
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching quotations:", error);
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to load quotations. Please try again."
+      );
+
+      if (error.response?.status === 401) {
+        navigate("/login", { state: { from: "/quotations" } });
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    // Build query parameters
-    const params = new URLSearchParams();
-    if (statusFilter !== "all") {
-      params.append("status", statusFilter);
-    }
-
-    // Construct URL with query parameters
-    const url = `http://localhost:3000/api/quotations${params.toString() ? `?${params.toString()}` : ''}`;
-
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    setQuotations(response.data);
-    setQuotationsCount(response.data.length);
-    setError(null);
-  } catch (error) {
-    console.error("Error fetching quotations:", error);
-    setError(
-      error.response?.data?.message ||
-        error.message ||
-        "Failed to load quotations. Please try again."
-    );
-
-    if (error.response?.status === 401) {
-      navigate("/login", { state: { from: "/quotations" } });
-    }
-  } finally {
-    setIsLoading(false);
-  }
-}, [user, loading, navigate, statusFilter]);
+  }, [user, loading, navigate, statusFilter]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -409,32 +462,34 @@ const fetchQuotations = useCallback(async () => {
     });
   }, [quotations, sortConfig]);
 
-const filteredQuotations = useMemo(() => {
-  let filtered = sortedQuotations;
+  const filteredQuotations = useMemo(() => {
+    let filtered = sortedQuotations;
 
-  // Apply status filter first
-  if (statusFilter !== "all") {
-    filtered = filtered.filter(quotation => quotation.status === statusFilter);
-  }
+    // Apply status filter first
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (quotation) => quotation.status === statusFilter
+      );
+    }
 
-  // Apply search term filter
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase();
-    filtered = filtered.filter(
-      (quotation) =>
-        quotation.referenceNumber?.toLowerCase().includes(term) ||
-        quotation.client?.companyName?.toLowerCase().includes(term) ||
-        quotation.client?.gstNumber?.toLowerCase().includes(term) ||
-        quotation.goods.some(
-          (item) =>
-            item.description?.toLowerCase().includes(term) ||
-            item.hsnSacCode?.toLowerCase().includes(term)
-        )
-    );
-  }
+    // Apply search term filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (quotation) =>
+          quotation.referenceNumber?.toLowerCase().includes(term) ||
+          quotation.client?.companyName?.toLowerCase().includes(term) ||
+          quotation.client?.gstNumber?.toLowerCase().includes(term) ||
+          quotation.goods.some(
+            (item) =>
+              item.description?.toLowerCase().includes(term) ||
+              item.hsnSacCode?.toLowerCase().includes(term)
+          )
+      );
+    }
 
-  return filtered;
-}, [sortedQuotations, searchTerm, statusFilter]);
+    return filtered;
+  }, [sortedQuotations, searchTerm, statusFilter]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -619,6 +674,11 @@ const filteredQuotations = useMemo(() => {
     event.preventDefault();
     setFormValidated(true);
 
+     if (!quotationData.client._id) {
+    setError("Please select or create a client for this quotation.");
+    return;
+  } 
+  
     const form = event.currentTarget;
 
     // Check form validity and ensure we have goods
@@ -1043,7 +1103,7 @@ const filteredQuotations = useMemo(() => {
                 checked={statusFilter === "all"}
                 onChange={() => {
                   setStatusFilter("all");
-                  setCurrentPage(1); 
+                  setCurrentPage(1);
                 }}
               />
               <Form.Check
@@ -1398,28 +1458,147 @@ const filteredQuotations = useMemo(() => {
               </div>
 
               <h5>Client Details</h5>
-              <ClientSearchComponent
-                onClientSelect={handleClientSelect}
-                placeholder="Search & select client or enter details manually"
-                currentClientId={selectedClientIdForForm}
-              />
-              {selectedClientIdForForm && (
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  className="mb-2 d-block"
-                  onClick={() => {
-                    setSelectedClientIdForForm(null);
-                    setQuotationData((prev) => ({
-                      ...prev,
-                      client: { ...initialQuotationData.client, _id: null },
-                    }));
-                  }}
-                >
-                  {" "}
-                  Clear Selected Client & Enter Manually
-                </Button>
-              )}
+              <>
+                <div className="mb-3">
+                  <div className="btn-group" role="group">
+                    <button
+                      type="button"
+                      className={`btn ${
+                        clientCreationMode === "existing"
+                          ? "btn-primary"
+                          : "btn-outline-primary"
+                      }`}
+                      onClick={() => setClientCreationMode("existing")}
+                    >
+                      Use Existing Client
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${
+                        clientCreationMode === "new"
+                          ? "btn-primary"
+                          : "btn-outline-primary"
+                      }`}
+                      onClick={() => setClientCreationMode("new")}
+                    >
+                      Create New Client
+                    </button>
+                  </div>
+                </div>
+
+                {clientCreationMode === "existing" ? (
+                  <>
+                    <ClientSearchComponent
+                      onClientSelect={handleClientSelect}
+                      placeholder="Search & select client"
+                      currentClientId={selectedClientIdForForm}
+                    />
+                    {selectedClientIdForForm && (
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="mb-2 d-block"
+                        onClick={() => {
+                          setSelectedClientIdForForm(null);
+                          setQuotationData((prev) => ({
+                            ...prev,
+                            client: {
+                              ...initialQuotationData.client,
+                              _id: null,
+                            },
+                          }));
+                        }}
+                      >
+                        Clear Selected Client
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <div className="border p-3 rounded mb-3">
+                    <h5>New Client Details</h5>
+                    <div className="row">
+                      <Form.Group className="mb-3 col-md-6">
+                        <Form.Label>
+                          Company Name <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          type="text"
+                          value={newClientData.companyName}
+                          onChange={(e) =>
+                            setNewClientData((prev) => ({
+                              ...prev,
+                              companyName: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                      <Form.Group className="mb-3 col-md-6">
+                        <Form.Label>
+                          GST Number <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          type="text"
+                          value={newClientData.gstNumber}
+                          onChange={(e) =>
+                            setNewClientData((prev) => ({
+                              ...prev,
+                              gstNumber: e.target.value.toUpperCase(),
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </div>
+                    <div className="row">
+                      <Form.Group className="mb-3 col-md-6">
+                        <Form.Label>
+                          Email <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          type="email"
+                          value={newClientData.email}
+                          onChange={(e) =>
+                            setNewClientData((prev) => ({
+                              ...prev,
+                              email: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                      <Form.Group className="mb-3 col-md-6">
+                        <Form.Label>
+                          Phone <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          required
+                          type="tel"
+                          value={newClientData.phone}
+                          onChange={(e) =>
+                            setNewClientData((prev) => ({
+                              ...prev,
+                              phone: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </div>
+                    <Button
+                      variant="primary"
+                      onClick={handleSaveNewClient}
+                      disabled={
+                        !newClientData.companyName ||
+                        !newClientData.gstNumber ||
+                        !newClientData.email ||
+                        !newClientData.phone
+                      }
+                    >
+                      Save New Client
+                    </Button>
+                  </div>
+                )}
+              </>
               <div className="row">
                 <Form.Group className="mb-3 col-md-6">
                   <Form.Label>
