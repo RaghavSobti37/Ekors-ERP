@@ -276,6 +276,7 @@ export default function Dashboard() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // 'all', 'open', 'closed', 'hold'
   const [tickets, setTickets] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -313,7 +314,7 @@ export default function Dashboard() {
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
-    status: "Quotation Sent", // Default status
+    status: "Quotation Sent",
     documents: {
       quotation: "",
       po: "",
@@ -323,10 +324,10 @@ export default function Dashboard() {
       invoice: "",
       feedback: "",
     },
-    dispatchDays: "7-10 working", // Default for new tickets
+    dispatchDays: "7-10 working",
     validityDate: new Date(
       new Date().setDate(new Date().getDate() + 15)
-    ).toISOString(), // Default for new tickets
+    ).toISOString(),
   });
   const [sortConfig, setSortConfig] = useState({
     key: null,
@@ -341,10 +342,10 @@ export default function Dashboard() {
     "Inspection",
     "Packing List",
     "Invoice Sent",
+    "Hold",
     "Completed",
   ];
 
-  // Enhanced document status mapping
   const documentStatusMap = {
     quotation: "Quotation Sent",
     po: "PO Received",
@@ -355,7 +356,6 @@ export default function Dashboard() {
     feedback: "Completed",
   };
 
-  // Document icon mapping
   const documentIconMap = {
     quotation: "bi-file-earmark-text",
     po: "bi-file-earmark-check",
@@ -366,7 +366,6 @@ export default function Dashboard() {
     feedback: "bi-chat-square-text",
   };
 
-  // Document color mapping
   const documentColorMap = {
     quotation: "primary",
     po: "success",
@@ -377,16 +376,13 @@ export default function Dashboard() {
     feedback: "secondary",
   };
 
-  // Automatically update status in ticketData based on editTicket.documents when modal opens
   useEffect(() => {
     if (editTicket && editTicket.documents) {
-      let highestStatusAchieved = statusStages[0]; // Default to the first status
+      let highestStatusAchieved = statusStages[0];
       let highestStatusIndex = 0;
 
-      // Determine the highest status based on existing documents in editTicket
       Object.entries(documentStatusMap).forEach(([docType, expectedStatus]) => {
         if (editTicket.documents[docType]) {
-          // If the document exists
           const expectedStatusIndex = statusStages.indexOf(expectedStatus);
           if (expectedStatusIndex > highestStatusIndex) {
             highestStatusAchieved = expectedStatus;
@@ -395,7 +391,6 @@ export default function Dashboard() {
         }
       });
 
-      // If the calculated highest status is different from current ticketData.status, update it.
       if (
         ticketData.status !== highestStatusAchieved &&
         statusStages.indexOf(highestStatusAchieved) >
@@ -404,7 +399,7 @@ export default function Dashboard() {
         setTicketData((prev) => ({ ...prev, status: highestStatusAchieved }));
       }
     }
-  }, [editTicket]); // Rerun when editTicket changes (modal opens/ticket changes)
+  }, [editTicket]);
 
   const getAuthToken = () => {
     try {
@@ -459,8 +454,8 @@ export default function Dashboard() {
       }
     };
 
-    setLoggedInUser(getLoggedInUserData()); // if this is synchronous, it's fine here
-    fetchTickets(); // this is safe here because it's inside useEffect
+    setLoggedInUser(getLoggedInUserData());
+    fetchTickets();
   }, []);
 
   const handleProgressClick = (ticket) => {
@@ -524,21 +519,39 @@ export default function Dashboard() {
   }, [tickets, sortConfig]);
 
   const filteredTickets = useMemo(() => {
-    if (!searchTerm) return sortedTickets;
-    const term = searchTerm.toLowerCase();
-    return sortedTickets.filter(
-      (ticket) =>
-        ticket.ticketNumber?.toLowerCase().includes(term) ||
-        ticket.quotationNumber?.toLowerCase().includes(term) ||
-        ticket.companyName?.toLowerCase().includes(term) ||
-        ticket.client?.companyName?.toLowerCase().includes(term) ||
-        ticket.goods.some(
-          (item) =>
-            item.description?.toLowerCase().includes(term) ||
-            item.hsnSacCode?.toLowerCase().includes(term)
-        )
-    );
-  }, [sortedTickets, searchTerm]);
+    let filtered = sortedTickets;
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (ticket) =>
+          ticket.ticketNumber?.toLowerCase().includes(term) ||
+          ticket.quotationNumber?.toLowerCase().includes(term) ||
+          ticket.companyName?.toLowerCase().includes(term) ||
+          ticket.client?.companyName?.toLowerCase().includes(term) ||
+          ticket.goods.some(
+            (item) =>
+              item.description?.toLowerCase().includes(term) ||
+              item.hsnSacCode?.toLowerCase().includes(term)
+          )
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(ticket => {
+        if (statusFilter === 'open') {
+          return ticket.status !== 'Completed' && ticket.status !== 'Hold';
+        } else if (statusFilter === 'closed') {
+          return ticket.status === 'Completed';
+        } else if (statusFilter === 'hold') {
+          return ticket.status === 'Hold';
+        }
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [sortedTickets, searchTerm, statusFilter]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -616,7 +629,6 @@ export default function Dashboard() {
 
   const handleEdit = (ticket) => {
     setEditTicket(ticket);
-    // Convert array address to object if needed
     const billingAddress = Array.isArray(ticket.billingAddress)
       ? {
           address1: ticket.billingAddress[0] || "",
@@ -695,7 +707,6 @@ export default function Dashboard() {
 
   const handleUpdateTicket = async () => {
     try {
-      // Convert address objects back to arrays if needed by backend
       const updateData = {
         ...ticketData,
         _id: undefined,
@@ -763,21 +774,18 @@ export default function Dashboard() {
       if (response.status === 200) {
         const updatedTicketFromServer = response.data.ticket;
 
-        // Update the main tickets list in the UI
         setTickets((prevTickets) =>
           prevTickets.map((t) =>
             t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
           )
         );
 
-        // Update the transferTicket state (source for the modal, though it will close)
-        // Ensure to use the latest full transfer history from the server response
         setTransferTicket((prev) => ({
-          ...updatedTicketFromServer, // This ensures all fields are up-to-date
+          ...updatedTicketFromServer,
         }));
 
         setError(null);
-        setShowTransferModal(false); // Close the modal on successful transfer
+        setShowTransferModal(false);
         alert(
           `Ticket successfully transferred to ${updatedTicketFromServer.currentAssignee.firstname} ${updatedTicketFromServer.currentAssignee.lastname}`
         );
@@ -934,7 +942,6 @@ export default function Dashboard() {
             : prev.status,
         documents: { ...prev.documents, [docType]: newDocumentPath },
       }));
-      // Also update editTicket to reflect the change immediately if needed for other operations
       setEditTicket((prev) => ({
         ...prev,
         documents: { ...(prev?.documents || {}), [docType]: newDocumentPath },
@@ -1014,6 +1021,8 @@ export default function Dashboard() {
         return "dark";
       case "Invoice Sent":
         return "success";
+      case "Hold":
+        return "warning";
       case "Completed":
         return "success";
       default:
@@ -1300,10 +1309,7 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div
-            className="d-flex align-items-center gap-3"
-            style={{ width: "50%" }}
-          >
+          <div className="d-flex align-items-center gap-3" style={{ width: "50%" }}>
             <Form.Control
               type="search"
               placeholder="🔍 Search here"
@@ -1321,6 +1327,56 @@ export default function Dashboard() {
                 boxShadow: "none",
               }}
             />
+            <div className="filter-radio-group">
+              <Form.Check
+                type="radio"
+                inline
+                id="filter-all"
+                label="All"
+                name="statusFilter"
+                checked={statusFilter === 'all'}
+                onChange={() => {
+                  setStatusFilter('all');
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                type="radio"
+                inline
+                id="filter-open"
+                label="Open"
+                name="statusFilter"
+                checked={statusFilter === 'open'}
+                onChange={() => {
+                  setStatusFilter('open');
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                type="radio"
+                inline
+                id="filter-closed"
+                label="Closed"
+                name="statusFilter"
+                checked={statusFilter === 'closed'}
+                onChange={() => {
+                  setStatusFilter('closed');
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                type="radio"
+                inline
+                id="filter-hold"
+                label="Hold"
+                name="statusFilter"
+                checked={statusFilter === 'hold'}
+                onChange={() => {
+                  setStatusFilter('hold');
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -1339,16 +1395,6 @@ export default function Dashboard() {
                   sortConfig={sortConfig}
                 />
               </th>
-              {/* <th
-                onClick={() => requestSort("quotationNumber")}
-                style={{ cursor: "pointer" }}
-              >
-                Quotation No{" "}
-                <SortIndicator
-                  columnKey="quotationNumber"
-                  sortConfig={sortConfig}
-                />
-              </th> */}
               <th>Assigned To</th>
               <th
                 onClick={() => requestSort("companyName")}
@@ -1373,6 +1419,7 @@ export default function Dashboard() {
                 Grand Total (₹){" "}
                 <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
               </th>
+              <th>Status</th>
               <th>Progress</th>
               <th>Actions</th>
             </tr>
@@ -1380,7 +1427,7 @@ export default function Dashboard() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="7" className="text-center">
+                <td colSpan="8" className="text-center">
                   <div
                     className="d-flex justify-content-center align-items-center"
                     style={{ height: "100px" }}
@@ -1397,7 +1444,6 @@ export default function Dashboard() {
                 const progressPercentage =
                   currentStatusIndex !== -1
                     ? Math.round(
-                        // Ensure statusStages is not empty to avoid division by zero
                         ((currentStatusIndex + 1) / statusStages.length) * 100
                       )
                     : 0;
@@ -1409,7 +1455,6 @@ export default function Dashboard() {
                 return (
                   <tr key={ticket.ticketNumber}>
                     <td>{ticket.ticketNumber}</td>
-                    {/* <td>{ticket.quotationNumber}</td> */}
                     <td>
                       {ticket.currentAssignee ? (
                         <>
@@ -1429,6 +1474,18 @@ export default function Dashboard() {
                       })}
                     </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
+                    <td>
+                      <Badge 
+                        bg={
+                          ticket.status === 'Completed' ? 'success' : 
+                          ticket.status === 'Hold' ? 'warning' : 'primary'
+                        }
+                        className="text-capitalize"
+                      >
+                        {ticket.status === 'Completed' ? 'Closed' : 
+                         ticket.status === 'Hold' ? 'Hold' : 'Open'}
+                      </Badge>
+                    </td>
                     <td>
                       <Badge
                         bg={getStatusBadgeColor(ticket.status)}
@@ -1481,7 +1538,7 @@ export default function Dashboard() {
               })
             ) : (
               <tr>
-                <td colSpan="7" className="text-center py-4">
+                <td colSpan="8" className="text-center py-4">
                   <div className="d-flex flex-column align-items-center">
                     <i
                       className="bi bi-folder-x text-muted"

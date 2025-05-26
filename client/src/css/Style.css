@@ -1690,3 +1690,107 @@ p {
   }
 }
 
+/* Add these styles to your existing Style.css file */
+
+/* Radio button filter styles */
+.filter-radio-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: 1rem;
+}
+
+.filter-radio-group .form-check {
+  margin-bottom: 0;
+}
+
+.filter-radio-group .form-check-input {
+  margin-top: 0;
+  margin-right: 0.5rem;
+}
+
+.filter-radio-group .form-check-label {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+/* Status badge styles */
+.status-badge {
+  font-size: 0.875rem;
+  padding: 0.35em 0.65em;
+  border-radius: 0.25rem;
+}
+
+.status-badge.open {
+  background-color: #4b0082;
+  color: white;
+}
+
+.status-badge.closed {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-badge.hold {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+/* Responsive adjustments for filter section */
+@media (max-width: 992px) {
+  .filter-radio-group {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .d-flex.align-items-center.gap-3 {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100% !important;
+  }
+  
+  .filter-radio-group {
+    margin-left: 0;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+  
+  .form-control.me-2 {
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+}
+
+/* Table status column styles */
+.table td:nth-child(6) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Ensure table stays responsive */
+@media (max-width: 768px) {
+  .table td:nth-child(6)::before {
+    content: "Status: ";
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+  
+  .table td:nth-child(6) {
+    text-align: right;
+    padding-left: 50%;
+  }
+}
+
+/* Form check input styling */
+.form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.25rem rgba(75, 0, 130, 0.25);
+}
+
