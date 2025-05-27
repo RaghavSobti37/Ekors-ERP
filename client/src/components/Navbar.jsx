@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import AddNewItem from '../pages/AddNewItem';
+// import AddNewItem from '../pages/AddNewItem';
 
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -65,7 +65,7 @@ export default function Navbar({ showPurchaseModal }) {
         <div className="navbar-left">
           <div className="logo">
             <img src="/src/assets/logo.jpeg" alt="E-KORS" className="logo-img" />
-            <span>E-KORS</span>
+            {/* <span>E-KORS</span> */}
           </div>
 
           <div className="nav-links">
@@ -125,12 +125,12 @@ export default function Navbar({ showPurchaseModal }) {
                   >
                     Purchase History
                   </div>
-                  <div
+                  {/* <div
                     onClick={() => setShowNewItemModal(true)}
                     style={{ cursor: "pointer", padding: "10px 15px" }}
                   >
                     Add New Item
-                  </div>
+                  </div> */}
                 </div>
               )}
             </div>
@@ -222,9 +222,9 @@ export default function Navbar({ showPurchaseModal }) {
         </div>
       )}
 
-      {showNewItemModal && (
+      {/* {showNewItemModal && (
         <AddNewItem onClose={() => setShowNewItemModal(false)} />
-      )}
+      )} */}
     </>
   );
 }
