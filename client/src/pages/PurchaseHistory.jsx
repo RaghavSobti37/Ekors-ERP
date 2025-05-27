@@ -42,7 +42,7 @@ export default function PurchaseHistory() {
         setError("Cannot connect to the server. Please check if the backend is running.");
       } else if (err.response) {
         // Server responded with an error status
-        setError(`Server error: ${err.response.status} ${err.response.statusText}`);
+        setError(`Server error: ${err.response.status} ${err.response.data?.message || err.response.statusText}`);
       } else if (err.request) {
         // Request was made but no response received
         setError("No response received from server. Please check your connection.");
