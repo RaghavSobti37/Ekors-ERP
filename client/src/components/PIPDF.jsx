@@ -63,6 +63,36 @@ const styles = StyleSheet.create({
   }
 });
 
+// Helper function to get parts of an address, handling both object and array formats
+const getAddressPart = (address, part) => {
+  if (!address) return part === 'address2' ? "" : "N/A"; // address2 can be empty, others N/A
+
+  if (Array.isArray(address)) {
+    // Array format: [address1, address2, state, city, pincode]
+    switch (part) {
+      case 'address1': return address[0] || "N/A";
+      case 'address2': return address[1] || ""; 
+      case 'city':     return address[3] || "N/A"; // City is at index 3
+      case 'state':    return address[2] || "N/A"; // State is at index 2
+      case 'pincode':  return address[4] || "N/A"; // Pincode is at index 4
+      default: return "N/A";
+    }
+  } else if (typeof address === 'object' && address !== null) {
+    // Object format
+    switch (part) {
+      case 'address1': return address.address1 || "N/A";
+      case 'address2': return address.address2 || "";
+      case 'city':     return address.city || "N/A";
+      case 'state':    return address.state || "N/A";
+      case 'pincode':  return address.pincode || "N/A";
+      default: return "N/A";
+    }
+  }
+  // Fallback if address is not in expected format
+  return part === 'address2' ? "" : "N/A";
+};
+
+
 const PIPDF = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -82,23 +112,21 @@ const PIPDF = ({ ticket }) => (
         <View style={styles.col}>
           <Text style={styles.bold}>Quotation to :</Text>
           <Text> {ticket.companyName}</Text>
-          <Text> {ticket.billingAddress?.address1 || "N/A"}</Text>
-          <Text> {ticket.billingAddress?.address2 || ""}</Text>
-          <Text> {ticket.billingAddress?.city || "N/A"}</Text>
-          <Text> {ticket.billingAddress?.state || "N/A"}</Text>
+          <Text> {getAddressPart(ticket.billingAddress, 'address1')}</Text>
+          <Text> {getAddressPart(ticket.billingAddress, 'address2')}</Text>
+          <Text> {`${getAddressPart(ticket.billingAddress, 'city')}, ${getAddressPart(ticket.billingAddress, 'state')} - ${getAddressPart(ticket.billingAddress, 'pincode')}`}</Text>
           <Text> Party Mobile No : {ticket.client?.phone || "N/A"}</Text>
-          <Text> State : {ticket.billingAddress?.state || "N/A"}</Text>
+          <Text> State : {getAddressPart(ticket.billingAddress, 'state')}</Text>
           <Text> GSTIN / UIN : {ticket.client?.gstNumber || "N/A"}</Text>
         </View>
         <View style={styles.col}>
           <Text style={styles.bold}>Shipped to :</Text>
           <Text> {ticket.companyName}</Text>
-          <Text> {ticket.shippingAddress?.address1 || "N/A"}</Text>
-          <Text> {ticket.shippingAddress?.address2 || ""}</Text>
-          <Text> {ticket.shippingAddress?.city || "N/A"}</Text>
-          <Text> {ticket.shippingAddress?.state || "N/A"}</Text>
+          <Text> {getAddressPart(ticket.shippingAddress, 'address1')}</Text>
+          <Text> {getAddressPart(ticket.shippingAddress, 'address2')}</Text>
+          <Text> {`${getAddressPart(ticket.shippingAddress, 'city')}, ${getAddressPart(ticket.shippingAddress, 'state')} - ${getAddressPart(ticket.shippingAddress, 'pincode')}`}</Text>
           <Text> Party Mobile No : {ticket.client?.phone || "N/A"}</Text>
-          <Text> State : {ticket.shippingAddress?.state || "N/A"}</Text>
+          <Text> State : {getAddressPart(ticket.shippingAddress, 'state')}</Text>
           <Text> GSTIN / UIN : {ticket.client?.gstNumber || "N/A"}</Text>
         </View>
       </View>

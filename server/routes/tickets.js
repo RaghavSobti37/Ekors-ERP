@@ -19,6 +19,27 @@ const storage = multer.diskStorage({
   },
 });
 
+router.delete('/admin/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'super-admin') {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    
+    const ticket = await Ticket.findByIdAndDelete(req.params.id);
+    if (!ticket) return res.status(404).json({ error: "Ticket not found" });
+    
+    // Cleanup user references
+    await User.updateMany(
+      { tickets: ticket._id },
+      { $pull: { tickets: ticket._id } }
+    );
+    
+    res.json({ message: "Ticket permanently deleted" });
+  } catch (error) {
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+
 router.get("/next-number", auth, async (req, res) => {
   try {
     // Get next globally unique sequence number for tickets
@@ -112,13 +133,21 @@ router.get("/:id", auth, async (req, res) => {
 router.put("/:id", auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        currentAssignee: req.user.id, // Only current assignee can update
-      },
-      req.body,
-      { new: true, runValidators: true }
-    );
+  {
+    _id: req.params.id,
+    $or: [
+      { currentAssignee: req.user.id },
+      { createdBy: req.user.id },
+      { $and: [
+          { _id: req.params.id },
+          { "createdBy.role": "super-admin" }
+        ] 
+      }
+    ]
+  },
+  req.body,
+  { new: true }
+);
 
     if (!ticket) {
       return res
@@ -290,6 +319,8 @@ router.post("/:id/transfer", auth, async (req, res) => {
       to: userId,
       transferredBy: req.user.id,
       note: note || "",
+      transferredAt: new Date(), // Explicitly set transfer timestamp
+      statusAtTransfer: ticket.status // Capture ticket status at the time of transfer
     });
 
     // Add to assignment log

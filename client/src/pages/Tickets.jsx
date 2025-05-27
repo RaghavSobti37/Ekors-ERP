@@ -330,6 +330,12 @@ export default function Dashboard() {
     direction: "ascending",
   });
   const [loggedInUser, setLoggedInUser] = useState(null);
+  const [transferTableData, setTransferTableData] = useState({
+    names: [],
+    dates: [],
+    // statuses: [], // Removed
+    notes: [],
+  });
 
   const statusStages = [
     "Quotation Sent",
@@ -378,7 +384,7 @@ export default function Dashboard() {
       if (
         ticketData.status !== highestStatusAchieved &&
         statusStages.indexOf(highestStatusAchieved) >
-        statusStages.indexOf(ticketData.status)
+          statusStages.indexOf(ticketData.status)
       ) {
         setTicketData((prev) => ({ ...prev, status: highestStatusAchieved }));
       }
@@ -428,8 +434,7 @@ export default function Dashboard() {
 
       setTickets(response.data);
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.error || "Failed to load tickets";
+      const errorMsg = error.response?.data?.error || "Failed to load tickets";
       setError(errorMsg);
       console.error("Error fetching tickets:", error);
     } finally {
@@ -442,11 +447,79 @@ export default function Dashboard() {
     fetchTickets();
   }, []);
 
+  useEffect(() => {
+    if (editTicket) {
+      const newNames = [];
+      const newDates = [];
+      // const newStatuses = []; // Removed
+      const newNotes = [];
+
+      // Determine initial assignee for the first column
+      let firstAssignee = editTicket.createdBy; // Default to creator
+      if (editTicket.transferHistory && editTicket.transferHistory.length > 0) {
+        firstAssignee = editTicket.transferHistory[0].from || editTicket.createdBy;
+      } else if (editTicket.currentAssignee) {
+        firstAssignee = editTicket.currentAssignee;
+      }
+
+      newNames.push(firstAssignee);
+      newDates.push(editTicket.createdAt); // Date for the initial state
+      // newStatuses.push(earliestKnownStatus); // Status for the "Ticket Created" column - Removed
+      newNotes.push("Ticket Created"); // Note for initial state
+
+      // States from transfer history
+      editTicket.transferHistory?.forEach(transfer => {
+        newNames.push(transfer.to); // The user the ticket was transferred TO
+        const transferTime = transfer.transferredAt || new Date(); // Ensure we have a valid date
+        newDates.push(transferTime);
+        // Status logic removed
+        newNotes.push(transfer.note || 'N/A'); // Note for this transfer
+      });
+
+      setTransferTableData({ names: newNames, dates: newDates, notes: newNotes });
+    } else {
+      setTransferTableData({ names: [], dates: [], notes: [] });
+    }
+  }, [editTicket]);
+
+  const handleDelete = async (ticketToDelete) => {
+    if (!ticketToDelete || !ticketToDelete._id) {
+      setError("Invalid ticket data for deletion.");
+      console.error("Invalid ticket data for deletion:", ticketToDelete);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to permanently delete ticket ${ticketToDelete.ticketNumber}?`)) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          setError("Authentication token not found for delete operation.");
+          return;
+        }
+
+        // Ensure only super-admin can trigger this, as per UI logic
+        if (loggedInUser?.role !== 'super-admin') {
+            setError("You do not have permission to delete this ticket.");
+            return;
+        }
+
+        await axios.delete(`http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        fetchTickets(); // Refresh the list from the server
+        setError(null); 
+      } catch (error) {
+        setError("Delete failed: " + (error.response?.data?.error || error.message));
+        console.error("Error deleting ticket:", error);
+      }
+    }
+  };
+
   const handleProgressClick = (ticket) => {
     setSelectedTicket(ticket);
     setPaymentAmount(
       ticket.grandTotal -
-      (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
+        (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
     );
     setShowPaymentModal(true);
   };
@@ -472,7 +545,8 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error recording payment:", error);
       setError(
-        `Failed to record payment: ${error.response?.data?.message || error.message
+        `Failed to record payment: ${
+          error.response?.data?.message || error.message
         }`
       );
     }
@@ -520,14 +594,14 @@ export default function Dashboard() {
       );
     }
 
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(ticket => {
-        if (statusFilter === 'open') {
-          return ticket.status !== 'Closed' && ticket.status !== 'Hold';
-        } else if (statusFilter === 'closed') {
-          return ticket.status === 'Closed';
-        } else if (statusFilter === 'hold') {
-          return ticket.status === 'Hold';
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((ticket) => {
+        if (statusFilter === "open") {
+          return ticket.status !== "Closed" && ticket.status !== "Hold";
+        } else if (statusFilter === "closed") {
+          return ticket.status === "Closed";
+        } else if (statusFilter === "hold") {
+          return ticket.status === "Hold";
         }
         return true;
       });
@@ -610,59 +684,59 @@ export default function Dashboard() {
     }));
   };
 
-  const handleEdit = (ticket) => {
-    setEditTicket(ticket);
-    const billingAddress = Array.isArray(ticket.billingAddress)
+  const handleEdit = (selectedTicket) => {
+    setEditTicket(selectedTicket);
+    const billingAddress = Array.isArray(selectedTicket.billingAddress)
       ? {
-        address1: ticket.billingAddress[0] || "",
-        address2: ticket.billingAddress[1] || "",
-        city: ticket.billingAddress[3] || "",
-        state: ticket.billingAddress[2] || "",
-        pincode: ticket.billingAddress[4] || "",
-      }
-      : ticket.billingAddress || {
-        address1: "",
-        address2: "",
-        city: "",
-        state: "",
-        pincode: "",
-      };
+          address1: selectedTicket.billingAddress[0] || "",
+          address2: selectedTicket.billingAddress[1] || "",
+          city: selectedTicket.billingAddress[3] || "",
+          state: selectedTicket.billingAddress[2] || "",
+          pincode: selectedTicket.billingAddress[4] || "",
+        }
+      : selectedTicket.billingAddress || {
+          address1: "",
+          address2: "",
+          city: "",
+          state: "",
+          pincode: "",
+        };
 
-    const shippingAddress = Array.isArray(ticket.shippingAddress)
+    const shippingAddress = Array.isArray(selectedTicket.shippingAddress)
       ? {
-        address1: ticket.shippingAddress[0] || "",
-        address2: ticket.shippingAddress[1] || "",
-        city: ticket.shippingAddress[3] || "",
-        state: ticket.shippingAddress[2] || "",
-        pincode: ticket.shippingAddress[4] || "",
-      }
-      : ticket.shippingAddress || {
-        address1: "",
-        address2: "",
-        city: "",
-        state: "",
-        pincode: "",
-      };
+          address1: selectedTicket.shippingAddress[0] || "",
+          address2: selectedTicket.shippingAddress[1] || "",
+          city: selectedTicket.shippingAddress[3] || "",
+          state: selectedTicket.shippingAddress[2] || "",
+          pincode: selectedTicket.shippingAddress[4] || "",
+        }
+      : selectedTicket.shippingAddress || {
+          address1: "",
+          address2: "",
+          city: "",
+          state: "",
+          pincode: "",
+        };
 
     setTicketData({
-      companyName: ticket.companyName || "",
-      quotationNumber: ticket.quotationNumber || "",
+      companyName: selectedTicket.companyName || "",
+      quotationNumber: selectedTicket.quotationNumber || "",
       billingAddress,
       shippingAddress,
-      goods: ticket.goods || [],
-      totalQuantity: ticket.totalQuantity || 0,
-      totalAmount: ticket.totalAmount || 0,
-      gstAmount: ticket.gstAmount || 0,
-      grandTotal: ticket.grandTotal || 0,
-      status: ticket.status || statusStages[0],
-      documents: ticket.documents || {
+      goods: selectedTicket.goods || [],
+      totalQuantity: selectedTicket.totalQuantity || 0,
+      totalAmount: selectedTicket.totalAmount || 0,
+      gstAmount: selectedTicket.gstAmount || 0,
+      grandTotal: selectedTicket.grandTotal || 0,
+      status: selectedTicket.status || statusStages[0],
+      documents: selectedTicket.documents || {
         quotation: "",
         po: "",
         pi: "",
       },
-      dispatchDays: ticket.dispatchDays || "7-10 working",
+      dispatchDays: selectedTicket.dispatchDays || "7-10 working",
       validityDate:
-        ticket.validityDate ||
+        selectedTicket.validityDate ||
         new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
     });
     setShowEditModal(true);
@@ -726,7 +800,8 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error updating ticket:", error);
       setError(
-        `Failed to update ticket: ${error.response?.data?.message || error.message
+        `Failed to update ticket: ${
+          error.response?.data?.message || error.message
         }`
       );
     }
@@ -771,7 +846,8 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error transferring ticket:", error);
       setError(
-        `Failed to transfer ticket: ${error.response?.data?.message || error.message
+        `Failed to transfer ticket: ${
+          error.response?.data?.message || error.message
         }`
       );
     }
@@ -796,30 +872,30 @@ export default function Dashboard() {
 
     const quotationDataForPDF = editTicket
       ? {
-        referenceNumber: editTicket.quotationNumber,
-        date: editTicket.createdAt,
-        client: {
-          companyName: editTicket.companyName,
-          siteLocation: getAddressString(
-            editTicket.shippingAddress || editTicket.billingAddress
-          ),
-        },
-        goods: editTicket.goods.map((item) => ({
-          ...item,
-          unit: item.unit || "Nos",
-        })),
-        totalAmount: editTicket.totalAmount,
-        dispatchDays:
-          ticketData.dispatchDays ||
-          editTicket.dispatchDays ||
-          "7-10 working",
-        validityDate:
-          ticketData.validityDate ||
-          editTicket.validityDate ||
-          new Date(
-            new Date().setDate(new Date().getDate() + 15)
-          ).toISOString(),
-      }
+          referenceNumber: editTicket.quotationNumber,
+          date: editTicket.createdAt,
+          client: {
+            companyName: editTicket.companyName,
+            siteLocation: getAddressString(
+              editTicket.shippingAddress || editTicket.billingAddress
+            ),
+          },
+          goods: editTicket.goods.map((item) => ({
+            ...item,
+            unit: item.unit || "Nos",
+          })),
+          totalAmount: editTicket.totalAmount,
+          dispatchDays:
+            ticketData.dispatchDays ||
+            editTicket.dispatchDays ||
+            "7-10 working",
+          validityDate:
+            ticketData.validityDate ||
+            editTicket.validityDate ||
+            new Date(
+              new Date().setDate(new Date().getDate() + 15)
+            ).toISOString(),
+        }
       : null;
 
     return (
@@ -931,26 +1007,26 @@ export default function Dashboard() {
           ? [...currentDocuments, response.data.documents.other]
           : [currentDocuments, response.data.documents.other];
 
-        setTicketData(prev => ({
+        setTicketData((prev) => ({
           ...prev,
           documents: {
             ...prev.documents,
-            other: newDocuments
-          }
+            other: newDocuments,
+          },
         }));
 
-        setEditTicket(prev => ({
+        setEditTicket((prev) => ({
           ...prev,
           documents: {
             ...prev.documents,
-            other: newDocuments
-          }
+            other: newDocuments,
+          },
         }));
       } else {
         const newStatus = documentStatusMap[docType] || ticketData.status;
         const newDocumentPath = response.data.documents[docType];
 
-        setTicketData(prev => ({
+        setTicketData((prev) => ({
           ...prev,
           status:
             statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)
@@ -959,11 +1035,11 @@ export default function Dashboard() {
           documents: { ...prev.documents, [docType]: newDocumentPath },
         }));
 
-        setEditTicket(prev => ({
+        setEditTicket((prev) => ({
           ...prev,
           documents: {
             ...prev.documents,
-            [docType]: newDocumentPath
+            [docType]: newDocumentPath,
           },
         }));
       }
@@ -991,7 +1067,9 @@ export default function Dashboard() {
       if (docType === "other" && index !== null) {
         if (Array.isArray(ticketData.documents.other)) {
           pathToDelete = ticketData.documents.other[index];
-          updatedDocuments = ticketData.documents.other.filter((_, i) => i !== index);
+          updatedDocuments = ticketData.documents.other.filter(
+            (_, i) => i !== index
+          );
         } else {
           pathToDelete = ticketData.documents.other;
           updatedDocuments = [];
@@ -1009,27 +1087,26 @@ export default function Dashboard() {
           },
           data: {
             documentType: docType,
-            documentPath: pathToDelete
-          }
+            documentPath: pathToDelete,
+          },
         }
       );
 
-      setTicketData(prev => ({
+      setTicketData((prev) => ({
         ...prev,
         documents: {
           ...prev.documents,
-          [docType]: updatedDocuments
-        }
+          [docType]: updatedDocuments,
+        },
       }));
 
-      setEditTicket(prev => ({
+      setEditTicket((prev) => ({
         ...prev,
         documents: {
           ...prev.documents,
-          [docType]: updatedDocuments
-        }
+          [docType]: updatedDocuments,
+        },
       }));
-
     } catch (error) {
       console.error("Error deleting document:", error);
       setError("Failed to delete document");
@@ -1135,10 +1212,11 @@ export default function Dashboard() {
         {statusStages.map((stage) => (
           <small
             key={stage}
-            className={`text-center ${ticketData.status === stage
-              ? "fw-bold text-primary"
-              : "text-muted"
-              }`}
+            className={`text-center ${
+              ticketData.status === stage
+                ? "fw-bold text-primary"
+                : "text-muted"
+            }`}
             style={{
               width: `${100 / statusStages.length}%`,
               cursor: "pointer",
@@ -1197,7 +1275,7 @@ export default function Dashboard() {
         <div className="document-button-group d-flex align-items-center">
           <Button
             variant="outline-primary"
-            onClick={() => document.getElementById('upload-document').click()}
+            onClick={() => document.getElementById("upload-document").click()}
             className="text-nowrap me-1"
           >
             <i className="bi bi-upload me-2"></i>
@@ -1211,7 +1289,7 @@ export default function Dashboard() {
               if (e.target.files && e.target.files.length > 0) {
                 handleDocumentUpload(e.target.files[0], "other");
                 // Reset the input to allow uploading same file again
-                e.target.value = '';
+                e.target.value = "";
               }
             }}
             multiple
@@ -1422,7 +1500,10 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div className="d-flex align-items-center gap-3" style={{ width: "80%" }}>
+          <div
+            className="d-flex align-items-center gap-3"
+            style={{ width: "80%" }}
+          >
             <Form.Control
               type="search"
               placeholder="🔍 Search here"
@@ -1447,9 +1528,9 @@ export default function Dashboard() {
                 id="filter-all"
                 label="All"
                 name="statusFilter"
-                checked={statusFilter === 'all'}
+                checked={statusFilter === "all"}
                 onChange={() => {
-                  setStatusFilter('all');
+                  setStatusFilter("all");
                   setCurrentPage(1);
                 }}
               />
@@ -1459,9 +1540,9 @@ export default function Dashboard() {
                 id="filter-open"
                 label="Open"
                 name="statusFilter"
-                checked={statusFilter === 'open'}
+                checked={statusFilter === "open"}
                 onChange={() => {
-                  setStatusFilter('open');
+                  setStatusFilter("open");
                   setCurrentPage(1);
                 }}
               />
@@ -1471,9 +1552,9 @@ export default function Dashboard() {
                 id="filter-closed"
                 label="Closed"
                 name="statusFilter"
-                checked={statusFilter === 'closed'}
+                checked={statusFilter === "closed"}
                 onChange={() => {
-                  setStatusFilter('closed');
+                  setStatusFilter("closed");
                   setCurrentPage(1);
                 }}
               />
@@ -1483,9 +1564,9 @@ export default function Dashboard() {
                 id="filter-hold"
                 label="Hold"
                 name="statusFilter"
-                checked={statusFilter === 'hold'}
+                checked={statusFilter === "hold"}
                 onChange={() => {
-                  setStatusFilter('hold');
+                  setStatusFilter("hold");
                   setCurrentPage(1);
                 }}
               />
@@ -1556,13 +1637,16 @@ export default function Dashboard() {
                 const progressPercentage =
                   currentStatusIndex !== -1
                     ? Math.round(
-                      ((currentStatusIndex + 1) / statusStages.length) * 100
-                    )
+                        ((currentStatusIndex + 1) / statusStages.length) * 100
+                      )
                     : 0;
 
                 const isUserAdmin = loggedInUser?.role === "admin";
-                const isUserCurrentAssignee = ticket.currentAssignee?._id === loggedInUser?.id;
-                const canModifyTicket = isUserAdmin || isUserCurrentAssignee;
+                const isUserCurrentAssignee =
+                  ticket.currentAssignee?._id === loggedInUser?.id;
+                const canModifyTicket = isUserAdmin || 
+                       isUserCurrentAssignee || 
+                       loggedInUser?.role === 'super-admin';
 
                 return (
                   <tr key={ticket.ticketNumber}>
@@ -1617,17 +1701,36 @@ export default function Dashboard() {
                           size="sm"
                           onClick={() => handleEdit(ticket)}
                           disabled={!canModifyTicket}
-                          title={!canModifyTicket ? "Only admin or current assignee can edit this ticket" : "Edit"}
+                          title={
+                            !canModifyTicket
+                              ? "Only admin or current assignee can edit this ticket"
+                              : "Edit"
+                          }
                         >
                           <i className="bi bi-pencil me-1"></i>✏️
                         </Button>
+
+                        {loggedInUser?.role === "super-admin" && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDelete(ticket)}
+                            className="ms-1"
+                          >
+                            🗑️
+                          </Button>
+                        )}
 
                         <Button
                           variant="warning"
                           size="sm"
                           onClick={() => handleTransfer(ticket)}
                           disabled={!canModifyTicket}
-                          title={!canModifyTicket ? "Only admin or current assignee can transfer this ticket" : "Transfer"}
+                          title={
+                            !canModifyTicket
+                              ? "Only admin or current assignee can transfer this ticket"
+                              : "Transfer"
+                          }
                         >
                           <i className="bi bi-arrow-left-right me-1"></i>
                           Transfer
@@ -1656,7 +1759,7 @@ export default function Dashboard() {
         <Modal
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
-          fullscreen  // This makes it full screen
+          fullscreen // This makes it full screen
           centered
         >
           <Modal.Header closeButton className="bg-primary text-white">
@@ -1678,6 +1781,42 @@ export default function Dashboard() {
           </Modal.Header>
           <Modal.Body style={{ overflowY: "auto" }}>
             <ProgressBarWithStages />
+            
+            <div className="mt-4">
+              <h5>Transfer History</h5>
+              {editTicket && transferTableData.names && transferTableData.names.length > 0 ? (
+                <Table bordered responsive className="mt-2 transfer-history-table">
+                  <tbody>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Name</td>
+                      {transferTableData.names.map((assignee, index) => (
+                        <td key={`name-${index}`} className="text-center">
+                          {assignee ? `${assignee.firstname} ${assignee.lastname}` : 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Date</td>
+                      {transferTableData.dates.map((date, index) => (
+                        <td key={`date-${index}`} className="text-center">
+                          {date ? new Date(date).toLocaleDateString() : 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Note</td>
+                      {transferTableData.notes.map((note, index) => (
+                        <td key={`note-${index}`} className="text-center">
+                          {note || 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </Table>
+              ) : (
+                <div className="text-muted mt-2">No transfer history available.</div>
+              )}
+            </div>
             <DocumentUploadSection />
             <div className="row mb-4">
               <Form.Group className="col-md-6">
@@ -1749,7 +1888,7 @@ export default function Dashboard() {
                       <td className="align-middle">{item.srNo}</td>
                       <td>
                         {index === ticketData.goods.length - 1 &&
-                          !item.description ? (
+                        !item.description ? (
                           <ItemSearchComponent
                             onItemSelect={handleItemSelect}
                             index={index}
@@ -1825,7 +1964,7 @@ export default function Dashboard() {
               </div>
               <div className="row">
                 <div className="col-md-12">
-                  <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
+                  <h5>Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
                 </div>
               </div>
             </div>
