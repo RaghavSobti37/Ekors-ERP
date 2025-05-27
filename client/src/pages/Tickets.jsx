@@ -351,13 +351,13 @@ export default function Dashboard() {
   const documentIconMap = {
     quotation: "bi-file-earmark-text",
     po: "bi-file-earmark-check",
-    pi: "bi-file-earmark-medical",
+    pi: "bi-file-earmark-text",
   };
 
   const documentColorMap = {
     quotation: "primary",
     po: "success",
-    pi: "warning",
+    pi: "primary",
   };
 
   useEffect(() => {
@@ -378,7 +378,7 @@ export default function Dashboard() {
       if (
         ticketData.status !== highestStatusAchieved &&
         statusStages.indexOf(highestStatusAchieved) >
-          statusStages.indexOf(ticketData.status)
+        statusStages.indexOf(ticketData.status)
       ) {
         setTicketData((prev) => ({ ...prev, status: highestStatusAchieved }));
       }
@@ -446,7 +446,7 @@ export default function Dashboard() {
     setSelectedTicket(ticket);
     setPaymentAmount(
       ticket.grandTotal -
-        (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
+      (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
     );
     setShowPaymentModal(true);
   };
@@ -472,8 +472,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error recording payment:", error);
       setError(
-        `Failed to record payment: ${
-          error.response?.data?.message || error.message
+        `Failed to record payment: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -504,7 +503,7 @@ export default function Dashboard() {
 
   const filteredTickets = useMemo(() => {
     let filtered = sortedTickets;
-    
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -615,35 +614,35 @@ export default function Dashboard() {
     setEditTicket(ticket);
     const billingAddress = Array.isArray(ticket.billingAddress)
       ? {
-          address1: ticket.billingAddress[0] || "",
-          address2: ticket.billingAddress[1] || "",
-          city: ticket.billingAddress[3] || "",
-          state: ticket.billingAddress[2] || "",
-          pincode: ticket.billingAddress[4] || "",
-        }
+        address1: ticket.billingAddress[0] || "",
+        address2: ticket.billingAddress[1] || "",
+        city: ticket.billingAddress[3] || "",
+        state: ticket.billingAddress[2] || "",
+        pincode: ticket.billingAddress[4] || "",
+      }
       : ticket.billingAddress || {
-          address1: "",
-          address2: "",
-          city: "",
-          state: "",
-          pincode: "",
-        };
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      };
 
     const shippingAddress = Array.isArray(ticket.shippingAddress)
       ? {
-          address1: ticket.shippingAddress[0] || "",
-          address2: ticket.shippingAddress[1] || "",
-          city: ticket.shippingAddress[3] || "",
-          state: ticket.shippingAddress[2] || "",
-          pincode: ticket.shippingAddress[4] || "",
-        }
+        address1: ticket.shippingAddress[0] || "",
+        address2: ticket.shippingAddress[1] || "",
+        city: ticket.shippingAddress[3] || "",
+        state: ticket.shippingAddress[2] || "",
+        pincode: ticket.shippingAddress[4] || "",
+      }
       : ticket.shippingAddress || {
-          address1: "",
-          address2: "",
-          city: "",
-          state: "",
-          pincode: "",
-        };
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      };
 
     setTicketData({
       companyName: ticket.companyName || "",
@@ -727,8 +726,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error updating ticket:", error);
       setError(
-        `Failed to update ticket: ${
-          error.response?.data?.message || error.message
+        `Failed to update ticket: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -773,8 +771,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error transferring ticket:", error);
       setError(
-        `Failed to transfer ticket: ${
-          error.response?.data?.message || error.message
+        `Failed to transfer ticket: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -799,30 +796,30 @@ export default function Dashboard() {
 
     const quotationDataForPDF = editTicket
       ? {
-          referenceNumber: editTicket.quotationNumber,
-          date: editTicket.createdAt,
-          client: {
-            companyName: editTicket.companyName,
-            siteLocation: getAddressString(
-              editTicket.shippingAddress || editTicket.billingAddress
-            ),
-          },
-          goods: editTicket.goods.map((item) => ({
-            ...item,
-            unit: item.unit || "Nos",
-          })),
-          totalAmount: editTicket.totalAmount,
-          dispatchDays:
-            ticketData.dispatchDays ||
-            editTicket.dispatchDays ||
-            "7-10 working",
-          validityDate:
-            ticketData.validityDate ||
-            editTicket.validityDate ||
-            new Date(
-              new Date().setDate(new Date().getDate() + 15)
-            ).toISOString(),
-        }
+        referenceNumber: editTicket.quotationNumber,
+        date: editTicket.createdAt,
+        client: {
+          companyName: editTicket.companyName,
+          siteLocation: getAddressString(
+            editTicket.shippingAddress || editTicket.billingAddress
+          ),
+        },
+        goods: editTicket.goods.map((item) => ({
+          ...item,
+          unit: item.unit || "Nos",
+        })),
+        totalAmount: editTicket.totalAmount,
+        dispatchDays:
+          ticketData.dispatchDays ||
+          editTicket.dispatchDays ||
+          "7-10 working",
+        validityDate:
+          ticketData.validityDate ||
+          editTicket.validityDate ||
+          new Date(
+            new Date().setDate(new Date().getDate() + 15)
+          ).toISOString(),
+      }
       : null;
 
     return (
@@ -896,10 +893,22 @@ export default function Dashboard() {
   };
 
   const handleDocumentUpload = async (file, docType) => {
+    if (!file) {
+      setError("Please select a file to upload");
+      return false;
+    }
+
+    // Check file size (e.g., 5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size should be less than 5MB");
+      return false;
+    }
+
     try {
       const formData = new FormData();
       formData.append("document", file);
       formData.append("documentType", docType);
+
       const response = await axios.post(
         `http://localhost:3000/api/tickets/${editTicket._id}/documents`,
         formData,
@@ -911,27 +920,119 @@ export default function Dashboard() {
         }
       );
 
-      const newStatus = documentStatusMap[docType] || ticketData.status;
-      const newDocumentPath = response.data.documents[docType];
+      if (!response.data || !response.data.documents) {
+        throw new Error("Invalid response from server");
+      }
 
-      setTicketData((prev) => ({
-        ...prev,
-        status:
-          statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)
-            ? newStatus
-            : prev.status,
-        documents: { ...prev.documents, [docType]: newDocumentPath },
-      }));
-      setEditTicket((prev) => ({
-        ...prev,
-        documents: { ...(prev?.documents || {}), [docType]: newDocumentPath },
-      }));
+      // Handle multiple documents for 'other' type
+      if (docType === "other") {
+        const currentDocuments = ticketData.documents?.other || [];
+        const newDocuments = Array.isArray(currentDocuments)
+          ? [...currentDocuments, response.data.documents.other]
+          : [currentDocuments, response.data.documents.other];
+
+        setTicketData(prev => ({
+          ...prev,
+          documents: {
+            ...prev.documents,
+            other: newDocuments
+          }
+        }));
+
+        setEditTicket(prev => ({
+          ...prev,
+          documents: {
+            ...prev.documents,
+            other: newDocuments
+          }
+        }));
+      } else {
+        const newStatus = documentStatusMap[docType] || ticketData.status;
+        const newDocumentPath = response.data.documents[docType];
+
+        setTicketData(prev => ({
+          ...prev,
+          status:
+            statusStages.indexOf(newStatus) > statusStages.indexOf(prev.status)
+              ? newStatus
+              : prev.status,
+          documents: { ...prev.documents, [docType]: newDocumentPath },
+        }));
+
+        setEditTicket(prev => ({
+          ...prev,
+          documents: {
+            ...prev.documents,
+            [docType]: newDocumentPath
+          },
+        }));
+      }
 
       return true;
     } catch (error) {
       console.error("Error uploading document:", error);
-      setError("Failed to upload document");
+      let errorMsg = "Failed to upload document";
+      if (error.response) {
+        errorMsg = error.response.data.message || errorMsg;
+      }
+      setError(errorMsg);
       return false;
+    }
+  };
+
+  const handleDocumentDelete = async (docType, index = null) => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
+
+      let pathToDelete;
+      let updatedDocuments;
+
+      if (docType === "other" && index !== null) {
+        if (Array.isArray(ticketData.documents.other)) {
+          pathToDelete = ticketData.documents.other[index];
+          updatedDocuments = ticketData.documents.other.filter((_, i) => i !== index);
+        } else {
+          pathToDelete = ticketData.documents.other;
+          updatedDocuments = [];
+        }
+      } else {
+        pathToDelete = ticketData.documents[docType];
+        updatedDocuments = "";
+      }
+
+      await axios.delete(
+        `http://localhost:3000/api/tickets/${editTicket._id}/documents`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          data: {
+            documentType: docType,
+            documentPath: pathToDelete
+          }
+        }
+      );
+
+      setTicketData(prev => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [docType]: updatedDocuments
+        }
+      }));
+
+      setEditTicket(prev => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [docType]: updatedDocuments
+        }
+      }));
+
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      setError("Failed to delete document");
     }
   };
 
@@ -1034,11 +1135,10 @@ export default function Dashboard() {
         {statusStages.map((stage) => (
           <small
             key={stage}
-            className={`text-center ${
-              ticketData.status === stage
-                ? "fw-bold text-primary"
-                : "text-muted"
-            }`}
+            className={`text-center ${ticketData.status === stage
+              ? "fw-bold text-primary"
+              : "text-muted"
+              }`}
             style={{
               width: `${100 / statusStages.length}%`,
               cursor: "pointer",
@@ -1060,7 +1160,6 @@ export default function Dashboard() {
       <div className="d-flex flex-wrap gap-3 mb-3">
         {Object.entries({
           quotation: "Quotation",
-          po: "PO",
           pi: "PI",
         }).map(([docKey, docName]) => (
           <div
@@ -1079,59 +1178,97 @@ export default function Dashboard() {
               <i className={`bi ${documentIconMap[docKey]} me-2`}></i>
               {docName}
             </Button>
-            {["quotation", "pi"].includes(docKey) ? (
-              <Button
-                variant={documentColorMap[docKey]}
-                onClick={() => setDocumentType(docKey)}
-                className="ms-1"
-                title={
-                  docName === "Quotation"
-                    ? "Preview/Download Quotation"
-                    : "Preview/Download PI"
-                }
-              >
-                <i className="bi bi-eye"></i>
-              </Button>
-            ) : (
-              ticketData.documents?.[docKey] && (
-                <a
-                  href={
-                    ticketData.documents[docKey].startsWith("/")
-                      ? `http://localhost:3000${ticketData.documents[docKey]}`
-                      : `http://localhost:3000/${ticketData.documents[docKey]}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`btn btn-${documentColorMap[docKey]} ms-1`}
-                  title={`View ${docName}`}
-                >
-                  <i className="bi bi-eye"></i>
-                </a>
-              )
-            )}
-            {!["quotation", "pi"].includes(docKey) && (
-              <>
-                <input
-                  type="file"
-                  id={`upload-${docKey}`}
-                  style={{ display: "none" }}
-                  onChange={(e) =>
-                    handleDocumentUpload(e.target.files[0], docKey)
-                  }
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpeg,.jpg,.png"
-                />
-                <label
-                  htmlFor={`upload-${docKey}`}
-                  className={`btn btn-${documentColorMap[docKey]} ms-1`}
-                  title={`Upload ${docName}`}
-                >
-                  <i className="bi bi-upload"></i>
-                </label>
-              </>
-            )}
+            {/* <Button
+              variant={documentColorMap[docKey]}
+              onClick={() => setDocumentType(docKey)}
+              className="ms-1"
+              title={
+                docName === "Quotation"
+                  ? "Preview/Download Quotation"
+                  : "Preview/Download PI"
+              }
+            >
+              <i className="bi bi-eye"></i>
+            </Button> */}
           </div>
         ))}
+
+        {/* Add Upload Document button */}
+        <div className="document-button-group d-flex align-items-center">
+          <Button
+            variant="outline-primary"
+            onClick={() => document.getElementById('upload-document').click()}
+            className="text-nowrap me-1"
+          >
+            <i className="bi bi-upload me-2"></i>
+            Upload Documents
+          </Button>
+          <input
+            type="file"
+            id="upload-document"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleDocumentUpload(e.target.files[0], "other");
+                // Reset the input to allow uploading same file again
+                e.target.value = '';
+              }
+            }}
+            multiple
+          />
+        </div>
       </div>
+
+      {/* Display uploaded documents */}
+      {ticketData.documents?.other && (
+        <div className="mt-3">
+          <h6>Uploaded Documents:</h6>
+          <div className="d-flex flex-wrap gap-2">
+            {Array.isArray(ticketData.documents.other) ? (
+              ticketData.documents.other.map((doc, index) => (
+                <div key={index} className="border p-2 rounded">
+                  <a
+                    href={`http://localhost:3000/${doc}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="me-2"
+                  >
+                    Document {index + 1}
+                  </a>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-danger"
+                    onClick={() => handleDocumentDelete("other", index)}
+                  >
+                    <i className="bi bi-trash"></i>
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <div className="border p-2 rounded">
+                <a
+                  href={`http://localhost:3000/${ticketData.documents.other}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="me-2"
+                >
+                  Uploaded Document
+                </a>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  onClick={() => handleDocumentDelete("other")}
+                >
+                  <i className="bi bi-trash"></i>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {renderDocumentSection()}
     </div>
   );
@@ -1419,8 +1556,8 @@ export default function Dashboard() {
                 const progressPercentage =
                   currentStatusIndex !== -1
                     ? Math.round(
-                        ((currentStatusIndex + 1) / statusStages.length) * 100
-                      )
+                      ((currentStatusIndex + 1) / statusStages.length) * 100
+                    )
                     : 0;
 
                 const isUserAdmin = loggedInUser?.role === "admin";
@@ -1449,7 +1586,7 @@ export default function Dashboard() {
                       })}
                     </td>
                     <td className="text-end">{ticket.grandTotal.toFixed(2)}</td>
-                    
+
                     <td>
                       <Badge
                         bg={getStatusBadgeColor(ticket.status)}
@@ -1519,11 +1656,8 @@ export default function Dashboard() {
         <Modal
           show={showEditModal}
           onHide={() => setShowEditModal(false)}
-          size="xl"
+          fullscreen  // This makes it full screen
           centered
-          dialogClassName="modal-95w"
-          style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
-          contentClassName="h-100"
         >
           <Modal.Header closeButton className="bg-primary text-white">
             <div className="d-flex justify-content-between align-items-center w-100">
@@ -1615,7 +1749,7 @@ export default function Dashboard() {
                       <td className="align-middle">{item.srNo}</td>
                       <td>
                         {index === ticketData.goods.length - 1 &&
-                        !item.description ? (
+                          !item.description ? (
                           <ItemSearchComponent
                             onItemSelect={handleItemSelect}
                             index={index}
