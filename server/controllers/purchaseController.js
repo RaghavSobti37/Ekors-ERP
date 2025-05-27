@@ -77,6 +77,26 @@ exports.addBulkPurchase = async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Items array is required and must not be empty' });
     }
+
+     // Basic validation for required fields for the purchase itself
+    if (!companyName || !invoiceNumber || !date) {
+        return res.status(400).json({ success: false, message: 'Company name, invoice number, and date are required for the purchase.' });
+    }
+    
+    // Validate each item in the items array
+    for (const item of items) { // items from req.body
+        if (!item.description || typeof item.quantity !== 'number' || item.quantity <= 0 || typeof item.price !== 'number' || item.price < 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Invalid item data: Each item must have a description, a positive quantity, and a non-negative price. Problem with item: ${item.description || 'N/A'}` 
+            });
+        }
+        // Ensure itemId is a valid ObjectId if provided, or null
+        if (item.itemId && !mongoose.Types.ObjectId.isValid(item.itemId)) {
+            return res.status(400).json({ success: false, message: `Invalid itemId format for item: ${item.description}` });
+        }
+    }
+
     
     // Create the purchase document
     const purchase = new Purchase({
@@ -86,48 +106,67 @@ exports.addBulkPurchase = async (req, res) => {
       stateName,
       invoiceNumber,
       date: new Date(date),
-      items: items.map(item => ({
-        itemId: item.itemId,
-        description: item.description,
-        quantity: item.quantity,
-        price: item.price,
-        gstRate: item.gstRate || 0
-      }))
+      items: items.map(pItem => {
+        // Ensure gstRate is a valid number, defaulting to 0 if not.
+        // Client sends parsed floats, so item.gstRate could be a number or NaN.
+        // JSON.stringify converts NaN to null. So pItem.gstRate could be number or null.
+        let finalGstRate = parseFloat(pItem.gstRate); // Attempt to parse again, just in case
+        if (isNaN(finalGstRate) || finalGstRate < 0) {
+          finalGstRate = 0;
+        }
+        return {
+          itemId: pItem.itemId || null,
+          description: pItem.description,
+          quantity: pItem.quantity, // Assumed to be valid number due to prior validation loop
+          price: pItem.price,       // Assumed to be valid number due to prior validation loop
+          gstRate: finalGstRate
+        };
+      })
     });
     
     // Save the purchase
     const savedPurchase = await purchase.save();
     
     // Update each item's purchase history and quantity
-    for (const item of items) {
-      if (item.itemId) {
-        // Add to purchase history of the item
-        await Item.findByIdAndUpdate(
-          item.itemId,
-          {
-            $push: {
-              purchaseHistory: {
+    for (const purchasedItem of items) { // Renamed to avoid conflict
+      if (purchasedItem.itemId) { // Only if it's an existing item with a valid ID
+        const itemToUpdate = await Item.findById(purchasedItem.itemId);
+        if (itemToUpdate) {
+            itemToUpdate.quantity += purchasedItem.quantity;
+            // Add to item's specific purchase history
+            itemToUpdate.purchaseHistory.push({
+                purchaseId: savedPurchase._id,
                 date: new Date(date),
                 companyName,
                 gstNumber,
                 address,
                 stateName, 
                 invoiceNumber,
-                quantity: item.quantity,
-                price: item.price,
-                gstRate: item.gstRate || 0
-              }
-            },
-            // Increase item quantity
-            $inc: { quantity: item.quantity }
-          }
-        );
+               quantity: purchasedItem.quantity,
+                price: purchasedItem.price,
+                gstRate: (() => { // IIFE to ensure gstRate is valid number
+                    let finalGstRate = parseFloat(purchasedItem.gstRate);
+                    if (isNaN(finalGstRate) || finalGstRate < 0) return 0;
+                    return finalGstRate;
+                })()
+            });
+            await itemToUpdate.save(); // Save the updated item
+        } else {
+            // Optionally, handle cases where an itemId is provided but the item doesn't exist
+            // For now, we'll log a warning. Depending on requirements, this could be an error.
+            console.warn(`Item with ID ${purchasedItem.itemId} not found during bulk purchase stock update. Purchase record ${savedPurchase._id} was created, but this item was not updated.`);
+        }
       }
     }
     
     res.status(201).json({ success: true, data: savedPurchase });
   } catch (error) {
     console.error('Error adding bulk purchase:', error);
+    // Check for Mongoose validation error
+    if (error.name === 'ValidationError') {
+        // Send back specific validation errors
+        return res.status(400).json({ success: false, message: 'Validation failed creating purchase', errors: error.errors });
+    }
     res.status(500).json({ success: false, message: 'Failed to add purchase', error: error.message });
   }
 };
@@ -173,7 +212,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
 exports.getAllPurchases = async (req, res) => {
   try {
     // Fetch all purchases and sort by date descending (newest first)
-    const purchases = await Purchase.find().sort({ date: -1 });
+    const purchases = await Purchase.find().sort({ date: -1 }).lean();;
     res.status(200).json(purchases);
   } catch (error) {
     console.error('Error fetching purchases:', error);

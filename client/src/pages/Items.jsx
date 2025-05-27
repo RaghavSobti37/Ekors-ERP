@@ -571,9 +571,22 @@ export default function Items() {
       return true;
     } catch (err) {
       console.error("Error adding purchase entry:", err);
-      setError(
-        `Failed to add purchase entry: ${err.response?.data?.message || err.message}`
-      );
+       let detailedErrorMessage = "Failed to add purchase entry.";
+      if (err.response && err.response.data) {
+        detailedErrorMessage += ` ${err.response.data.message || ''}`;
+        if (err.response.data.errors) {
+          // Mongoose validation errors
+          const validationErrors = Object.values(err.response.data.errors)
+            .map((e) => e.message) // e.g., "Path `name` is required."
+            .join("; ");
+          detailedErrorMessage += ` Details: ${validationErrors}`;
+        } else if (typeof err.response.data === 'string' && err.response.data.length < 200) { // Avoid overly long string responses
+            detailedErrorMessage += ` Server response: ${err.response.data}`;
+        }
+      } else if (err.message) {
+        detailedErrorMessage += ` ${err.message}`;
+      }
+      setError(detailedErrorMessage);
       return false;
     } finally {
       setIsSubmitting(false);
