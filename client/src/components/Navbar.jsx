@@ -34,7 +34,7 @@ export default function Navbar({ showPurchaseModal }) {
 
   const handleSignOut = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const handleMouseEnterProfile = () => {

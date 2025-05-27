@@ -39,6 +39,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/quotationpdf" element={<QuotationPDF />} />
           <Route path="/pipdf" element={<PIPDF />} />

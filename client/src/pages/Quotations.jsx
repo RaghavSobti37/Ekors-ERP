@@ -257,18 +257,11 @@ export default function Quotations() {
     key: "date", // Default sort key to 'date'
     direction: "descending", // Default sort direction to 'descending' (newest first)
   });
-  const [showClientModal, setShowClientModal] = useState(false);
-  const [newClientData, setNewClientData] = useState({
-    companyName: "",
-    gstNumber: "",
-    email: "",
-    phone: "",
-  });
-  const [clientCreationMode, setClientCreationMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
+  const [isSavingClient, setIsSavingClient] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
 
@@ -298,18 +291,28 @@ export default function Quotations() {
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
   };
 
-const handleSaveNewClient = async () => {
+const handleSaveClientDetails = async () => {
+  const { companyName, gstNumber, email, phone } = quotationData.client;
+  if (!companyName || !gstNumber || !email || !phone) {
+    setError("All client fields (Company Name, GST, Email, Phone) are required to save a new client.");
+    return;
+  }
+  setIsSavingClient(true);
+  setError(null);
   try {
     const token = getAuthToken();
     if (!token) throw new Error("No authentication token found");
 
+    const clientPayload = {
+      companyName: quotationData.client.companyName,
+      gstNumber: quotationData.client.gstNumber.toUpperCase(),
+      email: quotationData.client.email.toLowerCase(),
+      phone: quotationData.client.phone,
+    };
+
     const response = await axios.post(
       "http://localhost:3000/api/clients",
-      {
-        ...newClientData,
-        gstNumber: newClientData.gstNumber.toUpperCase(), // Ensure uppercase
-        email: newClientData.email.toLowerCase() // Ensure lowercase
-      },
+      clientPayload,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -317,44 +320,26 @@ const handleSaveNewClient = async () => {
         },
       }
     );
-
-    if (response.data.message && response.data.message.toLowerCase().includes('gst number already exists')) {
-      setError("This GST Number is already registered.");
-      return;
+    if (response.data && response.data._id) {
+      setQuotationData((prev) => ({
+        ...prev,
+        client: { ...response.data }, // Populate with full client data from backend
+      }));
+      setSelectedClientIdForForm(response.data._id);
+      setError(null);
+    } else {
+      setError("Failed to save client: Unexpected response from server.");
     }
-
-      if (response.status === 201 || response.status === 200) {
-        // Handle 200 if client already existed
-        // Set the newly created or existing client in the quotation form
-        setQuotationData((prev) => ({
-          ...prev,
-          client: {
-            _id: response.data._id,
-            companyName: response.data.companyName,
-            gstNumber: response.data.gstNumber,
-            email: response.data.email,
-            phone: response.data.phone,
-          },
-        }));
-        setSelectedClientIdForForm(response.data._id);
-        setClientCreationMode("existing");
-        setNewClientData({
-          // Reset the new client form fields
-          companyName: "",
-          gstNumber: "",
-          email: "",
-          phone: "",
-        });
-        setError(null);
-      }
     } catch (error) {
     if (error.response?.data?.field === 'gstNumber') {
       setError(error.response.data.message || "This GST Number is already registered.");
     } else if (error.response?.data?.field === 'email') {
       setError(error.response.data.message || "This Email is already registered.");
     } else {
-      setError(error.response?.data?.message || "Failed to create client.");
+      setError(error.response?.data?.message || "Failed to save client details.");
     }
+  } finally {
+    setIsSavingClient(false);
   }
 };
 
@@ -694,17 +679,19 @@ const handleSaveNewClient = async () => {
     event.preventDefault();
     setFormValidated(true);
 
-    if (!quotationData.client._id) {
-      setError("Please select or create a client for this quotation.");
+    const form = event.currentTarget;
+    if (form.checkValidity() === false) {
+      event.stopPropagation();
+      setError("Please fill in all required fields in the quotation.");
       return;
     }
 
-    const form = event.currentTarget;
-
-    // Check form validity and ensure we have goods
-    if (form.checkValidity() === false) {
-      event.stopPropagation();
-      setError("Please fill in all required fields.");
+    if (!quotationData.client._id) {
+      if (quotationData.client.companyName || quotationData.client.gstNumber || quotationData.client.email || quotationData.client.phone) {
+        setError("You have entered new client details. Please click 'Save New Client' before saving the quotation.");
+      } else {
+        setError("Please select an existing client or enter and save details for a new client.");
+      }
       return;
     }
 
@@ -733,14 +720,8 @@ const handleSaveNewClient = async () => {
         throw new Error("No authentication token found");
       }
 
-      const finalClientPayload = {
-        _id: quotationData.client._id, // Keep _id if present (for updates)
-        companyName: quotationData.client.companyName,
-        gstNumber: quotationData.client.gstNumber.toUpperCase(),
-        email: quotationData.client.email.toLowerCase(),
-        phone: String(quotationData.client.phone),
-      };
       const submissionData = {
+        // Client object will be sent as is from quotationData.client
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
         validityDate: new Date(quotationData.validityDate).toISOString(),
@@ -759,7 +740,7 @@ const handleSaveNewClient = async () => {
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
         status: quotationData.status || "open",
-        client: finalClientPayload,
+        client: quotationData.client, // Send the whole client object
       };
 
       console.log("Submitting quotation data:", submissionData);
@@ -812,6 +793,7 @@ const handleSaveNewClient = async () => {
     setQuotationData(initialQuotationData);
     setFormValidated(false);
     setSelectedClientIdForForm(null);
+    setError(null);
   };
 
   const generateTicketNumber = async () => {
@@ -970,13 +952,28 @@ const handleSaveNewClient = async () => {
   const handleEdit = (quotation) => {
     setCurrentQuotation(quotation);
 
-    const orderIssuedById = quotation.orderIssuedBy?._id || null;
+    let orderIssuedByIdToSet = null;
+    if (quotation.orderIssuedBy) {
+        // Handles both populated object { _id: '...' } and plain ID string
+        orderIssuedByIdToSet = quotation.orderIssuedBy._id || quotation.orderIssuedBy;
+    } else if (quotation.user) {
+        // Fallback to the user who created the quotation if orderIssuedBy is missing
+        orderIssuedByIdToSet = quotation.user._id || quotation.user;
+    } else if (user && user.id) {
+        // Further fallback to the current logged-in user if other sources are unavailable
+        orderIssuedByIdToSet = user.id;
+    }
+
+    // Ensure we only have the ID string if it was an object
+    if (typeof orderIssuedByIdToSet === 'object' && orderIssuedByIdToSet !== null) {
+        orderIssuedByIdToSet = orderIssuedByIdToSet._id;
+    }
 
     setQuotationData({
       date: formatDateForInput(quotation.date),
       referenceNumber: quotation.referenceNumber,
       validityDate: formatDateForInput(quotation.validityDate),
-      orderIssuedBy: orderIssuedById,
+      orderIssuedBy: orderIssuedByIdToSet,
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -1010,6 +1007,7 @@ const handleSaveNewClient = async () => {
     setCurrentQuotation(null);
     setQuotationData({
       ...initialQuotationData,
+      date: formatDateForInput(new Date()), // Ensure date is current
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null }, // Ensure client _id is null for new
@@ -1479,146 +1477,32 @@ const handleSaveNewClient = async () => {
 
               <h5>Client Details</h5>
               <>
-                <div className="mb-3">
-                  <div className="btn-group" role="group">
-                    <button
-                      type="button"
-                      className={`btn ${
-                        clientCreationMode === "existing"
-                          ? "btn-primary"
-                          : "btn-outline-primary"
-                      }`}
-                      onClick={() => setClientCreationMode("existing")}
-                    >
-                      Use Existing Client
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${
-                        clientCreationMode === "new"
-                          ? "btn-primary"
-                          : "btn-outline-primary"
-                      }`}
-                      onClick={() => setClientCreationMode("new")}
-                    >
-                      Create New Client
-                    </button>
-                  </div>
-                </div>
-
-                {clientCreationMode === "existing" ? (
-                  <>
-                    <ClientSearchComponent
-                      onClientSelect={handleClientSelect}
-                      placeholder="Search & select client"
-                      currentClientId={selectedClientIdForForm}
-                    />
-                    {selectedClientIdForForm && (
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        className="mb-2 d-block"
-                        onClick={() => {
-                          setSelectedClientIdForForm(null);
-                          setQuotationData((prev) => ({
-                            ...prev,
-                            client: {
-                              ...initialQuotationData.client,
-                              _id: null,
-                            },
-                          }));
-                        }}
-                      >
-                        Clear Selected Client
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <div className="border p-3 rounded mb-3">
-                    <h5>New Client Details</h5>
-                    <div className="row">
-                      <Form.Group className="mb-3 col-md-6">
-                        <Form.Label>
-                          Company Name <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          required
-                          type="text"
-                          value={newClientData.companyName}
-                          onChange={(e) =>
-                            setNewClientData((prev) => ({
-                              ...prev,
-                              companyName: e.target.value, // No specific case enforcement needed here
-                            }))
-                          }
-                        />
-                      </Form.Group>
-                      <Form.Group className="mb-3 col-md-6">
-                        <Form.Label>
-                          GST Number <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          required
-                          type="text"
-                          value={newClientData.gstNumber}
-                          onChange={(e) =>
-                            setNewClientData((prev) => ({
-                              ...prev,
-                              gstNumber: e.target.value.toUpperCase(),
-                            }))
-                          }
-                        />
-                      </Form.Group>
-                    </div>
-                    <div className="row">
-                      <Form.Group className="mb-3 col-md-6">
-                        <Form.Label>
-                          Email <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          required
-                          type="email"
-                          value={newClientData.email}
-                          onChange={(e) =>
-                            setNewClientData((prev) => ({
-                              ...prev,
-                              email: e.target.value.toLowerCase(), // Normalize on input
-                            }))
-                          }
-                        />
-                      </Form.Group>
-                      <Form.Group className="mb-3 col-md-6">
-                        <Form.Label>
-                          Phone <span className="text-danger">*</span>
-                        </Form.Label>
-                        <Form.Control
-                          required
-                          type="tel"
-                          value={newClientData.phone}
-                          onChange={(e) =>
-                            setNewClientData((prev) => ({
-                              ...prev,
-                              phone: e.target.value, // No specific case enforcement
-                            }))
-                          }
-                        />
-                      </Form.Group>
-                    </div>
-                    <Button
-                      variant="primary"
-                      onClick={handleSaveNewClient}
-                      disabled={
-                        !newClientData.companyName ||
-                        !newClientData.gstNumber ||
-                        !newClientData.email ||
-                        !newClientData.phone
-                      }
-                    >
-                      Save New Client
-                    </Button>
-                  </div>
+                <ClientSearchComponent
+                  onClientSelect={handleClientSelect}
+                  placeholder="Search & select client"
+                  currentClientId={selectedClientIdForForm}
+                />
+                {selectedClientIdForForm && (
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="mb-2 mt-1"
+                    onClick={() => {
+                      setSelectedClientIdForForm(null);
+                      setQuotationData((prev) => ({
+                        ...prev,
+                        client: {
+                          ...initialQuotationData.client,
+                           _id: null, // Explicitly nullify ID
+                        },
+                      }));
+                    }}
+                  >
+                    Clear/Edit Client Details
+                  </Button>
                 )}
               </>
+
               <div className="row">
                 <Form.Group className="mb-3 col-md-6">
                   <Form.Label>
@@ -1629,7 +1513,7 @@ const handleSaveNewClient = async () => {
                     type="text"
                     name="client.companyName"
                     value={quotationData.client.companyName}
-                    onChange={handleInputChange}
+                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
                     readOnly={!!selectedClientIdForForm}
                   />
                 </Form.Group>
@@ -1642,7 +1526,7 @@ const handleSaveNewClient = async () => {
                     type="text"
                     name="client.gstNumber"
                     value={quotationData.client.gstNumber}
-                    onChange={handleInputChange}
+                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
                     readOnly={!!selectedClientIdForForm}
                   />
                 </Form.Group>
@@ -1656,7 +1540,7 @@ const handleSaveNewClient = async () => {
                     type="email"
                     name="client.email"
                     value={quotationData.client.email}
-                    onChange={handleInputChange}
+                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
                     readOnly={!!selectedClientIdForForm}
                   />
                 </Form.Group>
@@ -1668,11 +1552,27 @@ const handleSaveNewClient = async () => {
                     type="tel"
                     name="client.phone"
                     value={quotationData.client.phone}
-                    onChange={handleInputChange}
+                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
                     readOnly={!!selectedClientIdForForm}
                   />
                 </Form.Group>
               </div>
+
+              {!selectedClientIdForForm &&
+                quotationData.client.companyName &&
+                quotationData.client.gstNumber &&
+                quotationData.client.email &&
+                quotationData.client.phone && (
+                  <Button
+                    variant="success"
+                    onClick={handleSaveClientDetails}
+                    className="mb-3"
+                    disabled={isSavingClient}
+                  >
+                    {isSavingClient ? "Saving Client..." : "Save New Client"}
+                  </Button>
+                )
+              }
 
               <h5>Goods Details</h5>
               <GoodsTable

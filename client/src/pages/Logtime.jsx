@@ -23,7 +23,7 @@ export default function Logtime() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/login', { state: { from: '/logtime' } });
+      navigate('/', { state: { from: '/logtime' } });
     }
   }, [user, loading, navigate]);
 
