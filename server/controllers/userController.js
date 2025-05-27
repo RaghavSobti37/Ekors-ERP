@@ -7,10 +7,11 @@ const logger = require("../utils/logger"); // Import logger
 // @route   GET /api/users
 // @access  Private/SuperAdmin
 exports.getAllUsers = asyncHandler(async (req, res) => {
-  console.log("[DEBUG] Fetching all users - requester:", req.user.email);
+  const user = req.user || null;
+  logger.debug('user', "[DEBUG] Fetching all users", user);
   
   if (req.user.role !== 'super-admin') {
-    console.log("[DEBUG] Unauthorized access attempt by:", req.user.email);
+    logger.warn('user', "[AUTH_FAILURE] Unauthorized access attempt to fetch all users", user);
     return res.status(403).json({ 
       error: 'Unauthorized access. Only super-admins can view all users.' 
     });
@@ -18,7 +19,7 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   
   try {
     const users = await User.find({}).select('-password -__v');
-    console.log("[DEBUG] Found", users.length, "users");
+    logger.debug('user', `Found ${users.length} users`, user);
     
     res.status(200).json({
       success: true,
@@ -27,6 +28,7 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
     });
     
   } catch (err) {
+    logger.error('user', "Fetching users failed", err, user);
     console.error("[ERROR] Fetching users failed:", err);
     res.status(500).json({
       success: false,
@@ -39,11 +41,11 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/:id
 // @access  Private/SuperAdmin
 exports.updateUser = asyncHandler(async (req, res) => {
-  console.log("[DEBUG] Update user request for ID:", req.params.id, "by:", req.user.email);
+  const user = req.user || null;
+  logger.debug('user', `Update user request for ID: ${req.params.id}`, user);
   
   try {
     const user = await User.findById(req.params.id);
-
     if (!user) {
       console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
@@ -54,14 +56,14 @@ exports.updateUser = asyncHandler(async (req, res) => {
 
     // Authorization check
     if (req.user.role !== 'super-admin') {
-      console.log("[DEBUG] Unauthorized update attempt by:", req.user.email);
+      logger.warn('user', `[AUTH_FAILURE] Unauthorized update attempt for User ID: ${req.params.id}`, user);
       return res.status(403).json({
         success: false,
         error: 'Not authorized to update users'
       });
     }
 
-    // Prevent changing super-admin role unless it's yourself
+    // Prevent editing another super-admin's details
     if (user.role === 'super-admin' && req.user._id.toString() !== user._id.toString()) {
       console.log("[DEBUG] Attempt to modify another super-admin by:", req.user.email);
       return res.status(403).json({
@@ -71,6 +73,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
     }
 
     // Update fields
+    // Note: Role update logic is handled in userRoutes.js PUT route now.
     user.firstname = req.body.firstname || user.firstname;
     user.lastname = req.body.lastname || user.lastname;
     user.email = req.body.email || user.email;
@@ -82,7 +85,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
     }
 
     const updatedUser = await user.save();
-    console.log("[DEBUG] User updated successfully:", updatedUser.email);
+    logger.info('user', `User updated successfully`, user, { updatedUserId: updatedUser._id, updatedUserEmail: updatedUser.email, updatedUserRole: updatedUser.role });
     
     res.status(200).json({
       success: true,
@@ -100,6 +103,7 @@ exports.updateUser = asyncHandler(async (req, res) => {
     });
     
   } catch (err) {
+    logger.error('user', `User update failed for ID: ${req.params.id}`, err, user, { requestBody: req.body });
     console.error("[ERROR] User update failed:", err);
     res.status(500).json({
       success: false,
@@ -117,21 +121,22 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   const userIdToDelete = req.params.id;
   const performingUserId = req.user ? req.user.id : null; // User performing the delete
   const performingUserEmail = req.user ? req.user.email : 'N/A';
-  const logDetails = { performingUserId, userIdToDelete, model: 'User', operation: 'delete', performingUserEmail };
+  const user = req.user || null;
+  const logDetails = { performingUserId, userIdToDelete, model: 'User', performingUserEmail };
 
-  logger.info(`[DELETE_INITIATED] User ID: ${userIdToDelete} by User: ${performingUserEmail}.`, logDetails);
+  logger.info('delete', `[DELETE_INITIATED] User ID: ${userIdToDelete} by User: ${performingUserEmail}.`, user, logDetails);
 
   try {
     // Authorization check (already handled by requireSuperAdmin middleware in routes)
     if (req.user.role !== 'super-admin') {
-      logger.warn(`[AUTH_FAILURE] Unauthorized delete attempt for User ID: ${userIdToDelete} by User: ${performingUserEmail}.`, logDetails);
+      logger.warn('delete', `[AUTH_FAILURE] Unauthorized delete attempt for User ID: ${userIdToDelete} by User: ${performingUserEmail}.`, user, logDetails);
       return res.status(403).json({ message: 'Forbidden: Super-admin access required' });
     }
-    logger.debug(`[FETCH_ATTEMPT] Finding User ID: ${userIdToDelete} for backup and deletion.`, logDetails);
+    logger.debug('delete', `[FETCH_ATTEMPT] Finding User ID: ${userIdToDelete} for backup and deletion.`, user, logDetails);
     const userToBackup = await User.findById(userIdToDelete);
 
     if (!userToBackup) {
-      logger.warn(`[NOT_FOUND] User not found for deletion: ${userIdToDelete}.`, logDetails);
+      logger.warn('delete', `[NOT_FOUND] User not found for deletion: ${userIdToDelete}.`, user, logDetails);
       return res.status(404).json({ message: 'User not found' });
     }
     logger.debug(`[FETCH_SUCCESS] Found User ID: ${userIdToDelete} (${userToBackup.email}). Performing checks before backup.`, logDetails);
@@ -139,11 +144,11 @@ exports.deleteUser = asyncHandler(async (req, res) => {
     // Prevent super-admin from deleting themselves or the last super-admin
     if (userToBackup.role === 'super-admin') {
       if (performingUserId === userIdToDelete) {
-        logger.warn(`[DELETE_SELF_SUPER_ADMIN_DENIED] Super-admin ${performingUserEmail} attempted to delete themselves.`, logDetails);
+        logger.warn('delete', `[DELETE_SELF_SUPER_ADMIN_DENIED] Super-admin ${performingUserEmail} attempted to delete themselves.`, user, logDetails);
         return res.status(400).json({ message: 'Super-admin cannot delete themselves.' });
       }
       const superAdminCount = await User.countDocuments({ role: 'super-admin' });
-      if (superAdminCount <= 1) {
+      if (superAdminCount <= 1) { // This check is also in userRoutes.js, but good to have defense in depth
         logger.warn(`[DELETE_LAST_SUPER_ADMIN_DENIED] Attempt to delete the last super-admin: ${userToBackup.email} by ${performingUserEmail}.`, logDetails);
         return res.status(400).json({ message: 'Cannot delete the last super-admin.' });
       }
@@ -162,13 +167,13 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       backupReason: "Super-admin initiated deletion via API"
     });
 
-    logger.debug(`[PRE_BACKUP_SAVE] Attempting to save backup for User ID: ${userToBackup._id} (${userToBackup.email}).`, { ...logDetails, originalId: userToBackup._id });
+    logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for User ID: ${userToBackup._id} (${userToBackup.email}).`, user, { ...logDetails, originalId: userToBackup._id });
     await newBackupEntry.save();
-    logger.info(`[BACKUP_SUCCESS] User successfully backed up. Backup ID: ${newBackupEntry._id}.`, { ...logDetails, originalId: userToBackup._id, backupId: newBackupEntry._id, backupModel: 'UserBackup' });
+    logger.info('delete', `[BACKUP_SUCCESS] User successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: userToBackup._id, backupId: newBackupEntry._id, backupModel: 'UserBackup' });
 
-    logger.debug(`[PRE_ORIGINAL_DELETE] Attempting to delete original User ID: ${userToBackup._id} (${userToBackup.email}).`, { ...logDetails, originalId: userToBackup._id });
+    logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original User ID: ${userToBackup._id} (${userToBackup.email}).`, user, { ...logDetails, originalId: userToBackup._id });
     await User.findByIdAndDelete(userIdToDelete);
-    logger.info(`[ORIGINAL_DELETE_SUCCESS] Original User ${userToBackup.email} successfully deleted.`, { ...logDetails, originalId: userToBackup._id });
+    logger.info('delete', `[ORIGINAL_DELETE_SUCCESS] Original User ${userToBackup.email} successfully deleted.`, user, { ...logDetails, originalId: userToBackup._id });
 
     res.status(200).json({
       message: 'User deleted and backed up successfully.',
@@ -177,9 +182,10 @@ exports.deleteUser = asyncHandler(async (req, res) => {
     });
 
   } catch (error) {
-    logger.error(`[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`, error, logDetails);
+    logger.error('delete', `[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`, error, user, logDetails);
     if (error.name === 'ValidationError' || (typeof userToBackup === 'undefined' || (userToBackup && (!newBackupEntry || newBackupEntry.isNew)))) {
-        logger.warn(`[ROLLBACK_DELETE] Backup failed or error before backup for User ID: ${userIdToDelete}. Original document will not be deleted.`, logDetails);
+        // Check if userToBackup was successfully fetched before attempting backup save
+        logger.warn('delete', `[ROLLBACK_DELETE] Backup failed or error before backup for User ID: ${userIdToDelete}. Original document will not be deleted.`, user, logDetails);
     }
     if (error.kind === 'ObjectId') {
         return res.status(400).json({ message: 'Invalid user ID format' });
@@ -192,11 +198,11 @@ exports.deleteUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users/:id
 // @access  Private/SuperAdmin
 exports.getUser = asyncHandler(async (req, res) => {
-  console.log("[DEBUG] Get user request for ID:", req.params.id, "by:", req.user.email);
+  const user = req.user || null;
+  logger.debug('user', `Get user request for ID: ${req.params.id}`, user);
   
   try {
     const user = await User.findById(req.params.id).select('-password -__v');
-
     if (!user) {
       console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
@@ -207,7 +213,7 @@ exports.getUser = asyncHandler(async (req, res) => {
 
     // Authorization check
     if (req.user.role !== 'super-admin') {
-      console.log("[DEBUG] Unauthorized access attempt by:", req.user.email);
+      logger.warn('user', `[AUTH_FAILURE] Unauthorized access attempt to get User ID: ${req.params.id}`, user);
       return res.status(403).json({
         success: false,
         error: 'Not authorized to view user details'
@@ -215,7 +221,7 @@ exports.getUser = asyncHandler(async (req, res) => {
     }
 
     console.log("[DEBUG] Returning user data for:", user.email);
-    
+    logger.info('user', `Fetched user details for ID: ${req.params.id}`, user, { targetUserId: user._id, targetUserEmail: user.email });
     res.status(200).json({
       success: true,
       data: user
@@ -223,6 +229,7 @@ exports.getUser = asyncHandler(async (req, res) => {
     
   } catch (err) {
     console.error("[ERROR] Fetching user failed:", err);
+    logger.error('user', `Failed to fetch user details for ID: ${req.params.id}`, err, user);
     res.status(500).json({
       success: false,
       error: 'Server error while fetching user',

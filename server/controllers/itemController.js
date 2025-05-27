@@ -11,10 +11,12 @@ const debug = (message, data = null) => {
 
 // Get all items
 exports.getAllItems = async (req, res) => {
+  const user = req.user || null;
   try {
-    debug("Fetching all items");
+    logger.debug('item', "Fetching all items", user);
     const items = await Item.find().sort({ name: 1 });
-    debug("Items fetched successfully", { count: items.length });
+    logger.debug('item', "Items fetched successfully", user, { count: items.length });
+    // logger.info('item', `Fetched all items`, user, { count: items.length }); // Can be noisy
     res.json(items);
   } catch (error) {
     debug("Error fetching items", error);
@@ -28,7 +30,8 @@ exports.getAllItems = async (req, res) => {
 
 // Get item categories
 exports.getCategories = async (req, res) => {
-  try {
+  const user = req.user || null;
+    try {
     debug("Attempting to fetch categories");
     
     // Simplified approach to get unique categories and subcategories
@@ -57,7 +60,7 @@ exports.getCategories = async (req, res) => {
       subcategories: Array.from(subcategories)
     }));
     
-    debug("Categories fetched successfully", categories);
+    logger.debug('item', "Categories fetched successfully", user, categories);
     res.json(categories);
     
   } catch (error) {
@@ -74,6 +77,7 @@ exports.getCategories = async (req, res) => {
   
 exports.getItemById = async (req, res) => {
   const { id } = req.params;
+  const user = req.user || null;
 
   // Check if id is a valid ObjectId
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -82,9 +86,11 @@ exports.getItemById = async (req, res) => {
 
   try {
     const item = await Item.findById(id);
+    // logger.debug('item', `Fetched item by ID: ${id}`, user); // Debug level
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
+    logger.info('item', `Fetched item by ID: ${id}`, user, { itemId: id, itemName: item.name });
     res.json(item);
   } catch (error) {
     console.error('Error fetching item details:', error);
@@ -95,6 +101,7 @@ exports.getItemById = async (req, res) => {
 // Create new item
 exports.createItem = async (req, res) => {
   try {
+    const user = req.user || null;
     const newItem = new Item({
       name: req.body.name,
       quantity: req.body.quantity || 0,
@@ -109,9 +116,11 @@ exports.createItem = async (req, res) => {
     });
 
     const savedItem = await newItem.save();
+    logger.info('item', `Item created successfully`, user, { itemId: savedItem._id, itemName: savedItem.name });
     res.status(201).json(savedItem);
   } catch (error) {
     console.error('Error creating item:', error);
+    logger.error('item', `Failed to create item`, error, req.user, { requestBody: req.body });
     res.status(400).json({ 
       message: error.message.includes('validation') ? 
         'Validation failed: ' + error.message : 
@@ -123,6 +132,7 @@ exports.createItem = async (req, res) => {
 // Update item
 exports.updateItem = async (req, res) => {
   try {
+    const user = req.user || null;
     const updatedItem = await Item.findByIdAndUpdate(
       req.params.id,
       {
@@ -143,9 +153,11 @@ exports.updateItem = async (req, res) => {
     );
     
     if (!updatedItem) {
+      logger.warn('item', `Item not found for update: ${req.params.id}`, user, { itemId: req.params.id, requestBody: req.body });
       return res.status(404).json({ message: 'Item not found' });
     }
     
+    logger.info('item', `Item updated successfully`, user, { itemId: updatedItem._id, itemName: updatedItem.name });
     res.json(updatedItem);
   } catch (error) {
     console.error('Error updating item:', error);
@@ -161,18 +173,19 @@ exports.updateItem = async (req, res) => {
 exports.deleteItem = async (req, res) => {
   const itemId = req.params.id;
   const userId = req.user ? req.user._id : null;
+  const user = req.user || null;
   const session = await mongoose.startSession();
   const logDetails = { userId, itemId, model: 'Item', operation: 'delete', sessionId: session.id };
 
-  logger.info(`[DELETE_INITIATED] Item ID: ${itemId}. Transaction started.`, logDetails);
+  logger.info('delete', `[DELETE_INITIATED] Item ID: ${itemId}. Transaction started.`, user, logDetails);
 
   try {
     session.startTransaction();
-    logger.debug(`[FETCH_ATTEMPT] Finding Item ID: ${itemId} for backup and deletion within transaction.`, logDetails);
+    logger.debug('delete', `[FETCH_ATTEMPT] Finding Item ID: ${itemId} for backup and deletion within transaction.`, user, logDetails);
     const itemToBackup = await Item.findById(itemId).session(session);
     
     if (!itemToBackup) {
-      await session.abortTransaction();
+      await session.abortTransaction(); // Ensure transaction is aborted on not found
       session.endSession();
       logger.warn(`[NOT_FOUND] Item not found for deletion. Transaction aborted.`, logDetails);
       return res.status(404).json({ message: 'Item not found' });
@@ -190,13 +203,13 @@ exports.deleteItem = async (req, res) => {
       backupReason: "User-initiated deletion via API"
     });
 
-    logger.debug(`[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} within transaction.`, { ...logDetails, originalId: itemToBackup._id });
+    logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
     await newBackupEntry.save({ session }); // Save backup within the transaction
-    logger.info(`[BACKUP_SUCCESS] Item successfully backed up. Backup ID: ${newBackupEntry._id}.`, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'ItemBackup' });
+    logger.info('delete', `[BACKUP_SUCCESS] Item successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'ItemBackup' });
 
-    logger.debug(`[PRE_ORIGINAL_DELETE] Attempting to delete original Item ID: ${itemToBackup._id} within transaction.`, { ...logDetails, originalId: itemToBackup._id });
+    logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
     await Item.findByIdAndDelete(itemId, { session });
-    logger.info(`[ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted.`, { ...logDetails, originalId: itemToBackup._id });
+    logger.info('delete', `[ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted.`, user, { ...logDetails, originalId: itemToBackup._id });
 
     // Update any purchase records that reference this item
     // This part remains, ensuring data integrity for purchases
@@ -204,7 +217,7 @@ exports.deleteItem = async (req, res) => {
     await Purchase.updateMany(
       { 'items.itemId': itemId },
       { $set: { 'items.$.itemId': null } }
-    ).session(session);
+    ).session(session); // Ensure this is also in the transaction
     logger.info(`[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: ${itemId}.`, { ...logDetails, targetModel: 'Purchase' });
 
     await session.commitTransaction();
@@ -217,7 +230,7 @@ exports.deleteItem = async (req, res) => {
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
-      logger.warn(`[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, { ...logDetails, errorMessage: error.message });
+      logger.warn('delete', `[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, user, { ...logDetails, errorMessage: error.message });
     }
     logger.error(`[DELETE_ERROR] Error during Item deletion process for ID: ${itemId}.`, error, logDetails);
     res.status(500).json({ message: 'Server error during the deletion process. Please check server logs.' });
@@ -229,6 +242,7 @@ exports.deleteItem = async (req, res) => {
 // Get purchase history for specific item
 exports.getItemPurchaseHistory = async (req, res) => {
   try {
+    const user = req.user || null;
     const { id } = req.params;
     
     // Validate ID format
@@ -239,6 +253,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
     // First check if item exists
     const itemExists = await Item.exists({ _id: id });
     if (!itemExists) {
+      logger.warn('item', `Item not found when fetching purchase history: ${id}`, user);
       return res.status(404).json({ message: 'Item not found' });
     }
 
@@ -253,6 +268,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
       'items.$': 1 // MongoDB positional operator to get only matching items
     }).sort({ date: -1 }).limit(50); // Add limit for performance
 
+    // logger.debug('item', `Fetched purchase history for item ID: ${id}`, user, { purchaseCount: purchases.length }); // Debug level
     // Format response
     const formattedPurchases = purchases.map(purchase => {
       const itemData = purchase.items[0]; // Using the positional projection above
@@ -274,6 +290,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
 
     res.json(formattedPurchases);
   } catch (error) {
+    logger.error('item', `Failed to fetch purchase history for item ID: ${id}`, error, user);
     console.error('Error fetching purchase history:', error);
     res.status(500).json({ 
       message: 'Server error while fetching purchase history',

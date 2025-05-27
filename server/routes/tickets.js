@@ -6,9 +6,7 @@ const multer = require("multer");
 const path = require("path");
 const User = require("../models/users");
 const ticketController = require("../controllers/ticketController");
-const authMiddleware = require("../middleware/auth");
 
-// Configure file upload storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -19,69 +17,75 @@ const storage = multer.diskStorage({
   },
 });
 
-// Admin delete ticket route - now calls controller
-router.delete('/admin/:id', auth, (req, res, next) => { // Ensure auth middleware populates req.user
+router.delete('/admin/:id', auth, (req, res, next) => {
   if (req.user.role !== 'super-admin') {
     return res.status(403).json({ error: "Forbidden" });
   }
-  next(); // Proceed if super-admin
+  next();
 }, ticketController.adminDeleteTicket);
 
 router.get("/next-number", auth, async (req, res) => {
   try {
-    // Get next globally unique sequence number for tickets
-    const nextNumber = await getNextSequence("ticketNumber");
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2); // Get last 2 digits of year
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Ensure 2-digit month
+    const prefix = `T-${year}${month}-`; // Format: T-YYMM-
 
-    // Format with leading zeros (6 digits) and a T prefix
-    const nextTicketNumber = `T-${String(nextNumber).padStart(6, "0")}`;
+    // Find the latest ticket number for current month
+    const latestTicket = await Ticket.findOne(
+      { ticketNumber: { $regex: `^${prefix}\\d{4}$` } },
+      { ticketNumber: 1 }
+    ).sort({ ticketNumber: -1 });
+
+    // Calculate next sequential number
+    let nextNumber = 1;
+    if (latestTicket?.ticketNumber) {
+      const lastCounter = parseInt(latestTicket.ticketNumber.slice(-4), 10);
+      nextNumber = lastCounter + 1;
+    }
+
+    const nextTicketNumber = `${prefix}${String(nextNumber).padStart(4, '0')}`;
     res.json({ nextTicketNumber });
+    
   } catch (error) {
+    console.error("Error generating ticket number:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
 const upload = multer({ storage });
 
-// Create new ticket (protected route)
 router.post("/", auth, async (req, res) => {
   try {
     const ticketData = req.body;
-
     ticketData.createdBy = req.user.id;
 
-    // If assignedTo is not provided, default it to the creator.
+    // Rest of your existing code
     if (!ticketData.assignedTo) {
       ticketData.assignedTo = req.user.id;
     }
-    // currentAssignee is initialized based on assignedTo (which could be the creator).
     ticketData.currentAssignee = ticketData.assignedTo;
 
+    ticketData.statusHistory = [{
+      status: ticketData.status || "Quotation Sent",
+      changedAt: new Date(),
+      changedBy: req.user.id,
+    }];
 
-    ticketData.statusHistory = [
-      {
-        status: ticketData.status || "Quotation Sent",
-        changedAt: new Date(),
-        changedBy: req.user.id,
-      },
-    ];
-    ticketData.assignmentLog = [{
-        assignedTo: ticketData.currentAssignee,
-        assignedBy: req.user.id, // The creator is performing this initial assignment
-        action: 'created',
-        assignedAt: new Date()
-      },
-    ];
+     ticketData.assignmentLog = [{
+      assignedTo: ticketData.currentAssignee,
+      assignedBy: req.user.id,
+      action: 'created',
+      assignedAt: new Date()
+    }];
 
     const ticket = new Ticket(ticketData);
     await ticket.save();
 
-    // Add ticket to creator's tickets array
-    await User.findByIdAndUpdate(req.user.id, {
+     await User.findByIdAndUpdate(req.user.id, {
       $addToSet: { tickets: ticket._id },
     });
 
-    // If assignedTo is different from creator, add to that user's tickets array as well.
-    // The $addToSet in the creator's update handles the case where assignedTo is the creator.
     if (ticketData.assignedTo && ticketData.assignedTo.toString() !== req.user.id.toString()) {
       await User.findByIdAndUpdate(ticketData.assignedTo, {
         $addToSet: { tickets: ticket._id },
@@ -89,15 +93,13 @@ router.post("/", auth, async (req, res) => {
     }
 
     res.status(201).json(ticket);
+
   } catch (error) {
     console.error("Error creating ticket:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to create ticket", details: error.message });
+    res.status(500).json({ error: "Failed to create ticket", details: error.message });
   }
 });
 
-// Get single ticket (protected route) - only tickets assigned to or created by the user
 router.get("/:id", auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOne({
@@ -116,48 +118,38 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-// Update ticket (protected route) - only tickets assigned to or created by the user
 router.put("/:id", auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOneAndUpdate(
-  {
-    _id: req.params.id,
-    $or: [
-      { currentAssignee: req.user.id },
-      { createdBy: req.user.id },
-      { $and: [
-          { _id: req.params.id },
-          { "createdBy.role": "super-admin" }
-        ] 
-      }
-    ]
-  },
-  req.body,
-  { new: true }
-);
+      {
+        _id: req.params.id,
+        $or: [
+          { currentAssignee: req.user.id },
+          { createdBy: req.user.id },
+          { $and: [
+              { _id: req.params.id },
+              { "createdBy.role": "super-admin" }
+            ] 
+          }
+        ]
+      },
+      req.body,
+      { new: true }
+    );
 
     if (!ticket) {
-      return res
-        .status(404)
-        .json({
-          error: "Ticket not found or you are not the current assignee to update it.",
-        });
+      return res.status(404).json({ error: "Ticket not found or you are not the current assignee to update it." });
     }
 
     res.json(ticket);
   } catch (error) {
     console.error("Error updating ticket:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to update ticket", details: error.message });
+    res.status(500).json({ error: "Failed to update ticket", details: error.message });
   }
 });
 
-// Delete ticket (protected route) - only tickets created by the user
-// This route now calls the updated ticketController.deleteTicket
 router.delete("/:id", auth, ticketController.deleteTicket);
 
-// Upload document (protected route) - only for tickets assigned to or created by the user
 router.post(
   "/:id/documents",
   auth,
@@ -170,16 +162,8 @@ router.post(
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      if (
-        ![
-          "quotation",
-          "po",
-          "pi",
-          "challan",
-          "packingList",
-          "feedback",
-        ].includes(documentType)
-      ) {
+      const validTypes = ["quotation", "po", "pi", "challan", "packingList", "feedback"];
+      if (!validTypes.includes(documentType)) {
         return res.status(400).json({ error: "Invalid document type" });
       }
 
@@ -189,39 +173,30 @@ router.post(
       const updatedTicket = await Ticket.findOneAndUpdate(
         {
           _id: req.params.id,
-          currentAssignee: req.user.id, // Only current assignee can upload documents
+          currentAssignee: req.user.id,
         },
         { $set: update },
         { new: true }
       );
 
       if (!updatedTicket) {
-        return res
-          .status(404)
-          .json({
-            error: "Ticket not found or you are not the current assignee to upload documents.",
-          });
+        return res.status(404).json({ error: "Ticket not found or you are not the current assignee to upload documents." });
       }
 
       res.json(updatedTicket);
     } catch (error) {
-      console.error("Error uploading document:", error);
-      res
-        .status(500)
-        .json({ error: "Error uploading document", details: error.message });
+      logger.error('ticket', `Failed to upload document for Ticket ID: ${req.params.id}`, error, req.user, { documentType });
+      res.status(500).json({ error: "Error uploading document", details: error.message });
     }
   }
 );
 
-// Get all tickets (protected route) - only tickets assigned to or created by the user
 router.get("/", auth, async (req, res) => {
   try {
-    // Show tickets created by the user OR currently assigned to the user
     const query = {
       $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
     };
 
-    // Add any additional filters from request
     if (req.query.status) {
       query.status = req.query.status;
     }
@@ -230,8 +205,7 @@ router.get("/", auth, async (req, res) => {
       query.companyName = { $regex: req.query.companyName, $options: "i" };
     }
 
-    // Populate fields as requested by frontend or default to necessary ones
-    let ticketsQuery = Ticket.find(query)
+    const tickets = await Ticket.find(query)
       .populate({ path: "currentAssignee", select: "firstname lastname email" })
       .populate({ path: "createdBy", select: "firstname lastname email" })
       .populate({ path: "transferHistory.from", select: "firstname lastname email" })
@@ -239,7 +213,6 @@ router.get("/", auth, async (req, res) => {
       .populate({ path: "transferHistory.transferredBy", select: "firstname lastname email" })
       .sort({ createdAt: -1 });
 
-    const tickets = await ticketsQuery.exec();
     res.json(tickets);
   } catch (error) {
     console.error("Error fetching tickets:", error);
@@ -250,44 +223,40 @@ router.get("/", auth, async (req, res) => {
 router.post("/:id/transfer", auth, async (req, res) => {
   try {
     const { userId, note } = req.body;
+    const currentUser = req.user || null;
+    const ticketId = req.params.id;
 
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await Ticket.findById(ticketId);
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found" });
     }
-    // Permission check: Only the current assignee can transfer the ticket
-    // Or, if you want creator to also be able to transfer, adjust this logic.
-    if (ticket.currentAssignee.toString() !== req.user.id.toString()) {
+
+    if (ticket.currentAssignee.toString() !== currentUser.id.toString()) {
       return res.status(403).json({ message: "Forbidden: Only the current assignee can transfer this ticket." });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
+    const assignedUser = await User.findById(userId);
+    if (!assignedUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Add to transfer history
     ticket.transferHistory.push({
       from: ticket.currentAssignee,
       to: userId,
-      transferredBy: req.user.id,
+      transferredBy: currentUser.id,
       note: note || "",
-      transferredAt: new Date(), // Explicitly set transfer timestamp
-      statusAtTransfer: ticket.status // Capture ticket status at the time of transfer
+      transferredAt: new Date(),
+      statusAtTransfer: ticket.status
     });
 
-    // Add to assignment log
     ticket.assignmentLog.push({
       assignedTo: userId,
-      assignedBy: req.user.id,
+      assignedBy: currentUser.id,
       action: "transferred",
     });
 
-    // Update current assignee
     ticket.currentAssignee = userId;
-
     await ticket.save();
-
 
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate("currentAssignee", "firstname lastname email")
@@ -299,10 +268,10 @@ router.post("/:id/transfer", auth, async (req, res) => {
     res.status(200).json({
       ticket: populatedTicket,
       currentAssignee: {
-        _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
+        _id: assignedUser._id,
+        firstname: assignedUser.firstname,
+        lastname: assignedUser.lastname,
+        email: assignedUser.email,
       },
     });
   } catch (error) {
@@ -310,16 +279,5 @@ router.post("/:id/transfer", auth, async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
-router.get(
-  "/next-number",
-  authMiddleware,
-  ticketController.generateTicketNumber
-);
-router.get(
-  "/check/:quotationNumber",
-  authMiddleware,
-  ticketController.checkExistingTicket
-);
 
 module.exports = router;

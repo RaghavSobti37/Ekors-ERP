@@ -24,9 +24,16 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:3000");
+        // Point to your actual API endpoint for items
+        // Assuming your items are fetched from '/api/items'
+        // and your server is running on localhost:3000
+        // Also, ensure your API returns data in the format { items: [...] }
+        // or adjust how you access `data.items` below.
+        const res = await fetch("http://localhost:3000/api/items"); 
         const data = await res.json();
-        setItems(data.items);
+        // If your API directly returns an array of items, use: setItems(data);
+        // If it returns an object like { items: [...] }, use: setItems(data.items);
+        setItems(data); // Adjust based on your API response structure
       } catch (error) {
         console.error("Error fetching data:", error);
       }
