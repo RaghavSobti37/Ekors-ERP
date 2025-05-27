@@ -1166,7 +1166,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={!formData.name || !formData.price || !formData.category}
                 >
-                  Add Item
+                  Add New Item
                 </button>
               </div>
             </div>
