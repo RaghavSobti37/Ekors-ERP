@@ -1,4 +1,4 @@
-.add-item-container {
+/* .add-item-container {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #333;
     background-color: white;
@@ -273,7 +273,7 @@
 }
 
 /* Scrollbar Styles */
-.table-container::-webkit-scrollbar {
+/* .table-container::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
@@ -290,10 +290,10 @@
 
 .table-container::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
-}
+} */
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
     .full-screen-modal {
         width: 98%;
         height: 98%;
@@ -313,4 +313,4 @@
         flex-direction: column;
         gap: 5px;
     }
-}
+} */
