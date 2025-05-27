@@ -298,24 +298,34 @@ export default function Quotations() {
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
   };
 
-  const handleSaveNewClient = async () => {
-    try {
-      const token = getAuthToken();
-      if (!token) throw new Error("No authentication token found");
+const handleSaveNewClient = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("No authentication token found");
 
-      const response = await axios.post(
-        "http://localhost:3000/api/clients",
-        newClientData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    const response = await axios.post(
+      "http://localhost:3000/api/clients",
+      {
+        ...newClientData,
+        gstNumber: newClientData.gstNumber.toUpperCase(), // Ensure uppercase
+        email: newClientData.email.toLowerCase() // Ensure lowercase
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-      if (response.status === 201) {
-        // Set the newly created client in the quotation form
+    if (response.data.message && response.data.message.toLowerCase().includes('gst number already exists')) {
+      setError("This GST Number is already registered.");
+      return;
+    }
+
+      if (response.status === 201 || response.status === 200) {
+        // Handle 200 if client already existed
+        // Set the newly created or existing client in the quotation form
         setQuotationData((prev) => ({
           ...prev,
           client: {
@@ -328,18 +338,25 @@ export default function Quotations() {
         }));
         setSelectedClientIdForForm(response.data._id);
         setClientCreationMode("existing");
-        setShowClientModal(false);
+        setNewClientData({
+          // Reset the new client form fields
+          companyName: "",
+          gstNumber: "",
+          email: "",
+          phone: "",
+        });
         setError(null);
       }
     } catch (error) {
-      console.error("Error creating client:", error);
-      setError(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to create client. Please try again."
-      );
+    if (error.response?.data?.field === 'gstNumber') {
+      setError(error.response.data.message || "This GST Number is already registered.");
+    } else if (error.response?.data?.field === 'email') {
+      setError(error.response.data.message || "This Email is already registered.");
+    } else {
+      setError(error.response?.data?.message || "Failed to create client.");
     }
-  };
+  }
+};
 
   const initialQuotationData = {
     date: formatDateForInput(new Date()),
@@ -616,17 +633,20 @@ export default function Quotations() {
     const { name, value } = e.target;
 
     if (name.startsWith("client.")) {
-      const field = name.split(".")[1];
+      const clientField = name.split(".")[1];
+      let processedValue = value;
 
-      // Convert GST number to uppercase
-      const processedValue =
-        field === "gstNumber" ? value.toUpperCase() : value;
+      if (clientField === "gstNumber") {
+        processedValue = value.toUpperCase();
+      } else if (clientField === "email") {
+        processedValue = value.toLowerCase();
+      }
 
       setQuotationData((prev) => ({
         ...prev,
         client: {
           ...prev.client,
-          [field]: processedValue,
+          [clientField]: processedValue,
         },
       }));
     } else {
@@ -674,11 +694,11 @@ export default function Quotations() {
     event.preventDefault();
     setFormValidated(true);
 
-     if (!quotationData.client._id) {
-    setError("Please select or create a client for this quotation.");
-    return;
-  } 
-  
+    if (!quotationData.client._id) {
+      setError("Please select or create a client for this quotation.");
+      return;
+    }
+
     const form = event.currentTarget;
 
     // Check form validity and ensure we have goods
@@ -713,6 +733,13 @@ export default function Quotations() {
         throw new Error("No authentication token found");
       }
 
+      const finalClientPayload = {
+        _id: quotationData.client._id, // Keep _id if present (for updates)
+        companyName: quotationData.client.companyName,
+        gstNumber: quotationData.client.gstNumber.toUpperCase(),
+        email: quotationData.client.email.toLowerCase(),
+        phone: String(quotationData.client.phone),
+      };
       const submissionData = {
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
@@ -732,13 +759,7 @@ export default function Quotations() {
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
         status: quotationData.status || "open",
-        client: {
-          _id: quotationData.client._id || null,
-          companyName: quotationData.client.companyName,
-          gstNumber: quotationData.client.gstNumber,
-          email: quotationData.client.email,
-          phone: String(quotationData.client.phone),
-        },
+        client: finalClientPayload,
       };
 
       console.log("Submitting quotation data:", submissionData);
@@ -752,7 +773,6 @@ export default function Quotations() {
       const response = await axios[method](url, submissionData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
       });
 
@@ -1528,7 +1548,7 @@ export default function Quotations() {
                           onChange={(e) =>
                             setNewClientData((prev) => ({
                               ...prev,
-                              companyName: e.target.value,
+                              companyName: e.target.value, // No specific case enforcement needed here
                             }))
                           }
                         />
@@ -1562,7 +1582,7 @@ export default function Quotations() {
                           onChange={(e) =>
                             setNewClientData((prev) => ({
                               ...prev,
-                              email: e.target.value,
+                              email: e.target.value.toLowerCase(), // Normalize on input
                             }))
                           }
                         />
@@ -1578,7 +1598,7 @@ export default function Quotations() {
                           onChange={(e) =>
                             setNewClientData((prev) => ({
                               ...prev,
-                              phone: e.target.value,
+                              phone: e.target.value, // No specific case enforcement
                             }))
                           }
                         />
