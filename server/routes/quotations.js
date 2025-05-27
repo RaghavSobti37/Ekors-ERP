@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Quotation = require("../models/quotation");
 const Client = require("../models/client");
+const QuotationBackup = require("../models/quotationBackup"); // Import backup model
 const auth = require("../middleware/auth");
+const logger = require("../utils/logger"); // Import logger
 
 // Create or update quotation
 const handleQuotationUpsert = async (req, res) => {
@@ -261,44 +263,74 @@ router.get("/:id", auth, async (req, res) => {
 
 // Replace the existing DELETE route with this:
 router.delete("/:id", auth, async (req, res) => {
+  const quotationId = req.params.id;
+  const userId = req.user ? req.user._id : null;
+  const userEmail = req.user ? req.user.email : 'N/A';
+  const logDetails = { userId, quotationId, model: 'Quotation', operation: 'delete', userEmail };
+
+  logger.info(`[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${userEmail}.`, logDetails);
+
   try {
-    let deleteQuery = { _id: req.params.id };
-    // Only superadmin can delete any quotation. Regular users cannot delete.
-    // If regular users should be able to delete their own, add:
-    // if (req.user.role !== "super-admin") {
-    //   deleteQuery.user = req.user._id; // Or simply deny
-    // }
+    // Authorization: Only superadmin can delete quotations
     if (req.user.role !== "super-admin") {
+      logger.warn(`[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${userEmail}.`, logDetails);
       return res
         .status(403)
         .json({ message: "Only superadmin can delete quotations" });
     }
+    logger.debug(`[FETCH_ATTEMPT] Finding Quotation ID: ${quotationId} for backup and deletion.`, logDetails);
+    const quotationToBackup = await Quotation.findById(quotationId);
 
-    const quotation = await Quotation.findOneAndDelete(deleteQuery);
-
-    if (!quotation) {
+    if (!quotationToBackup) {
+      logger.warn(`[NOT_FOUND] Quotation not found for deletion: ${quotationId}.`, logDetails);
       return res.status(404).json({ message: "Quotation not found or you do not have permission to delete it." });
     }
+    logger.debug(`[FETCH_SUCCESS] Found Quotation ID: ${quotationId} (Ref: ${quotationToBackup.referenceNumber}). Preparing for backup.`, { ...logDetails, referenceNumber: quotationToBackup.referenceNumber });
+
+    const backupData = quotationToBackup.toObject();
+    const newBackupEntry = new QuotationBackup({
+      ...backupData,
+      originalId: quotationToBackup._id,
+      deletedBy: userId, // User performing the delete
+      deletedAt: new Date(),
+      originalCreatedAt: quotationToBackup.createdAt,
+      originalUpdatedAt: quotationToBackup.updatedAt,
+      backupReason: "Admin-initiated deletion via API"
+    });
+
+    logger.debug(`[PRE_BACKUP_SAVE] Attempting to save backup for Quotation ID: ${quotationToBackup._id}.`, { ...logDetails, originalId: quotationToBackup._id });
+    await newBackupEntry.save();
+    logger.info(`[BACKUP_SUCCESS] Quotation successfully backed up. Backup ID: ${newBackupEntry._id}.`, { ...logDetails, originalId: quotationToBackup._id, backupId: newBackupEntry._id, backupModel: 'QuotationBackup' });
+
+    logger.debug(`[PRE_ORIGINAL_DELETE] Attempting to delete original Quotation ID: ${quotationToBackup._id}.`, { ...logDetails, originalId: quotationToBackup._id });
+    await Quotation.findByIdAndDelete(quotationId);
+    logger.info(`[ORIGINAL_DELETE_SUCCESS] Original Quotation successfully deleted.`, { ...logDetails, originalId: quotationToBackup._id });
 
     // If quotation had a client, remove this quotation from that client's list
-    if (quotation.client) {
+    if (quotationToBackup.client) {
       try {
-        await Client.findByIdAndUpdate(quotation.client, {
-          $pull: { quotations: quotation._id },
+        await Client.findByIdAndUpdate(quotationToBackup.client, {
+          $pull: { quotations: quotationToBackup._id },
         });
+        logger.info(`[CLIENT_REF_REMOVE_SUCCESS] Removed quotation reference ${quotationToBackup._id} from Client ID: ${quotationToBackup.client}.`, { ...logDetails, targetModel: 'Client', targetClientId: quotationToBackup.client.toString() });
       } catch (clientUpdateError) {
-        console.error(
-          "Error removing quotation from client's list during delete:",
-          clientUpdateError
-        );
+        logger.error(`[CLIENT_REF_REMOVE_ERROR] Error removing quotation reference ${quotationToBackup._id} from Client ID: ${quotationToBackup.client}.`, clientUpdateError, { ...logDetails, targetModel: 'Client', targetClientId: quotationToBackup.client.toString() });
       }
     }
 
-    res.json({ message: "Quotation deleted successfully" });
+    res.status(200).json({
+      message: "Quotation deleted and backed up successfully.",
+      originalId: quotationToBackup._id,
+      backupId: newBackupEntry._id
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error(`[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${userEmail}.`, error, logDetails);
+    if (error.name === 'ValidationError' || (typeof quotationToBackup === 'undefined' || (quotationToBackup && (!newBackupEntry || newBackupEntry.isNew)))) {
+        logger.warn(`[ROLLBACK_DELETE] Backup failed or error before backup for Quotation ID: ${quotationId}. Original document will not be deleted.`, logDetails);
+    }
+    res.status(500).json({ message: "Server error during the deletion process. Please check server logs." });
   }
 });
 
 module.exports = router;
-       

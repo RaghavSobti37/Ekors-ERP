@@ -449,38 +449,46 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (editTicket) {
+      // This block now specifically handles the case for the editTicket modal
+      // The new useEffect below will handle populating transferTableData more generally
+    }
+  }, [editTicket]); // Keep this for any editTicket specific logic if needed, or remove if fully covered by the one below
+
+  useEffect(() => {
+    const activeDetailedTicket = showEditModal ? editTicket : (showPaymentModal ? selectedTicket : null);
+
+    if (activeDetailedTicket) {
       const newNames = [];
       const newDates = [];
       // const newStatuses = []; // Removed
       const newNotes = [];
 
       // Determine initial assignee for the first column
-      let firstAssignee = editTicket.createdBy; // Default to creator
-      if (editTicket.transferHistory && editTicket.transferHistory.length > 0) {
-        firstAssignee = editTicket.transferHistory[0].from || editTicket.createdBy;
-      } else if (editTicket.currentAssignee) {
-        firstAssignee = editTicket.currentAssignee;
+      let firstAssignee = activeDetailedTicket.createdBy; // Default to creator
+      if (activeDetailedTicket.transferHistory && activeDetailedTicket.transferHistory.length > 0) {
+        firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
+      } else if (activeDetailedTicket.currentAssignee) {
+        firstAssignee = activeDetailedTicket.currentAssignee;
       }
 
       newNames.push(firstAssignee);
-      newDates.push(editTicket.createdAt); // Date for the initial state
+      newDates.push(activeDetailedTicket.createdAt); // Date for the initial state
       // newStatuses.push(earliestKnownStatus); // Status for the "Ticket Created" column - Removed
       newNotes.push("Ticket Created"); // Note for initial state
 
       // States from transfer history
-      editTicket.transferHistory?.forEach(transfer => {
+      activeDetailedTicket.transferHistory?.forEach(transfer => {
         newNames.push(transfer.to); // The user the ticket was transferred TO
         const transferTime = transfer.transferredAt || new Date(); // Ensure we have a valid date
         newDates.push(transferTime);
         // Status logic removed
         newNotes.push(transfer.note || 'N/A'); // Note for this transfer
       });
-
       setTransferTableData({ names: newNames, dates: newDates, notes: newNotes });
     } else {
       setTransferTableData({ names: [], dates: [], notes: [] });
     }
-  }, [editTicket]);
+  }, [editTicket, selectedTicket, showEditModal, showPaymentModal]);
 
   const handleDelete = async (ticketToDelete) => {
     if (!ticketToDelete || !ticketToDelete._id) {
@@ -1781,8 +1789,7 @@ export default function Dashboard() {
           </Modal.Header>
           <Modal.Body style={{ overflowY: "auto" }}>
             <ProgressBarWithStages />
-            
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <h5>Transfer History</h5>
               {editTicket && transferTableData.names && transferTableData.names.length > 0 ? (
                 <Table bordered responsive className="mt-2 transfer-history-table">
@@ -1816,7 +1823,7 @@ export default function Dashboard() {
               ) : (
                 <div className="text-muted mt-2">No transfer history available.</div>
               )}
-            </div>
+            </div> */}
             <DocumentUploadSection />
             <div className="row mb-4">
               <Form.Group className="col-md-6">
@@ -2059,121 +2066,41 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <div className="row">
-              <div className="col-md-8">
-                <h5 className="mt-3">Payment Information</h5>
-                <div className="bg-light p-3 rounded mb-3">
-                  <div className="row">
-                    <div className="col-md-6">
-                      <p>
-                        Grand Total:{" "}
-                        <strong>
-                          ₹{selectedTicket?.grandTotal?.toFixed(2)}
-                        </strong>
-                      </p>
-                    </div>
-                    <div className="col-md-6">
-                      <p>
-                        Paid Amount:{" "}
-                        <strong>
-                          ₹
-                          {(
-                            selectedTicket?.payments?.reduce(
-                              (sum, p) => sum + p.amount,
-                              0
-                            ) || 0
-                          ).toFixed(2)}
-                        </strong>
-                      </p>
-                    </div>
-                    <div className="col-md-12">
-                      <p>
-                        Balance Due:{" "}
-                        <strong>
-                          ₹
-                          {(
-                            selectedTicket?.grandTotal -
-                            (selectedTicket?.payments?.reduce(
-                              (sum, p) => sum + p.amount,
-                              0
-                            ) || 0)
-                          ).toFixed(2)}
-                        </strong>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <Form>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Payment Amount (₹)*</Form.Label>
-                    <Form.Control
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) =>
-                        setPaymentAmount(parseFloat(e.target.value))
-                      }
-                      min="0"
-                      max={
-                        selectedTicket?.grandTotal -
-                        (selectedTicket?.payments?.reduce(
-                          (sum, p) => sum + p.amount,
-                          0
-                        ) || 0)
-                      }
-                      step="0.01"
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Payment Date*</Form.Label>
-                    <Form.Control
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Reference/Notes</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={paymentReference}
-                      onChange={(e) => setPaymentReference(e.target.value)}
-                      placeholder="Payment reference number or notes"
-                    />
-                  </Form.Group>
-                </Form>
-              </div>
-              <div className="col-md-4">
-                <h5 className="mt-3">Payment History</h5>
-                {selectedTicket?.payments?.length > 0 ? (
-                  <div className="payment-history-container">
-                    {selectedTicket.payments.map((payment, index) => (
-                      <div
-                        key={index}
-                        className="payment-history-item p-3 mb-2 border rounded"
-                      >
-                        <div className="d-flex justify-content-between">
-                          <span className="fw-bold">
-                            ₹{payment.amount.toFixed(2)}
-                          </span>
-                          <span className="text-muted small">
-                            {new Date(payment.date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {payment.reference && (
-                          <div className="mt-1 small text-muted">
-                            Ref: {payment.reference}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center p-4 border rounded bg-light">
-                    No payment history found
-                  </div>
-                )}
-              </div>
+            {/* Transfer History Table for Payment Modal */}
+            <div className="mt-4">
+              <h5>Transfer History</h5>
+              {selectedTicket && transferTableData.names && transferTableData.names.length > 0 ? (
+                <Table bordered responsive className="mt-2 transfer-history-table">
+                  <tbody>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Name</td>
+                      {transferTableData.names.map((assignee, index) => (
+                        <td key={`payment-name-${index}`} className="text-center">
+                          {assignee ? `${assignee.firstname} ${assignee.lastname}` : 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Date</td>
+                      {transferTableData.dates.map((date, index) => (
+                        <td key={`payment-date-${index}`} className="text-center">
+                          {date ? new Date(date).toLocaleDateString() : 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ fontWeight: 'bold', width: '150px' }}>Note</td>
+                      {transferTableData.notes.map((note, index) => (
+                        <td key={`payment-note-${index}`} className="text-center">
+                          {note || 'N/A'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </Table>
+              ) : (
+                <div className="text-muted mt-2">No transfer history available.</div>
+              )}
             </div>
           </Modal.Body>
           <Modal.Footer className="modal-footer-custom">

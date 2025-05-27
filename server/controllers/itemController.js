@@ -1,5 +1,7 @@
 const { Item, Purchase } = require('../models/itemlist');
+const ItemBackup = require('../models/itemBackup'); // Import backup model
 const mongoose = require('mongoose');
+const logger = require('../utils/logger'); // Import logger
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === 'development') {
@@ -157,33 +159,68 @@ exports.updateItem = async (req, res) => {
 
 // Delete item
 exports.deleteItem = async (req, res) => {
+  const itemId = req.params.id;
+  const userId = req.user ? req.user._id : null;
   const session = await mongoose.startSession();
-  session.startTransaction();
-  
+  const logDetails = { userId, itemId, model: 'Item', operation: 'delete', sessionId: session.id };
+
+  logger.info(`[DELETE_INITIATED] Item ID: ${itemId}. Transaction started.`, logDetails);
+
   try {
-    // Find the item first to make sure it exists
-    const item = await Item.findById(req.params.id).session(session);
+    session.startTransaction();
+    logger.debug(`[FETCH_ATTEMPT] Finding Item ID: ${itemId} for backup and deletion within transaction.`, logDetails);
+    const itemToBackup = await Item.findById(itemId).session(session);
     
-    if (!item) {
+    if (!itemToBackup) {
       await session.abortTransaction();
+      session.endSession();
+      logger.warn(`[NOT_FOUND] Item not found for deletion. Transaction aborted.`, logDetails);
       return res.status(404).json({ message: 'Item not found' });
     }
-    
-    // Delete the item
-    await Item.findByIdAndDelete(req.params.id).session(session);
-    
+    logger.debug(`[FETCH_SUCCESS] Found Item ID: ${itemId}. Preparing for backup within transaction.`, logDetails);
+
+    const backupData = itemToBackup.toObject();
+    const newBackupEntry = new ItemBackup({
+      ...backupData,
+      originalId: itemToBackup._id,
+      deletedBy: userId,
+      deletedAt: new Date(),
+      originalCreatedAt: itemToBackup.createdAt,
+      originalUpdatedAt: itemToBackup.updatedAt,
+      backupReason: "User-initiated deletion via API"
+    });
+
+    logger.debug(`[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} within transaction.`, { ...logDetails, originalId: itemToBackup._id });
+    await newBackupEntry.save({ session }); // Save backup within the transaction
+    logger.info(`[BACKUP_SUCCESS] Item successfully backed up. Backup ID: ${newBackupEntry._id}.`, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'ItemBackup' });
+
+    logger.debug(`[PRE_ORIGINAL_DELETE] Attempting to delete original Item ID: ${itemToBackup._id} within transaction.`, { ...logDetails, originalId: itemToBackup._id });
+    await Item.findByIdAndDelete(itemId, { session });
+    logger.info(`[ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted.`, { ...logDetails, originalId: itemToBackup._id });
+
     // Update any purchase records that reference this item
+    // This part remains, ensuring data integrity for purchases
+    logger.debug(`[UPDATE_PURCHASES_ATTEMPT] Updating Purchase records referencing deleted Item ID: ${itemId} within transaction.`, { ...logDetails, targetModel: 'Purchase' });
     await Purchase.updateMany(
-      { 'items.itemId': req.params.id },
+      { 'items.itemId': itemId },
       { $set: { 'items.$.itemId': null } }
     ).session(session);
-    
+    logger.info(`[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: ${itemId}.`, { ...logDetails, targetModel: 'Purchase' });
+
     await session.commitTransaction();
-    res.json({ message: 'Item deleted successfully' });
+    res.status(200).json({
+      message: 'Item deleted, backed up, and purchase references updated successfully.',
+      originalId: itemToBackup._id,
+      backupId: newBackupEntry._id
+    });
+
   } catch (error) {
-    await session.abortTransaction();
-    console.error('Error deleting item:', error);
-    res.status(500).json({ message: 'Server error while deleting item' });
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+      logger.warn(`[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, { ...logDetails, errorMessage: error.message });
+    }
+    logger.error(`[DELETE_ERROR] Error during Item deletion process for ID: ${itemId}.`, error, logDetails);
+    res.status(500).json({ message: 'Server error during the deletion process. Please check server logs.' });
   } finally {
     session.endSession();
   }

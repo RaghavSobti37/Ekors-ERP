@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/users');
 const auth = require('../middleware/auth');
 const { check, validationResult } = require('express-validator');
+const userController = require('../controllers/userController'); // Import userController
 
 const router = express.Router();
 
@@ -142,35 +143,7 @@ router.put(
 );
 
 // DELETE /api/users/:id - Delete a user (Super-admin only)
-router.delete('/:id', auth, requireSuperAdmin, async (req, res) => {
-    const userIdToDelete = req.params.id;
-
-    try {
-        const userToDelete = await User.findById(userIdToDelete);
-        if (!userToDelete) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (userToDelete.role === 'super-admin') {
-            if (req.user.id === userIdToDelete) {
-                 return res.status(400).json({ error: 'Super-admin cannot delete themselves.' });
-            }
-            const superAdminCount = await User.countDocuments({ role: 'super-admin' });
-            if (superAdminCount <= 1) {
-                return res.status(400).json({ error: 'Cannot delete the last super-admin.' });
-            }
-        }
-
-        await User.findByIdAndDelete(userIdToDelete);
-        res.json({ message: 'User deleted successfully' });
-
-    } catch (err) {
-        console.error('Error deleting user:', err);
-        if (err.kind === 'ObjectId') {
-            return res.status(400).json({ error: 'Invalid user ID format' });
-        }
-        res.status(500).json({ error: 'Server error while deleting user' });
-    }
-});
+// Now calls the controller method which includes backup logic
+router.delete('/:id', auth, requireSuperAdmin, userController.deleteUser);
 
 module.exports = router;

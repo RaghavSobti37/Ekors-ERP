@@ -1,5 +1,7 @@
 const Ticket = require("../models/opentickets");
+const TicketBackup = require("../models/ticketBackup"); // Import backup model
 const User = require("../models/users");
+const logger = require("../utils/logger"); // Import logger
 
 // Then modify the ticket creation endpoint to use the actual counter
 exports.createTicket = async (req, res) => {
@@ -87,27 +89,94 @@ exports.updateTicket = async (req, res) => {
 
 // Delete ticket
 exports.deleteTicket = async (req, res) => {
+  const ticketId = req.params.id;
+  const userId = req.user ? req.user.id : null;
+  const userEmail = req.user ? req.user.email : 'N/A';
+  const logDetails = { userId, ticketId, model: 'Ticket', operation: 'delete', userEmail };
+
+  logger.info(`[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}.`, logDetails);
+
   try {
-    const ticket = await Ticket.findOneAndDelete({
-      _id: req.params.id,
-      createdBy: req.user.id
-    });
-    
-    if (!ticket) {
+    logger.debug(`[FETCH_ATTEMPT] Finding Ticket ID: ${ticketId} for backup and deletion.`, logDetails);
+    const ticketToBackup = await Ticket.findOne({ _id: ticketId });
+
+    if (!ticketToBackup) {
+      logger.warn(`[NOT_FOUND] Ticket not found for deletion: ${ticketId}.`, logDetails);
       return res.status(404).json({ error: "Ticket not found" });
     }
-    
-    // Remove ticket from user's tickets array
-    await User.findByIdAndUpdate(req.user.id, {
-      $pull: { tickets: ticket._id }
+    logger.debug(`[FETCH_SUCCESS] Found Ticket ID: ${ticketId} (Number: ${ticketToBackup.ticketNumber}). Performing authorization checks.`, { ...logDetails, ticketNumber: ticketToBackup.ticketNumber });
+
+    // Authorization: User can delete if they created it OR if they are a super-admin (for admin delete route)
+    const isCreator = ticketToBackup.createdBy.toString() === userId;
+    const isSuperAdmin = req.user.role === 'super-admin';
+
+    if (!isCreator && !isSuperAdmin) {
+      logger.warn(`[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`, { ...logDetails, createdBy: ticketToBackup.createdBy.toString() });
+      return res.status(403).json({ error: "Forbidden: You do not have permission to delete this ticket." });
+    }
+    logger.debug(`[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}. Preparing for backup.`, logDetails);
+
+    const backupData = ticketToBackup.toObject();
+    const newBackupEntry = new TicketBackup({
+      ...backupData,
+      originalId: ticketToBackup._id,
+      deletedBy: userId, // User performing the delete
+      deletedAt: new Date(),
+      originalCreatedAt: ticketToBackup.createdAt,
+      originalUpdatedAt: ticketToBackup.updatedAt,
+      backupReason: `${isSuperAdmin ? 'Admin' : 'User'}-initiated deletion via API`
     });
-    
-    res.json({ message: "Ticket deleted successfully" });
+
+    logger.debug(`[PRE_BACKUP_SAVE] Attempting to save backup for Ticket ID: ${ticketToBackup._id}.`, { ...logDetails, originalId: ticketToBackup._id });
+    await newBackupEntry.save();
+    logger.info(`[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`, { ...logDetails, originalId: ticketToBackup._id, backupId: newBackupEntry._id, backupModel: 'TicketBackup' });
+
+    logger.debug(`[PRE_ORIGINAL_DELETE] Attempting to delete original Ticket ID: ${ticketToBackup._id}.`, { ...logDetails, originalId: ticketToBackup._id });
+    await Ticket.findByIdAndDelete(ticketId);
+    logger.info(`[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`, { ...logDetails, originalId: ticketToBackup._id });
+
+    // Remove ticket from user's (creator and current assignee) tickets array
+    const usersToUpdate = new Set();
+    if (ticketToBackup.createdBy) usersToUpdate.add(ticketToBackup.createdBy.toString());
+    if (ticketToBackup.currentAssignee) usersToUpdate.add(ticketToBackup.currentAssignee.toString());
+
+    for (const uid of usersToUpdate) {
+      try {
+        logger.debug(`[USER_TICKET_REF_REMOVE_ATTEMPT] Removing ticket reference ${ticketToBackup._id} from User ID: ${uid}.`, { ...logDetails, targetUserId: uid });
+        await User.findByIdAndUpdate(uid, { $pull: { tickets: ticketToBackup._id } });
+        logger.info(`[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`, { ...logDetails, targetUserId: uid });
+      } catch (userUpdateError) {
+        logger.error(`[USER_TICKET_REF_REMOVE_ERROR] Failed to remove ticket reference ${ticketToBackup._id} from User ID: ${uid}.`, userUpdateError, { ...logDetails, targetUserId: uid });
+      }
+    }
+
+    res.status(200).json({
+      message: "Ticket deleted and backed up successfully.",
+      originalId: ticketToBackup._id,
+      backupId: newBackupEntry._id
+    });
+
   } catch (error) {
-    console.error("Error deleting ticket:", error);
-    res.status(500).json({ error: "Failed to delete ticket" });
+    logger.error(`[DELETE_ERROR] Error during Ticket deletion process for ID: ${ticketId} by ${userEmail}.`, error, logDetails);
+    if (error.name === 'ValidationError' || (typeof ticketToBackup === 'undefined' || (ticketToBackup && (!newBackupEntry || newBackupEntry.isNew)))) {
+        logger.warn(`[ROLLBACK_DELETE] Backup failed or error before backup for Ticket ID: ${ticketId}. Original document will not be deleted.`, logDetails);
+    }
+    res.status(500).json({ error: "Failed to delete ticket. Check server logs." });
   }
 };
+
+// Admin delete ticket - specific for super-admin role, uses the same core logic as deleteTicket
+exports.adminDeleteTicket = async (req, res) => {
+  logger.debug(`[ADMIN_DELETE_TICKET_INVOKED] Admin delete initiated for Ticket ID: ${req.params.id} by User: ${req.user.email}.`, { userId: req.user.id, ticketId: req.params.id, model: 'Ticket', operation: 'adminDelete' });
+  if (req.user.role !== 'super-admin') {
+    logger.warn(`Non-admin attempt to use adminDeleteTicket for Ticket ID: ${req.params.id} by User: ${req.user.email}`, { userId: req.user.id, ticketId: req.params.id });
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  // Call the generic deleteTicket function which now handles permissions correctly
+  // The deleteTicket function will use req.user.role to determine if it's an admin deletion for logging/backupReason
+  return exports.deleteTicket(req, res);
+};
+
 
 exports.generateTicketNumber = async (req, res) => {
   try {

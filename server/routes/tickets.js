@@ -19,26 +19,13 @@ const storage = multer.diskStorage({
   },
 });
 
-router.delete('/admin/:id', auth, async (req, res) => {
-  try {
-    if (req.user.role !== 'super-admin') {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    
-    const ticket = await Ticket.findByIdAndDelete(req.params.id);
-    if (!ticket) return res.status(404).json({ error: "Ticket not found" });
-    
-    // Cleanup user references
-    await User.updateMany(
-      { tickets: ticket._id },
-      { $pull: { tickets: ticket._id } }
-    );
-    
-    res.json({ message: "Ticket permanently deleted" });
-  } catch (error) {
-    res.status(500).json({ error: "Delete failed" });
+// Admin delete ticket route - now calls controller
+router.delete('/admin/:id', auth, (req, res, next) => { // Ensure auth middleware populates req.user
+  if (req.user.role !== 'super-admin') {
+    return res.status(403).json({ error: "Forbidden" });
   }
-});
+  next(); // Proceed if super-admin
+}, ticketController.adminDeleteTicket);
 
 router.get("/next-number", auth, async (req, res) => {
   try {
@@ -167,42 +154,8 @@ router.put("/:id", auth, async (req, res) => {
 });
 
 // Delete ticket (protected route) - only tickets created by the user
-router.delete("/:id", auth, async (req, res) => {
-  try {
-    const ticket = await Ticket.findOneAndDelete({
-      _id: req.params.id,
-      createdBy: req.user.id, // Only the creator can delete
-    });
-
-    if (!ticket) {
-      return res
-        .status(404)
-        .json({
-          error: "Ticket not found or you don't have permission to delete it",
-        });
-    }
-
-    // Remove ticket from user's tickets array
-    await User.findByIdAndUpdate(req.user.id, {
-      $pull: { tickets: ticket._id },
-    });
-
-    // If assigned to someone, also remove from their array
-    if (
-      ticket.currentAssignee && // Check currentAssignee instead of initial assignedTo
-      ticket.currentAssignee.toString() !== req.user.id.toString()
-    ) {
-      await User.findByIdAndUpdate(ticket.assignedTo, {
-        $pull: { tickets: ticket._id },
-      });
-    }
-
-    res.json({ message: "Ticket deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting ticket:", error);
-    res.status(500).json({ error: "Failed to delete ticket" });
-  }
-});
+// This route now calls the updated ticketController.deleteTicket
+router.delete("/:id", auth, ticketController.deleteTicket);
 
 // Upload document (protected route) - only for tickets assigned to or created by the user
 router.post(
