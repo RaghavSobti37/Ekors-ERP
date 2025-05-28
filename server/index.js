@@ -214,6 +214,11 @@ app.use('/api/users', userRoutes); // Mount user routes
 
 const reportRoutes = require("./routes/reportRoutes");
 app.use("/api/reports", reportRoutes);
+const auditLogRoutes = require('./routes/auditLogRoutes');
+const logger = require('./utils/logger');
+
+app.use('/api/audit', auditLogRoutes);
+console.log('[SERVER INFO] /api/audit routes mounted.');
 
 // ----------------------------
 // Start server
@@ -221,4 +226,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[INFO] Server running on port ${PORT}`);
   console.log(`[DEBUG] JWT_SECRET: ${process.env.JWT_SECRET ? 'set' : 'not set'}`);
+});
+
+app.use((err, req, res, next) => {
+  console.error('[SERVER CRITICAL GlobalErrorHandler] Unhandled error:', err);
+  logger.error('general', `Unhandled server error on ${req.path}`, err, null, { requestMethod: req.method });
+  res.status(500).send('Something broke!');
 });

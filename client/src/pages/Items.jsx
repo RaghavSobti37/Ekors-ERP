@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
+import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
-import Pagination from '../components/Pagination';
+import Pagination from "../components/Pagination";
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -75,9 +75,9 @@ export default function Items() {
       debug("Starting to fetch items");
       setLoading(true);
       setError(null);
-      const response = await axios.get("http://localhost:3000/api/items");
-      debug("Items fetched successfully", response.data);
-      setItems(response.data);
+      const response = await apiClient("/items"); // Use apiClient
+       debug("Items fetched successfully", response);
+      setItems(response);
     } catch (err) {
       debug("Error fetching items", err);
       console.error("Error fetching items:", err);
@@ -94,23 +94,21 @@ export default function Items() {
       setError(null);
 
       debug("Attempting to fetch categories");
-      const response = await axios.get(
-        "http://localhost:3000/api/items/categories",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          timeout: 5000, // 5 second timeout
-        }
-      );
+      // Categories endpoint is public, but using apiClient for consistency is fine
+      const categoriesData = await apiClient("/items/categories", { timeout: 5000 });
+      debug("Categories data received", categoriesData);
 
-      if (!response.data) {
-        throw new Error("Received empty response from server");
+      if (Array.isArray(categoriesData)) {
+        setCategories(categoriesData);
+      } else if (categoriesData === null || categoriesData === undefined) { 
+        // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
+        debug("Received null or undefined for categories, setting to empty array.", categoriesData);
+        setCategories([]);
+      } else {
+        // This case implies apiClient returned something unexpected that wasn't an array or null/undefined
+        throw new Error(`Expected an array of categories, but received type: ${typeof categoriesData}`);
       }
 
-      debug("Categories data received", response.data);
-      setCategories(response.data);
     } catch (err) {
       const errorDetails = {
         message: err.message,
@@ -154,13 +152,18 @@ export default function Items() {
 
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
-      const filtered = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
-          (item.hsnCode &&
-            item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
-      );
-      setFilteredItemsList(filtered);
+      // Ensure items is an array and iterable before filtering
+      if (Array.isArray(items) && items.length > 0) {
+        const filtered = items.filter(
+          (item) =>
+            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
+            (item.hsnCode &&
+              item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
+        );
+        setFilteredItemsList(filtered);
+      } else {
+        setFilteredItemsList([]); // Set to empty if items is not ready or empty
+      }
     } else {
       setFilteredItemsList([]);
     }
@@ -169,34 +172,30 @@ export default function Items() {
   const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
       // Set loading state for this specific item
-      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: true }));
+      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
       // Clear any previous errors
       setError(null);
 
-      const response = await axios.get(
-        `http://localhost:3000/api/items/${itemId}/purchases`,
-        {
-          timeout: 5000,
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        }
-      );
+      const response = await apiClient(`/items/${itemId}/purchases`, {
+        timeout: 5000,
+      });
 
-      setPurchaseHistory(prev => ({
+      setPurchaseHistory((prev) => ({
         ...prev,
-        [itemId]: response.data || []
+        [itemId]: response.data || [],
       }));
     } catch (err) {
       console.error("Fetch purchase history error:", err);
-      setError(`Failed to load history: ${err.response?.data?.message || err.message}`);
-      setPurchaseHistory(prev => ({
+      setError(
+        `Failed to load history: ${err.response?.data?.message || err.message}`
+      );
+      setPurchaseHistory((prev) => ({
         ...prev,
-        [itemId]: []
+        [itemId]: [],
       }));
     } finally {
       // Clear loading state for this specific item
-      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: false }));
+      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
     }
   }, []);
 
@@ -264,10 +263,10 @@ export default function Items() {
         dynamicPricing: formData.dynamicPricing,
       };
 
-      await axios.put(
-        `http://localhost:3000/api/items/${editingItem}`,
-        updatedItem
-      );
+      await apiClient(`/items/${editingItem}`, {
+        method: "PUT",
+        body: updatedItem,
+      });
       await fetchItems();
       setEditingItem(null);
       setError(null);
@@ -291,7 +290,14 @@ export default function Items() {
   };
 
   const sortedItems = useMemo(() => {
-    let sortableItems = [...items];
+    // First check if items is a valid array
+    if (!Array.isArray(items)) {
+      return [];
+    }
+
+    // Create a copy for sorting
+    const sortableItems = [...items];
+
     sortableItems.sort((a, b) => {
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === "asc" ? -1 : 1;
@@ -301,6 +307,7 @@ export default function Items() {
       }
       return 0;
     });
+
     return sortableItems;
   }, [items, sortConfig]);
 
@@ -309,7 +316,8 @@ export default function Items() {
       const matchesCategory =
         selectedCategory === "All" || item.category === selectedCategory;
       const matchesSubcategory =
-        selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
+        selectedSubcategory === "All" ||
+        item.subcategory === selectedSubcategory;
       const matchesSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.hsnCode &&
@@ -325,7 +333,10 @@ export default function Items() {
     return filteredItems.slice(indexOfFirst, indexOfLast);
   }, [filteredItems, currentPage, itemsPerPage]);
 
-  const totalPages = useMemo(() => Math.ceil(filteredItems.length / itemsPerPage), [filteredItems, itemsPerPage]);
+  const totalPages = useMemo(
+    () => Math.ceil(filteredItems.length / itemsPerPage),
+    [filteredItems, itemsPerPage]
+  );
 
   const addNewPurchaseItem = () => {
     setPurchaseData({
@@ -481,7 +492,7 @@ export default function Items() {
         dynamicPricing: formData.dynamicPricing,
       };
 
-      await axios.post("http://localhost:3000/api/items", newItem);
+      await apiClient("/items", { method: "POST", body: newItem });
       await fetchItems();
       setShowModal(false);
       setFormData({
@@ -520,7 +531,7 @@ export default function Items() {
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
         setIsSubmitting(true);
-        await axios.delete(`http://localhost:3000/api/items/${id}`);
+        await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
       } catch (err) {
         console.error("Error deleting item:", err);
@@ -559,10 +570,10 @@ export default function Items() {
         })),
       };
 
-      await axios.post(
-        `http://localhost:3000/api/items/purchase`,
-        purchaseDataToSend
-      );
+      await apiClient(`/items/purchase`, {
+        method: "POST",
+        body: purchaseDataToSend,
+      });
 
       await fetchItems();
       setShowPurchaseModal(false);
@@ -571,17 +582,21 @@ export default function Items() {
       return true;
     } catch (err) {
       console.error("Error adding purchase entry:", err);
-       let detailedErrorMessage = "Failed to add purchase entry.";
+      let detailedErrorMessage = "Failed to add purchase entry.";
       if (err.response && err.response.data) {
-        detailedErrorMessage += ` ${err.response.data.message || ''}`;
+        detailedErrorMessage += ` ${err.response.data.message || ""}`;
         if (err.response.data.errors) {
           // Mongoose validation errors
           const validationErrors = Object.values(err.response.data.errors)
             .map((e) => e.message) // e.g., "Path `name` is required."
             .join("; ");
           detailedErrorMessage += ` Details: ${validationErrors}`;
-        } else if (typeof err.response.data === 'string' && err.response.data.length < 200) { // Avoid overly long string responses
-            detailedErrorMessage += ` Server response: ${err.response.data}`;
+        } else if (
+          typeof err.response.data === "string" &&
+          err.response.data.length < 200
+        ) {
+          // Avoid overly long string responses
+          detailedErrorMessage += ` Server response: ${err.response.data}`;
         }
       } else if (err.message) {
         detailedErrorMessage += ` ${err.message}`;
@@ -676,7 +691,7 @@ export default function Items() {
                   "price",
                   "unit",
                   "gstRate",
-                  "image"  // Added image column
+                  "image", // Added image column
                 ].map((key) => (
                   <th
                     key={key}
@@ -780,7 +795,7 @@ export default function Items() {
                             src={item.image}
                             alt={item.name}
                             className="item-image"
-                            onClick={() => window.open(item.image, '_blank')}
+                            onClick={() => window.open(item.image, "_blank")}
                           />
                         ) : (
                           "-"
@@ -812,11 +827,9 @@ export default function Items() {
                                 className="btn btn-info btn-sm"
                                 disabled={isSubmitting}
                                 title="View"
-
                               >
                                 👁️
                               </button>
-
 
                               <button
                                 onClick={() => handleEdit(item)}
@@ -834,7 +847,6 @@ export default function Items() {
                               >
                                 🗑️
                               </button>
-
                             </>
                           )}
                         </div>
@@ -857,16 +869,36 @@ export default function Items() {
                             </div>
                             <div className="row">
                               <div className="col-md-6">
-                                <p><strong>Name:</strong> {item.name}</p>
-                                <p><strong>Category:</strong> {item.category || "-"}</p>
-                                <p><strong>Subcategory:</strong> {item.subcategory || "-"}</p>
-                                <p><strong>Quantity:</strong> {item.quantity}</p>
+                                <p>
+                                  <strong>Name:</strong> {item.name}
+                                </p>
+                                <p>
+                                  <strong>Category:</strong>{" "}
+                                  {item.category || "-"}
+                                </p>
+                                <p>
+                                  <strong>Subcategory:</strong>{" "}
+                                  {item.subcategory || "-"}
+                                </p>
+                                <p>
+                                  <strong>Quantity:</strong> {item.quantity}
+                                </p>
                               </div>
                               <div className="col-md-6">
-                                <p><strong>Price:</strong> ₹{item.price.toFixed(2)}</p>
-                                <p><strong>Unit:</strong> {item.unit || "Nos"}</p>
-                                <p><strong>GST Rate:</strong> {item.gstRate}%</p>
-                                <p><strong>HSN Code:</strong> {item.hsnCode || "-"}</p>
+                                <p>
+                                  <strong>Price:</strong> ₹
+                                  {item.price.toFixed(2)}
+                                </p>
+                                <p>
+                                  <strong>Unit:</strong> {item.unit || "Nos"}
+                                </p>
+                                <p>
+                                  <strong>GST Rate:</strong> {item.gstRate}%
+                                </p>
+                                <p>
+                                  <strong>HSN Code:</strong>{" "}
+                                  {item.hsnCode || "-"}
+                                </p>
                               </div>
                             </div>
 
@@ -946,13 +978,10 @@ export default function Items() {
               if (page >= 1 && page <= totalPages) setCurrentPage(page);
             }}
           />
-
-
         </div>
 
         {/* Add/Edit Item Modal */}
         {showModal && (
-
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">
               <div className="modal-header">
@@ -1097,15 +1126,18 @@ export default function Items() {
                         name="subcategory"
                         value={formData.subcategory}
                         onChange={(e) =>
-                          setFormData({ ...formData, subcategory: e.target.value })
+                          setFormData({
+                            ...formData,
+                            subcategory: e.target.value,
+                          })
                         }
                         disabled={!formData.category}
                       >
                         <option value="General">General</option>
                         {formData.category &&
                           categories
-                            .find(c => c.category === formData.category)?.subcategories
-                            .map((subcat) => (
+                            .find((c) => c.category === formData.category)
+                            ?.subcategories.map((subcat) => (
                               <option key={subcat} value={subcat}>
                                 {subcat}
                               </option>
@@ -1126,7 +1158,10 @@ export default function Items() {
                           })
                         }
                       />
-                      <label className="form-check-label" htmlFor="discountAvailable">
+                      <label
+                        className="form-check-label"
+                        htmlFor="discountAvailable"
+                      >
                         Discount Available
                       </label>
                     </div>
@@ -1144,7 +1179,10 @@ export default function Items() {
                           })
                         }
                       />
-                      <label className="form-check-label" htmlFor="dynamicPricing">
+                      <label
+                        className="form-check-label"
+                        htmlFor="dynamicPricing"
+                      >
                         Dynamic Pricing
                       </label>
                     </div>
@@ -1177,7 +1215,9 @@ export default function Items() {
                 <button
                   onClick={handleAddItem}
                   className="btn btn-success"
-                  disabled={!formData.name || !formData.price || !formData.category}
+                  disabled={
+                    !formData.name || !formData.price || !formData.category
+                  }
                 >
                   Add New Item
                 </button>
@@ -1185,7 +1225,6 @@ export default function Items() {
             </div>
           </div>
         )}
-
 
         {showPurchaseModal && (
           <div className="modal-backdrop full-screen-modal">
@@ -1379,7 +1418,11 @@ export default function Items() {
                             placeholder="Description"
                             value={item.description || ""}
                             onChange={(e) =>
-                              handleItemChange(idx, "description", e.target.value)
+                              handleItemChange(
+                                idx,
+                                "description",
+                                e.target.value
+                              )
                             }
                             required
                           />

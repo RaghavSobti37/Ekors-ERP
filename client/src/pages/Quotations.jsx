@@ -261,21 +261,19 @@ export default function Quotations() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
-  const [isSavingClient, setIsSavingClient] = useState(false);
+  const auth = useAuth(); // Get the full auth context to access the user object
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
 
   const getAuthToken = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      if (!userData || typeof userData !== "object") {
-        return null;
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    }catch (e) {
+      console.error("Failed to parse user data:", e); // This is where your error was logged
+      return null;  
       }
-      return userData.token;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
   };
 
   const generateQuotationNumber = () => {
@@ -895,19 +893,19 @@ const handleSaveClientDetails = async () => {
         throw new Error("No authentication token found");
       }
 
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      if (!userData) {
-        throw new Error("User data not found");
+      // Get user ID from AuthContext
+      if (!auth.user || !auth.user.id) {
+        throw new Error("User ID not found in authentication context. Please re-login.");
       }
 
       const completeTicketData = {
         ...ticketData,
-        createdBy: userData.id,
+        createdBy: auth.user.id, // Use user ID from AuthContext
         statusHistory: [
           {
             status: ticketData.status,
             changedAt: new Date(),
-            changedBy: userData.id,
+            changedBy: auth.user.id, // Use auth.user.id here as well
           },
         ],
         documents: {

@@ -20,13 +20,17 @@ export default function Logtime() {
     return `${day}-${month}-${year}`;
   };
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/', { state: { from: '/logtime' } });
+  const getAuthToken = () => {
+    try {
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    } catch (e) {
+      console.error("Failed to parse user data:", e);
+      return null;
     }
-  }, [user, loading, navigate]);
-
+  };
+  
   useEffect(() => {
     if (loading || !user) return;
     const today = getFormattedDate();
