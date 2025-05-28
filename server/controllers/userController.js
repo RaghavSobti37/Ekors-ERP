@@ -181,6 +181,9 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       backupId: newBackupEntry._id
     });
 
+    logger.info('userActivity', 'User profile deleted', adminUser, { event: 'USER_DELETED', deletedUserId: 'someUserId' });
+
+
   } catch (error) {
     logger.error('delete', `[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`, error, user, logDetails);
     if (error.name === 'ValidationError' || (typeof userToBackup === 'undefined' || (userToBackup && (!newBackupEntry || newBackupEntry.isNew)))) {

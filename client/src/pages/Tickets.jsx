@@ -19,6 +19,7 @@ import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import "../css/Style.css";
 import QuotationPDF from "../components/QuotationPDF.jsx";
 import PIPDF from "../components/PIPDF.jsx";
+import { useAuth } from "../context/AuthContext"; // Adjust path if necessary
 
 const SortIndicator = ({ columnKey, sortConfig }) => {
   if (sortConfig.key !== columnKey) {
@@ -38,16 +39,6 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  const getAuthToken = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      return userData?.token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
 
   useEffect(() => {
     fetchItems();
@@ -73,6 +64,16 @@ const ItemSearchComponent = ({ onItemSelect, index }) => {
     try {
       setLoading(true);
       setError(null);
+
+      // Replace the existing getAuthToken function in Dashboard component
+      const getAuthToken = () => {
+        const token = localStorage.getItem("erp-user");
+        console.log(
+          "[DEBUG] getAuthToken retrieved:",
+          token ? "Token present" : "No token"
+        );
+        return token || null;
+      };
 
       const token = getAuthToken();
       if (!token) {
@@ -159,16 +160,6 @@ const UserSearchComponent = ({ onUserSelect }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const getAuthToken = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      return userData?.token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -193,6 +184,15 @@ const UserSearchComponent = ({ onUserSelect }) => {
     try {
       setLoading(true);
       setError(null);
+
+      const getAuthToken = () => {
+        const token = localStorage.getItem("erp-user");
+        console.log(
+          "[DEBUG] getAuthToken retrieved:",
+          token ? "Token present" : "No token"
+        );
+        return token || null;
+      };
 
       const token = getAuthToken();
       if (!token) {
@@ -291,6 +291,26 @@ export default function Dashboard() {
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+
+  const { user: authUser } = useAuth();
+
+  useEffect(() => {
+    if (authUser) {
+      setLoggedInUser(authUser);
+    }
+    fetchTickets();
+  }, [authUser]); // Add authUser as a dependency
+
+  // Replace the existing getAuthToken function in Dashboard component
+  const getAuthToken = () => {
+    const token = localStorage.getItem("erp-user");
+    console.log(
+      "[DEBUG] getAuthToken retrieved:",
+      token ? "Token present" : "No token"
+    );
+    return token || null;
+  };
+
   const [paymentReference, setPaymentReference] = useState("");
   const [ticketData, setTicketData] = useState({
     companyName: "",
@@ -391,28 +411,7 @@ export default function Dashboard() {
     }
   }, [editTicket]);
 
-  const getAuthToken = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      return userData?.token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-
-  const getLoggedInUserData = () => {
-    try {
-      const userDataString = localStorage.getItem("erp-user");
-      if (userDataString) {
-        return JSON.parse(userDataString);
-      }
-      return null;
-    } catch (e) {
-      console.error("Failed to parse user data from localStorage:", e);
-      return null;
-    }
-  };
+  const createdBy = loggedInUser?._id;
 
   const fetchTickets = async () => {
     setIsLoading(true);
@@ -443,11 +442,6 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    setLoggedInUser(getLoggedInUserData());
-    fetchTickets();
-  }, []);
-
-  useEffect(() => {
     if (editTicket) {
       // This block now specifically handles the case for the editTicket modal
       // The new useEffect below will handle populating transferTableData more generally
@@ -455,7 +449,11 @@ export default function Dashboard() {
   }, [editTicket]); // Keep this for any editTicket specific logic if needed, or remove if fully covered by the one below
 
   useEffect(() => {
-    const activeDetailedTicket = showEditModal ? editTicket : (showPaymentModal ? selectedTicket : null);
+    const activeDetailedTicket = showEditModal
+      ? editTicket
+      : showPaymentModal
+      ? selectedTicket
+      : null;
 
     if (activeDetailedTicket) {
       const newNames = [];
@@ -465,8 +463,13 @@ export default function Dashboard() {
 
       // Determine initial assignee for the first column
       let firstAssignee = activeDetailedTicket.createdBy; // Default to creator
-      if (activeDetailedTicket.transferHistory && activeDetailedTicket.transferHistory.length > 0) {
-        firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
+      if (
+        activeDetailedTicket.transferHistory &&
+        activeDetailedTicket.transferHistory.length > 0
+      ) {
+        firstAssignee =
+          activeDetailedTicket.transferHistory[0].from ||
+          activeDetailedTicket.createdBy;
       } else if (activeDetailedTicket.currentAssignee) {
         firstAssignee = activeDetailedTicket.currentAssignee;
       }
@@ -477,26 +480,33 @@ export default function Dashboard() {
       newNotes.push("Ticket Created"); // Note for initial state
 
       // States from transfer history
-      activeDetailedTicket.transferHistory?.forEach(transfer => {
+      activeDetailedTicket.transferHistory?.forEach((transfer) => {
         newNames.push(transfer.to); // The user the ticket was transferred TO
         const transferTime = transfer.transferredAt || new Date(); // Ensure we have a valid date
         newDates.push(transferTime);
         // Status logic removed
-        newNotes.push(transfer.note || 'N/A'); // Note for this transfer
+        newNotes.push(transfer.note || "N/A"); // Note for this transfer
       });
-      setTransferTableData({ names: newNames, dates: newDates, notes: newNotes });
+      setTransferTableData({
+        names: newNames,
+        dates: newDates,
+        notes: newNotes,
+      });
     } else {
       setTransferTableData({ names: [], dates: [], notes: [] });
     }
   }, [editTicket, selectedTicket, showEditModal, showPaymentModal]);
 
   const handleDelete = async (ticketToDelete) => {
-    if (!ticketToDelete || !ticketToDelete._id) {
-      setError("Invalid ticket data for deletion.");
-      console.error("Invalid ticket data for deletion:", ticketToDelete);
+    if (!loggedInUser || loggedInUser.role !== "super-admin") {
+      setError("You do not have permission to delete this ticket."); // Corrected error message
       return;
     }
-    if (window.confirm(`Are you sure you want to permanently delete ticket ${ticketToDelete.ticketNumber}?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to permanently delete ticket ${ticketToDelete.ticketNumber}?`
+      )
+    ) {
       try {
         const token = getAuthToken();
         if (!token) {
@@ -504,20 +514,23 @@ export default function Dashboard() {
           return;
         }
 
-        // Ensure only super-admin can trigger this, as per UI logic
-        if (loggedInUser?.role !== 'super-admin') {
-            setError("You do not have permission to delete this ticket.");
-            return;
-        }
+        // The redundant call to useAuth() and subsequent check were removed.
+        // The permission check now relies solely on the component's `loggedInUser` state,
+        // which is populated from AuthContext.
 
-        await axios.delete(`http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
+        await axios.delete(
+          `http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
         fetchTickets(); // Refresh the list from the server
-        setError(null); 
+        setError(null);
       } catch (error) {
-        setError("Delete failed: " + (error.response?.data?.error || error.message));
+        setError(
+          "Delete failed: " + (error.response?.data?.error || error.message)
+        );
         console.error("Error deleting ticket:", error);
       }
     }
@@ -1652,9 +1665,11 @@ export default function Dashboard() {
                 const isUserAdmin = loggedInUser?.role === "admin";
                 const isUserCurrentAssignee =
                   ticket.currentAssignee?._id === loggedInUser?.id;
-                const canModifyTicket = isUserAdmin || 
-                       isUserCurrentAssignee || 
-                       loggedInUser?.role === 'super-admin';
+                // Replace localStorage-based checks with:
+                const canModifyTicket =
+                  loggedInUser?.role === "admin" ||
+                  loggedInUser?.role === "super-admin" ||
+                  ticket.currentAssignee?._id === loggedInUser?.id;
 
                 return (
                   <tr key={ticket.ticketNumber}>
@@ -2069,37 +2084,62 @@ export default function Dashboard() {
             {/* Transfer History Table for Payment Modal */}
             <div className="mt-4">
               <h5>Transfer History</h5>
-              {selectedTicket && transferTableData.names && transferTableData.names.length > 0 ? (
-                <Table bordered responsive className="mt-2 transfer-history-table">
+              {selectedTicket &&
+              transferTableData.names &&
+              transferTableData.names.length > 0 ? (
+                <Table
+                  bordered
+                  responsive
+                  className="mt-2 transfer-history-table"
+                >
                   <tbody>
                     <tr>
-                      <td style={{ fontWeight: 'bold', width: '150px' }}>Name</td>
+                      <td style={{ fontWeight: "bold", width: "150px" }}>
+                        Name
+                      </td>
                       {transferTableData.names.map((assignee, index) => (
-                        <td key={`payment-name-${index}`} className="text-center">
-                          {assignee ? `${assignee.firstname} ${assignee.lastname}` : 'N/A'}
+                        <td
+                          key={`payment-name-${index}`}
+                          className="text-center"
+                        >
+                          {assignee
+                            ? `${assignee.firstname} ${assignee.lastname}`
+                            : "N/A"}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td style={{ fontWeight: 'bold', width: '150px' }}>Date</td>
+                      <td style={{ fontWeight: "bold", width: "150px" }}>
+                        Date
+                      </td>
                       {transferTableData.dates.map((date, index) => (
-                        <td key={`payment-date-${index}`} className="text-center">
-                          {date ? new Date(date).toLocaleDateString() : 'N/A'}
+                        <td
+                          key={`payment-date-${index}`}
+                          className="text-center"
+                        >
+                          {date ? new Date(date).toLocaleDateString() : "N/A"}
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td style={{ fontWeight: 'bold', width: '150px' }}>Note</td>
+                      <td style={{ fontWeight: "bold", width: "150px" }}>
+                        Note
+                      </td>
                       {transferTableData.notes.map((note, index) => (
-                        <td key={`payment-note-${index}`} className="text-center">
-                          {note || 'N/A'}
+                        <td
+                          key={`payment-note-${index}`}
+                          className="text-center"
+                        >
+                          {note || "N/A"}
                         </td>
                       ))}
                     </tr>
                   </tbody>
                 </Table>
               ) : (
-                <div className="text-muted mt-2">No transfer history available.</div>
+                <div className="text-muted mt-2">
+                  No transfer history available.
+                </div>
               )}
             </div>
           </Modal.Body>

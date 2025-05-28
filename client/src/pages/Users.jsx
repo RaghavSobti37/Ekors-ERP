@@ -43,27 +43,18 @@ const Users = () => {
     setReportUser(user);
     setShowReportModal(true);
   };
-  const getAuthToken = () => {
-    const userDataString = localStorage.getItem("erp-user");
-    console.log(
-      "[Users.jsx] getAuthToken: Raw data from localStorage:",
-      userDataString ? "Data Present" : "Data NOT Present"
-    );
-    if (userDataString) {
-      try {
-        const userData = JSON.parse(userDataString); // This should contain { token: "..." }
-        console.log("[Users.jsx] getAuthToken: Parsed userData:", userData);
-        return userData.token;
-      } catch (e) {
-        console.error(
-          "[Users.jsx] getAuthToken: Failed to parse user data from localStorage",
-          e
-        );
-        return null;
-      }
+
+    const getAuthToken = () => {
+    try {
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    } catch (e) {
+      console.error("Failed to parse user data:", e);
+      return null;
     }
-    return null;
   };
+  
 
   // Axios instance with base URL and auth header
   const api = axios.create({

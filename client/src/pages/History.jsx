@@ -15,18 +15,17 @@ const formatDisplayDate = (dateString) => {
   return `${day}-${month}-${year}`;
 };
 
-const getAuthToken = () => {
-  try {
-    const userData = JSON.parse(localStorage.getItem('erp-user'));
-    if (!userData || typeof userData !== 'object') {
+   const getAuthToken = () => {
+    try {
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    } catch (e) {
+      console.error("Failed to parse user data:", e);
       return null;
     }
-    return userData.token;
-  } catch (e) {
-    console.error('Failed to parse user data:', e);
-    return null;
-  }
-};
+  };
+  
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);

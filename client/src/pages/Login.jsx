@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
-import axios from "axios";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,41 +9,25 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate(); 
-  const { login } = useAuth();
+  const auth = useAuth(); // Get the whole auth context
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[DEBUG] Login attempt with:", { email, password });
+    console.log("[DEBUG Client Login.jsx] Login attempt with:", { email });
     setError("");
 
     try {
-      console.log("[DEBUG] Sending login request to server...");
-      const response = await axios.post("http://localhost:3000/api/auth/login", {
-        email,
-        password,
-      });
-      
-      console.log("[DEBUG] Server response:", response.data);
-      
-      if (!response.data.token || !response.data.user) {
-        throw new Error("Invalid response from server");
-      }
-
-      const { token, user } = response.data;
-      
-      // Set auth header for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      console.log("[DEBUG] Auth header set with token");
-      
-      // Update auth context
-      login({ ...user, token });
-      console.log("[DEBUG] User logged in successfully, navigating to dashboard");
-      
+      console.log("[DEBUG Client Login.jsx] Calling auth context login...");
+      // Use the login function from AuthContext
+      // AuthContext's login function handles the API call, token storage, and user state update.
+      await auth.login({ email, password }); 
+      console.log("[DEBUG Client Login.jsx] Auth context login successful, navigating to /quotations");
       navigate("/quotations");
 
     } catch (err) {
-      console.error("[ERROR] Login failed:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Invalid email or password");
+      console.error("[ERROR Client Login.jsx] Login failed:", err.data?.error || err.message || "An unknown error occurred");
+      // err.data comes from apiClient's error structure, err.message for other errors
+      setError(err.data?.error || err.data?.message || err.message || "Invalid email or password. Please try again.");
     }
   };
 

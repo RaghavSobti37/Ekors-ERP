@@ -9,14 +9,17 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
   const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
 
-  const getAuthToken = () => {
+    const getAuthToken = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem("erp-user"));
-      return userData?.token;
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
     } catch (e) {
+      console.error("Failed to parse user data:", e);
       return null;
     }
   };
+  
 
   const fetchClients = useCallback(async (term) => {
     if (!term || term.trim().length < 2) {

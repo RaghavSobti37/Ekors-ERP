@@ -3,17 +3,16 @@ import axios from "axios";
 import "../css/ItemSearchComponent.css";
 
 const getAuthToken = () => {
-  try {
-    const userData = JSON.parse(localStorage.getItem("erp-user"));
-    if (!userData || typeof userData !== "object") {
+    try {
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    } catch (e) {
+      console.error("Failed to parse user data:", e);
       return null;
     }
-    return userData.token;
-  } catch (e) {
-    console.error("Failed to parse user data:", e);
-    return null;
-  }
-};
+  };
+  
 
 const ItemSearchComponent = ({ 
   onItemSelect, 

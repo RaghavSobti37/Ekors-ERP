@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from "react";
 import "../css/Logtime.css";
 
-const getAuthToken = () => {
-  try {
-    const userData = JSON.parse(localStorage.getItem('erp-user'));
-    if (!userData || typeof userData !== 'object') {
+   const getAuthToken = () => {
+    try {
+      const token = localStorage.getItem("erp-user");
+    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    return token || null;
+    } catch (e) {
+      console.error("Failed to parse user data:", e);
       return null;
     }
-    return userData.token;
-  } catch (e) {
-    console.error('Failed to parse user data:', e);
-    return null;
-  }
-};
+  };
+  
 
 const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) => {
   const [logData, setLogData] = useState(initialLogs);
