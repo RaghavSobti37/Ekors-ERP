@@ -13,6 +13,7 @@ const CreateTicketModal = ({
 }) => {
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [sameAsBilling, setSameAsBilling] = useState(false);
+  const [isSameState, setIsSameState] = useState(true); // Track if billing and shipping states are same
 
   // Full screen modal style
   const fullScreenModalStyle = {
@@ -50,30 +51,59 @@ const CreateTicketModal = ({
     padding: '15px'
   };
 
+  // Check if states are same whenever billing or shipping state changes
+  useEffect(() => {
+    const billingState = ticketData.billingAddress[2] || "";
+    const shippingState = ticketData.shippingAddress[2] || "";
+    setIsSameState(billingState === shippingState);
+
+    // Recalculate taxes when state comparison changes
+    calculateTaxes(billingState === shippingState);
+  }, [ticketData.billingAddress[2], ticketData.shippingAddress[2]]);
+
   // Update shipping address when billing address changes and sameAsBilling is checked
   useEffect(() => {
     if (sameAsBilling) {
+      const newShippingAddress = [...ticketData.billingAddress];
       setTicketData({
         ...ticketData,
-        shippingAddress: [...ticketData.billingAddress]
+        shippingAddress: newShippingAddress
       });
+      setIsSameState(true);
     }
   }, [sameAsBilling, ticketData.billingAddress]);
+
+  // Function to calculate taxes based on whether states are same
+  const calculateTaxes = (sameState) => {
+    const gstRate = sameState ? 9 : 18; // 9% CGST+SGST for same state, 18% IGST for different states
+
+    const totalAmount = ticketData.totalAmount || 0;
+    const gstAmount = (totalAmount * gstRate) / 100;
+    const grandTotal = totalAmount + gstAmount;
+
+    setTicketData(prev => ({
+      ...prev,
+      gstRate,
+      gstAmount,
+      grandTotal,
+      isSameState: sameState
+    }));
+  };
 
   const fetchAddressFromPincode = async (pincode, addressType) => {
     if (!pincode || pincode.length !== 6) {
       console.log("Invalid pincode:", pincode);
       return;
     }
-    
+
     setIsFetchingAddress(true);
     try {
       console.log("Fetching address for pincode:", pincode);
       const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
       console.log("API Response:", response.data);
-      
+
       const data = response.data[0];
-      
+
       if (data.Status === "Success") {
         const postOffice = data.PostOffice[0];
         console.log("Post Office Data:", postOffice);
@@ -81,7 +111,7 @@ const CreateTicketModal = ({
         newAddress[2] = postOffice.State; // State
         newAddress[3] = postOffice.District; // City
         newAddress[4] = pincode;
-        
+
         console.log("New Address:", newAddress);
         setTicketData({
           ...ticketData,
@@ -105,7 +135,7 @@ const CreateTicketModal = ({
     const pincode = e.target.value;
     const newAddress = [...ticketData[addressType]];
     newAddress[4] = pincode;
-    
+
     setTicketData({
       ...ticketData,
       [addressType]: newAddress
@@ -122,7 +152,7 @@ const CreateTicketModal = ({
     const value = e.target.value;
     const newAddress = [...ticketData[addressType]];
     newAddress[index] = value;
-    
+
     setTicketData({
       ...ticketData,
       [addressType]: newAddress
@@ -131,7 +161,7 @@ const CreateTicketModal = ({
     if (sameAsBilling && addressType === 'billingAddress') {
       const newShippingAddress = [...ticketData.shippingAddress];
       newShippingAddress[index] = value;
-      
+
       setTicketData(prevData => ({
         ...prevData,
         shippingAddress: newShippingAddress
@@ -142,12 +172,13 @@ const CreateTicketModal = ({
   const handleSameAsBillingChange = (e) => {
     const isChecked = e.target.checked;
     setSameAsBilling(isChecked);
-    
+
     if (isChecked) {
       setTicketData({
         ...ticketData,
         shippingAddress: [...ticketData.billingAddress]
       });
+      setIsSameState(true);
     }
   };
 
@@ -160,7 +191,7 @@ const CreateTicketModal = ({
         <Form onSubmit={handleTicketSubmit}>
           <Modal.Body style={modalBodyStyle}>
             {error && <div className="alert alert-danger">{error}</div>}
-            
+
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
@@ -356,27 +387,72 @@ const CreateTicketModal = ({
 
             <div className="bg-light p-3 rounded">
               <div className="row">
-                <div className="col-md-4">
+                {/* <div className="col-md-4">
                   <p>
                     Total Quantity: <strong>{ticketData.totalQuantity}</strong>
                   </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    Total Amount: <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                  </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                  </p>
+                </div> */}
+                <div className="bg-light p-3 rounded">
+                  <div className="row">
+                    <div className="col-md-4">
+                      <Table bordered size="sm">
+                        <tbody>
+                          <tr>
+                            <td>Total Quantity</td>
+                            <td className="text-end"><strong>{ticketData.totalQuantity}</strong></td>
+                          </tr>
+                          <tr>
+                            <td>Total Amount</td>
+                            <td className="text-end"><strong>₹{ticketData.totalAmount.toFixed(2)}</strong></td>
+                          </tr>
+                        </tbody>
+                      </Table>
+                    </div>
+                    <div className="col-md-8">
+                      <Table bordered size="sm">
+                        {/* <thead>
+                          <tr>
+                            <th>Tax Description</th>
+                            <th className="text-end">Amount (₹)</th>
+                          </tr>
+                        </thead> */}
+                        <tbody>
+                          {isSameState ? (
+                            <>
+                              <tr>
+                                <td>CGST (9%)</td>
+                                <td className="text-end">₹{(ticketData.gstAmount / 2).toFixed(2)}</td>
+                              </tr>
+                              <tr>
+                                <td>SGST (9%)</td>
+                                <td className="text-end">₹{(ticketData.gstAmount / 2).toFixed(2)}</td>
+                              </tr>
+                            </>
+                          ) : (
+                            <tr>
+                              <td>IGST (18%)</td>
+                              <td className="text-end">₹{ticketData.gstAmount.toFixed(2)}</td>
+                            </tr>
+                          )}
+                          <tr className="table-active">
+                            <td><strong>Total Tax</strong></td>
+                            <td className="text-end"><strong>₹{ticketData.gstAmount.toFixed(2)}</strong></td>
+                          </tr>
+                          <tr className="table-success">
+                            <td><strong>Grand Total</strong></td>
+                            <td className="text-end"><strong>₹{ticketData.grandTotal.toFixed(2)}</strong></td>
+                          </tr>
+                        </tbody>
+                      </Table>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="row">
+              {/* <div className="row">
                 <div className="col-md-12">
                   <h5>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h5>
                 </div>
-              </div>
+              </div> */}
             </div>
           </Modal.Body>
           <Modal.Footer style={modalFooterStyle}>
