@@ -3,6 +3,7 @@ import axios from "axios";
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from '../components/Pagination';
+import * as XLSX from 'xlsx';
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -593,6 +594,68 @@ export default function Items() {
     }
   };
 
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(filteredItems.map(item => ({
+      Name: item.name,
+      Category: item.category,
+      Subcategory: item.subcategory,
+      Quantity: item.quantity,
+      Price: item.price,
+      Unit: item.unit,
+      'GST Rate': item.gstRate,
+      'HSN Code': item.hsnCode
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
+    XLSX.writeFile(workbook, "ItemsList.xlsx");
+  };
+
+  const handleExcelImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Process imported data
+        const itemsToUpdate = jsonData.map(item => ({
+          name: item.Name || item.name,
+          category: item.Category || item.category,
+          subcategory: item.Subcategory || item.subcategory,
+          quantity: item.Quantity || item.quantity,
+          price: item.Price || item.price,
+          unit: item.Unit || item.unit,
+          gstRate: item['GST Rate'] || item.gstRate,
+          hsnCode: item['HSN Code'] || item.hsnCode
+        }));
+
+        // Update items in the database
+        setLoading(true);
+        const response = await axios.post("http://localhost:3000/api/items/bulk-update", { items: itemsToUpdate });
+        
+        if (response.data.success) {
+          showSuccess("Items updated successfully from Excel!");
+          await fetchItems(); // Refresh the items list
+        } else {
+          setError("Failed to update items from Excel");
+        }
+      } catch (err) {
+        console.error("Error importing Excel:", err);
+        setError("Error importing Excel file. Please check the format.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
@@ -612,7 +675,7 @@ export default function Items() {
               className="btn btn-success px-4"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Processing..." : "Add Item"}
+              {isSubmitting ? "Processing..." : "Add New Item"}
             </button>
 
             <select
@@ -652,6 +715,26 @@ export default function Items() {
                     </option>
                   ))}
             </select>
+
+            <div className="excel-buttons">
+              <button
+                onClick={exportToExcel}
+                className="btn btn-primary excel-export-btn"
+                disabled={isSubmitting}
+              >
+                Open Excel Sheet
+              </button>
+              <label className="btn btn-secondary excel-import-btn">
+                Import from Excel
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleExcelImport}
+                  style={{ display: 'none' }}
+                  disabled={isSubmitting}
+                />
+              </label>
+            </div>
 
             <input
               type="text"
