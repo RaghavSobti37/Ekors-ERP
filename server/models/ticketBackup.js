@@ -7,6 +7,13 @@ const goodsSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
   amount: { type: Number, required: true }
+}, { _id: false });
+
+const documentSubSchema = new mongoose.Schema({
+  path: { type: String, required: true },
+  originalName: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedAt: { type: Date } // Should capture the original upload date
 });
 
 const ticketBackupSchema = new mongoose.Schema({
@@ -40,12 +47,13 @@ const ticketBackupSchema = new mongoose.Schema({
     ],
   },
   documents: {
-    quotation: { type: String },
-    po: { type: String },
-    pi: { type: String },
-    challan: { type: String },
-    packingList: { type: String },
-    feedback: { type: String }
+    quotation: documentSubSchema,
+    po: documentSubSchema,
+    pi: documentSubSchema,
+    challan: documentSubSchema,
+    packingList: documentSubSchema,
+    feedback: documentSubSchema,
+    other: [documentSubSchema]
   },
   statusHistory: [{
     status: { type: String },

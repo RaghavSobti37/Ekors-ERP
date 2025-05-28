@@ -4,6 +4,13 @@ import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination";
 import * as XLSX from "xlsx";
+import ActionButtons from "../components/ActionButtons";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  BarChart, // Generate Report
+} from 'react-bootstrap-icons';
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {

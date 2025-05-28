@@ -10,6 +10,7 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid'); // For unique file names
 const userModel = require('./models/users.js');
 const OpenticketModel = require('./models/opentickets.js');
+const frontendLogRoute = require('./routes/frontendLogRoute.js');
 require("dotenv").config(); // Make sure this is at the top before any usage
 
 // Routes
@@ -46,7 +47,6 @@ app.use(cors({
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
 }
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Multer storage config
 const storage = multer.diskStorage({
@@ -211,6 +211,9 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes); // Mount user routes
+app.use(express.json()); // Make sure body parser is enabled
+app.use('/api', frontendLogRoute);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const reportRoutes = require("./routes/reportRoutes");
 app.use("/api/reports", reportRoutes);
@@ -225,6 +228,7 @@ console.log('[SERVER INFO] /api/audit routes mounted.');
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[INFO] Server running on port ${PORT}`);
+  logger.info('server-lifecycle', `Server started and listening on port ${PORT}`);
   console.log(`[DEBUG] JWT_SECRET: ${process.env.JWT_SECRET ? 'set' : 'not set'}`);
 });
 

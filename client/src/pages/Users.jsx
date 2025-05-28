@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FaEye,
-  FaEdit,
-  FaTrash,
   FaTimes,
   FaUserShield,
   FaChartBar,
@@ -12,9 +9,18 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
 import Pagination from "../components/Pagination";
+import ReusableTable from "../components/ReusableTable";
+import SortIndicator from "../components/SortIndicator";
 import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
 import "../css/Style.css";
+import ActionButtons from "../components/ActionButtons";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  BarChart, // Generate Report
+} from 'react-bootstrap-icons';
 
 const Users = () => {
   const [showReportModal, setShowReportModal] = useState(false);
@@ -302,89 +308,59 @@ const Users = () => {
           </div>
         </div>
         {/* users-table-container can be removed or kept if it adds specific styling not covered by Bootstrap */}
-        <Table striped bordered hover responsive className="mt-3">
-          <thead className="table-dark">
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-              <th>Created At</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-center">
-            {currentItems.length > 0 ? (
-              currentItems.map((user) => (
-                <tr key={user._id}>
-                  <td>
-                    <div className="user-avatar">
-                      <span>{user.firstname?.charAt(0).toUpperCase()}</span>
-                      {user.firstname} {user.lastname}
-                      {user.role === "super-admin" && (
-                        <FaUserShield
-                          className="super-admin-icon"
-                          title="Super Admin"
-                        />
-                      )}
-                    </div>
-                  </td>
-                  <td>{user.email}</td>
-                  <td>{user.phone || "-"}</td>
-                  <td>
-                    <span className={`role-badge ${user.role.toLowerCase()}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td>{formatDate(user.createdAt)}</td>
-                  <td>
-                    <div className="d-flex gap-2 justify-content-center">
-                      <BsButton
-                        variant="info"
-                        size="sm"
-                        onClick={() => handleView(user)}
-                        title="View"
-                      >
-                        <FaEye />
-                      </BsButton>
-                      <BsButton
-                        variant="warning"
-                        size="sm"
-                        onClick={() => handleEdit(user)}
-                        title="Edit"
-                      >
-                        <FaEdit />
-                      </BsButton>
-                      <BsButton
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(user._id)}
-                        title="Delete"
-                        // disabled={user.role === "super-admin"}
-                      >
-                        <FaTrash />
-                      </BsButton>
-                      <BsButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleGenerateReport(user)}
-                        title="Generate Report"
-                      >
-                        <FaChartBar />
-                      </BsButton>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="no-users">
-                  No users found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+        <ReusableTable
+          columns={[
+            {
+              key: 'name',
+              header: 'Name',
+              renderCell: (user) => (
+                <div className="user-avatar">
+                  <span>{user.firstname?.charAt(0).toUpperCase()}</span>
+                  {user.firstname} {user.lastname}
+                  {user.role === "super-admin" && (
+                    <FaUserShield
+                      className="super-admin-icon"
+                      title="Super Admin"
+                    />
+                  )}
+                </div>
+              ),
+            },
+            { key: 'email', header: 'Email' },
+            { key: 'phone', header: 'Phone', renderCell: (user) => user.phone || "-" },
+            {
+              key: 'role',
+              header: 'Role',
+              renderCell: (user) => (
+                <span className={`role-badge ${user.role.toLowerCase()}`}>
+                  {user.role}
+                </span>
+              ),
+            },
+            { key: 'createdAt', header: 'Created At', renderCell: (user) => formatDate(user.createdAt) },
+          ]}
+          data={currentItems}
+          keyField="_id"
+          isLoading={loading && currentItems.length === 0}
+          error={error && currentItems.length === 0 ? error : null}
+          // onSort={requestSort} // Add if sorting is needed for Users page
+          // sortConfig={sortConfig} // Add if sorting is needed
+          renderActions={(user) => (
+            <ActionButtons
+              item={user}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onGenerateReport={handleGenerateReport}
+              isLoading={loading}
+              disabled={{ delete: user.role === "super-admin" }}
+            />
+          )}
+          noDataMessage="No users found"
+          tableClassName="mt-3"
+          theadClassName="table-dark"
+          tbodyClassName="text-center"
+        />
         {filteredUsers.length > 0 && (
           <Pagination
             currentPage={currentPage}

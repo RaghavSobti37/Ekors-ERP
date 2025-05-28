@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import "../css/Style.css";
+import ActionButtons from "../components/ActionButtons";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  BarChart, // Generate Report
+} from 'react-bootstrap-icons';
 import "../css/Challan.css";
 import Pagination from '../components/Pagination';
+import ReusableTable from '../components/ReusableTable'; // No SortIndicator needed as no sorting is implemented
 import { Table, Button, Form, Alert } from "react-bootstrap";
 import axios from "axios";
 
@@ -400,71 +408,36 @@ export default function Challan() {
         {/* Display main error state here */}
         {error && !showPopup && <Alert variant="danger">{error}</Alert>}
 
-        <Table striped bordered hover responsive className="mt-3">
-          <thead className="table-dark">
-            <tr>
-              <th>Company Name</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Total Bill (₹)</th>
-              <th>Bill Number</th>
-              {/* <th>Document</th> */}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.length === 0 && !loading ? (
-              <tr>
-                <td colSpan="7" className="text-center">No challans found</td>
-              </tr>
-            ) : (
-              currentItems.map((challan) => (
-                <tr key={challan._id}>
-                  <td>{challan.companyName}</td>
-                  <td>{challan.phone}</td>
-                  <td>{challan.email}</td>
-                  <td>{challan.totalBilling}</td>
-                  <td>{challan.billNumber || "-"}</td>
-                  {/* <td>
-                    {challan.document ? (
-                       <Button variant="link" size="sm" onClick={() => previewDocument(challan._id)}>
-                         View Document
-                       </Button>
-                    ) : "No Document"}
-                  </td> */}
-                  <td>
-                    <div className="d-flex gap-2">
-                      <Button
-                        variant="info"
-                        size="sm"
-                        onClick={() => openViewPopup(challan)}
-                        title="View Challan"
-                      >
-                        👁️
-                      </Button>
-                      <Button
-                        variant="warning"
-                        size="sm"
-                        onClick={() => openEditPopup(challan)}
-                        title="Edit Challan"
-                      >
-                        ✏️
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(challan._id)}
-                        title="Delete Challan"
-                      >
-                        🗑️
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+        <ReusableTable
+          columns={[
+            { key: 'companyName', header: 'Company Name' },
+            { key: 'phone', header: 'Phone' },
+            { key: 'email', header: 'Email' },
+            { key: 'totalBilling', header: 'Total Bill (₹)' },
+            { key: 'billNumber', header: 'Bill Number', renderCell: (item) => item.billNumber || "-" },
+            // { key: 'document', header: 'Document', renderCell: (item) => item.document ? (
+            //   <Button variant="link" size="sm" onClick={() => previewDocument(item._id)}>
+            //     View Document
+            //   </Button>
+            // ) : "No Document" },
+          ]}
+          data={currentItems}
+          keyField="_id"
+          isLoading={loading && currentItems.length === 0} // Show loading only if no items yet
+          error={error && currentItems.length === 0 ? error : null}
+          renderActions={(challan) => (
+            <ActionButtons
+              item={challan}
+              onView={openViewPopup}
+              onEdit={openEditPopup}
+              onDelete={handleDelete}
+              isLoading={loading}
+            />
+          )}
+          noDataMessage="No challans found"
+          tableClassName="mt-3"
+          theadClassName="table-dark"
+        />
 
         {showPopup && (
           <div className="popup-overlay" onClick={resetForm}>

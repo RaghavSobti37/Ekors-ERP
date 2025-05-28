@@ -18,6 +18,13 @@ const goodsItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const documentSubSchema = new mongoose.Schema({
+  path: { type: String, required: true },
+  originalName: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedAt: { type: Date } // Capture original upload date
+}, { _id: false });
+
 const quotationBackupSchema = new mongoose.Schema(
   {
     originalId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
@@ -48,6 +55,11 @@ const quotationBackupSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: true,
+    },
+    documents: {
+      quotationPdf: documentSubSchema,
+      clientApproval: documentSubSchema,
+      other: [documentSubSchema]
     },
     // Backup specific fields
     deletedAt: { type: Date, default: Date.now, required: true },

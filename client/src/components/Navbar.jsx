@@ -158,11 +158,11 @@ export default function Navbar({ showPurchaseModal }) {
 
           {showProfilePopup && (
             <div className="profile-popup">
-              <img
+              {/* <img
                 src="/src/assets/profile.jpg"
                 alt="Profile"
                 className="profile-pic"
-              />
+              /> */}
               <div className="profile-details">
                 <p>
                   <strong>{user?.firstname} {user?.lastname}</strong>

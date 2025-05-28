@@ -4,6 +4,13 @@ import Navbar from "../components/Navbar.jsx";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
+import ActionButtons from "../components/ActionButtons";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  BarChart, // Generate Report
+} from 'react-bootstrap-icons';
 
 export default function Logtime() {
   const [logDate, setLogDate] = useState("");

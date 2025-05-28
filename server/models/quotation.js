@@ -18,6 +18,14 @@ const goodsItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const documentSubSchema = new mongoose.Schema({
+  path: { type: String, required: true },
+  originalName: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+
 const quotationSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -47,6 +55,11 @@ const quotationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",
       required: true,
+    },
+    documents: { // Added documents field for quotations
+      quotationPdf: documentSubSchema, // For the generated PDF of this quotation
+      clientApproval: documentSubSchema, // Example: If client sends back a signed copy
+      other: [documentSubSchema]
     },
   },
   {

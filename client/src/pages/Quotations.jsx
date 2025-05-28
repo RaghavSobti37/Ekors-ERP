@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  PlusSquare, // Create Ticket
+} from 'react-bootstrap-icons';
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +18,13 @@ import "../css/Quotation.css";
 import "../css/Style.css";
 import Pagination from "../components/Pagination";
 import "../css/Items.css";
+import ReusableTable from "../components/ReusableTable.jsx";
+import SortIndicator from "../components/SortIndicator.jsx";
 
+import ActionButtons from "../components/ActionButtons";
+import { ToastContainer, toast } from 'react-toastify';
+import frontendLogger from '../utils/frontendLogger.js';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   PDFViewer,
   PDFDownloadLink,
@@ -231,17 +243,6 @@ const GoodsTable = ({
   );
 };
 
-const SortIndicator = ({ columnKey, sortConfig }) => {
-  if (sortConfig.key !== columnKey) {
-    return null; // Don't show any indicator if not the active sort column
-  }
-  // Use the same emojis as in Items.jsx
-  return sortConfig.direction === "ascending" ? (
-    <span> ↑</span>
-  ) : (
-    <span> ↓</span>
-  );
-};
 
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
@@ -270,11 +271,21 @@ export default function Quotations() {
   const getAuthToken = () => {
     try {
       const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    // console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token"); // Debug log commented out
     return token || null;
     }catch (e) {
-      console.error("Failed to parse user data:", e); // This is where your error was logged
-      return null;  
+      toast.error("Error accessing local storage for authentication token.");
+      const errorDetails = {
+        errorMessage: e.message,
+        stack: e.stack,
+        context: "getAuthToken - localStorage access"
+      };
+      if (auth.user) {
+        frontendLogger.error("localStorageAccess", "Failed to get auth token from localStorage", auth.user, errorDetails);
+      } else {
+        frontendLogger.error("localStorageAccess", "Failed to get auth token from localStorage (user not authenticated)", null, errorDetails);
+      }
+      return null;
       }
   };
 
@@ -292,23 +303,64 @@ export default function Quotations() {
   };
 
 const handleSaveClientDetails = async () => {
-  const { companyName, gstNumber, email, phone } = quotationData.client;
+ const { 
+    companyName: rawCompanyName, 
+    gstNumber: rawGstNumber, 
+    email: rawEmail, 
+    phone: rawPhone 
+  } = quotationData.client;
+
+  // Trim values for validation and use
+  const companyName = rawCompanyName?.trim();
+  const gstNumber = rawGstNumber?.trim();
+  const email = rawEmail?.trim();
+  const phone = rawPhone?.trim();
+
   if (!companyName || !gstNumber || !email || !phone) {
-    setError("All client fields (Company Name, GST, Email, Phone) are required to save a new client.");
+    const msg = "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
+    setError(msg);
+    toast.warn(msg);
     return;
   }
+
+  // Additional Frontend Validations
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    const msg = "Invalid email format.";
+    setError(msg);
+    toast.warn(msg);
+    return;
+  }
+
+  // // Basic GST Number validation (must be 15 characters)
+  // if (gstNumber.length !== 15) {
+  //   const msg = "GST Number must be 15 characters long.";
+  //   setError(msg);
+  //   toast.warn(msg);
+  //   return;
+  // }
+
+  // Basic Phone Number validation (must be 10 digits)
+  const phoneRegex = /^\d{10}$/;
+  if (!phoneRegex.test(phone)) {
+    const msg = "Phone number must be 10 digits.";
+    setError(msg);
+    toast.warn(msg);
+    return;
+  }
+
   setIsSavingClient(true);
-  setError(null);
+  setError(null); // Clear previous form error
+  const clientPayload = { 
+    companyName: companyName, // Use trimmed value
+    gstNumber: gstNumber.toUpperCase(), // Use trimmed and then uppercased value
+    email: email.toLowerCase(), // Use trimmed and then lowercased value
+    phone: phone, // Use trimmed value
+  };
   try {
     const token = getAuthToken();
     if (!token) throw new Error("No authentication token found");
 
-    const clientPayload = {
-      companyName: quotationData.client.companyName,
-      gstNumber: quotationData.client.gstNumber.toUpperCase(),
-      email: quotationData.client.email.toLowerCase(),
-      phone: quotationData.client.phone,
-    };
 
     const response = await axios.post(
       "http://localhost:3000/api/clients",
@@ -327,16 +379,40 @@ const handleSaveClientDetails = async () => {
       }));
       setSelectedClientIdForForm(response.data._id);
       setError(null);
+      toast.success("Client saved successfully!");
+      if (auth.user) {
+        frontendLogger.info("clientActivity", "New client saved successfully", auth.user, { 
+          clientId: response.data._id, 
+          clientName: response.data.companyName,
+          action: "SAVE_NEW_CLIENT_SUCCESS"
+        });
+      }
     } else {
       setError("Failed to save client: Unexpected response from server.");
+      toast.error("Failed to save client: Unexpected response from server.");
     }
     } catch (error) {
+    let errorMessage = "Failed to save client details.";
     if (error.response?.data?.field === 'gstNumber') {
-      setError(error.response.data.message || "This GST Number is already registered.");
+      errorMessage = error.response.data.message || "This GST Number is already registered.";
     } else if (error.response?.data?.field === 'email') {
-      setError(error.response.data.message || "This Email is already registered.");
+      errorMessage = error.response.data.message || "This Email is already registered.";
     } else {
-      setError(error.response?.data?.message || "Failed to save client details.");
+      errorMessage = error.response?.data?.message || errorMessage;
+    }
+    setError(errorMessage); // Keep for form-specific feedback
+    toast.error(errorMessage); // Show toast notification
+
+    // Log the error
+    if (auth.user) {
+      // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
+      frontendLogger.error("clientActivity", "Failed to save new client", auth.user, {
+        clientPayload: clientPayload, // Log the payload attempted to save
+        errorMessage: error.response?.data?.message || error.message,
+        stack: error.stack,
+        responseData: error.response?.data,
+        action: "SAVE_NEW_CLIENT_FAILURE"
+      });
     }
   } finally {
     setIsSavingClient(false);
@@ -383,6 +459,7 @@ const handleSaveClientDetails = async () => {
     if (loading || !user) return;
 
     setIsLoading(true);
+    // setError(null); // Clear previous errors at the start of a fetch
     try {
       const token = getAuthToken();
       if (!token) {
@@ -408,26 +485,42 @@ const handleSaveClientDetails = async () => {
 
       setQuotations(response.data);
       setQuotationsCount(response.data.length);
-      setError(null);
+      setError(null); // Clear error on successful fetch
     } catch (error) {
-      console.error("Error fetching quotations:", error);
-      setError(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to load quotations. Please try again."
-      );
+      // console.error("Error fetching quotations:", error); // Debug log commented out
+      const errorMessage = error.response?.data?.message || error.message || "Failed to load quotations. Please try again.";
+      setError(errorMessage); // Keep for main error display
+      toast.error(errorMessage); // Show toast notification
+
+      // Log the error
+      if (auth.user) {
+        frontendLogger.error("quotationActivity", "Failed to fetch quotations", auth.user, {
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          statusFilter,
+          action: "FETCH_QUOTATIONS_FAILURE"
+        });
+      }
 
       if (error.response?.status === 401) {
+        toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
     } finally {
+      // Ensure error state is cleared if fetch was successful but a previous error existed
+      // This logic is now handled within the try/catch blocks more directly.
+      // if (!error && !isLoading) { // Check isLoading to avoid clearing during ongoing fetch
+      //    setError(null);
+      // }
       setIsLoading(false);
     }
-  }, [user, loading, navigate, statusFilter]);
+  }, [user, loading, navigate, statusFilter, auth]); // Added auth to dependency array for logger
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate("/login", { state: { from: "/quotations" } });
+       // Only navigate if not already on login page to prevent infinite loop
+      if (window.location.pathname !== '/login') navigate("/login", { state: { from: "/quotations" } });
     } else {
       fetchQuotations();
     }
@@ -536,6 +629,7 @@ const handleSaveClientDetails = async () => {
 
     if (itemExists) {
       setError("This item is already added to the quotation.");
+      toast.warn("This item is already added to the quotation.");
       return;
     }
 
@@ -574,7 +668,7 @@ const handleSaveClientDetails = async () => {
       gstAmount,
       grandTotal,
     });
-    setError(null);
+    setError(null); // Clear error on successful add
   };
 
   const handleGoodsChange = (index, field, value) => {
@@ -649,6 +743,7 @@ const handleSaveClientDetails = async () => {
 
     if (priceValidationError) {
       setError(priceValidationError);
+      toast.warn(priceValidationError);
     } else {
       // Clear error only if it was related to the price of the item being edited
       if (error && (error.includes(`Discount for ${updatedGoods[index].description}`) || error.includes(`Price for ${updatedGoods[index].description}`))) {
@@ -721,25 +816,30 @@ const handleSaveClientDetails = async () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
+    let submissionData = {};
 
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
       event.stopPropagation();
       setError("Please fill in all required fields in the quotation.");
+      toast.error("Please fill in all required fields in the quotation.");
       return;
     }
 
     if (!quotationData.client._id) {
       if (quotationData.client.companyName || quotationData.client.gstNumber || quotationData.client.email || quotationData.client.phone) {
         setError("You have entered new client details. Please click 'Save New Client' before saving the quotation.");
+        toast.warn("You have entered new client details. Please click 'Save New Client' before saving the quotation.");
       } else {
         setError("Please select an existing client or enter and save details for a new client.");
+        toast.warn("Please select an existing client or enter and save details for a new client.");
       }
       return;
     }
 
     if (!quotationData.goods || quotationData.goods.length === 0) {
       setError("Please add at least one item to the quotation.");
+      toast.error("Please add at least one item to the quotation.");
       return;
     }
 
@@ -747,18 +847,18 @@ const handleSaveClientDetails = async () => {
     for (let i = 0; i < quotationData.goods.length; i++) {
       const item = quotationData.goods[i];
       if (!item.description || !(parseFloat(item.quantity) > 0) || !(parseFloat(item.price) >= 0) || !item.unit) {
-        setError(
-          `Item ${i + 1} is incomplete. Please fill all required fields.`
-        );
+        const itemErrorMsg = `Item ${i + 1} is incomplete. Please fill all required fields.`;
+        setError(itemErrorMsg);
+        toast.error(itemErrorMsg);
         return;
       }
       // Validate price against discount slab
       if (item.maxDiscountPercentage > 0) { // Check only maxDiscountPercentage
         const minAllowedPrice = item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100); // Use 0 if null/undefined
         if (parseFloat(item.price) < minAllowedPrice) {
-          setError(
-            `Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below the minimum allowed price (₹${minAllowedPrice.toFixed(2)}) due to ${item.maxDiscountPercentage}% max discount.`
-          );
+          const priceErrorMsg = `Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below the minimum allowed price (₹${minAllowedPrice.toFixed(2)}) due to ${item.maxDiscountPercentage}% max discount.`;
+          setError(priceErrorMsg);
+          toast.error(priceErrorMsg);
           return;
         }
       }
@@ -767,10 +867,10 @@ const handleSaveClientDetails = async () => {
     // Clear discount related error if all validations pass before submission attempt
     if (error && error.includes("exceeds the maximum allowed")) {
         setError(null);
-    }
+    } // Keep other form validation errors
 
     setIsLoading(true);
-    setError(null);
+    setError(null); // Clear previous submission errors
 
     try {
       const token = getAuthToken();
@@ -778,7 +878,7 @@ const handleSaveClientDetails = async () => {
         throw new Error("No authentication token found");
       }
 
-      const submissionData = {
+      submissionData = {
         // Client object will be sent as is from quotationData.client
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
@@ -803,7 +903,7 @@ const handleSaveClientDetails = async () => {
         client: quotationData.client, // Send the whole client object
       };
 
-      console.log("Submitting quotation data:", submissionData);
+      // console.log("Submitting quotation data:", submissionData); // Debug log commented out
 
       const url = currentQuotation
         ? `http://localhost:3000/api/quotations/${currentQuotation._id}`
@@ -814,6 +914,7 @@ const handleSaveClientDetails = async () => {
       const response = await axios[method](url, submissionData, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json", // Added Content-Type header
         },
       });
 
@@ -821,11 +922,22 @@ const handleSaveClientDetails = async () => {
         fetchQuotations();
         setShowModal(false);
         resetForm();
-        setError(null);
+        // setError(null); // Let fetchQuotations handle clearing error if successful
         setCurrentQuotation(null);
+        toast.success(`Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'} successfully!`);
+
+        // Log successful save/update
+        if (auth.user) {
+          const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
+          frontendLogger.info("quotationActivity", `Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'}`, userForLog, { 
+            quotationId: response.data._id, 
+            referenceNumber: submissionData.referenceNumber,
+            action: currentQuotation ? "UPDATE_QUOTATION_SUCCESS" : "CREATE_QUOTATION_SUCCESS"
+          });
+        }
       }
     } catch (error) {
-      console.error("Error saving quotation:", error);
+      // console.error("Error saving quotation:", error); // Debug log commented out
       let errorMessage = "Failed to save quotation. Please try again.";
 
       if (error.response) {
@@ -836,6 +948,7 @@ const handleSaveClientDetails = async () => {
 
         if (error.response.status === 401) {
           navigate("/login", { state: { from: "/quotations" } });
+          toast.error("Authentication failed. Please log in again.");
           return;
         }
       } else if (error.request) {
@@ -843,7 +956,21 @@ const handleSaveClientDetails = async () => {
           "No response from server. Check your network connection.";
       }
 
-      setError(errorMessage);
+      setError(errorMessage); // Keep for form-specific feedback
+      toast.error(errorMessage); // Show toast notification
+
+      // Log the error
+      if (auth.user) {
+         frontendLogger.error("quotationActivity", currentQuotation ? "Failed to update quotation" : "Failed to create quotation", auth.user, { 
+            referenceNumber: quotationData.referenceNumber, 
+            quotationId: currentQuotation?._id,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            submittedData: submissionData, // Be careful logging full data if it's sensitive
+            action: currentQuotation ? "UPDATE_QUOTATION_FAILURE" : "CREATE_QUOTATION_FAILURE"
+         });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -862,19 +989,6 @@ const handleSaveClientDetails = async () => {
       if (!token) {
         throw new Error("No authentication token found");
       }
-
-      const response = await axios.get(
-        "http://localhost:3000/api/tickets/next-number",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      return response.data.nextTicketNumber;
-    } catch (error) {
-      console.error("Error generating ticket number:", error);
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -883,6 +997,27 @@ const handleSaveClientDetails = async () => {
       const minutes = String(now.getMinutes()).padStart(2, "0");
       const seconds = String(now.getSeconds()).padStart(2, "0");
       return `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
+
+    } catch (error) {
+      // console.error("Error generating ticket number:", error); // Debug log commented out
+      toast.error("Failed to generate ticket number. Using a temporary number.");
+      // Log the error
+      if (auth.user) {
+         frontendLogger.error("ticketActivity", "Failed to generate ticket number from API", auth.user, {
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "GENERATE_TICKET_NUMBER_FAILURE"
+         });
+      }
+      // const now = new Date();
+      // const year = now.getFullYear().toString().slice(-2);
+      // const month = String(now.getMonth() + 1).padStart(2, "0");
+      // const day = String(now.getDate()).padStart(2, "0");
+      // const hours = String(now.getHours()).padStart(2, "0");
+      // const minutes = String(now.getMinutes()).padStart(2, "0");
+      // const seconds = String(now.getSeconds()).padStart(2, "0");
+      // return `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     }
   };
 
@@ -929,23 +1064,36 @@ const handleSaveClientDetails = async () => {
 
       return response.data.exists;
     } catch (error) {
-      console.error("Error checking existing ticket:", error);
+      // console.error("Error checking existing ticket:", error); // Debug log commented out
+      toast.error("Failed to check for existing ticket.");
+      if (auth.user) {
+       frontendLogger.error("ticketActivity", "Failed to check for existing ticket", auth.user, { 
+            quotationNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "CHECK_EXISTING_TICKET_FAILURE"
+         });
+      }
       return false;
     }
   };
 
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
-    setFormValidated(true);
+    setFormValidated(true); // For ticket modal form validation, if any
+    let completeTicketData = {}; // Declare completeTicketData here
 
     try {
       setIsLoading(true);
+      setError(null); // Clear previous ticket errors
 
       const ticketExists = await checkExistingTicket(
         ticketData.quotationNumber
       );
       if (ticketExists) {
         setError("A ticket already exists for this quotation.");
+        toast.warn("A ticket already exists for this quotation.");
         setIsLoading(false);
         return;
       }
@@ -957,12 +1105,16 @@ const handleSaveClientDetails = async () => {
 
       // Get user ID from AuthContext
       if (!auth.user || !auth.user.id) {
-        throw new Error("User ID not found in authentication context. Please re-login.");
+        const noUserIdError = "User ID not found in authentication context. Please re-login.";
+        setError(noUserIdError);
+        toast.error(noUserIdError);
+        throw new Error(noUserIdError);
       }
 
-      const completeTicketData = {
+      completeTicketData = { // Assign to the already declared variable
         ...ticketData,
         createdBy: auth.user.id, // Use user ID from AuthContext
+        currentAssignee: auth.user.id, // Set currentAssignee to the creator by default
         statusHistory: [
           {
             status: ticketData.status,
@@ -970,13 +1122,14 @@ const handleSaveClientDetails = async () => {
             changedBy: auth.user.id, // Use auth.user.id here as well
           },
         ],
-        documents: {
-          quotation: "",
-          po: "",
-          pi: "",
-          challan: "",
-          packingList: "",
-          feedback: "",
+        documents: { // Initialize document fields to null or empty array for 'other'
+          quotation: null,
+          po: null,
+          pi: null,
+          challan: null,
+          packingList: null,
+          feedback: null,
+          other: [], // 'other' is an array of documentSubSchema
         },
       };
 
@@ -994,16 +1147,43 @@ const handleSaveClientDetails = async () => {
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-        alert(`Ticket ${response.data.ticketNumber} created successfully!`);
+        toast.success(`Ticket ${response.data.ticketNumber} created successfully!`);
+        // Log ticket creation
+        if (auth.user) {
+          // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
+          frontendLogger.info(
+            "ticketActivity",
+            `Ticket ${response.data.ticketNumber} created successfully from quotation ${ticketData.quotationNumber}`,
+            auth.user, // Use auth.user directly
+            {
+              action: "TICKET_CREATED_FROM_QUOTATION_SUCCESS",
+              ticketNumber: response.data.ticketNumber,
+              quotationNumber: ticketData.quotationNumber,
+            }
+          );
+        }
         navigate("/tickets");
       }
     } catch (error) {
-      console.error("Error creating ticket:", error);
-      setError(
+      // console.error("Error creating ticket:", error); // Debug log commented out
+      let errorMessage =
         error.response?.data?.message ||
           error.message ||
-          "Failed to create ticket. Please try again."
-      );
+          "Failed to create ticket. Please try again.";
+      setError(errorMessage); // Keep for modal feedback
+      toast.error(errorMessage); // Show toast notification
+
+      // Log the error
+      if (auth.user) {
+         frontendLogger.error("ticketActivity", "Failed to create ticket from quotation", auth.user, { 
+            quotationNumber: ticketData.quotationNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            ticketDataSubmitted: completeTicketData, // Be careful with sensitive data
+            action: "CREATE_TICKET_FROM_QUOTATION_FAILURE"
+         });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1061,7 +1241,8 @@ const handleSaveClientDetails = async () => {
   };
   const openCreateModal = async () => {
     if (!user) {
-      setError("User data is not available. Please log in again.");
+      setError("User data is not available. Please log in again."); // Keep for potential inline display
+      toast.error("User data is not available. Please log in again.");
       // Optionally, navigate to login
       // navigate("/login", { state: { from: "/quotations" } });
       return;
@@ -1082,6 +1263,7 @@ const handleSaveClientDetails = async () => {
   const handleDeleteQuotation = async (quotation) => {
     if (!quotation || !quotation._id) {
       setError("Invalid quotation selected for deletion.");
+      toast.error("Invalid quotation selected for deletion.");
       return;
     }
 
@@ -1113,23 +1295,43 @@ const handleSaveClientDetails = async () => {
       setShowModal(false);
       resetForm(); // Reset form if used in UI
       fetchQuotations(); // Refresh data
+      toast.success(`Quotation ${quotation.referenceNumber} deleted successfully.`);
+      if (auth.user) {
+        frontendLogger.info("quotationActivity", `Quotation ${quotation.referenceNumber} deleted`, auth.user, { 
+            quotationId: quotation._id,
+            referenceNumber: quotation.referenceNumber,
+            action: "DELETE_QUOTATION_SUCCESS"
+        });
+      }
     } catch (error) {
-      console.error("Error deleting quotation:", error);
-      let errorMessage = "Failed to delete quotation. Please try again.";
+      // console.error("Error deleting quotation:", error); // Debug log commented out
+      let errorMessage = error.response?.data?.message || "Failed to delete quotation. Please try again.";
 
       if (error.response) {
         if (error.response.status === 401) {
           navigate("/login", { state: { from: "/quotations" } });
+          toast.error("Authentication failed. Please log in again.");
           setIsLoading(false);
           return;
         }
-        errorMessage = error.response.data.message || errorMessage;
+        // errorMessage = error.response.data.message || errorMessage; // This line is redundant due to the initial assignment
       } else if (error.request) {
         errorMessage =
           "No response from server. Check your network connection.";
       }
 
-      setError(errorMessage);
+      setError(errorMessage); // Keep for main error display
+      toast.error(errorMessage); // Show toast notification
+      if (auth.user) {
+         frontendLogger.error("quotationActivity", "Failed to delete quotation", error, auth.user, { 
+            quotationId: quotation._id, 
+            referenceNumber: quotation.referenceNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "DELETE_QUOTATION_FAILURE"
+         });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1147,6 +1349,7 @@ const handleSaveClientDetails = async () => {
       },
     }));
     setSelectedClientIdForForm(client._id);
+    setError(null); // Clear any previous client-related form errors
   };
 
   return (
@@ -1232,160 +1435,55 @@ const handleSaveClientDetails = async () => {
 
         {error && <Alert variant="danger">{error}</Alert>}
 
-        <Table striped bordered hover responsive className="mt-3">
-          <thead className="table-dark">
-            <tr>
-              <th
-                onClick={() => requestSort("referenceNumber")}
-                style={{ cursor: "pointer" }}
-              >
-                Reference No{" "}
-                <SortIndicator
-                  columnKey="referenceNumber"
-                  sortConfig={sortConfig}
-                />
-              </th>
-              <th
-                onClick={() => requestSort("client.companyName")}
-                style={{ cursor: "pointer" }}
-              >
-                Company Name{" "}
-                <SortIndicator
-                  columnKey="client.companyName"
-                  sortConfig={sortConfig}
-                />
-              </th>
-              {user?.role === "super-admin" && (
-                <th
-                  onClick={() => requestSort("user.firstname")}
-                  style={{ cursor: "pointer" }}
+        <ReusableTable
+          columns={[
+            { key: 'referenceNumber', header: 'Reference No', sortable: true },
+            { key: 'client.companyName', header: 'Company Name', sortable: true, renderCell: (item) => item.client?.companyName },
+            ...(user?.role === 'super-admin' ? [{ key: 'user.firstname', header: 'Created By', sortable: true, renderCell: (item) => `${item.user?.firstname || ''} ${item.user?.lastname || ''}` }] : []),
+            { key: 'client.gstNumber', header: 'GST Number', sortable: true, renderCell: (item) => item.client?.gstNumber },
+            { key: 'grandTotal', header: 'Total (₹)', sortable: true, renderCell: (item) => item.grandTotal.toFixed(2), cellClassName: 'text-end' },
+            {
+              key: 'status',
+              header: 'Status',
+              sortable: true,
+              renderCell: (item) => (
+                <span
+                  className={`badge ${
+                    item.status === 'open'
+                      ? 'bg-primary'
+                      : item.status === 'closed'
+                      ? 'bg-success'
+                      : 'bg-warning'
+                  }`}
                 >
-                  Created By{" "}
-                  <SortIndicator
-                    columnKey="user.firstname"
-                    sortConfig={sortConfig}
-                  />
-                </th>
-              )}
-              <th
-                onClick={() => requestSort("client.gstNumber")}
-                style={{ cursor: "pointer" }}
-              >
-                GST Number{" "}
-                <SortIndicator
-                  columnKey="client.gstNumber"
-                  sortConfig={sortConfig}
-                />
-              </th>
-
-              <th
-                onClick={() => requestSort("grandTotal")}
-                style={{ cursor: "pointer" }}
-              >
-                Grand Total (₹){" "}
-                <SortIndicator columnKey="grandTotal" sortConfig={sortConfig} />
-              </th>
-              <th
-                onClick={() => requestSort("status")}
-                style={{ cursor: "pointer" }}
-              >
-                Status{" "}
-                <SortIndicator columnKey="status" sortConfig={sortConfig} />
-              </th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  Loading quotations...
-                </td>
-              </tr>
-            ) : currentItems.length > 0 ? (
-              currentItems.map((quotation) => (
-                <tr key={quotation._id}>
-                  <td>{quotation.referenceNumber}</td>
-                  <td>{quotation.client?.companyName}</td>
-                  {user?.role === "super-admin" && (
-                    <td>
-                      {quotation.user?.firstname} {quotation.user?.lastname}
-                    </td>
-                  )}
-                  <td>{quotation.client?.gstNumber}</td>
-                  <td className="text-end">
-                    {quotation.grandTotal.toFixed(2)}
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        quotation.status === "open"
-                          ? "bg-primary"
-                          : quotation.status === "closed"
-                          ? "bg-success"
-                          : "bg-warning"
-                      }`}
-                    >
-                      {quotation.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <Button
-                        variant="info"
-                        size="sm"
-                        onClick={() => handleEdit(quotation)}
-                        title="Edit"
-                      >
-                        ✏️
-                      </Button>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        onClick={() => handleCreateTicket(quotation)}
-                        title="Create Ticket"
-                      >
-                        ➕
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setCurrentQuotation(quotation);
-                          console.log(
-                            "Quotation goods with units:",
-                            quotation.goods
-                          );
-                          setShowPdfModal(true);
-                        }}
-                        title="View"
-                      >
-                        👁️
-                      </Button>
-                      {user?.role === "super-admin" && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDeleteQuotation(quotation)}
-                          disabled={isLoading}
-                          title="Delete"
-                        >
-                          🗑️
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" className="text-center">
-                  No quotations found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </Table>
+                  {item.status}
+                </span>
+              ),
+            },
+          ]}
+          data={currentItems}
+          keyField="_id"
+          isLoading={isLoading}
+          error={error && currentItems.length === 0 ? error : null} // Show table-level error only if no data due to error
+          onSort={requestSort}
+          sortConfig={sortConfig}
+          renderActions={(quotation) => (
+            <ActionButtons
+              item={quotation}
+              onEdit={handleEdit}
+              onCreateTicket={handleCreateTicket}
+              onView={() => {
+                setCurrentQuotation(quotation);
+                setShowPdfModal(true);
+              }}
+              onDelete={user?.role === 'super-admin' ? handleDeleteQuotation : undefined}
+              isLoading={isLoading}
+            />
+          )}
+          noDataMessage="No quotations found."
+          tableClassName="mt-3"
+          theadClassName="table-dark"
+        />
 
         {/* {filteredQuotations.length > itemsPerPage && (
           <div className="d-flex justify-content-center mt-3">
@@ -1713,7 +1811,7 @@ const handleSaveClientDetails = async () => {
           setTicketData={setTicketData}
           handleTicketSubmit={handleTicketSubmit}
           isLoading={isLoading}
-          error={error}
+          error={error} // Pass error to CreateTicketModal if it needs to display it
         />
 
         {/* PDF View Modal */}
@@ -1754,6 +1852,15 @@ const handleSaveClientDetails = async () => {
             )}
           </Modal.Body>
         </Modal>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss draggable pauseOnHover />
 
         <Pagination
           currentPage={currentPage}

@@ -52,19 +52,6 @@ exports.loginUser = async (req, res) => {
       },
     });
 
-    // Corrected logger call
-    const userForLog = { firstname: user.firstname, lastname: user.lastname };
-    logger.info(
-      "userActivity",
-      "User logged in successfully",
-      userForLog,
-      {
-        event: "USER_LOGIN",
-        userId: user._id,
-        userEmail: user.email,
-        // ipAddress: req.ip // Consider logging the actual request IP
-      }
-    );
   } catch (err) {
     logger.error("authActivity", "Login process failed", err, null, { email: req.body.email });
     res.status(500).json({ error: "Login failed. Please try again." });

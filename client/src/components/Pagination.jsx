@@ -1,5 +1,5 @@
 import React from 'react';
-import './Pagination.css';
+import '../css/Pagination.css'
 
 // Helper function to generate a range of numbers
 const range = (start, end) => {

@@ -2,6 +2,8 @@ const Ticket = require("../models/opentickets");
 const TicketBackup = require("../models/ticketBackup"); // Import backup model
 const User = require("../models/users");
 const logger = require("../utils/logger"); // Import logger
+const fs = require('fs-extra'); // fs-extra for recursive directory removal
+const path = require('path');
 
 // Then modify the ticket creation endpoint to use the actual counter
 exports.createTicket = async (req, res) => {
@@ -228,6 +230,19 @@ exports.deleteTicket = async (req, res) => {
       user,
       { ...logDetails, originalId: ticketToBackup._id }
     );
+
+    // Delete associated documents folder
+    const ticketDocumentsPath = path.join('uploads', ticketId); // Adjusted path if uploads are directly in ticketId folder
+    if (fs.existsSync(ticketDocumentsPath)) {
+      try {
+        await fs.remove(ticketDocumentsPath); // fs-extra's remove is like rm -rf
+        logger.info('delete', `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`, user, logDetails);
+      } catch (folderError) {
+        logger.error('delete', `[DOC_FOLDER_DELETE_ERROR] Error deleting documents folder ${ticketDocumentsPath}:`, folderError, user, logDetails);
+        // Decide if this error should prevent ticket deletion or just be logged.
+        // For now, we'll log it and proceed with ticket deletion.
+      }
+    }
 
     // Remove ticket from user's (creator and current assignee) tickets array
     const usersToUpdate = new Set();

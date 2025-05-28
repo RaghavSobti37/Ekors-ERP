@@ -7,7 +7,14 @@ const goodsSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
   amount: { type: Number, required: true }
-});
+}, { _id: false });
+
+const documentSubSchema = new mongoose.Schema({
+  path: { type: String, required: true },
+  originalName: { type: String, required: true },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  uploadedAt: { type: Date, default: Date.now }
+  }, { _id: false }); // Ensure _id is false for subdocuments unless explicitly needed
 
 const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
@@ -44,12 +51,13 @@ const ticketSchema = new mongoose.Schema({
     default: "Quotation Sent"
   },
   documents: {
-    quotation: { type: String },
-    po: { type: String },
-    pi: { type: String },
-    challan: { type: String },
-    packingList: { type: String },
-    feedback: { type: String }
+    quotation: documentSubSchema,
+    po: documentSubSchema,
+    pi: documentSubSchema,
+    challan: documentSubSchema,
+    packingList: documentSubSchema,
+    feedback: documentSubSchema,
+    other: [documentSubSchema] // For multiple other documents
   },
   statusHistory: [{
     status: { type: String },

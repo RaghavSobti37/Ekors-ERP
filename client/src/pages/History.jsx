@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import "../css/Style.css";
+import ActionButtons from "../components/ActionButtons";
+import {
+  Eye, // View
+  PencilSquare, // Edit
+  Trash, // Delete
+  BarChart, // Generate Report
+} from 'react-bootstrap-icons';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
 import { Table, Button, Alert } from "react-bootstrap";
 import Pagination from '../components/Pagination';
+import ReusableTable from "../components/ReusableTable";
+import SortIndicator from "../components/SortIndicator";
 
 const formatDisplayDate = (dateString) => {
   const date = new Date(dateString);
@@ -223,55 +232,36 @@ export default function History() {
             </Button>
         </div>
 
-        <Table striped bordered hover responsive className="mt-3">
-          <thead className="table-dark">
-            <tr>
-              <th className="centered" onClick={handleSort} style={{ cursor: "pointer" }}>
-                Date {sortOrder === "asc" ? "↑" : "↓"}
-              </th>
-              <th className="centered">Total Time</th>
-              <th className="centered">Tasks</th>
-              <th className="centered" style={{minWidth: "120px"}}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentEntries.map((entry, index) => (
-              <tr key={index}>
-                <td className="centered">{formatDisplayDate(entry.date)}</td>
-                <td className="centered">{entry.totalTime}</td>
-                <td className="centered">{entry.taskCount}</td>
-                <td className="centered">
-                   <div className="d-flex gap-2 justify-content-center">
-                    <Button
-                      variant="info"
-                      size="sm"
-                      onClick={() => handleView(entry)}
-                      title="View"
-                    >
-                      👁️
-                    </Button>
-                    <Button
-                      variant="warning"
-                      size="sm"
-                      onClick={() => handleEdit(entry)}
-                      title="Edit"
-                    >
-                      ✏️
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(entry._id)}
-                      title="Delete"
-                    >
-                      🗑️
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <ReusableTable
+          columns={[
+            { key: 'date', header: 'Date', sortable: true, renderCell: (item) => formatDisplayDate(item.date), headerClassName: 'centered', cellClassName: 'centered' },
+            { key: 'totalTime', header: 'Total Time', headerClassName: 'centered', cellClassName: 'centered' },
+            { key: 'taskCount', header: 'Tasks', headerClassName: 'centered', cellClassName: 'centered' },
+          ]}
+          data={currentEntries}
+          keyField="_id" // Assuming entries have _id, adjust if it's 'id' or other
+          isLoading={isLoading && currentEntries.length === 0}
+          error={error && currentEntries.length === 0 ? error : null}
+          onSort={() => handleSort()} // Simplified sort toggle for this page
+          sortConfig={{ key: 'date', direction: sortOrder === 'asc' ? 'ascending' : 'descending' }}
+          renderActions={(entry) => (
+            <ActionButtons
+              item={entry}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={() => handleDelete(entry._id)}
+              isLoading={isLoading}
+            />
+          )}
+          noDataMessage="No time log history found."
+          tableClassName="mt-3"
+          theadClassName="table-dark"
+          // tbodyClassName="text-center" // Actions are already centered by ActionButtons
+          // Forcing sort indicator for date column based on existing sortOrder state
+          // This is a bit of a workaround as ReusableTable expects sortConfig.key to match column.key
+          // To make it perfect, handleSort should update a sortConfig state like in other components.
+        />
+
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
