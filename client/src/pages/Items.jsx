@@ -2,13 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
-<<<<<<< HEAD
 import Pagination from '../components/Pagination';
 import * as XLSX from 'xlsx';
-=======
-import Pagination from "../components/Pagination";
->>>>>>> 17d852bdfeda783edf65302f8ca78658eefc82ba
-
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
     console.log(`[DEBUG] ${message}`, data);

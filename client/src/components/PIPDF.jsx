@@ -1,11 +1,12 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontFamily: "Helvetica",
     fontSize: 11,
+    position: 'relative' // Needed for absolute positioning of logo
   },
   header: {
     fontSize: 12,
@@ -60,6 +61,13 @@ const styles = StyleSheet.create({
   },
   centerText: {
     textAlign: "center"
+  },
+  logo: {
+    position: 'absolute',
+    right: 30,
+    top: 30,
+    width: 80,
+    height: 'auto'
   }
 });
 
@@ -96,6 +104,12 @@ const getAddressPart = (address, part) => {
 const PIPDF = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
+      {/* Logo in top right corner */}
+      <Image 
+        style={styles.logo} 
+        src="/src/assets/logo.png" // Update this path to your actual logo path
+      />
+      
       <Text style={styles.header}>GSTIN : 09AAFCE8706R1ZV</Text>
       <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
       <Text style={styles.subHeader}>

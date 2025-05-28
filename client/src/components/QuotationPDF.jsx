@@ -5,7 +5,7 @@ import {
   Text,
   View,
   StyleSheet,
-  Font
+  Image
 } from "@react-pdf/renderer";
 
 // Styles
@@ -16,16 +16,23 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     lineHeight: 1.5,
   },
-  headerRow: {
+  headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    marginBottom: 5,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  logoContainer: {
+    width: 100,
+    alignItems: "flex-end",
   },
   logo: {
-    textAlign: "right",
-    fontWeight: "bold",
-    color: "darkred",
-    fontSize: 18,
+    width: 80,
+    height: 60,
+    objectFit: "contain",
   },
   refText: {
     color: "red",
@@ -97,9 +104,17 @@ const QuotationPDF = ({ quotation }) => (
     <Page size="A4" style={styles.page}>
       <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
 
-      <View style={styles.headerRow}>
-        <Text>Ref: {quotation.referenceNumber}</Text>
-        <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+      <View style={styles.headerContainer}>
+        <View style={styles.headerTextContainer}>
+          <Text>Ref: {quotation.referenceNumber}</Text>
+          <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+        </View>
+        <View style={styles.logoContainer}>
+          <Image 
+            style={styles.logo} 
+            src="/src/assets/logo.png"
+          />
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -159,7 +174,7 @@ const QuotationPDF = ({ quotation }) => (
         <Text>- Payment: 100% in advance after receiving Formal PO and Advance</Text>
         <Text>- Dispatch: Within {quotation.dispatchDays} days after receiving payment</Text>
         <Text>- Validity: This quotation is valid till {new Date(quotation.validityDate).toLocaleDateString()}</Text>
-        <Text>- Order: Order to be placed in the name of “E-KORS PVT LTD”</Text>
+        <Text>- Order: Order to be placed in the name of "E-KORS PVT LTD"</Text>
       </View>
 
       {/* Footer */}
