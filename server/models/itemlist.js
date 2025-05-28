@@ -127,9 +127,11 @@ const itemSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  dynamicPricing: {
-    type: Boolean,
-    default: false
+  maxDiscountPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
   },
   // Reference to purchases instead of embedding them
   lastPurchaseDate: {
@@ -166,4 +168,3 @@ const Item = mongoose.model('Item', itemSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
 module.exports = { Item, Purchase };
-

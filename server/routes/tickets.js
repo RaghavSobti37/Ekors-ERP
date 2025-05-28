@@ -24,35 +24,6 @@ router.delete('/admin/:id', auth, (req, res, next) => {
   next();
 }, ticketController.adminDeleteTicket);
 
-router.get("/next-number", auth, async (req, res) => {
-  try {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2); // Get last 2 digits of year
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Ensure 2-digit month
-    const prefix = `T-${year}${month}-`; // Format: T-YYMM-
-
-    // Find the latest ticket number for current month
-    const latestTicket = await Ticket.findOne(
-      { ticketNumber: { $regex: `^${prefix}\\d{4}$` } },
-      { ticketNumber: 1 }
-    ).sort({ ticketNumber: -1 });
-
-    // Calculate next sequential number
-    let nextNumber = 1;
-    if (latestTicket?.ticketNumber) {
-      const lastCounter = parseInt(latestTicket.ticketNumber.slice(-4), 10);
-      nextNumber = lastCounter + 1;
-    }
-
-    const nextTicketNumber = `${prefix}${String(nextNumber).padStart(4, '0')}`;
-    res.json({ nextTicketNumber });
-    
-  } catch (error) {
-    console.error("Error generating ticket number:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
 const upload = multer({ storage });
 
 router.post("/", auth, async (req, res) => {

@@ -38,8 +38,11 @@ const itemBackupSchema = new mongoose.Schema({
   discountAvailable: {
     type: Boolean,
   },
-  dynamicPricing: {
-    type: Boolean,
+  maxDiscountPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
   },
   lastPurchaseDate: { type: Date },
   lastPurchasePrice: { type: Number },

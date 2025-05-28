@@ -2,12 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
-<<<<<<< HEAD
-import Pagination from '../components/Pagination';
-import * as XLSX from 'xlsx';
-=======
 import Pagination from "../components/Pagination";
->>>>>>> 17d852bdfeda783edf65302f8ca78658eefc82ba
+import * as XLSX from "xlsx";
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -35,8 +31,7 @@ export default function Items() {
     unit: "Nos",
     category: "",
     subcategory: "General",
-    discountAvailable: false,
-    dynamicPricing: false,
+    maxDiscountPercentage: "",
   });
   const [showModal, setShowModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
@@ -81,7 +76,7 @@ export default function Items() {
       setLoading(true);
       setError(null);
       const response = await apiClient("/items"); // Use apiClient
-       debug("Items fetched successfully", response);
+      debug("Items fetched successfully", response);
       setItems(response);
     } catch (err) {
       debug("Error fetching items", err);
@@ -100,20 +95,26 @@ export default function Items() {
 
       debug("Attempting to fetch categories");
       // Categories endpoint is public, but using apiClient for consistency is fine
-      const categoriesData = await apiClient("/items/categories", { timeout: 5000 });
+      const categoriesData = await apiClient("/items/categories", {
+        timeout: 5000,
+      });
       debug("Categories data received", categoriesData);
 
       if (Array.isArray(categoriesData)) {
         setCategories(categoriesData);
-      } else if (categoriesData === null || categoriesData === undefined) { 
+      } else if (categoriesData === null || categoriesData === undefined) {
         // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
-        debug("Received null or undefined for categories, setting to empty array.", categoriesData);
+        debug(
+          "Received null or undefined for categories, setting to empty array.",
+          categoriesData
+        );
         setCategories([]);
       } else {
         // This case implies apiClient returned something unexpected that wasn't an array or null/undefined
-        throw new Error(`Expected an array of categories, but received type: ${typeof categoriesData}`);
+        throw new Error(
+          `Expected an array of categories, but received type: ${typeof categoriesData}`
+        );
       }
-
     } catch (err) {
       const errorDetails = {
         message: err.message,
@@ -228,8 +229,7 @@ export default function Items() {
       unit: item.unit || "Nos",
       category: item.category || "",
       subcategory: item.subcategory || "General",
-      discountAvailable: item.discountAvailable || false,
-      dynamicPricing: item.dynamicPricing || false,
+      maxDiscountPercentage: (item.maxDiscountPercentage || 0).toString(),
     });
   };
 
@@ -264,8 +264,7 @@ export default function Items() {
         unit: formData.unit,
         category: formData.category,
         subcategory: formData.subcategory,
-        discountAvailable: formData.discountAvailable,
-        dynamicPricing: formData.dynamicPricing,
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
       };
 
       await apiClient(`/items/${editingItem}`, {
@@ -493,8 +492,7 @@ export default function Items() {
         unit: formData.unit,
         category: formData.category,
         subcategory: formData.subcategory,
-        discountAvailable: formData.discountAvailable,
-        dynamicPricing: formData.dynamicPricing,
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
       };
 
       await apiClient("/items", { method: "POST", body: newItem });
@@ -509,8 +507,7 @@ export default function Items() {
         unit: "Nos",
         category: "",
         subcategory: "General",
-        discountAvailable: false,
-        dynamicPricing: false,
+        maxDiscountPercentage: "",
       });
       setError(null);
     } catch (err) {
@@ -613,68 +610,6 @@ export default function Items() {
     }
   };
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredItems.map(item => ({
-      Name: item.name,
-      Category: item.category,
-      Subcategory: item.subcategory,
-      Quantity: item.quantity,
-      Price: item.price,
-      Unit: item.unit,
-      'GST Rate': item.gstRate,
-      'HSN Code': item.hsnCode
-    })));
-    
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
-    XLSX.writeFile(workbook, "ItemsList.xlsx");
-  };
-
-  const handleExcelImport = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-        // Process imported data
-        const itemsToUpdate = jsonData.map(item => ({
-          name: item.Name || item.name,
-          category: item.Category || item.category,
-          subcategory: item.Subcategory || item.subcategory,
-          quantity: item.Quantity || item.quantity,
-          price: item.Price || item.price,
-          unit: item.Unit || item.unit,
-          gstRate: item['GST Rate'] || item.gstRate,
-          hsnCode: item['HSN Code'] || item.hsnCode
-        }));
-
-        // Update items in the database
-        setLoading(true);
-        const response = await axios.post("http://localhost:3000/api/items/bulk-update", { items: itemsToUpdate });
-        
-        if (response.data.success) {
-          showSuccess("Items updated successfully from Excel!");
-          await fetchItems(); // Refresh the items list
-        } else {
-          setError("Failed to update items from Excel");
-        }
-      } catch (err) {
-        console.error("Error importing Excel:", err);
-        setError("Error importing Excel file. Please check the format.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
@@ -735,26 +670,6 @@ export default function Items() {
                   ))}
             </select>
 
-            <div className="excel-buttons">
-              <button
-                onClick={exportToExcel}
-                className="btn btn-primary excel-export-btn"
-                disabled={isSubmitting}
-              >
-                Open Excel Sheet
-              </button>
-              <label className="btn btn-secondary excel-import-btn">
-                Import from Excel
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleExcelImport}
-                  style={{ display: 'none' }}
-                  disabled={isSubmitting}
-                />
-              </label>
-            </div>
-
             <input
               type="text"
               placeholder="🔍 Search items or HSN codes..."
@@ -772,13 +687,13 @@ export default function Items() {
               <tr>
                 {[
                   "name",
-                  "category",
-                  "subcategory",
+                  // "category",
+                  // "subcategory",
                   "quantity",
                   "price",
                   "unit",
                   "gstRate",
-                  "image", // Added image column
+                  // "image", // Added image column
                 ].map((key) => (
                   <th
                     key={key}
@@ -791,6 +706,14 @@ export default function Items() {
                       (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                   </th>
                 ))}
+                <th
+                  onClick={() => !isSubmitting && requestSort("maxDiscountPercentage")}
+                  style={{ cursor: isSubmitting ? "not-allowed" : "pointer" }}
+                >
+                  Max Disc. %
+                  {sortConfig.key === "maxDiscountPercentage" &&
+                    (sortConfig.direction === "asc" ? " ↑" : " ↓")}
+                </th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -814,8 +737,8 @@ export default function Items() {
                           item.name
                         )}
                       </td>
-                      <td>{item.category || "-"}</td>
-                      <td>{item.subcategory || "-"}</td>
+                      {/* <td>{item.category || "-"}</td>
+                      <td>{item.subcategory || "-"}</td> */}
                       <td>
                         {editingItem === item._id ? (
                           <input
@@ -873,10 +796,10 @@ export default function Items() {
                             disabled={isSubmitting}
                           />
                         ) : (
-                          `${item.gstRate}%`
+                          `${item.gstRate || 0}%`
                         )}
                       </td>
-                      <td>
+                      {/* <td>
                         {item.image ? (
                           <img
                             src={item.image}
@@ -884,6 +807,25 @@ export default function Items() {
                             className="item-image"
                             onClick={() => window.open(item.image, "_blank")}
                           />
+                        ) : (
+                          "-"
+                        )}
+                      </td> */}
+                      <td>
+                        {editingItem === item._id ? (
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            name="maxDiscountPercentage"
+                            value={formData.maxDiscountPercentage}
+                            onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })}
+                            min="0"
+                            max="100"
+                            placeholder="Max %"
+                            disabled={isSubmitting}
+                          />
+                        ) : item.maxDiscountPercentage > 0 ? (
+                          `${item.maxDiscountPercentage}%`
                         ) : (
                           "-"
                         )}
@@ -986,6 +928,9 @@ export default function Items() {
                                   <strong>HSN Code:</strong>{" "}
                                   {item.hsnCode || "-"}
                                 </p>
+                                <p>
+                                  <strong>Max Discount:</strong> {item.maxDiscountPercentage > 0 ? `${item.maxDiscountPercentage}%` : "N/A"}
+                                </p>
                               </div>
                             </div>
 
@@ -1087,8 +1032,7 @@ export default function Items() {
                       unit: "Nos",
                       category: "",
                       subcategory: "General",
-                      discountAvailable: false,
-                      dynamicPricing: false,
+                      maxDiscountPercentage: "",
                     });
                   }}
                 >
@@ -1231,47 +1175,19 @@ export default function Items() {
                             ))}
                       </select>
                     </div>
-
-                    <div className="form-check mb-2">
+                    <div className="form-group">
+                      <label htmlFor="maxDiscountPercentageModalItemForm">Max Discount (%)</label>
                       <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="discountAvailable"
-                        checked={formData.discountAvailable}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            discountAvailable: e.target.checked,
-                          })
-                        }
+                        type="number"
+                        className="form-control mb-2"
+                        id="maxDiscountPercentageModalItemForm"
+                        placeholder="Max Discount % (0-100)"
+                        name="maxDiscountPercentage"
+                        value={formData.maxDiscountPercentage}
+                        onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })}
+                        min="0"
+                        max="100"
                       />
-                      <label
-                        className="form-check-label"
-                        htmlFor="discountAvailable"
-                      >
-                        Discount Available
-                      </label>
-                    </div>
-
-                    <div className="form-check mb-2">
-                      <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="dynamicPricing"
-                        checked={formData.dynamicPricing}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            dynamicPricing: e.target.checked,
-                          })
-                        }
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor="dynamicPricing"
-                      >
-                        Dynamic Pricing
-                      </label>
                     </div>
                   </div>
                 </div>
@@ -1289,8 +1205,7 @@ export default function Items() {
                       unit: "Nos",
                       category: "",
                       subcategory: "General",
-                      discountAvailable: false,
-                      dynamicPricing: false,
+                      maxDiscountPercentage: "",
                     });
                     setError(null);
                   }}
@@ -1303,10 +1218,10 @@ export default function Items() {
                   onClick={handleAddItem}
                   className="btn btn-success"
                   disabled={
-                    !formData.name || !formData.price || !formData.category
+                    !formData.name || !formData.price || !formData.category || isSubmitting
                   }
                 >
-                  Add New Item
+                  {isSubmitting ? "Adding..." : "Add New Item"}
                 </button>
               </div>
             </div>

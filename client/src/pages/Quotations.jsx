@@ -197,6 +197,7 @@ const GoodsTable = ({
                     onChange={(e) =>
                       handleGoodsChange(index, "price", e.target.value)
                     }
+                    readOnly={isEditing && !(Number(item.maxDiscountPercentage || 0) > 0)}
                   />
                 )}
               </td>
@@ -253,6 +254,7 @@ export default function Quotations() {
   const [quotationsCount, setQuotationsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(4);
+  const [isSavingClient, setIsSavingClient] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "date", // Default sort key to 'date'
     direction: "descending", // Default sort direction to 'descending' (newest first)
@@ -547,6 +549,8 @@ const handleSaveClientDetails = async () => {
         unit: item.unit || "Nos", // Ensure unit is included
         price: item.price,
         amount: item.price,
+        originalPrice: item.price, // Store original price for discount calculation        // discountAvailable: item.discountAvailable, // Removed
+        maxDiscountPercentage: item.maxDiscountPercentage,
       },
     ];
 
@@ -576,6 +580,8 @@ const handleSaveClientDetails = async () => {
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...quotationData.goods];
 
+    let priceValidationError = null;
+
     if (["quantity", "price", "amount"].includes(field)) {
       value = Number(value);
     }
@@ -586,6 +592,36 @@ const handleSaveClientDetails = async () => {
       updatedGoods[index].amount =
         updatedGoods[index].quantity * updatedGoods[index].price;
     }
+
+    // Price validation against max discount
+    // Real-time price validation
+      if (field === "price") {
+        const currentItem = updatedGoods[index];
+        const newPrice = parseFloat(value); // Value is already Number if field is 'price'
+        const originalPrice = parseFloat(currentItem.originalPrice);
+        const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
+
+        if (!isNaN(newPrice) && !isNaN(originalPrice)) {
+          if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
+            const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
+            if (newPrice < minAllowedPrice) {
+              priceValidationError = `Discount for ${currentItem.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
+            }
+          } else { // No discount slab (maxDiscountPerc is 0, undefined, or NaN)
+            if (newPrice < originalPrice) {
+              priceValidationError = `Price for ${currentItem.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
+            }
+          }
+        } else {
+         // Handle cases where price input might not be a valid number yet, or originalPrice is missing.
+          // This can happen if `value` (which is `e.target.value` initially) is an empty string or non-numeric.
+          // `parseFloat('')` is NaN. `Number('')` is 0.
+          // If `value` (as string from input) is non-empty but not a number, `newPrice` will be NaN.
+          if (String(value).trim() !== "" && isNaN(newPrice)) {
+            priceValidationError = `Invalid price entered for ${currentItem.description}.`;
+          }
+        }
+      }
 
     updatedGoods.forEach((item) => {
       if (!item.unit) item.unit = "Nos";
@@ -610,6 +646,15 @@ const handleSaveClientDetails = async () => {
       gstAmount,
       grandTotal,
     });
+
+    if (priceValidationError) {
+      setError(priceValidationError);
+    } else {
+      // Clear error only if it was related to the price of the item being edited
+      if (error && (error.includes(`Discount for ${updatedGoods[index].description}`) || error.includes(`Price for ${updatedGoods[index].description}`))) {
+        setError(null);
+      }
+    }
   };
 
   const handleInputChange = (e) => {
@@ -701,12 +746,27 @@ const handleSaveClientDetails = async () => {
     // Validate goods items
     for (let i = 0; i < quotationData.goods.length; i++) {
       const item = quotationData.goods[i];
-      if (!item.description || !item.quantity || !item.price || !item.unit) {
+      if (!item.description || !(parseFloat(item.quantity) > 0) || !(parseFloat(item.price) >= 0) || !item.unit) {
         setError(
           `Item ${i + 1} is incomplete. Please fill all required fields.`
         );
         return;
       }
+      // Validate price against discount slab
+      if (item.maxDiscountPercentage > 0) { // Check only maxDiscountPercentage
+        const minAllowedPrice = item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100); // Use 0 if null/undefined
+        if (parseFloat(item.price) < minAllowedPrice) {
+          setError(
+            `Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below the minimum allowed price (₹${minAllowedPrice.toFixed(2)}) due to ${item.maxDiscountPercentage}% max discount.`
+          );
+          return;
+        }
+      }
+    }
+
+    // Clear discount related error if all validations pass before submission attempt
+    if (error && error.includes("exceeds the maximum allowed")) {
+        setError(null);
     }
 
     setIsLoading(true);
@@ -732,6 +792,8 @@ const handleSaveClientDetails = async () => {
           unit: item.unit || "Nos", // Ensure unit is included
           price: Number(item.price),
           amount: Number(item.amount),
+          originalPrice: Number(item.originalPrice),          // discountAvailable: item.discountAvailable, // Removed
+          maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
@@ -978,6 +1040,8 @@ const handleSaveClientDetails = async () => {
         price: Number(item.price),
         amount: Number(item.amount),
         unit: item.unit || "Nos", // Ensure unit field exists
+        originalPrice: Number(item.originalPrice || item.price), // Fallback for older data        // discountAvailable: item.discountAvailable, // Removed
+        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),

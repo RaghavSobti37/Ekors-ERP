@@ -668,7 +668,9 @@ export default function Dashboard() {
       description: item.name,
       hsnSacCode: item.hsnCode,
       price: item.price,
-      amount: updatedGoods[index].quantity * item.price,
+      amount: (updatedGoods[index].quantity || 1) * item.price, // Ensure quantity is considered
+      originalPrice: item.price, // Store original price      // discountAvailable: item.discountAvailable, // Removed
+      maxDiscountPercentage: item.maxDiscountPercentage,
     };
     updateTotals(updatedGoods);
   };
@@ -680,6 +682,10 @@ export default function Dashboard() {
       updatedGoods[index].amount =
         (Number(updatedGoods[index].quantity) || 0) *
         (Number(updatedGoods[index].price) || 0);
+
+      if (field === "price") {
+        validateItemPrice(updatedGoods[index]);
+      }
     }
     updateTotals(updatedGoods);
   };
@@ -703,6 +709,39 @@ export default function Dashboard() {
       gstAmount,
       grandTotal,
     }));
+  };
+
+  const validateItemPrice = (item) => {
+    const newPrice = parseFloat(item.price); // item.price should be a number here due to Number() in handleGoodsChange
+    const originalPrice = parseFloat(item.originalPrice || item.price);
+    const maxDiscountPerc = parseFloat(item.maxDiscountPercentage);
+    let priceValidationError = null;
+
+    if (!isNaN(newPrice) && !isNaN(originalPrice)) {
+      if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
+        const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
+        if (newPrice < minAllowedPrice) {
+          priceValidationError = `Discount for ${item.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
+        }
+      } else { // No discount slab (maxDiscountPerc is 0, undefined or NaN)
+        if (newPrice < originalPrice) {
+          priceValidationError = `Price for ${item.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
+        }
+      }
+    } else if (String(item.price).trim() !== "" && isNaN(newPrice)) { // If item.price (from input) is non-empty string but not a number
+        priceValidationError = `Invalid price entered for ${item.description}.`;
+    }
+
+    if (priceValidationError) {
+      setError(priceValidationError);
+      return false;
+    } else {
+      // Clear error only if it was related to this item's price
+      if (error && (error.includes(`Discount for ${item.description}`) || error.includes(`Price for ${item.description}`))) {
+        setError(null);
+      }
+      return true;
+    }
   };
 
   const handleEdit = (selectedTicket) => {
@@ -743,8 +782,12 @@ export default function Dashboard() {
       companyName: selectedTicket.companyName || "",
       quotationNumber: selectedTicket.quotationNumber || "",
       billingAddress,
-      shippingAddress,
-      goods: selectedTicket.goods || [],
+      shippingAddress,      
+      goods: selectedTicket.goods.map(g => ({
+        ...g,
+        originalPrice: g.originalPrice || g.price, // Ensure originalPrice is present
+        discountAvailable: g.discountAvailable,
+        maxDiscountPercentage: g.maxDiscountPercentage,      })) || [],
       totalQuantity: selectedTicket.totalQuantity || 0,
       totalAmount: selectedTicket.totalAmount || 0,
       gstAmount: selectedTicket.gstAmount || 0,
@@ -781,6 +824,18 @@ export default function Dashboard() {
 
   const handleUpdateTicket = async () => {
     try {
+      // Validate all item prices before submission
+      for (const item of ticketData.goods) {
+        if (!validateItemPrice(item)) {
+          // setError is already set by validateItemPrice
+          return; 
+        }
+      }
+      // Clear discount related error if all item prices are valid
+      if (error && error.includes("exceeds the maximum allowed")) {
+          setError(null);
+      }
+
       const updateData = {
         ...ticketData,
         _id: undefined,
@@ -801,6 +856,12 @@ export default function Dashboard() {
           ticketData.shippingAddress.city,
           ticketData.shippingAddress.pincode,
         ],
+        goods: ticketData.goods.map(g => ({ // Ensure all relevant fields are sent
+            ...g,
+            originalPrice: g.originalPrice,
+            discountAvailable: g.discountAvailable,
+            maxDiscountPercentage: g.maxDiscountPercentage,
+        })),
       };
 
       const response = await axios.put(
@@ -1948,9 +2009,10 @@ export default function Dashboard() {
                           type="number"
                           min="0"
                           step="0.01"
-                          value={item.price}
-                          readOnly
-                          disabled
+                          value={item.price || 0}
+                          onChange={(e) => handleGoodsChange(index, "price", e.target.value)}
+                          readOnly={!(Number(item.maxDiscountPercentage || 0) > 0)}
+                          isInvalid={!!item.priceError} // Consistent with Quotations if you add item.priceError
                         />
                       </td>
                       <td className="align-middle">

@@ -1,0 +1,5 @@
+{"timestamp":"2025-05-28T07:12:24.508Z","level":"INFO","logType":"item","message":"Item created successfully","user":{"name":"Raghav Sobti"},"itemId":"6836b758c8bced803f39b56f","itemName":"testing add item"}
+{"timestamp":"2025-05-28T08:28:11.064Z","level":"INFO","logType":"item","message":"Item created successfully","user":{"name":"Raghav Sobti"},"itemId":"6836c91b1ab58fdde638a079","itemName":"Item 5"}
+{"timestamp":"2025-05-28T08:45:21.569Z","level":"INFO","logType":"item","message":"Item updated successfully","user":{"name":"Raghav Sobti"},"itemId":"67f8b591d313271300009167","itemName":"10 Sq mm DC Cable  - Black/Red/Yellow"}
+{"timestamp":"2025-05-28T08:45:34.577Z","level":"INFO","logType":"item","message":"Item created successfully","user":{"name":"Raghav Sobti"},"itemId":"6836cd2e4c9fcf78bd16fc03","itemName":"10 Sq mm DC Cable  - Black/Red/Yellow"}
+{"timestamp":"2025-05-28T09:10:45.062Z","level":"INFO","logType":"item","message":"Item created successfully","user":{"name":"Raghav Sobti"},"itemId":"6836d315a8e793d25df17639","itemName":"001"}

@@ -111,8 +111,7 @@ exports.createItem = async (req, res) => {
       unit: req.body.unit || 'Nos',
       category: req.body.category || 'Other',
       subcategory: req.body.subcategory || 'General',
-      discountAvailable: req.body.discountAvailable || false,
-      dynamicPricing: req.body.dynamicPricing || false
+      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0
     });
 
     const savedItem = await newItem.save();
@@ -145,8 +144,7 @@ exports.updateItem = async (req, res) => {
           unit: req.body.unit || 'Nos',
           category: req.body.category || 'Other',
           subcategory: req.body.subcategory || 'General',
-          discountAvailable: req.body.discountAvailable || false,
-          dynamicPricing: req.body.dynamicPricing || false
+          maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0
         }
       },
       { new: true, runValidators: true }
