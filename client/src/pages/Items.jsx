@@ -3,8 +3,9 @@ import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination";
-import { saveAs } from 'file-saver'; // For downloading files
+import { saveAs } from "file-saver"; // For downloading files
 import { getAuthToken } from "../utils/authUtils";
+import { showToast, handleApiError } from "../utils/helpers";
 import * as XLSX from "xlsx";
 import ActionButtons from "../components/ActionButtons";
 import {
@@ -79,9 +80,7 @@ export default function Items() {
   });
 
   const showSuccess = (message) => {
-    // TODO: Replace with a proper toast notification library for better UX
-    // Could use a toast library here
-    alert(message);
+    showToast(message, true);
   };
 
   useEffect(() => {
@@ -96,10 +95,15 @@ export default function Items() {
       const response = await apiClient("/items"); // Use apiClient
       debug("Items fetched successfully", response);
       setItems(response);
+      setError(null);
+      showSuccess("Items Fetched Successfully");
     } catch (err) {
       debug("Error fetching items", err);
-      console.error("Error fetching items:", err);
-      setError("Failed to load items. Please try again.");
+      const errorMessage = handleApiError(
+        err,
+        "Failed to load items. Please try again."
+      );
+      setError(errorMessage);
     } finally {
       debug("Finished items fetch attempt");
       setLoading(false);
@@ -143,7 +147,7 @@ export default function Items() {
 
       debug("Categories fetch failed", errorDetails);
 
-      let errorMessage = "Failed to load categories";
+      let errorMessage = handleApiError(err, "Failed to load categories.");
       if (err.response) {
         // Server responded with error status
         errorMessage += ` (${err.response.status})`;
@@ -208,11 +212,12 @@ export default function Items() {
         ...prev,
         [itemId]: response.data || [],
       }));
+      setError(null);
     } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to load history.");
+      setError(errorMessage);
       console.error("Fetch purchase history error:", err);
-      setError(
-        `Failed to load history: ${err.response?.data?.message || err.message}`
-      );
+      setError(errorMessage);
       setPurchaseHistory((prev) => ({
         ...prev,
         [itemId]: [],
@@ -222,19 +227,6 @@ export default function Items() {
       setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
     }
   }, []);
-
-  const handleError = (error, customMessage) => {
-    debug("Error occurred", error);
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      customMessage ||
-      "An unexpected error occurred";
-    setError(message);
-
-    // Show error to user (you might want to use a toast notification instead)
-    alert(message);
-  };
 
   const handleEdit = (item) => {
     setEditingItem(item._id);
@@ -529,8 +521,12 @@ export default function Items() {
       });
       setError(null);
     } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Failed to add item. Please try again."
+      );
+      setError(errorMessage);
       console.error("Error adding item:", err);
-      setError("Failed to add item. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -553,9 +549,11 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
+        showSuccess("Item Deleted Successfully");
       } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to delete item.");
+        setError(errorMessage);
         console.error("Error deleting item:", err);
-        setError("Failed to delete item.");
       } finally {
         setIsSubmitting(false);
       }
@@ -632,7 +630,9 @@ export default function Items() {
     setIsExportingExcel(true);
     setExcelUpdateStatus({ error: null, success: null, details: [] }); // Clear previous status
     if (
-      !window.confirm("This will download an Excel file of the current item list. Continue?")
+      !window.confirm(
+        "This will download an Excel file of the current item list. Continue?"
+      )
     ) {
       setIsExportingExcel(false);
       return;
@@ -640,23 +640,31 @@ export default function Items() {
     try {
       // Using fetch directly for blob handling simplicity here:
       const token = localStorage.getItem("erp-user");
-      const fetchResponse = await fetch('/api/items/export-excel', { // Adjust API_URL if your proxy isn't set up
-          method: 'GET',
-          headers: {
-              'Authorization': `Bearer ${token}`,
-          },
+      const fetchResponse = await fetch("/api/items/export-excel", {
+        // Adjust API_URL if your proxy isn't set up
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!fetchResponse.ok) {
-          const errorData = await fetchResponse.json().catch(() => ({ message: fetchResponse.statusText }));
-          throw new Error(errorData.message || `Failed to export Excel: ${fetchResponse.status}`);
+        const errorData = await fetchResponse
+          .json()
+          .catch(() => ({ message: fetchResponse.statusText }));
+        throw new Error(
+          errorData.message || `Failed to export Excel: ${fetchResponse.status}`
+        );
       }
 
       const blob = await fetchResponse.blob();
-      saveAs(blob, 'items_export.xlsx');
-      setExcelUpdateStatus({ error: null, success: 'Items exported to Excel successfully!', details: [] });
-      showSuccess('Items exported to Excel successfully!');
-
+      saveAs(blob, "items_export.xlsx");
+      setExcelUpdateStatus({
+        error: null,
+        success: "Items exported to Excel successfully!",
+        details: [],
+      });
+      showSuccess("Items exported to Excel successfully!");
     } catch (err) {
       console.error("Error exporting to Excel:", err);
       const message = err.message || "Failed to export items to Excel.";
@@ -678,54 +686,73 @@ export default function Items() {
     }
 
     // Confirmation before processing
-    if (!window.confirm(
+    if (
+      !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-        "Are you absolutely sure you want to proceed?"
-      )) {
+          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+          "Are you absolutely sure you want to proceed?"
+      )
+    ) {
       return;
     }
     setIsProcessingExcel(true);
 
     const formData = new FormData();
-    formData.append('excelFile', file); 
+    formData.append("excelFile", file);
 
     try {
       const token = getAuthToken(); // Use authUtils
-      const fetchResponse = await fetch('/api/items/import-uploaded-excel', { // Adjust API_URL if needed
-          method: 'POST',
-          headers: {
-              'Authorization': `Bearer ${token}`,
-              // 'Content-Type': 'multipart/form-data' // Fetch sets this automatically for FormData
-          },
-          body: formData,
+      const fetchResponse = await fetch("/api/items/import-uploaded-excel", {
+        // Adjust API_URL if needed
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // 'Content-Type': 'multipart/form-data' // Fetch sets this automatically for FormData
+        },
+        body: formData,
       });
 
       const responseData = await fetchResponse.json();
 
       if (!fetchResponse.ok) {
-        throw new Error(responseData.message || `Failed to process Excel: ${fetchResponse.status}`);
+        throw new Error(
+          responseData.message ||
+            `Failed to process Excel: ${fetchResponse.status}`
+        );
       }
 
       const response = responseData;
 
-      let successMessage = `Excel sync complete: ${response.itemsCreated || 0} created, ${response.itemsUpdated || 0} updated, ${response.itemsDeleted || 0} deleted.`;
-      
+      let successMessage = `Excel sync complete: ${
+        response.itemsCreated || 0
+      } created, ${response.itemsUpdated || 0} updated, ${
+        response.itemsDeleted || 0
+      } deleted.`;
 
       if (response.parsingErrors && response.parsingErrors.length > 0) {
         successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
         console.warn("Excel Parsing Issues:", response.parsingErrors);
       }
-      if (response.databaseProcessingErrors && response.databaseProcessingErrors.length > 0) {
+      if (
+        response.databaseProcessingErrors &&
+        response.databaseProcessingErrors.length > 0
+      ) {
         successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
-        console.warn("Database Processing Errors:", response.databaseProcessingErrors);
+        console.warn(
+          "Database Processing Errors:",
+          response.databaseProcessingErrors
+        );
       }
-      setExcelUpdateStatus({ error: null, success: successMessage, details: response.databaseProcessingDetails || [] });
+      setExcelUpdateStatus({
+        error: null,
+        success: successMessage,
+        details: response.databaseProcessingDetails || [],
+      });
       showSuccess(successMessage);
       fetchItems(); // Refresh the list
       // Reset file input visually
-      const fileInput = document.getElementById('excel-upload-input');
+      const fileInput = document.getElementById("excel-upload-input");
       if (fileInput) {
         fileInput.value = null;
       }
@@ -747,7 +774,7 @@ export default function Items() {
   // const handleUpdateFromExcel = async () => { ... };
 
   const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
-  
+
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
@@ -773,10 +800,13 @@ export default function Items() {
         <div className="top-controls-container">
           {/* Row 1: Title, Add Item Button, Search Bar */}
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">Items List</h2>
-            
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* mt-2 mt-md-0 for responsiveness */}
+            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
+              Items List
+            </h2>
+
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
               {" "}
+              {/* mt-2 mt-md-0 for responsiveness */}{" "}
               <button
                 onClick={() => setShowModal(true)}
                 className="btn btn-success px-3" // Adjusted padding
@@ -798,7 +828,9 @@ export default function Items() {
 
           {/* Row 2: Filters and Excel Buttons */}
           <div className="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* Group for Excel buttons */}
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
+              {" "}
+              {/* Group for Excel buttons */}
               <button
                 onClick={handleExportToExcel}
                 className="btn btn-outline-primary"
@@ -806,17 +838,20 @@ export default function Items() {
               >
                 {isExportingExcel ? "Exporting..." : "Export to Excel"}
               </button>
-
               <button
-                onClick={() => document.getElementById('excel-upload-input')?.click()}
+                onClick={() =>
+                  document.getElementById("excel-upload-input")?.click()
+                }
                 className="btn btn-info"
-                disabled={anyLoading} 
+                disabled={anyLoading}
               >
                 {isProcessingExcel ? "Processing..." : "Upload & Update"}
               </button>
             </div>
-            
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* Group for filters */}
+
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
+              {" "}
+              {/* Group for filters */}
               <select
                 className="form-select"
                 style={{ width: "200px" }}
@@ -860,16 +895,16 @@ export default function Items() {
             </div>
           </div>
         </div>
-        
+
         {/* Hidden file input, triggered by the "Upload & Update" button */}
-            <input
-              type="file"
-              id="excel-upload-input"
-              style={{ display: 'none' }}
-              accept=".xlsx, .xls"
-              onChange={handleFileSelectedForUploadAndProcess}
-              disabled={anyLoading}
-            />
+        <input
+          type="file"
+          id="excel-upload-input"
+          style={{ display: "none" }}
+          accept=".xlsx, .xls"
+          onChange={handleFileSelectedForUploadAndProcess}
+          disabled={anyLoading}
+        />
 
         <div className="table-responsive">
           <table className="table table-striped table-bordered">

@@ -28,78 +28,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import {
   PDFViewer,
   PDFDownloadLink,
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
 } from "@react-pdf/renderer";
 
-const fullScreenModalStyle = {
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: "95vw",
-  height: "95vh",
-  maxWidth: "none",
-  margin: 0,
-  padding: 0,
-  overflow: "auto",
-};
-
-// PDF Document Styles
-const pdfStyles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontFamily: "Helvetica",
-    fontSize: 11,
-  },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-    textAlign: "center",
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  section: {
-    marginBottom: 15,
-  },
-  table: {
-    display: "table",
-    width: "auto",
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: "#000",
-  },
-  tableRow: {
-    flexDirection: "row",
-  },
-  tableColHeader: {
-    width: "25%",
-    fontWeight: "bold",
-    border: "1px solid #000",
-    padding: 5,
-  },
-  tableCol: {
-    width: "25%",
-    border: "1px solid #000",
-    padding: 5,
-    textAlign: "center",
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingTop: 5,
-    fontWeight: "bold",
-  },
-  footer: {
-    marginTop: 20,
-    textAlign: "center",
-    fontSize: 10,
-    color: "red",
-  },
-});
+import { showToast, handleApiError } from '../utils/helpers'; 
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
@@ -486,17 +417,17 @@ const handleSaveClientDetails = async () => {
       setQuotations(response.data);
       setQuotationsCount(response.data.length);
       setError(null); // Clear error on successful fetch
-    } catch (error) {
-      // console.error("Error fetching quotations:", error); // Debug log commented out
-      const errorMessage = error.response?.data?.message || error.message || "Failed to load quotations. Please try again.";
-      setError(errorMessage); // Keep for main error display
-      toast.error(errorMessage); // Show toast notification
+        } catch (error) {
+          // console.error("Error fetching quotations:", error); // Debug log commented out
+          const errorMessage = error.response?.data?.message || error.message || "Failed to load quotations. Please try again.";
+          setError(errorMessage); // Keep for main error display
+          showToast(errorMessage, false); // Show toast notification
 
-      // Log the error
-      if (auth.user) {
-        frontendLogger.error("quotationActivity", "Failed to fetch quotations", auth.user, {
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
+          // Log the error
+          if (auth.user) {
+            frontendLogger.error("quotationActivity", "Failed to fetch quotations", auth.user, {
+              errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
           responseData: error.response?.data,
           statusFilter,
           action: "FETCH_QUOTATIONS_FAILURE"
