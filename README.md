@@ -1,6 +1,3 @@
-Here's your beautifully formatted README file with proper Markdown styling while preserving all the original content:
-
-```markdown
 # ERP System - Quotation & User Management 🚀
 
 Welcome to the ERP System! This application is designed to streamline business processes, starting with robust Quotation Management and User Administration. It provides a user-friendly interface for creating, managing, and tracking quotations, along with tools for effective user account management.
