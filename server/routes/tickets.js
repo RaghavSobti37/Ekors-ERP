@@ -499,67 +499,6 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
-router.post("/:id/transfer", auth, async (req, res) => {
-  try {
-    const { userId, note } = req.body;
-    const currentUser = req.user || null;
-    const ticketId = req.params.id;
-
-    const ticket = await Ticket.findById(ticketId);
-    if (!ticket) {
-      return res.status(404).json({ message: "Ticket not found" });
-    }
-
-    if (ticket.currentAssignee.toString() !== currentUser.id.toString()) {
-      return res.status(403).json({
-        message:
-          "Forbidden: Only the current assignee can transfer this ticket.",
-      });
-    }
-
-    const assignedUser = await User.findById(userId);
-    if (!assignedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    ticket.transferHistory.push({
-      from: ticket.currentAssignee,
-      to: userId,
-      transferredBy: currentUser.id,
-      note: note || "",
-      transferredAt: new Date(),
-      statusAtTransfer: ticket.status,
-    });
-
-    ticket.assignmentLog.push({
-      assignedTo: userId,
-      assignedBy: currentUser.id,
-      action: "transferred",
-    });
-
-    ticket.currentAssignee = userId;
-    await ticket.save();
-
-    const populatedTicket = await Ticket.findById(ticket._id)
-      .populate("currentAssignee", "firstname lastname email")
-      .populate(
-        "transferHistory.from transferHistory.to transferHistory.transferredBy",
-        "firstname lastname email"
-      );
-
-    res.status(200).json({
-      ticket: populatedTicket,
-      currentAssignee: {
-        _id: assignedUser._id,
-        firstname: assignedUser.firstname,
-        lastname: assignedUser.lastname,
-        email: assignedUser.email,
-      },
-    });
-  } catch (error) {
-    console.error("Error transferring ticket:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
-
+// Route to transfer a ticket
+router.post("/:id/transfer", auth, ticketController.transferTicket);
 module.exports = router;

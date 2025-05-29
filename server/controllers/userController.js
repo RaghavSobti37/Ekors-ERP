@@ -240,3 +240,33 @@ exports.getUser = asyncHandler(async (req, res) => {
     });
   }
 });
+
+/**
+ * @desc    Get a list of users suitable for ticket transfer
+ * @route   GET /api/users/transfer-candidates
+ * @access  Private (Authenticated users)
+ */
+exports.getTransferCandidates = asyncHandler(async (req, res) => {
+  const initiator = req.user; // User making the request
+  const logContext = { initiatorId: initiator.id, initiatorEmail: initiator.email, action: "FETCH_TRANSFER_CANDIDATES" };
+
+  try {
+    // Authorization:
+    // For now, we allow any authenticated user to fetch this list.
+    // You might want to restrict this further based on roles if needed, e.g.,
+    // const allowedRoles = ['user', 'admin', 'super-admin'];
+    // if (!allowedRoles.includes(initiator.role)) {
+    //   logger.warn('user', `[AUTH_FAILURE] User ${initiator.email} (role: ${initiator.role}) attempted to fetch transfer candidates without permission.`, initiator, logContext);
+    //   return res.status(403).json({ message: 'Forbidden: You do not have permission to view this user list.' });
+    // }
+
+    const users = await User.find({ isActive: true }) // Optionally filter by active users
+      .select('firstname lastname email role _id department'); // Select only necessary fields
+
+    logger.info('user', `Successfully fetched ${users.length} user candidates for ticket transfer by ${initiator.email}.`, initiator, logContext);
+    res.status(200).json(users); // Send back the array of users directly
+  } catch (error) {
+    logger.error('user', `Failed to fetch user candidates for ticket transfer by ${initiator.email}.`, error, initiator, logContext);
+    res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
+  }
+});

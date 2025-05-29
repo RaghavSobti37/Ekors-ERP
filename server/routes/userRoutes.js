@@ -18,16 +18,9 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 // GET /api/users - Fetch all users (Super-admin only)
-router.get("/", auth, requireSuperAdmin, async (req, res) => {
-  try {
-    const users = await User.find().select("-password -__v"); // Exclude password and __v
-    res.json(users);
-  } catch (err) {
-    console.error("Error fetching users:", err);
-    res.status(500).json({ error: "Server error while fetching users" });
-  }
-});
-
+// Now uses the controller which has its own super-admin check,
+// but requireSuperAdmin middleware provides an early exit and consistent route protection.
+router.get("/", auth, requireSuperAdmin, userController.getAllUsers);
 // POST /api/users - Create a new user (Super-admin only)
 router.post(
   "/",
@@ -251,6 +244,13 @@ router.post(
       res.status(500).send("Server error");
     }
   }
+);
+
+// GET /api/users/transfer-candidates - Fetch users suitable for ticket transfer (Authenticated users)
+router.get(
+  "/transfer-candidates",
+  auth, // Ensures the user is authenticated
+  userController.getTransferCandidates // Uses the new controller function
 );
 
 module.exports = router;

@@ -391,3 +391,92 @@ exports.checkExistingTicket = async (req, res) => {
     res.status(500).json({ message: "Failed to check existing ticket" });
   }
 };
+
+exports.transferTicket = async (req, res) => {
+  const ticketId = req.params.id;
+  const { userId: newAssigneeId, note } = req.body; // userId is the ID of the user to transfer TO
+  const initiator = req.user; // User initiating the transfer
+
+  const logContext = {
+    ticketId,
+    initiatorId: initiator.id,
+    initiatorEmail: initiator.email,
+    newAssigneeId,
+    action: "TICKET_TRANSFER",
+  };
+
+  try {
+    logger.info("transfer", `[TRANSFER_INITIATED] Ticket ID: ${ticketId} to User ID: ${newAssigneeId} by User: ${initiator.email}.`, initiator, logContext);
+
+    const ticket = await Ticket.findById(ticketId);
+    if (!ticket) {
+      logger.warn("transfer", `[NOT_FOUND] Ticket not found for transfer: ${ticketId}.`, initiator, logContext);
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    const isSuperAdmin = initiator.role === 'super-admin';
+    const isCurrentAssignee = ticket.currentAssignee && ticket.currentAssignee.toString() === initiator.id.toString();
+
+    if (!isSuperAdmin && !isCurrentAssignee) {
+      logger.warn("transfer", `[AUTH_FAILURE] Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`, initiator, { ...logContext, currentAssignee: ticket.currentAssignee?.toString() });
+      return res.status(403).json({
+        message: "Forbidden: Only the current assignee or a super-admin can transfer this ticket.",
+      });
+    }
+    logger.debug("transfer", `[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}.`, initiator, logContext);
+
+    const newAssigneeUser = await User.findById(newAssigneeId);
+    if (!newAssigneeUser) {
+      logger.warn("transfer", `[ASSIGNEE_NOT_FOUND] User to transfer to (ID: ${newAssigneeId}) not found.`, initiator, logContext);
+      return res.status(404).json({ message: "User to transfer to not found" });
+    }
+
+    const oldAssigneeId = ticket.currentAssignee ? ticket.currentAssignee.toString() : null;
+
+    // Add to transferHistory
+    ticket.transferHistory.push({
+      from: ticket.currentAssignee, // The one who was assigned before this transfer
+      to: newAssigneeId,            // The new assignee
+      transferredBy: initiator.id,  // The user initiating the transfer
+      note: note || "",
+      transferredAt: new Date(),
+      statusAtTransfer: ticket.status,
+    });
+
+    // Add to assignmentLog
+    ticket.assignmentLog.push({
+      assignedTo: newAssigneeId,
+      assignedBy: initiator.id,
+      action: "transferred",
+      assignedAt: new Date(),
+    });
+
+    // Update currentAssignee
+    ticket.currentAssignee = newAssigneeId;
+    await ticket.save();
+    logger.info("transfer", `[TICKET_UPDATED] Ticket ID: ${ticketId} currentAssignee updated to ${newAssigneeId}.`, initiator, logContext);
+
+    // Update user documents: remove from old assignee's list, add to new assignee's list
+    if (oldAssigneeId && oldAssigneeId !== newAssigneeId.toString()) {
+      await User.findByIdAndUpdate(oldAssigneeId, { $pull: { tickets: ticket._id } });
+      logger.debug("transfer", `[USER_TICKET_REF_REMOVED] Ticket ${ticket._id} pulled from old assignee ${oldAssigneeId}.`, initiator, logContext);
+    }
+    await User.findByIdAndUpdate(newAssigneeId, { $addToSet: { tickets: ticket._id } });
+    logger.debug("transfer", `[USER_TICKET_REF_ADDED] Ticket ${ticket._id} added to new assignee ${newAssigneeId}.`, initiator, logContext);
+
+    const populatedTicket = await Ticket.findById(ticket._id)
+      .populate("currentAssignee", "firstname lastname email")
+      .populate("transferHistory.from transferHistory.to transferHistory.transferredBy", "firstname lastname email")
+      .populate("createdBy", "firstname lastname email"); // Added createdBy for completeness
+
+    logger.info("transfer", `[TRANSFER_SUCCESS] Ticket ID: ${ticketId} successfully transferred to ${newAssigneeUser.email}.`, initiator, logContext);
+    res.status(200).json({
+      message: "Ticket transferred successfully.",
+      ticket: populatedTicket,
+    });
+  } catch (error) {
+    logger.error("transfer", `[TRANSFER_ERROR] Error transferring Ticket ID: ${ticketId}.`, error, initiator, logContext);
+    res.status(500).json({ message: "Server error during ticket transfer.", details: error.message });
+  }
+};
+

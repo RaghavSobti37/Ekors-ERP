@@ -13,6 +13,7 @@ import ReusableTable from "../components/ReusableTable";
 import SortIndicator from "../components/SortIndicator";
 import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
+import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
 import "../css/Style.css";
 import ActionButtons from "../components/ActionButtons";
 import {
@@ -30,6 +31,7 @@ const Users = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isUnauthorized, setIsUnauthorized] = useState(false); // State for 403 error
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     firstname: "",
@@ -53,7 +55,7 @@ const Users = () => {
     const getAuthToken = () => {
     try {
       const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+    console.log("[DEBUG Client Users.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
     return token || null;
     } catch (e) {
       console.error("Failed to parse user data:", e);
@@ -78,11 +80,14 @@ const Users = () => {
           "[Users.jsx] fetchUsers: No token found. Aborting fetch."
         );
         setError("Authentication token not found. Please log in again.");
+        setLoading(false);
         // navigate("/login"); // Optional: redirect to login
         return;
       }
       setLoading(true);
-      // Ensure the API instance uses the latest token if it could have changed
+      setError(""); // Clear previous errors
+      setIsUnauthorized(false); // Reset unauthorized state
+
       api.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${authTokenString}`;
@@ -92,10 +97,16 @@ const Users = () => {
       );
       const response = await api.get("/api/users");
       console.log(
-        "[Users.jsx] fetchUsers: Successfully fetched users:",
+        "[Users.jsx] fetchUsers: Raw response from /api/users:",
         response.data
       );
-      setUsers(response.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setUsers(response.data.data);
+      } else {
+        console.warn("[Users.jsx] fetchUsers: response.data.data is not an array or is missing. Setting users to [].", response.data);
+        setUsers([]); // Ensure users is an array
+        setError("Received unexpected data format from server.");
+      }
       setLoading(false);
     } catch (err) {
       console.error(
@@ -103,13 +114,21 @@ const Users = () => {
         err.response || err
       );
       setError(err.response?.data?.error || "Failed to fetch users");
-      if (err.response?.status === 401) {
+      if (err.response?.status === 403) {
+        console.error(
+          "[Users.jsx] fetchUsers: Received 403 Forbidden. User is not authorized."
+        );
+        setError("You are not authorized to view this page. Only super-admins can access this.");
+        setIsUnauthorized(true);
+      } else if (err.response?.status === 401) {
         console.error(
           "[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired."
         );
+        setError("Authentication failed. Please log in again.");
         // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
         // navigate("/login");
       }
+      setUsers([]); // Ensure users is an empty array on error
       setLoading(false);
     }
   };
@@ -276,6 +295,10 @@ const Users = () => {
   // console.log("[Users.jsx] Current items for page:", currentItems.length, "Total pages:", totalPages);
 
   return (
+    <>
+      {isUnauthorized ? (
+        <Unauthorized />
+      ) : (
     <div>
       <Navbar />
 
@@ -587,6 +610,8 @@ const Users = () => {
                 />
       </div>
     </div>
+      )}
+    </>
   );
 };
 
