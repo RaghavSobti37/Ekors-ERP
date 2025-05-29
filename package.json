@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@react-pdf/renderer": "^4.3.0",
+    "framer-motion": "^12.10.4",
+    "xlsx": "^0.18.5"
+  }
+}

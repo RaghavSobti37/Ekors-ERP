@@ -1,0 +1,75 @@
+.pagination-wrapper {
+    display: flex;
+    justify-content: center; /* Center the content (pagination and rows-per-page) */
+    align-items: center;
+    padding: 12px 0;
+    /* border-top: 2px solid #000; */ /* Removed the top border line */
+    margin-top: 20px;
+    gap: 30px; /* Add some space between pagination controls and rows-per-page selector */
+  }
+  
+  .pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Adjusted gap for closer Prev/Next to page numbers */
+    color: black;
+    font-weight: 500;
+  }
+  
+  .page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Gap between individual page items */
+  }
+  
+  /* Base style for all buttons in pagination (Prev, Next, Page Numbers) */
+  .pagination-container .pagination-arrow,
+  .pagination-container .pagination-item {
+    background: white;
+    border: 1px solid #ccc;
+    color: #333;
+    padding: 6px 16px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    min-width: 35px; /* Ensure consistent width for page numbers */
+    text-align: center;
+    box-sizing: border-box;
+  }
+  
+  /* Specific padding for page number items if different from arrows */
+  .pagination-container .pagination-item {
+    padding: 6px 12px; 
+  }
+  
+  .pagination-container .pagination-arrow:hover:not(:disabled),
+  .pagination-container .pagination-item:hover:not(:disabled):not(.active) {
+    background: #f0f0f0;
+    border-color: #bbb;
+  }
+  
+  .pagination-container .pagination-arrow:disabled,
+  .pagination-container .pagination-item:disabled:not(.active) { /* Don't apply to active, already styled */
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #e9ecef;
+    border-color: #dee2e6;
+  }
+  
+  .pagination-item.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+    cursor: default; /* Active page is not clickable */
+  }
+  
+  .pagination-item.dots {
+    background: transparent;
+    border: none;
+    cursor: default;
+    padding: 6px 4px; /* Minimal padding for dots */
+    color: #333;
+    min-width: auto; /* Dots don't need fixed width */
+  }

@@ -1,0 +1,141 @@
+// PDF Document Template
+const styles = StyleSheet.create({
+    page: { padding: 30, fontFamily: "Helvetica" },
+    header: {
+        fontSize: 24,
+        marginBottom: 20,
+        textAlign: "center",
+        fontWeight: "bold",
+    },
+    section: { marginBottom: 15 },
+    row: {
+        flexDirection: "row",
+        marginBottom: 8,
+        borderBottom: "1px solid #eee",
+        paddingBottom: 8,
+    },
+    label: { width: 200, fontWeight: "bold" },
+    value: { flex: 1 },
+    table: { display: "table", width: "auto", marginTop: 20 },
+    tableRow: { flexDirection: "row" },
+    tableColHeader: {
+        width: "25%",
+        fontWeight: "bold",
+        border: "1px solid #000",
+        padding: 5,
+    },
+    tableCol: { width: "25%", border: "1px solid #000", padding: 5 },
+});
+
+const QuotationTemplate = ({ quotation }) => (
+    <Document>
+        <Page size="A4" style={styles.page}>
+            <Text style={styles.header}>QUOTATION</Text>
+
+            <View style={styles.section}>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Quotation Reference:</Text>
+                    <Text style={styles.value}>{quotation.referenceNumber}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Date:</Text>
+                    <Text style={styles.value}>
+                        {format(new Date(quotation.date), 'MM/dd/yyyy')}
+                    </Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Company Name:</Text>
+                    <Text style={styles.value}>{quotation.companyName}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>GST Number:</Text>
+                    <Text style={styles.value}>{quotation.gstNumber}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Contact Email:</Text>
+                    <Text style={styles.value}>{quotation.email}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Contact Phone:</Text>
+                    <Text style={styles.value}>{quotation.phone}</Text>
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Billing Address:</Text>
+                    <Text style={styles.value}>{quotation.billingAddress}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Shipping Address:</Text>
+                    <Text style={styles.value}>{quotation.shippingAddress}</Text>
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Bank Account Details:</Text>
+                    <Text style={styles.value}>{quotation.bankDetails}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Material Location:</Text>
+                    <Text style={styles.value}>{quotation.materialLocation}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Dispatch Days:</Text>
+                    <Text style={styles.value}>{quotation.dispatchDays}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Validity:</Text>
+                    <Text style={styles.value}>
+                        {format(new Date(quotation.validityDate), 'MM/dd/yyyy')}
+                    </Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Packing Charges:</Text>
+                    <Text style={styles.value}>₹{quotation.packingCharges.toFixed(2)}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Order Issued By:</Text>
+                    <Text style={styles.value}>{quotation.orderIssuedBy}</Text>
+                </View>
+            </View>
+
+            <View style={styles.table}>
+                <View style={[styles.tableRow, { backgroundColor: "#f0f0f0" }]}>
+                    <Text style={styles.tableColHeader}>Description</Text>
+                    <Text style={styles.tableColHeader}>HSN/SAC</Text>
+                    <Text style={styles.tableColHeader}>Qty</Text>
+                    <Text style={styles.tableColHeader}>Price (₹)</Text>
+                </View>
+                {quotation.goods.map((item, index) => (
+                    <View style={styles.tableRow} key={index}>
+                        <Text style={styles.tableCol}>{item.description}</Text>
+                        <Text style={styles.tableCol}>{item.hsnSacCode}</Text>
+                        <Text style={styles.tableCol}>{item.quantity}</Text>
+                        <Text style={styles.tableCol}>{item.price.toFixed(2)}</Text>
+                    </View>
+                ))}
+            </View>
+
+            <View style={[styles.section, { marginTop: 20 }]}>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Total Amount:</Text>
+                    <Text style={styles.value}>₹{quotation.totalAmount.toFixed(2)}</Text>
+                </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>GST (18%):</Text>
+                    <Text style={styles.value}>₹{quotation.gstAmount.toFixed(2)}</Text>
+                </View>
+                <View style={[styles.row, { borderBottom: 0 }]}>
+                    <Text style={[styles.label, { fontWeight: "bold" }]}>
+                        Grand Total:
+                    </Text>
+                    <Text style={[styles.value, { fontWeight: "bold" }]}>
+                        ₹{quotation.grandTotal.toFixed(2)}
+                    </Text>
+                </View>
+            </View>
+        </Page>
+    </Document>
+);

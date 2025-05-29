@@ -1,0 +1,64 @@
+.item-search-component {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-suggestions-dropdown {
+  position: fixed; /* Changed from absolute to fixed */
+  width: 100%;
+  max-width: calc(100% - 40px); /* Prevents overflow on sides */
+  max-height: 300px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  z-index: 9999; /* Much higher z-index to ensure it's above all elements */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Position the dropdown at the right place */
+.search-input-container .search-suggestions-dropdown {
+  top: auto; /* Reset top */
+  left: auto; /* Reset left */
+  /* These will be set dynamically in JS */
+}
+
+.search-suggestion-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.search-suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+.search-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.search-loading, .search-error, .search-no-results {
+  padding: 10px;
+  text-align: center;
+}
+
+.search-error {
+  color: #dc3545;
+}
+
+.search-no-results {
+  color: #6c757d;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+}

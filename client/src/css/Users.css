@@ -1,0 +1,585 @@
+/* Users Page Styles */
+.users-page {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .users-header h1 {
+    color: #4b0082;
+    font-size: 2rem;
+    margin: 0;
+  }
+  
+  .add-user-btn {
+    background-color: #4b0082;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .add-user-btn:hover {
+    background-color: #3a0069;
+    transform: translateY(-2px);
+  }
+  
+  .users-table-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .users-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .users-table thead {
+    background-color: #4b0082;
+    color: white;
+  }
+  
+  .users-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 500;
+  }
+  
+  .users-table tbody tr {
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+  }
+  
+  .users-table tbody tr:hover {
+    background-color: #e9ecef;
+  }
+  
+  .users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .user-avatar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .user-avatar span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background-color: #4b0082;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+  }
+  
+  .designation-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .designation-badge.admin {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .designation-badge.manager {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  
+  .designation-badge.user {
+    background-color: #d1ecf1;
+    color: #0c5460;
+  }
+  
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .status-badge.active {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .status-badge.inactive {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .action-buttons button {
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .action-buttons button:hover {
+    transform: scale(1.1);
+  }
+  
+  .view-btn {
+    background-color: #17a2b8;
+    color: white;
+  }
+  
+  .view-btn:hover {
+    background-color: #138496;
+  }
+  
+  .edit-btn {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  
+  .edit-btn:hover {
+    background-color: #e0a800;
+  }
+  
+  .delete-btn {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .delete-btn:hover {
+    background-color: #c82333;
+  }
+  
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+  }
+  
+  .user-modal {
+    background-color: white;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .edit-modal {
+    max-width: 700px;
+  }
+  
+  .modal-header {
+    padding: 1.5rem;
+    background-color: #4b0082;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+  
+  .close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .modal-content {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex-grow: 1;
+  }
+  
+  .user-profile {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .avatar-large {
+    width: 80px;
+    height: 80px;
+    background-color: #4b0082;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 1rem;
+  }
+  
+  .user-email {
+    color: #6c757d;
+    margin-top: 0.5rem;
+  }
+  
+  .user-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .detail-item {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 6px;
+  }
+  
+  .detail-label {
+    font-weight: 600;
+    color: #495057;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .detail-value {
+    color: #212529;
+    font-size: 1.1rem;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #495057;
+  }
+  
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.15s ease-in-out;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #4b0082;
+    box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
+  }
+  
+  .modal-footer {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+  
+  .close-modal-btn,
+  .cancel-btn,
+  .save-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .close-modal-btn,
+  .cancel-btn {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .close-modal-btn:hover,
+  .cancel-btn:hover {
+    background-color: #5a6268;
+  }
+  
+  .save-btn {
+    background-color: #4b0082;
+    color: white;
+  }
+  
+  .save-btn:hover {
+    background-color: #3a0069;
+  }
+
+  /* Add these styles to your existing Users.css */
+
+.other-designation-container {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.other-designation-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.add-designation-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-designation-btn:hover {
+    background-color: #218838;
+}
+
+/* Update the designation-badge styles to handle custom designations */
+.designation-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.designation-badge.admin {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.designation-badge.manager {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.designation-badge.user {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.designation-badge.director {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.designation-badge.sales-and-marketing {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.designation-badge.account {
+    background-color: #d6d8db;
+    color: #1b1e21;
+}
+
+.designation-badge.dispatch {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+/* Users Page Styles */
+.users-page {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.users-header h1 {
+    color: #4b0082;
+    font-size: 2rem;
+    margin: 0;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-container {
+    flex: 2;
+    min-width: 300px;
+    max-width: 500px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #4b0082;
+    box-shadow: 0 0 0 0.2rem rgba(75, 0, 130, 0.25);
+    background-color: white;
+}
+
+.add-user-btn {
+    background-color: #4b0082;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.add-user-btn:hover {
+    background-color: #3a0069;
+    transform: translateY(-2px);
+}
+
+/* Report Modal Styles */
+.report-summary {
+  padding: 15px;
+}
+
+.report-header {
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card h5 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #0d6efd;
+  margin: 10px 0;
+}
+
+.stat-details {
+  display: flex;
+  justify-content: space-around;
+  margin: 15px 0;
+  font-size: 0.9rem;
+}
+
+.stat-amount {
+  font-weight: bold;
+  color: #28a745;
+}
+
+.chart-container {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-container h5 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+  
