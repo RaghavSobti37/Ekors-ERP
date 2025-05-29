@@ -214,6 +214,7 @@ app.use('/api/users', userRoutes); // Mount user routes
 app.use(express.json()); // Make sure body parser is enabled
 app.use('/api', frontendLogRoute);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/items', require('./routes/itemlistRoutes')); // Your item routes
 
 const reportRoutes = require("./routes/reportRoutes");
 app.use("/api/reports", reportRoutes);

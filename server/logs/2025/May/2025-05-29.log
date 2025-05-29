@@ -710,3 +710,56 @@
 [2025-05-29 22:20:34] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
 [2025-05-29 22:22:06] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
 [2025-05-29 22:22:11] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 22:49:11] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 22:49:20] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:49:20] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:50:37] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:50:37] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:51:37] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 22:51:43] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:51:43] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:52:47] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:52:47] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:58:13] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 22:59:09] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:02:08] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:03:00] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:03:11] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 23:07:04] [System] [INFO] [excel_export] - API: Starting Excel export process
+[2025-05-29 23:07:04] [System] [INFO] [excel_export] - API: Excel file generated and sent for download
+[2025-05-29 23:10:09] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:10:25] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:11:05] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:11:23] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:12:20] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:12:35] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:24:17] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:24:39] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:24:40] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:25:57] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:26:26] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 0, Updated: 202. | Details: {"upsertResult":{"inserted":0,"modified":202,"errors":0}}
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":0,"itemsUpdated":202,"itemsDeleted":0}
+[2025-05-29 23:26:27] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:29:20] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:29:34] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 0, Updated: 202. | Details: {"upsertResult":{"inserted":0,"modified":202,"errors":0}}
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":0,"itemsUpdated":202,"itemsDeleted":0}
+[2025-05-29 23:29:34] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:30:43] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:30:54] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 236, Updated: 0. | Details: {"upsertResult":{"inserted":236,"modified":0,"errors":0}}
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":236,"itemsUpdated":0,"itemsDeleted":0}
+[2025-05-29 23:30:55] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed

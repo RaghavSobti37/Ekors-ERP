@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose'); // Add missing mongoose import
+const mongoose = require('mongoose');
 const itemController = require('../controllers/itemController');
 const purchaseController = require('../controllers/purchaseController');
 const auth = require('../middleware/auth'); // Import auth middleware
@@ -10,8 +10,11 @@ const { Purchase } = require('../models/itemlist'); // Import Purchase model
 router.get('/purchases/all', purchaseController.getAllPurchases); // Get all purchases
 router.post('/purchase', purchaseController.addBulkPurchase);     // Add bulk purchase
 router.get('/categories', itemController.getCategories);          // GET categories
+router.get('/export-excel', auth, itemController.exportItemsToExcel); // New route for export
+router.post('/import-uploaded-excel', auth, itemController.uploadMiddleware, itemController.importItemsFromUploadedExcel); // New route for uploaded excel import
 
 // Move this implementation to purchaseController and use a controller method instead
+// router.post('/import-from-excel', auth, itemController.importItemsFromExcelViaAPI); // Old route for server-side Excel import - commented out
 router.get('/:id/purchases', purchaseController.getItemPurchaseHistory);
 
 router.post('/:id/purchase', purchaseController.addSinglePurchase);  // Add purchase to specific item

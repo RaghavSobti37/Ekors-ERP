@@ -3,6 +3,8 @@ import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination";
+import { saveAs } from 'file-saver'; // For downloading files
+import { getAuthToken } from "../utils/authUtils";
 import * as XLSX from "xlsx";
 import ActionButtons from "../components/ActionButtons";
 import {
@@ -10,7 +12,7 @@ import {
   PencilSquare, // Edit
   Trash, // Delete
   BarChart, // Generate Report
-} from 'react-bootstrap-icons';
+} from "react-bootstrap-icons";
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -67,8 +69,17 @@ export default function Items() {
   const [filteredItemsList, setFilteredItemsList] = useState([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [isUpdatingFromExcel, setIsUpdatingFromExcel] = useState(false); // Old state for server-side excel
+  const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [excelUpdateStatus, setExcelUpdateStatus] = useState({
+    error: null,
+    success: null,
+    details: [],
+  });
 
   const showSuccess = (message) => {
+    // TODO: Replace with a proper toast notification library for better UX
     // Could use a toast library here
     alert(message);
   };
@@ -617,76 +628,248 @@ export default function Items() {
     }
   };
 
+  const handleExportToExcel = async () => {
+    setIsExportingExcel(true);
+    setExcelUpdateStatus({ error: null, success: null, details: [] }); // Clear previous status
+    if (
+      !window.confirm("This will download an Excel file of the current item list. Continue?")
+    ) {
+      setIsExportingExcel(false);
+      return;
+    }
+    try {
+      // Using fetch directly for blob handling simplicity here:
+      const token = localStorage.getItem("erp-user");
+      const fetchResponse = await fetch('/api/items/export-excel', { // Adjust API_URL if your proxy isn't set up
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${token}`,
+          },
+      });
+
+      if (!fetchResponse.ok) {
+          const errorData = await fetchResponse.json().catch(() => ({ message: fetchResponse.statusText }));
+          throw new Error(errorData.message || `Failed to export Excel: ${fetchResponse.status}`);
+      }
+
+      const blob = await fetchResponse.blob();
+      saveAs(blob, 'items_export.xlsx');
+      setExcelUpdateStatus({ error: null, success: 'Items exported to Excel successfully!', details: [] });
+      showSuccess('Items exported to Excel successfully!');
+
+    } catch (err) {
+      console.error("Error exporting to Excel:", err);
+      const message = err.message || "Failed to export items to Excel.";
+      setExcelUpdateStatus({ error: message, success: null, details: [] });
+      setError(message); // Show error in the main error display
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
+  // This function will now handle file selection AND initiate processing
+  const handleFileSelectedForUploadAndProcess = async (event) => {
+    const file = event.target.files[0];
+    setExcelUpdateStatus({ error: null, success: null, details: [] }); // Clear status on new file select
+
+    if (!file) {
+      event.target.value = null; // Reset file input if no file selected
+      return;
+    }
+
+    // Confirmation before processing
+    if (!window.confirm(
+        "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
+        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+        "Are you absolutely sure you want to proceed?"
+      )) {
+      return;
+    }
+    setIsProcessingExcel(true);
+
+    const formData = new FormData();
+    formData.append('excelFile', file); 
+
+    try {
+      const token = getAuthToken(); // Use authUtils
+      const fetchResponse = await fetch('/api/items/import-uploaded-excel', { // Adjust API_URL if needed
+          method: 'POST',
+          headers: {
+              'Authorization': `Bearer ${token}`,
+              // 'Content-Type': 'multipart/form-data' // Fetch sets this automatically for FormData
+          },
+          body: formData,
+      });
+
+      const responseData = await fetchResponse.json();
+
+      if (!fetchResponse.ok) {
+        throw new Error(responseData.message || `Failed to process Excel: ${fetchResponse.status}`);
+      }
+
+      const response = responseData;
+
+      let successMessage = `Excel sync complete: ${response.itemsCreated || 0} created, ${response.itemsUpdated || 0} updated, ${response.itemsDeleted || 0} deleted.`;
+      
+
+      if (response.parsingErrors && response.parsingErrors.length > 0) {
+        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
+        console.warn("Excel Parsing Issues:", response.parsingErrors);
+      }
+      if (response.databaseProcessingErrors && response.databaseProcessingErrors.length > 0) {
+        successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
+        console.warn("Database Processing Errors:", response.databaseProcessingErrors);
+      }
+      setExcelUpdateStatus({ error: null, success: successMessage, details: response.databaseProcessingDetails || [] });
+      showSuccess(successMessage);
+      fetchItems(); // Refresh the list
+      // Reset file input visually
+      const fileInput = document.getElementById('excel-upload-input');
+      if (fileInput) {
+        fileInput.value = null;
+      }
+    } catch (err) {
+      console.error("Error updating from Excel:", err);
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to update items from Excel.";
+      setExcelUpdateStatus({ error: message, success: null, details: [] });
+      setError(message); // Show error in the main error display
+    } finally {
+      setIsProcessingExcel(false);
+      event.target.value = null; // Reset file input after processing attempt
+    }
+  };
+
+  // Comment out or remove the old handleUpdateFromExcel if it's no longer used
+  // const handleUpdateFromExcel = async () => { ... };
+
+  const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
+  
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        <h2 style={{ color: "black" }}>Items List</h2>
+        {/* <h2 style={{ color: "black" }}>Items List</h2> */}
 
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
         )}
+        {excelUpdateStatus.error && (
+          <div className="alert alert-danger" role="alert">
+            Excel Update Error: {excelUpdateStatus.error}
+          </div>
+        )}
+        {excelUpdateStatus.success && (
+          <div className="alert alert-success" role="alert">
+            {excelUpdateStatus.success}
+          </div>
+        )}
 
         <div className="top-controls-container">
-          <div className="controls-row">
-            <button
-              onClick={() => setShowModal(true)}
-              className="btn btn-success px-4"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Processing..." : "Add New Item"}
-            </button>
+          {/* Row 1: Title, Add Item Button, Search Bar */}
+          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <h2 style={{ color: "black", margin: 0 }} className="me-auto">Items List</h2>
+            
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* mt-2 mt-md-0 for responsiveness */}
+              {" "}
+              <button
+                onClick={() => setShowModal(true)}
+                className="btn btn-success px-3" // Adjusted padding
+                disabled={anyLoading}
+              >
+                {isSubmitting ? "Processing..." : "Add New Item"}
+              </button>
+              <input
+                type="text"
+                placeholder="🔍 Search items or HSN codes..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="form-control search-input"
+                style={{ minWidth: "250px" }} // Ensure it has some width
+                disabled={anyLoading}
+              />
+            </div>
+          </div>
 
-            <select
-              className="form-select"
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setSelectedSubcategory("All");
-                setCurrentPage(1);
-              }}
-              disabled={isSubmitting}
-            >
-              <option value="All">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat.category} value={cat.category}>
-                  {cat.category}
-                </option>
-              ))}
-            </select>
+          {/* Row 2: Filters and Excel Buttons */}
+          <div className="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* Group for Excel buttons */}
+              <button
+                onClick={handleExportToExcel}
+                className="btn btn-outline-primary"
+                disabled={anyLoading}
+              >
+                {isExportingExcel ? "Exporting..." : "Export to Excel"}
+              </button>
 
-            <select
-              className="form-select"
-              value={selectedSubcategory}
-              onChange={(e) => {
-                setSelectedSubcategory(e.target.value);
-                setCurrentPage(1);
-              }}
-              disabled={selectedCategory === "All" || isSubmitting}
-            >
-              <option value="All">All Subcategories</option>
-              {selectedCategory !== "All" &&
-                categories
-                  .find((c) => c.category === selectedCategory)
-                  ?.subcategories.map((subcat) => (
-                    <option key={subcat} value={subcat}>
-                      {subcat}
+              <button
+                onClick={() => document.getElementById('excel-upload-input')?.click()}
+                className="btn btn-info"
+                disabled={anyLoading} 
+              >
+                {isProcessingExcel ? "Processing..." : "Upload & Update"}
+              </button>
+            </div>
+            
+            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0"> {/* Group for filters */}
+              <select
+                className="form-select"
+                style={{ width: "200px" }}
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setSelectedSubcategory("All");
+                  setCurrentPage(1);
+                }}
+                disabled={anyLoading}
+              >
+                <option value="All">All Categories</option>
+                {Array.isArray(categories) &&
+                  categories.map((cat) => (
+                    <option key={cat.category} value={cat.category}>
+                      {cat.category}
                     </option>
                   ))}
-            </select>
-
-            <input
-              type="text"
-              placeholder="🔍 Search items or HSN codes..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="form-control search-input"
-              disabled={isSubmitting}
-            />
+              </select>
+              <select
+                className="form-select"
+                style={{ width: "200px" }}
+                value={selectedSubcategory}
+                onChange={(e) => {
+                  setSelectedSubcategory(e.target.value);
+                  setCurrentPage(1);
+                }}
+                disabled={selectedCategory === "All" || anyLoading}
+              >
+                <option value="All">All Subcategories</option>
+                {selectedCategory !== "All" &&
+                  Array.isArray(categories) &&
+                  categories
+                    .find((c) => c.category === selectedCategory)
+                    ?.subcategories.map((subcat) => (
+                      <option key={subcat} value={subcat}>
+                        {subcat}
+                      </option>
+                    ))}
+              </select>
+            </div>
           </div>
         </div>
+        
+        {/* Hidden file input, triggered by the "Upload & Update" button */}
+            <input
+              type="file"
+              id="excel-upload-input"
+              style={{ display: 'none' }}
+              accept=".xlsx, .xls"
+              onChange={handleFileSelectedForUploadAndProcess}
+              disabled={anyLoading}
+            />
 
         <div className="table-responsive">
           <table className="table table-striped table-bordered">
@@ -704,8 +887,10 @@ export default function Items() {
                 ].map((key) => (
                   <th
                     key={key}
-                    onClick={() => !isSubmitting && requestSort(key)}
-                    style={{ cursor: isSubmitting ? "not-allowed" : "pointer" }}
+                    onClick={() => !anyLoading && requestSort(key)}
+                    style={{
+                      cursor: anyLoading ? "not-allowed" : "pointer",
+                    }}
                   >
                     {key.charAt(0).toUpperCase() +
                       key.slice(1).replace(/([A-Z])/g, " $1")}
@@ -714,8 +899,12 @@ export default function Items() {
                   </th>
                 ))}
                 <th
-                  onClick={() => !isSubmitting && requestSort("maxDiscountPercentage")}
-                  style={{ cursor: isSubmitting ? "not-allowed" : "pointer" }}
+                  onClick={() =>
+                    !anyLoading && requestSort("maxDiscountPercentage")
+                  }
+                  style={{
+                    cursor: anyLoading ? "not-allowed" : "pointer",
+                  }}
                 >
                   Max Disc. %
                   {sortConfig.key === "maxDiscountPercentage" &&
@@ -738,7 +927,7 @@ export default function Items() {
                             onChange={(e) =>
                               setFormData({ ...formData, name: e.target.value })
                             }
-                            disabled={isSubmitting}
+                            disabled={anyLoading}
                           />
                         ) : (
                           item.name
@@ -759,7 +948,7 @@ export default function Items() {
                                 quantity: e.target.value,
                               })
                             }
-                            disabled={isSubmitting}
+                            disabled={anyLoading}
                           />
                         ) : (
                           item.quantity
@@ -779,7 +968,7 @@ export default function Items() {
                                 price: e.target.value,
                               })
                             }
-                            disabled={isSubmitting}
+                            disabled={anyLoading}
                           />
                         ) : (
                           `₹${parseFloat(item.price).toFixed(2)}`
@@ -800,7 +989,7 @@ export default function Items() {
                                 gstRate: e.target.value,
                               })
                             }
-                            disabled={isSubmitting}
+                            disabled={anyLoading}
                           />
                         ) : (
                           `${item.gstRate || 0}%`
@@ -825,11 +1014,16 @@ export default function Items() {
                             className="form-control form-control-sm"
                             name="maxDiscountPercentage"
                             value={formData.maxDiscountPercentage}
-                            onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                maxDiscountPercentage: e.target.value,
+                              })
+                            }
                             min="0"
                             max="100"
                             placeholder="Max %"
-                            disabled={isSubmitting}
+                            disabled={anyLoading}
                           />
                         ) : item.maxDiscountPercentage > 0 ? (
                           `${item.maxDiscountPercentage}%`
@@ -844,14 +1038,14 @@ export default function Items() {
                               <button
                                 onClick={handleSave}
                                 className="btn btn-success btn-sm"
-                                disabled={isSubmitting}
+                                disabled={anyLoading}
                               >
                                 {isSubmitting ? "Saving..." : "Save"}
                               </button>
                               <button
                                 onClick={handleCancel}
                                 className="btn btn-secondary btn-sm"
-                                disabled={isSubmitting}
+                                disabled={anyLoading}
                               >
                                 Cancel
                               </button>
@@ -861,7 +1055,7 @@ export default function Items() {
                               <button
                                 onClick={() => toggleDetails(item._id)}
                                 className="btn btn-info btn-sm"
-                                disabled={isSubmitting}
+                                disabled={anyLoading}
                                 title="View"
                               >
                                 👁️
@@ -870,7 +1064,7 @@ export default function Items() {
                               <button
                                 onClick={() => handleEdit(item)}
                                 className="btn btn-primary btn-sm"
-                                disabled={isSubmitting}
+                                disabled={anyLoading}
                                 title="Edit"
                               >
                                 ✏️
@@ -878,7 +1072,7 @@ export default function Items() {
                               <button
                                 onClick={() => handleDelete(item._id)}
                                 className="btn btn-danger btn-sm"
-                                disabled={isSubmitting}
+                                disabled={anyLoading}
                                 title="Delete"
                               >
                                 🗑️
@@ -936,7 +1130,10 @@ export default function Items() {
                                   {item.hsnCode || "-"}
                                 </p>
                                 <p>
-                                  <strong>Max Discount:</strong> {item.maxDiscountPercentage > 0 ? `${item.maxDiscountPercentage}%` : "N/A"}
+                                  <strong>Max Discount:</strong>{" "}
+                                  {item.maxDiscountPercentage > 0
+                                    ? `${item.maxDiscountPercentage}%`
+                                    : "N/A"}
                                 </p>
                               </div>
                             </div>
@@ -1149,11 +1346,12 @@ export default function Items() {
                         }
                       >
                         <option value="">Select Category</option>
-                        {categories.map((cat) => (
-                          <option key={cat.category} value={cat.category}>
-                            {cat.category}
-                          </option>
-                        ))}
+                        {Array.isArray(categories) &&
+                          categories.map((cat) => (
+                            <option key={cat.category} value={cat.category}>
+                              {cat.category}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -1173,6 +1371,7 @@ export default function Items() {
                       >
                         <option value="General">General</option>
                         {formData.category &&
+                          Array.isArray(categories) &&
                           categories
                             .find((c) => c.category === formData.category)
                             ?.subcategories.map((subcat) => (
@@ -1183,7 +1382,9 @@ export default function Items() {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label htmlFor="maxDiscountPercentageModalItemForm">Max Discount (%)</label>
+                      <label htmlFor="maxDiscountPercentageModalItemForm">
+                        Max Discount (%)
+                      </label>
                       <input
                         type="number"
                         className="form-control mb-2"
@@ -1191,7 +1392,12 @@ export default function Items() {
                         placeholder="Max Discount % (0-100)"
                         name="maxDiscountPercentage"
                         value={formData.maxDiscountPercentage}
-                        onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxDiscountPercentage: e.target.value,
+                          })
+                        }
                         min="0"
                         max="100"
                       />
@@ -1225,7 +1431,10 @@ export default function Items() {
                   onClick={handleAddItem}
                   className="btn btn-success"
                   disabled={
-                    !formData.name || !formData.price || !formData.category || isSubmitting
+                    !formData.name ||
+                    !formData.price ||
+                    !formData.category ||
+                    isSubmitting
                   }
                 >
                   {isSubmitting ? "Adding..." : "Add New Item"}
