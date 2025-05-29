@@ -1,6 +1,3 @@
---- /dev/null
-+++ b/README.md
-@@ -0,0 +1,519 @@
 +#  ERP System - Quotation & User Management 🚀
 +
 +Welcome to the ERP System! This application is designed to streamline business processes, starting with robust Quotation Management and User Administration. It provides a user-friendly interface for creating, managing, and tracking quotations, along with tools for effective user account management.
