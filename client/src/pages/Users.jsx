@@ -160,10 +160,19 @@ const Users = () => {
     setShowEditModal(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+  const handleDelete = async (userArg) => { // userArg can be the user object or just the ID string
+    const userIdToDelete = typeof userArg === 'string' ? userArg : userArg?._id;
+
+    if (!userIdToDelete) {
+      console.error("[Users.jsx] handleDelete: Invalid user ID for deletion. Argument received:", userArg);
+      alert("Cannot delete user: User ID is missing or invalid.");
+      return;
+    }
+
+    // Improved confirmation message
+    if (window.confirm(`Are you sure you want to delete user ${userArg?.firstname || 'this user'} (ID: ${userIdToDelete})?`)) {
       console.log(
-        `[Users.jsx] handleDelete: Attempting to delete user ${userId}`
+        `[Users.jsx] handleDelete: Attempting to delete user ${userIdToDelete}`
       );
       const authTokenString = getAuthToken();
       if (!authTokenString) {
@@ -177,17 +186,17 @@ const Users = () => {
         api.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${authTokenString}`;
-        await api.delete(`/api/users/${userId}`);
+        await api.delete(`/api/users/${userIdToDelete}`);
         console.log(
-          `[Users.jsx] handleDelete: Successfully deleted user ${userId}`
+          `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
         );
-        setUsers(users.filter((user) => user._id !== userId));
+        setUsers(users.filter((user) => user._id !== userIdToDelete));
       } catch (err) {
         console.error(
-          "[Users.jsx] handleDelete: Error deleting user:",
-          err.response || err
+          "[Users.jsx] handleDelete: Error deleting user. Status:",
+          err.response?.status, "Message:", err.response?.data?.message || err.message
         );
-        alert(err.response?.data?.error || "Failed to delete user");
+        alert(err.response?.data?.message || err.message || "Failed to delete user");
         if (err.response?.status === 401) {
         }
       }
