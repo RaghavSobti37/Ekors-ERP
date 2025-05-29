@@ -24,3 +24,88 @@
       at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
       at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10016:13)
       at doubleInvokeEffectsOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11461:207) | Details: {"context":"getAuthToken - localStorage access or JSON.parse error"}
+[2025-05-30 00:01:31] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-30 00:06:50] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:06:50] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:06:52] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:06:52] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:06:53] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:06:57] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:07:00] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:07:23] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:07:23] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:43] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:43] [Raghav Sobti] [ERROR] [quotationActivity] - Failed to fetch quotations | Error: authTokenString is not defined
+  Stack Trace:
+  ReferenceError: authTokenString is not defined
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:633:36
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:664:7
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9887:29)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9881:13)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13) | Details: {"statusFilter":"all","action":"FETCH_QUOTATIONS_FAILURE"}
+[2025-05-30 00:09:43] [Raghav Sobti] [ERROR] [quotationActivity] - Failed to fetch quotations | Error: authTokenString is not defined
+  Stack Trace:
+  ReferenceError: authTokenString is not defined
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:633:36
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:664:7
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10016:13)
+      at recursivelyTraverseReconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9995:11)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10009:13)
+      at doubleInvokeEffectsOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11461:207) | Details: {"statusFilter":"all","action":"FETCH_QUOTATIONS_FAILURE"}
+[2025-05-30 00:09:43] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:44] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:44] [Raghav Sobti] [ERROR] [quotationActivity] - Failed to fetch quotations | Error: authTokenString is not defined
+  Stack Trace:
+  ReferenceError: authTokenString is not defined
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:633:36
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:664:7
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9887:29)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9881:13)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13) | Details: {"statusFilter":"all","action":"FETCH_QUOTATIONS_FAILURE"}
+[2025-05-30 00:09:44] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:44] [Raghav Sobti] [ERROR] [quotationActivity] - Failed to fetch quotations | Error: authTokenString is not defined
+  Stack Trace:
+  ReferenceError: authTokenString is not defined
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:633:36
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:664:7
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10016:13)
+      at recursivelyTraverseReconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9995:11)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10009:13)
+      at recursivelyTraverseReconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9995:11) | Details: {"statusFilter":"all","action":"FETCH_QUOTATIONS_FAILURE"}
+[2025-05-30 00:09:44] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:09:44] [Raghav Sobti] [ERROR] [quotationActivity] - Failed to fetch quotations | Error: authTokenString is not defined
+  Stack Trace:
+  ReferenceError: authTokenString is not defined
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:633:36
+      at http://localhost:5173/src/pages/Quotations.jsx?t=1748543979054:664:7
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9887:29)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9881:13)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13) | Details: {"statusFilter":"all","action":"FETCH_QUOTATIONS_FAILURE"}
+[2025-05-30 00:10:04] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:10:04] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:10:05] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:10:11] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 00:10:11] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
