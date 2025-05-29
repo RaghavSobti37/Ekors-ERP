@@ -99,7 +99,6 @@ const ticketBackupSchema = new mongoose.Schema({
 });
 
 ticketBackupSchema.index({ deletedAt: -1 });
-ticketBackupSchema.index({ originalId: 1 });
 ticketBackupSchema.index({ quotationNumber: 1 }); // Keep if useful for searching backups
 
 module.exports = mongoose.model('TicketBackup', ticketBackupSchema);
