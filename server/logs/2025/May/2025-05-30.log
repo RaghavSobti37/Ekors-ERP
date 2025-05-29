@@ -1,0 +1,26 @@
+[2025-05-30 00:00:04] [System] [ERROR] [localStorageAccessOrParse] - Failed to get/parse auth token from localStorage | Error: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at getAuthToken (http://localhost:5173/src/utils/authUtils.js:17:27)
+      at fetchUsers (http://localhost:5173/src/pages/Users.jsx:78:31)
+      at http://localhost:5173/src/pages/Users.jsx:132:5
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9887:29)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13) | Details: {"context":"getAuthToken - localStorage access or JSON.parse error"}
+[2025-05-30 00:00:05] [System] [ERROR] [localStorageAccessOrParse] - Failed to get/parse auth token from localStorage | Error: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at getAuthToken (http://localhost:5173/src/utils/authUtils.js:17:27)
+      at fetchUsers (http://localhost:5173/src/pages/Users.jsx:78:31)
+      at http://localhost:5173/src/pages/Users.jsx:132:5
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10016:13)
+      at doubleInvokeEffectsOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11461:207) | Details: {"context":"getAuthToken - localStorage access or JSON.parse error"}

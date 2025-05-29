@@ -16,6 +16,7 @@ import "../css/Users.css";
 import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
 import "../css/Style.css";
 import ActionButtons from "../components/ActionButtons";
+import { getAuthToken } from "../utils/authUtils";
 import {
   Eye, // View
   PencilSquare, // Edit
@@ -52,16 +53,16 @@ const Users = () => {
     setShowReportModal(true);
   };
 
-    const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Users.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
+  //   const getAuthToken = () => {
+  //   try {
+  //     const token = localStorage.getItem("erp-user");
+  //   console.log("[DEBUG Client Users.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+  //   return token || null;
+  //   } catch (e) {
+  //     console.error("Failed to parse user data:", e);
+  //     return null;
+  //   }
+  // };
   
 
   // Axios instance with base URL and auth header

@@ -137,21 +137,37 @@ async function getUserReportDataInternal(userId, period) {
                     if: { $eq: [{ $size: "$$parts" }, 2] }, // "HH:MM" format
                     then: {
                       $add: [
-                        { $multiply: [{ $toInt: { $arrayElemAt: ["$$parts", 0] } }, 60] }, // Hours to minutes
-                        { $toInt: { $arrayElemAt: ["$$parts", 1] } }                      // Minutes
+ {
+                          $multiply: [
+                            { $convert: { input: { $arrayElemAt: ["$$parts", 0] }, to: "int", onError: 0, onNull: 0 } },
+                            60
+                          ]
+                        }, // Hours to minutes
+                        { $convert: { input: { $arrayElemAt: ["$$parts", 1] }, to: "int", onError: 0, onNull: 0 } } // Minutes// Minutes
                       ]
                     },
                     else: {
                       $cond: {
                         if: { $eq: [{ $size: "$$parts" }, 1] }, // "MM" format (just minutes)
-                        then: { $toInt: { $arrayElemAt: ["$$parts", 0] } },
+                         then: { $convert: { input: { $arrayElemAt: ["$$parts", 0] }, to: "int", onError: 0, onNull: 0 } },
                         else: 0 // Default to 0 if format is unexpected or not a parsable number string
                       }
                     }
                   }
                 },
                 else: { // If logs.timeSpent is already a number, use it directly. Otherwise, 0.
-                  $cond: { if: { $isNumber: "$logs.timeSpent" }, then: "$logs.timeSpent", else: 0 }
+                                    $cond: {
+                    if: { $isNumber: "$logs.timeSpent" },
+                    then: "$logs.timeSpent",
+                    else: {
+                      // Attempt to convert if it's a string that's just a number, e.g., "120"
+                      $cond: {
+                        if: { $eq: [{ $type: "$logs.timeSpent" }, "string"] },
+                        then: { $convert: { input: "$logs.timeSpent", to: "int", onError: 0, onNull: 0 } },
+                        else: 0 // Default to 0 if not a number and not a string that can be converted
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -233,7 +249,6 @@ exports.getUserReport = async (req, res, next) => {
   }
 };
 
-// @route   GET /api/reports/users/:userId/export-excel
 // @access  Private
 // exports.exportUserReportToExcel = async (req, res, next) => {
 //   try {

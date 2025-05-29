@@ -21,6 +21,8 @@ import {
   Legend,
 } from "chart.js";
 
+import { getAuthToken } from "../utils/authUtils"; 
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -69,7 +71,8 @@ const UserReportModal = ({ show, onHide, user }) => {
     setReportData(null); // Clear previous data
 
     try {
-      const token = localStorage.getItem("erp-user") ? JSON.parse(localStorage.getItem("erp-user")).token : null;
+      const token = getAuthToken(); // Use the centralized function
+
       if (!token) {
         console.error("[UserReportModal.jsx] fetchReport: Auth token not found.");
         setError("Authentication token not found. Please log in again.");
@@ -135,7 +138,8 @@ const UserReportModal = ({ show, onHide, user }) => {
       setError("User information is missing. Cannot generate PDF.");
       return;
     }
-    const token = localStorage.getItem("erp-user") ? JSON.parse(localStorage.getItem("erp-user")).token : null;
+    const token = getAuthToken(); // Use the centralized function
+
     if (!token) {
       console.error("[UserReportModal.jsx] generatePDF: Auth token not found.");
       setError("Authentication token not found. Please log in again.");
