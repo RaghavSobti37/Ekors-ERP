@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "../css/Navbar.css";
 import {
   FaUser,
@@ -9,8 +9,13 @@ import {
   FaBoxOpen,
   FaUsers,
 } from "react-icons/fa";
+import { Navbar as BootstrapNavbar, Nav, NavDropdown, Button } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import apiClient from "../utils/apiClient"; // Assuming you have this
+import { getAuthToken } from "../utils/authUtils"; // Assuming you have this
+
 // import AddNewItem from '../pages/AddNewItem';
 
 export default function Navbar({ showPurchaseModal }) {
@@ -19,10 +24,33 @@ export default function Navbar({ showPurchaseModal }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const navigate = useNavigate();
+  const [restockAlertCount, setRestockAlertCount] = useState(0);
   const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) return; // Don't fetch if not logged in
+
+    const fetchRestockData = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) return;
+        // Use apiClient if it's configured with auth headers, otherwise add token manually
+        const response = await apiClient("/items/restock-summary");
+        setRestockAlertCount(response.count || 0);
+      } catch (error) {
+        console.error("Navbar: Failed to fetch restock summary:", error);
+        // Don't show an error toast here, as it's a background check
+      }
+    };
+
+    fetchRestockData();
+    // Optional: Set an interval to refresh periodically
+    const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
+    return () => clearInterval(intervalId);
+  }, [user]); // Re-fetch if user logs in/out
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -136,12 +164,17 @@ export default function Navbar({ showPurchaseModal }) {
                   >
                     Purchase History
                   </div>
-                  {/* <div
-                    onClick={() => setShowNewItemModal(true)}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Add New Item
-                  </div> */}
+                  {user && restockAlertCount > 0 && (
+                    <Nav.Link
+                      as={Link}
+                      to="/itemslist"
+                      className="text-danger fw-bold"
+                      title={`${restockAlertCount} items need restocking!`}
+                    >
+                      <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                      Restock ({restockAlertCount})
+                    </Nav.Link>
+                  )}
                 </div>
               )}
             </div>

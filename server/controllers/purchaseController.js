@@ -128,37 +128,65 @@ exports.addBulkPurchase = async (req, res) => {
     const savedPurchase = await purchase.save();
     
     // Update each item's purchase history and quantity
-    for (const purchasedItem of items) { // Renamed to avoid conflict
+    for (const purchasedItem of savedPurchase.items) { // Iterate over items from the saved purchase document
+      logger.debug('purchase_item_processing', `Processing purchase line item: ${JSON.stringify(purchasedItem)}`, user);
+      let itemToUpdate = null;
       if (purchasedItem.itemId) { // Only if it's an existing item with a valid ID
-        const itemToUpdate = await Item.findById(purchasedItem.itemId);
+    logger.debug('purchase_stock_update', `Processing item with ID: ${purchasedItem.itemId}, Description: ${purchasedItem.description}`, user);
+        itemToUpdate = await Item.findById(purchasedItem.itemId);
+      } else if (purchasedItem.description) {
+        // Fallback: If itemId is not present, try to find by description (name)
+        // For a more robust match, HSN code should ideally be part of purchasedItem if available from input
+        logger.debug('purchase_stock_update', `Attempting to find item by description (name) only: "${purchasedItem.description}" as itemId was not provided.`, user);
+        itemToUpdate = await Item.findOne({ name: purchasedItem.description });
         if (itemToUpdate) {
-            itemToUpdate.quantity += purchasedItem.quantity;
-            // Add to item's specific purchase history
-            itemToUpdate.purchaseHistory.push({
-                purchaseId: savedPurchase._id,
-                date: new Date(date),
-                companyName,
-                gstNumber,
-                address,
-                stateName, 
-                invoiceNumber,
-               quantity: purchasedItem.quantity,
-                price: purchasedItem.price,
-                gstRate: (() => { // IIFE to ensure gstRate is valid number
-                    let finalGstRate = parseFloat(purchasedItem.gstRate);
-                    if (isNaN(finalGstRate) || finalGstRate < 0) return 0;
-                    return finalGstRate;
-                })()
-            });
-            await itemToUpdate.save(); // Save the updated item
-        } else {
-            // Optionally, handle cases where an itemId is provided but the item doesn't exist
-            // For now, we'll log a warning. Depending on requirements, this could be an error.
-            console.warn(`Item with ID ${purchasedItem.itemId} not found during bulk purchase stock update. Purchase record ${savedPurchase._id} was created, but this item was not updated.`);
+          logger.info('purchase_stock_update', `Found item by name match: ${itemToUpdate.name} (ID: ${itemToUpdate._id}). Proceeding with stock update.`, user);
         }
       }
+
+        if (itemToUpdate) {
+        logger.debug('purchase_stock_update', `Found item in DB: ${itemToUpdate.name}, Current Qty: ${itemToUpdate.quantity}`, user);
+            const quantityAdded = purchasedItem.quantity;
+            itemToUpdate.quantity += purchasedItem.quantity;
+            itemToUpdate.lastPurchaseDate = savedPurchase.date; // Update last purchase date
+            itemToUpdate.lastPurchasePrice = purchasedItem.price; // Update last purchase price
+
+            // Update restock status
+            if (itemToUpdate.needsRestock) {
+              itemToUpdate.restockAmount -= quantityAdded;
+              if (itemToUpdate.restockAmount <= 0 || itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+                itemToUpdate.needsRestock = false;
+                itemToUpdate.restockAmount = 0;
+                logger.info('inventory', `Item ${itemToUpdate.name} restocked. No longer needs restock. New Qty: ${itemToUpdate.quantity}`, user);
+              } else {
+                logger.info('inventory', `Item ${itemToUpdate.name} partially restocked. Still needs: ${itemToUpdate.restockAmount}. New Qty: ${itemToUpdate.quantity}`, user);
+              }
+            }
+
+            // TODO: Review this. The Item model (models/itemlist.js) does not seem to have 'purchaseHistory' array anymore.
+            // Add to item's specific purchase history
+            // If you have a direct purchaseHistory array on Item model:
+            // itemToUpdate.purchaseHistory.push({ /* ... purchase details ... */ });
+
+            await itemToUpdate.save(); // Save the updated item
+            logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via purchase ${savedPurchase.invoiceNumber}. Added: ${quantityAdded}, New Qty: ${itemToUpdate.quantity}`, user);
+        } else {
+            // Optionally, handle cases where an itemId is provided but the item doesn't exist
+            // or if fallback search by name also fails.
+        const identifier = purchasedItem.itemId ? `ID ${purchasedItem.itemId}` : `description "${purchasedItem.description}"`;
+        logger.warn('purchase_stock_update', `Item with ${identifier} not found in DB during bulk purchase stock update. Stock not updated for this item.`, user, { searchedItemId: purchasedItem.itemId, searchedDescription: purchasedItem.description });
+        }
+      // Removed the 'else' block that was here, as the condition is now handled by the itemToUpdate check
     }
     
+    // Enhanced logging for purchased items
+    const purchasedItemsDetails = savedPurchase.items.map(pi => ({
+      name: pi.description,
+      hsnCode: items.find(reqItem => reqItem.description === pi.description)?.hsnCode || 'N/A', // Attempt to find HSN from original request
+      quantityPurchased: pi.quantity
+    }));
+
+    logger.info('purchase', `Bulk purchase added successfully. Invoice: ${invoiceNumber}`, user, { purchaseId: savedPurchase._id, itemsProcessed: purchasedItemsDetails });
     res.status(201).json({ success: true, data: savedPurchase });
   } catch (error) {
     console.error('Error adding bulk purchase:', error);

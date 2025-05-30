@@ -702,3 +702,19 @@ exports.getItemPurchaseHistory = async (req, res) => {
     });
   }
 };
+
+// New controller function for restock summary
+exports.getRestockSummary = async (req, res) => {
+  const user = req.user || null;
+  try {
+    logger.debug('item', "Fetching restock summary", user);
+    const itemsToRestock = await Item.find({ needsRestock: true }).select('name restockAmount lowStockThreshold quantity');
+    res.json({
+      count: itemsToRestock.length,
+      items: itemsToRestock // Sending items might be useful for a detailed view later
+    });
+  } catch (error) {
+    logger.error('item', "Error fetching restock summary", error, user);
+    res.status(500).json({ message: 'Server error while fetching restock summary' });
+  }
+};

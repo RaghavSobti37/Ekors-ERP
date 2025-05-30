@@ -2,10 +2,12 @@ const Ticket = require("../models/opentickets");
 const TicketBackup = require("../models/ticketBackup"); // Import backup model
 const User = require("../models/users");
 const logger = require("../utils/logger"); // Import logger
+const { Item } = require('../models/itemlist'); // Import Item model for inventory
 const fs = require('fs-extra'); // fs-extra for recursive directory removal
 const path = require('path');
 
 // Then modify the ticket creation endpoint to use the actual counter
+// NOTE: The 'counter' variable used below for ticketNumber generation is not defined in this file. This needs to be addressed for consistent ticket numbering.
 exports.createTicket = async (req, res) => {
   const user = req.user || null;
   try {
@@ -16,14 +18,62 @@ exports.createTicket = async (req, res) => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, "0");
-    ticketData.ticketNumber = `T-${year}${month}-${String(counter).padStart(
-      4,
-      "0"
-    )}`;
+    // Assuming 'counter' is a global or imported variable. If not, this will fail.
+    // ticketData.ticketNumber = `T-${year}${month}-${String(counter).padStart(4, "0")}`; 
+    // Fallback or placeholder for ticket number if counter is an issue:
+    if (!ticketData.ticketNumber) {
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        const seconds = String(now.getSeconds()).padStart(2, "0");
+        ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
+        logger.warn('ticket', `Ticket number was not provided or 'counter' is undefined. Generated timestamp-based ticket number: ${ticketData.ticketNumber}`, user);
+    }
+
+    // --- Inventory Deduction Logic ---
+    if (ticketData.goods && ticketData.goods.length > 0) {
+      for (const good of ticketData.goods) {
+        if (!good.description || !(Number(good.quantity) > 0)) {
+          logger.warn('inventory', `Skipping inventory update for ticket item due to missing description or invalid quantity: ${JSON.stringify(good)}`, user);
+          continue;
+        }
+        try {
+          const itemToUpdate = await Item.findOne({
+            name: good.description,
+            ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) // Ensure hsnSacCode is present in good object
+          });
+
+          if (itemToUpdate) {
+            const quantityToDecrement = Number(good.quantity);
+            itemToUpdate.quantity -= quantityToDecrement;
+
+            if (itemToUpdate.quantity < 0) {
+                logger.warn('inventory', `Item ${itemToUpdate.name} stock is now negative: ${itemToUpdate.quantity}.`, user);
+            }
+
+            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+              itemToUpdate.needsRestock = true;
+              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+            } else if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+              itemToUpdate.needsRestock = false;
+              itemToUpdate.restockAmount = 0;
+            }
+            await itemToUpdate.save();
+            logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via ticket ${ticketData.ticketNumber}. Decremented by: ${quantityToDecrement}, New Qty: ${itemToUpdate.quantity}`, user);
+          } else {
+            logger.warn('inventory', `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found in inventory for ticket ${ticketData.ticketNumber}. Stock not updated.`, user);
+            // Consider if ticket creation should fail if an item is not in inventory.
+          }
+        } catch (invError) {
+          logger.error('inventory', `Error updating inventory for item "${good.description}" in ticket ${ticketData.ticketNumber}: ${invError.message}`, user, { error: invError });
+        }
+      }
+    }
+    // --- End Inventory Deduction Logic ---
 
     const ticket = new Ticket(ticketData);
     await ticket.save();
-    logger.info("ticket", `Ticket created successfully`, user, {
+    logger.info("ticket", `Ticket ${ticket.ticketNumber} created successfully by controller function.`, user, {
       ticketId: ticket._id,
       ticketNumber: ticket.ticketNumber,
       companyName: ticket.companyName,
@@ -91,14 +141,81 @@ exports.getTicket = async (req, res) => {
 
 // Update ticket
 exports.updateTicket = async (req, res) => {
+  const user = req.user || null;
+  const ticketId = req.params.id;
+  const updatedTicketData = req.body;
+
   try {
-    const user = req.user || null;
+    const originalTicket = await Ticket.findOne({ _id: ticketId });
+
+    if (!originalTicket) {
+      logger.warn("ticket", `Ticket not found for update: ${ticketId}`, user);
+      return res.status(404).json({ error: "Ticket not found" });
+    }
+
+    // Authorization check (similar to your route but within controller)
+    const canUpdate = originalTicket.createdBy.toString() === user.id.toString() ||
+                      (originalTicket.currentAssignee && originalTicket.currentAssignee.toString() === user.id.toString()) ||
+                      user.role === 'super-admin';
+
+    if (!canUpdate) {
+        logger.warn("ticket", `User ${user.id} not authorized to update ticket ${ticketId}. Creator: ${originalTicket.createdBy}, Assignee: ${originalTicket.currentAssignee}`, user);
+        return res.status(403).json({ error: "Not authorized to update this ticket" });
+    }
+
+    // --- Inventory Adjustment Logic ---
+    const originalGoods = originalTicket.goods || [];
+    const newGoods = updatedTicketData.goods || [];
+
+    // Step A: Add back old quantities
+    for (const good of originalGoods) {
+      if (!good.description || !(Number(good.quantity) > 0)) continue;
+      try {
+        const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) });
+        if (itemToUpdate) {
+          itemToUpdate.quantity += Number(good.quantity);
+          if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+            itemToUpdate.needsRestock = false;
+            itemToUpdate.restockAmount = 0;
+          } else if (itemToUpdate.needsRestock) { // Still needs restock, update amount
+            itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+          }
+          await itemToUpdate.save();
+          logger.info('inventory', `Restored stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Added: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`, user);
+        }
+      } catch (invError) {
+        logger.error('inventory', `Error restoring stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`, user, { error: invError });
+      }
+    }
+
+    // Step B: Subtract new quantities
+    for (const good of newGoods) {
+      if (!good.description || !(Number(good.quantity) > 0)) continue;
+      try {
+        const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) });
+        if (itemToUpdate) {
+          itemToUpdate.quantity -= Number(good.quantity);
+          if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+            itemToUpdate.needsRestock = true;
+            itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+          } else if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+            itemToUpdate.needsRestock = false;
+            itemToUpdate.restockAmount = 0;
+          }
+          await itemToUpdate.save();
+          logger.info('inventory', `Deducted stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Subtracted: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`, user);
+        } else {
+            logger.warn('inventory', `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found in inventory for ticket ${ticketId} update. Stock not updated.`, user);
+        }
+      } catch (invError) {
+        logger.error('inventory', `Error deducting stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`, user, { error: invError });
+      }
+    }
+    // --- End Inventory Adjustment Logic ---
+
     const ticket = await Ticket.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        createdBy: req.user.id,
-      },
-      req.body,
+      { _id: ticketId }, // Filter already handled by originalTicket check and auth
+      updatedTicketData,
       { new: true, runValidators: true }
     );
 
@@ -107,18 +224,18 @@ exports.updateTicket = async (req, res) => {
         "ticket",
         `Ticket not found for update: ${req.params.id}`,
         user,
-        { requestBody: req.body }
+        { requestBody: updatedTicketData }
       );
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-    logger.info("ticket", `Ticket updated successfully`, user, {
+    logger.info("ticket", `Ticket ${ticket.ticketNumber} updated successfully by controller function.`, user, {
       ticketId: ticket._id,
       ticketNumber: ticket.ticketNumber,
     });
     res.json(ticket);
   } catch (error) {
-    console.error("Error updating ticket:", error);
+    logger.error("ticket", `Failed to update ticket ID: ${ticketId}`, error, user, { requestBody: updatedTicketData });
     res.status(500).json({ error: "Failed to update ticket" });
   }
 };

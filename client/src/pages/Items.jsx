@@ -314,19 +314,29 @@ export default function Items() {
   const sortedItems = useMemo(() => {
     // First check if items is a valid array
     if (!Array.isArray(items)) {
+      debug("sortedItems: items is not an array, returning []");
       return [];
     }
 
     // Create a copy for sorting
     const sortableItems = [...items];
+    debug("sortedItems: Sorting items", { count: sortableItems.length, sortConfig });
 
     sortableItems.sort((a, b) => {
+      // Prioritize items needing restock
+      if (a.needsRestock && !b.needsRestock) return -1;
+      if (!a.needsRestock && b.needsRestock) return 1;
+
+      // Then sort by the configured key
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === "asc" ? -1 : 1;
       }
       if (a[sortConfig.key] > b[sortConfig.key]) {
         return sortConfig.direction === "asc" ? 1 : -1;
       }
+      // If primary sort key is the same, you could add a secondary sort, e.g., by name
+      // if (a.name < b.name) return -1;
+      // if (a.name > b.name) return 1;
       return 0;
     });
 
@@ -881,6 +891,7 @@ export default function Items() {
                   // "subcategory",
                   "quantity",
                   "price",
+                  "restockAmount", // New column for restock amount
                   "unit",
                   "gstRate",
                   // "image", // Added image column
@@ -932,6 +943,11 @@ export default function Items() {
                         ) : (
                           item.name
                         )}
+                        {item.needsRestock && (
+                          <span className="badge bg-danger ms-2" title={`Needs Restock: ${item.restockAmount || 'N/A'} units. Current: ${item.quantity}, Threshold: ${item.lowStockThreshold}`}>
+                            ⚠️ Restock
+                          </span>
+                        )}
                       </td>
                       {/* <td>{item.category || "-"}</td>
                       <td>{item.subcategory || "-"}</td> */}
@@ -972,6 +988,13 @@ export default function Items() {
                           />
                         ) : (
                           `₹${parseFloat(item.price).toFixed(2)}`
+                        )}
+                      </td>
+                      <td>
+                        {item.needsRestock ? (
+                          <span className="text-danger fw-bold">{item.restockAmount}</span>
+                        ) : (
+                          "-"
                         )}
                       </td>
                       <td>{item.unit || "Nos"}</td>
@@ -1112,6 +1135,7 @@ export default function Items() {
                                 </p>
                                 <p>
                                   <strong>Quantity:</strong> {item.quantity}
+                                  {item.needsRestock && ` (Threshold: ${item.lowStockThreshold}, Needs: ${item.restockAmount})`}
                                 </p>
                               </div>
                               <div className="col-md-6">
@@ -1143,7 +1167,7 @@ export default function Items() {
                             </div>
                             {purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
-                                <thead>
+                                <thead className="table-secondary">
                                   <tr>
                                     <th>Date</th>
                                     <th>Supplier</th>
