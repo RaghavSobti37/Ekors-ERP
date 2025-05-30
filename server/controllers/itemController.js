@@ -708,7 +708,7 @@ exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
   try {
     logger.debug('item', "Fetching restock summary", user);
-    const itemsToRestock = await Item.find({ needsRestock: true }).select('name restockAmount lowStockThreshold quantity');
+    const itemsToRestock = await Item.find({ needsRestock: true }).select('name lowStockThreshold quantity');
     res.json({
       count: itemsToRestock.length,
       items: itemsToRestock // Sending items might be useful for a detailed view later

@@ -1220,3 +1220,44 @@
 [2025-05-30 14:39:37] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 14:39:38] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 14:39:38] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:07] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-30 14:40:11] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:11] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:11] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:33] [System] [INFO] [purchase_stock_update] - Found item by name match: testing add item (ID: 6838a0d68319816e868a5813). Proceeding with stock update.
+[2025-05-30 14:40:33] [System] [INFO] [inventory] - Inventory updated for item: testing add item via purchase ekors123. Added: 1, New Qty: 1013
+[2025-05-30 14:40:33] [System] [INFO] [purchase] - Bulk purchase added successfully. Invoice: ekors123 | Details: {"purchaseId":"68397609643faa518368212e","itemsProcessed":[{"name":"testing add item","hsnCode":"N/A","quantityPurchased":1}]}
+[2025-05-30 14:40:42] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:42] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:51] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:51] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:51] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:51] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:56] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:40:56] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:17] [Raghav Sobti] [INFO] [quotation] - Quotation created successfully | Details: {"userId":"6834acdec85453f28687257b","operation":"create","quotationId":"68397635643faa51836821d1","referenceNumber":"Q-250530-144058","clientId":"68395eeddaa7bb72ce2f0b0c"}
+[2025-05-30 14:41:17] [Raghav Sobti] [INFO] [quotationActivity] - Quotation Q-250530-144058 created | Details: {"quotationId":"68397635643faa51836821d1","referenceNumber":"Q-250530-144058","action":"CREATE_QUOTATION_SUCCESS"}
+[2025-05-30 14:41:33] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to check for existing ticket | Error: Request failed with status code 404
+  Stack Trace:
+  AxiosError: Request failed with status code 404
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=91971e34:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=91971e34:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=91971e34:2108:41)
+      at async checkExistingTicket (http://localhost:5173/src/pages/Quotations.jsx?t=1748595901381:1104:24)
+      at async handleTicketSubmit (http://localhost:5173/src/pages/Quotations.jsx?t=1748595901381:1134:28) | Details: {"quotationNumber":"Q-250530-144058","responseData":"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /api/tickets/check/Q-250530-144058</pre>\n</body>\n</html>\n","action":"CHECK_EXISTING_TICKET_FAILURE"}
+[2025-05-30 14:41:33] [Raghav Sobti] [WARN] [inventory] - Item testing add item stock is now negative: -37.
+[2025-05-30 14:41:33] [Raghav Sobti] [INFO] [inventory] - Inventory updated for item: testing add item via ticket T-250530-144126. Original Qty: 1013, Decremented by: 1050, New Qty: -37
+[2025-05-30 14:41:33] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250530-144126 created successfully from quotation Q-250530-144058 | Details: {"action":"TICKET_CREATED_FROM_QUOTATION_SUCCESS","ticketNumber":"T-250530-144126","quotationNumber":"Q-250530-144058"}
+[2025-05-30 14:41:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:33] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:33] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:36] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:44] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:41:44] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:46:44] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}

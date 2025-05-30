@@ -133,7 +133,6 @@ const itemSchema = new mongoose.Schema({
     default: 0
   },
     needsRestock: { type: Boolean, default: false },
-    restockAmount: { type: Number, default: 0 }, 
     lowStockThreshold: { type: Number, default: 5 } // Default low stock threshold
 ,
   // Reference to purchases instead of embedding them

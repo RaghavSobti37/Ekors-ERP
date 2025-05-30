@@ -891,7 +891,6 @@ export default function Items() {
                   // "subcategory",
                   "quantity",
                   "price",
-                  "restockAmount", // New column for restock amount
                   "unit",
                   "gstRate",
                   // "image", // Added image column
@@ -944,7 +943,7 @@ export default function Items() {
                           item.name
                         )}
                         {item.needsRestock && (
-                          <span className="badge bg-danger ms-2" title={`Needs Restock: ${item.restockAmount || 'N/A'} units. Current: ${item.quantity}, Threshold: ${item.lowStockThreshold}`}>
+                          <span className="badge bg-danger ms-2" title={` Threshold: ${item.lowStockThreshold}`}>
                             ⚠️ Restock
                           </span>
                         )}
@@ -988,13 +987,6 @@ export default function Items() {
                           />
                         ) : (
                           `₹${parseFloat(item.price).toFixed(2)}`
-                        )}
-                      </td>
-                      <td>
-                        {item.needsRestock ? (
-                          <span className="text-danger fw-bold">{item.restockAmount}</span>
-                        ) : (
-                          "-"
                         )}
                       </td>
                       <td>{item.unit || "Nos"}</td>
@@ -1135,7 +1127,7 @@ export default function Items() {
                                 </p>
                                 <p>
                                   <strong>Quantity:</strong> {item.quantity}
-                                  {item.needsRestock && ` (Threshold: ${item.lowStockThreshold}, Needs: ${item.restockAmount})`}
+                                  {item.needsRestock && ` (Threshold: ${item.lowStockThreshold},`}
                                 </p>
                               </div>
                               <div className="col-md-6">
