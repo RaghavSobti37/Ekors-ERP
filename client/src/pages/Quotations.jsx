@@ -6,7 +6,7 @@ import {
   PencilSquare, // Edit
   Trash, // Delete
   PlusSquare, // Create Ticket
-} from 'react-bootstrap-icons';
+} from "react-bootstrap-icons";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -22,32 +22,29 @@ import ReusableTable from "../components/ReusableTable.jsx";
 import SortIndicator from "../components/SortIndicator.jsx";
 
 import ActionButtons from "../components/ActionButtons";
-import { ToastContainer, toast } from 'react-toastify';
-import frontendLogger from '../utils/frontendLogger.js';
-import 'react-toastify/dist/ReactToastify.css';
-import {
-  PDFViewer,
-  PDFDownloadLink,
-} from "@react-pdf/renderer";
+import { ToastContainer, toast } from "react-toastify";
+import frontendLogger from "../utils/frontendLogger.js";
+import "react-toastify/dist/ReactToastify.css";
+import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 
-import { showToast, handleApiError } from '../utils/helpers';
+import { showToast, handleApiError } from "../utils/helpers";
 
 const fullScreenModalStyle = {
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '95vw',
-  height: '95vh',
-  maxWidth: 'none',
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: "95vw",
+  height: "95vh",
+  maxWidth: "none",
   margin: 0,
   padding: 0,
-  overflow: 'auto',
-  backgroundColor: 'white',
-  border: '1px solid #dee2e6',
-  borderRadius: '0.3rem',
-  boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
-  zIndex: 1050
+  overflow: "auto",
+  backgroundColor: "white",
+  border: "1px solid #dee2e6",
+  borderRadius: "0.3rem",
+  boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+  zIndex: 1050,
 };
 
 const formatDateForInput = (dateString) => {
@@ -158,7 +155,10 @@ const GoodsTable = ({
                     onChange={(e) =>
                       handleGoodsChange(index, "price", e.target.value)
                     }
-                    readOnly={isEditing && !(Number(item.maxDiscountPercentage || 0) > 0)}
+                    readOnly={
+                      isEditing &&
+                      !(Number(item.maxDiscountPercentage || 0) > 0)
+                    }
                   />
                 )}
               </td>
@@ -191,7 +191,6 @@ const GoodsTable = ({
     </div>
   );
 };
-
 
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
@@ -227,12 +226,22 @@ export default function Quotations() {
       const errorDetails = {
         errorMessage: e.message,
         stack: e.stack,
-        context: "getAuthToken - localStorage access"
+        context: "getAuthToken - localStorage access",
       };
       if (auth.user) {
-        frontendLogger.error("localStorageAccess", "Failed to get auth token from localStorage", auth.user, errorDetails);
+        frontendLogger.error(
+          "localStorageAccess",
+          "Failed to get auth token from localStorage",
+          auth.user,
+          errorDetails
+        );
       } else {
-        frontendLogger.error("localStorageAccess", "Failed to get auth token from localStorage (user not authenticated)", null, errorDetails);
+        frontendLogger.error(
+          "localStorageAccess",
+          "Failed to get auth token from localStorage (user not authenticated)",
+          null,
+          errorDetails
+        );
       }
       return null;
     }
@@ -256,7 +265,7 @@ export default function Quotations() {
       companyName: rawCompanyName,
       gstNumber: rawGstNumber,
       email: rawEmail,
-      phone: rawPhone
+      phone: rawPhone,
     } = quotationData.client;
 
     // Trim values for validation and use
@@ -266,7 +275,8 @@ export default function Quotations() {
     const phone = rawPhone?.trim();
 
     if (!companyName || !gstNumber || !email || !phone) {
-      const msg = "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
+      const msg =
+        "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
       setError(msg);
       toast.warn(msg);
       return;
@@ -310,7 +320,6 @@ export default function Quotations() {
       const token = getAuthToken();
       if (!token) throw new Error("No authentication token found");
 
-
       const response = await axios.post(
         "http://localhost:3000/api/clients",
         clientPayload,
@@ -330,11 +339,16 @@ export default function Quotations() {
         setError(null);
         toast.success("Client saved successfully!");
         if (auth.user) {
-          frontendLogger.info("clientActivity", "New client saved successfully", auth.user, {
-            clientId: response.data._id,
-            clientName: response.data.companyName,
-            action: "SAVE_NEW_CLIENT_SUCCESS"
-          });
+          frontendLogger.info(
+            "clientActivity",
+            "New client saved successfully",
+            auth.user,
+            {
+              clientId: response.data._id,
+              clientName: response.data.companyName,
+              action: "SAVE_NEW_CLIENT_SUCCESS",
+            }
+          );
         }
       } else {
         setError("Failed to save client: Unexpected response from server.");
@@ -342,10 +356,13 @@ export default function Quotations() {
       }
     } catch (error) {
       let errorMessage = "Failed to save client details.";
-      if (error.response?.data?.field === 'gstNumber') {
-        errorMessage = error.response.data.message || "This GST Number is already registered.";
-      } else if (error.response?.data?.field === 'email') {
-        errorMessage = error.response.data.message || "This Email is already registered.";
+      if (error.response?.data?.field === "gstNumber") {
+        errorMessage =
+          error.response.data.message ||
+          "This GST Number is already registered.";
+      } else if (error.response?.data?.field === "email") {
+        errorMessage =
+          error.response.data.message || "This Email is already registered.";
       } else {
         errorMessage = error.response?.data?.message || errorMessage;
       }
@@ -355,13 +372,18 @@ export default function Quotations() {
       // Log the error
       if (auth.user) {
         // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
-        frontendLogger.error("clientActivity", "Failed to save new client", auth.user, {
-          clientPayload: clientPayload, // Log the payload attempted to save
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          action: "SAVE_NEW_CLIENT_FAILURE"
-        });
+        frontendLogger.error(
+          "clientActivity",
+          "Failed to save new client",
+          auth.user,
+          {
+            clientPayload: clientPayload, // Log the payload attempted to save
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "SAVE_NEW_CLIENT_FAILURE",
+          }
+        );
       }
     } finally {
       setIsSavingClient(false);
@@ -422,8 +444,9 @@ export default function Quotations() {
       }
 
       // Construct URL with query parameters
-      const url = `http://localhost:3000/api/quotations${params.toString() ? `?${params.toString()}` : ""
-        }`;
+      const url = `http://localhost:3000/api/quotations${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
 
       const response = await axios.get(url, {
         headers: {
@@ -436,19 +459,27 @@ export default function Quotations() {
       setError(null); // Clear error on successful fetch
     } catch (error) {
       // console.error("Error fetching quotations:", error); // Debug log commented out
-      const errorMessage = error.response?.data?.message || error.message || "Failed to load quotations. Please try again.";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to load quotations. Please try again.";
       setError(errorMessage); // Keep for main error display
       showToast(errorMessage, false); // Show toast notification
 
       // Log the error
       if (auth.user) {
-        frontendLogger.error("quotationActivity", "Failed to fetch quotations", auth.user, {
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          statusFilter,
-          action: "FETCH_QUOTATIONS_FAILURE"
-        });
+        frontendLogger.error(
+          "quotationActivity",
+          "Failed to fetch quotations",
+          auth.user,
+          {
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            statusFilter,
+            action: "FETCH_QUOTATIONS_FAILURE",
+          }
+        );
       }
 
       if (error.response?.status === 401) {
@@ -468,7 +499,8 @@ export default function Quotations() {
   useEffect(() => {
     if (!loading && !user) {
       // Only navigate if not already on login page to prevent infinite loop
-      if (window.location.pathname !== '/login') navigate("/login", { state: { from: "/quotations" } });
+      if (window.location.pathname !== "/login")
+        navigate("/login", { state: { from: "/quotations" } });
     } else {
       fetchQuotations();
     }
@@ -647,11 +679,22 @@ export default function Quotations() {
         if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
           const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
           if (newPrice < minAllowedPrice) {
-            priceValidationError = `Discount for ${currentItem.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
+            priceValidationError = `Discount for ${
+              currentItem.description
+            } exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(
+              2
+            )}.`;
           }
-        } else { // No discount slab (maxDiscountPerc is 0, undefined, or NaN)
+        } else {
+          // No discount slab (maxDiscountPerc is 0, undefined, or NaN)
           if (newPrice < originalPrice) {
-            priceValidationError = `Price for ${currentItem.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
+            priceValidationError = `Price for ${
+              currentItem.description
+            } (₹${newPrice.toFixed(
+              2
+            )}) cannot be lower than the original price (₹${originalPrice.toFixed(
+              2
+            )}) as no discount is applicable.`;
           }
         }
       } else {
@@ -694,7 +737,11 @@ export default function Quotations() {
       toast.warn(priceValidationError);
     } else {
       // Clear error only if it was related to the price of the item being edited
-      if (error && (error.includes(`Discount for ${updatedGoods[index].description}`) || error.includes(`Price for ${updatedGoods[index].description}`))) {
+      if (
+        error &&
+        (error.includes(`Discount for ${updatedGoods[index].description}`) ||
+          error.includes(`Price for ${updatedGoods[index].description}`))
+      ) {
         setError(null);
       }
     }
@@ -775,12 +822,25 @@ export default function Quotations() {
     }
 
     if (!quotationData.client._id) {
-      if (quotationData.client.companyName || quotationData.client.gstNumber || quotationData.client.email || quotationData.client.phone) {
-        setError("You have entered new client details. Please click 'Save New Client' before saving the quotation.");
-        toast.warn("You have entered new client details. Please click 'Save New Client' before saving the quotation.");
+      if (
+        quotationData.client.companyName ||
+        quotationData.client.gstNumber ||
+        quotationData.client.email ||
+        quotationData.client.phone
+      ) {
+        setError(
+          "You have entered new client details. Please click 'Save New Client' before saving the quotation."
+        );
+        toast.warn(
+          "You have entered new client details. Please click 'Save New Client' before saving the quotation."
+        );
       } else {
-        setError("Please select an existing client or enter and save details for a new client.");
-        toast.warn("Please select an existing client or enter and save details for a new client.");
+        setError(
+          "Please select an existing client or enter and save details for a new client."
+        );
+        toast.warn(
+          "Please select an existing client or enter and save details for a new client."
+        );
       }
       return;
     }
@@ -794,17 +854,32 @@ export default function Quotations() {
     // Validate goods items
     for (let i = 0; i < quotationData.goods.length; i++) {
       const item = quotationData.goods[i];
-      if (!item.description || !(parseFloat(item.quantity) > 0) || !(parseFloat(item.price) >= 0) || !item.unit) {
-        const itemErrorMsg = `Item ${i + 1} is incomplete. Please fill all required fields.`;
+      if (
+        !item.description ||
+        !(parseFloat(item.quantity) > 0) ||
+        !(parseFloat(item.price) >= 0) ||
+        !item.unit
+      ) {
+        const itemErrorMsg = `Item ${
+          i + 1
+        } is incomplete. Please fill all required fields.`;
         setError(itemErrorMsg);
         toast.error(itemErrorMsg);
         return;
       }
       // Validate price against discount slab
-      if (item.maxDiscountPercentage > 0) { // Check only maxDiscountPercentage
-        const minAllowedPrice = item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100); // Use 0 if null/undefined
+      if (item.maxDiscountPercentage > 0) {
+        // Check only maxDiscountPercentage
+        const minAllowedPrice =
+          item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100); // Use 0 if null/undefined
         if (parseFloat(item.price) < minAllowedPrice) {
-          const priceErrorMsg = `Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below the minimum allowed price (₹${minAllowedPrice.toFixed(2)}) due to ${item.maxDiscountPercentage}% max discount.`;
+          const priceErrorMsg = `Price for ${item.description} (₹${parseFloat(
+            item.price
+          ).toFixed(
+            2
+          )}) is below the minimum allowed price (₹${minAllowedPrice.toFixed(
+            2
+          )}) due to ${item.maxDiscountPercentage}% max discount.`;
           setError(priceErrorMsg);
           toast.error(priceErrorMsg);
           return;
@@ -840,8 +915,10 @@ export default function Quotations() {
           unit: item.unit || "Nos", // Ensure unit is included
           price: Number(item.price),
           amount: Number(item.amount),
-          originalPrice: Number(item.originalPrice),          // discountAvailable: item.discountAvailable, // Removed
-          maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
+          originalPrice: Number(item.originalPrice), // discountAvailable: item.discountAvailable, // Removed
+          maxDiscountPercentage: item.maxDiscountPercentage
+            ? Number(item.maxDiscountPercentage)
+            : 0,
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
@@ -872,16 +949,34 @@ export default function Quotations() {
         resetForm();
         // setError(null); // Let fetchQuotations handle clearing error if successful
         setCurrentQuotation(null);
-        toast.success(`Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'} successfully!`);
+        toast.success(
+          `Quotation ${submissionData.referenceNumber} ${
+            currentQuotation ? "updated" : "created"
+          } successfully!`
+        );
 
         // Log successful save/update
         if (auth.user) {
-          const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
-          frontendLogger.info("quotationActivity", `Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'}`, userForLog, {
-            quotationId: response.data._id,
-            referenceNumber: submissionData.referenceNumber,
-            action: currentQuotation ? "UPDATE_QUOTATION_SUCCESS" : "CREATE_QUOTATION_SUCCESS"
-          });
+          const userForLog = {
+            firstname: auth.user.firstname,
+            lastname: auth.user.lastname,
+            email: auth.user.email,
+            id: auth.user.id,
+          };
+          frontendLogger.info(
+            "quotationActivity",
+            `Quotation ${submissionData.referenceNumber} ${
+              currentQuotation ? "updated" : "created"
+            }`,
+            userForLog,
+            {
+              quotationId: response.data._id,
+              referenceNumber: submissionData.referenceNumber,
+              action: currentQuotation
+                ? "UPDATE_QUOTATION_SUCCESS"
+                : "CREATE_QUOTATION_SUCCESS",
+            }
+          );
         }
       }
     } catch (error) {
@@ -909,15 +1004,24 @@ export default function Quotations() {
 
       // Log the error
       if (auth.user) {
-        frontendLogger.error("quotationActivity", currentQuotation ? "Failed to update quotation" : "Failed to create quotation", auth.user, {
-          referenceNumber: quotationData.referenceNumber,
-          quotationId: currentQuotation?._id,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          submittedData: submissionData, // Be careful logging full data if it's sensitive
-          action: currentQuotation ? "UPDATE_QUOTATION_FAILURE" : "CREATE_QUOTATION_FAILURE"
-        });
+        frontendLogger.error(
+          "quotationActivity",
+          currentQuotation
+            ? "Failed to update quotation"
+            : "Failed to create quotation",
+          auth.user,
+          {
+            referenceNumber: quotationData.referenceNumber,
+            quotationId: currentQuotation?._id,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            submittedData: submissionData, // Be careful logging full data if it's sensitive
+            action: currentQuotation
+              ? "UPDATE_QUOTATION_FAILURE"
+              : "CREATE_QUOTATION_FAILURE",
+          }
+        );
       }
     } finally {
       setIsLoading(false);
@@ -945,18 +1049,24 @@ export default function Quotations() {
       const minutes = String(now.getMinutes()).padStart(2, "0");
       const seconds = String(now.getSeconds()).padStart(2, "0");
       return `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-
     } catch (error) {
       // console.error("Error generating ticket number:", error); // Debug log commented out
-      toast.error("Failed to generate ticket number. Using a temporary number.");
+      toast.error(
+        "Failed to generate ticket number. Using a temporary number."
+      );
       // Log the error
       if (auth.user) {
-        frontendLogger.error("ticketActivity", "Failed to generate ticket number from API", auth.user, {
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          action: "GENERATE_TICKET_NUMBER_FAILURE"
-        });
+        frontendLogger.error(
+          "ticketActivity",
+          "Failed to generate ticket number from API",
+          auth.user,
+          {
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "GENERATE_TICKET_NUMBER_FAILURE",
+          }
+        );
       }
       // const now = new Date();
       // const year = now.getFullYear().toString().slice(-2);
@@ -1015,13 +1125,18 @@ export default function Quotations() {
       // console.error("Error checking existing ticket:", error); // Debug log commented out
       toast.error("Failed to check for existing ticket.");
       if (auth.user) {
-        frontendLogger.error("ticketActivity", "Failed to check for existing ticket", auth.user, {
-          quotationNumber,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          action: "CHECK_EXISTING_TICKET_FAILURE"
-        });
+        frontendLogger.error(
+          "ticketActivity",
+          "Failed to check for existing ticket",
+          auth.user,
+          {
+            quotationNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "CHECK_EXISTING_TICKET_FAILURE",
+          }
+        );
       }
       return false;
     }
@@ -1053,13 +1168,15 @@ export default function Quotations() {
 
       // Get user ID from AuthContext
       if (!auth.user || !auth.user.id) {
-        const noUserIdError = "User ID not found in authentication context. Please re-login.";
+        const noUserIdError =
+          "User ID not found in authentication context. Please re-login.";
         setError(noUserIdError);
         toast.error(noUserIdError);
         throw new Error(noUserIdError);
       }
 
-      completeTicketData = { // Assign to the already declared variable
+      completeTicketData = {
+        // Assign to the already declared variable
         ...ticketData,
         createdBy: auth.user.id, // Use user ID from AuthContext
         currentAssignee: auth.user.id, // Set currentAssignee to the creator by default
@@ -1070,7 +1187,8 @@ export default function Quotations() {
             changedBy: auth.user.id, // Use auth.user.id here as well
           },
         ],
-        documents: { // Initialize document fields to null or empty array for 'other'
+        documents: {
+          // Initialize document fields to null or empty array for 'other'
           quotation: null,
           po: null,
           pi: null,
@@ -1095,7 +1213,9 @@ export default function Quotations() {
       if (response.status === 201) {
         setShowTicketModal(false);
         setError(null);
-        toast.success(`Ticket ${response.data.ticketNumber} created successfully!`);
+        toast.success(
+          `Ticket ${response.data.ticketNumber} created successfully!`
+        );
         // Log ticket creation
         if (auth.user) {
           // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
@@ -1123,14 +1243,19 @@ export default function Quotations() {
 
       // Log the error
       if (auth.user) {
-        frontendLogger.error("ticketActivity", "Failed to create ticket from quotation", auth.user, {
-          quotationNumber: ticketData.quotationNumber,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          ticketDataSubmitted: completeTicketData, // Be careful with sensitive data
-          action: "CREATE_TICKET_FROM_QUOTATION_FAILURE"
-        });
+        frontendLogger.error(
+          "ticketActivity",
+          "Failed to create ticket from quotation",
+          auth.user,
+          {
+            quotationNumber: ticketData.quotationNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            ticketDataSubmitted: completeTicketData, // Be careful with sensitive data
+            action: "CREATE_TICKET_FROM_QUOTATION_FAILURE",
+          }
+        );
       }
     } finally {
       setIsLoading(false);
@@ -1143,7 +1268,8 @@ export default function Quotations() {
     let orderIssuedByIdToSet = null;
     if (quotation.orderIssuedBy) {
       // Handles both populated object { _id: '...' } and plain ID string
-      orderIssuedByIdToSet = quotation.orderIssuedBy._id || quotation.orderIssuedBy;
+      orderIssuedByIdToSet =
+        quotation.orderIssuedBy._id || quotation.orderIssuedBy;
     } else if (quotation.user) {
       // Fallback to the user who created the quotation if orderIssuedBy is missing
       orderIssuedByIdToSet = quotation.user._id || quotation.user;
@@ -1153,7 +1279,10 @@ export default function Quotations() {
     }
 
     // Ensure we only have the ID string if it was an object
-    if (typeof orderIssuedByIdToSet === 'object' && orderIssuedByIdToSet !== null) {
+    if (
+      typeof orderIssuedByIdToSet === "object" &&
+      orderIssuedByIdToSet !== null
+    ) {
       orderIssuedByIdToSet = orderIssuedByIdToSet._id;
     }
 
@@ -1169,7 +1298,9 @@ export default function Quotations() {
         amount: Number(item.amount),
         unit: item.unit || "Nos", // Ensure unit field exists
         originalPrice: Number(item.originalPrice || item.price), // Fallback for older data        // discountAvailable: item.discountAvailable, // Removed
-        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
+        maxDiscountPercentage: item.maxDiscountPercentage
+          ? Number(item.maxDiscountPercentage)
+          : 0,
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
@@ -1243,17 +1374,26 @@ export default function Quotations() {
       setShowModal(false);
       resetForm(); // Reset form if used in UI
       fetchQuotations(); // Refresh data
-      toast.success(`Quotation ${quotation.referenceNumber} deleted successfully.`);
+      toast.success(
+        `Quotation ${quotation.referenceNumber} deleted successfully.`
+      );
       if (auth.user) {
-        frontendLogger.info("quotationActivity", `Quotation ${quotation.referenceNumber} deleted`, auth.user, {
-          quotationId: quotation._id,
-          referenceNumber: quotation.referenceNumber,
-          action: "DELETE_QUOTATION_SUCCESS"
-        });
+        frontendLogger.info(
+          "quotationActivity",
+          `Quotation ${quotation.referenceNumber} deleted`,
+          auth.user,
+          {
+            quotationId: quotation._id,
+            referenceNumber: quotation.referenceNumber,
+            action: "DELETE_QUOTATION_SUCCESS",
+          }
+        );
       }
     } catch (error) {
       // console.error("Error deleting quotation:", error); // Debug log commented out
-      let errorMessage = error.response?.data?.message || "Failed to delete quotation. Please try again.";
+      let errorMessage =
+        error.response?.data?.message ||
+        "Failed to delete quotation. Please try again.";
 
       if (error.response) {
         if (error.response.status === 401) {
@@ -1271,14 +1411,20 @@ export default function Quotations() {
       setError(errorMessage); // Keep for main error display
       toast.error(errorMessage); // Show toast notification
       if (auth.user) {
-        frontendLogger.error("quotationActivity", "Failed to delete quotation", error, auth.user, {
-          quotationId: quotation._id,
-          referenceNumber: quotation.referenceNumber,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
-          responseData: error.response?.data,
-          action: "DELETE_QUOTATION_FAILURE"
-        });
+        frontendLogger.error(
+          "quotationActivity",
+          "Failed to delete quotation",
+          error,
+          auth.user,
+          {
+            quotationId: quotation._id,
+            referenceNumber: quotation.referenceNumber,
+            errorMessage: error.response?.data?.message || error.message,
+            stack: error.stack,
+            responseData: error.response?.data,
+            action: "DELETE_QUOTATION_FAILURE",
+          }
+        );
       }
     } finally {
       setIsLoading(false);
@@ -1385,23 +1531,52 @@ export default function Quotations() {
 
         <ReusableTable
           columns={[
-            { key: 'referenceNumber', header: 'Reference No', sortable: true },
-            { key: 'client.companyName', header: 'Company Name', sortable: true, renderCell: (item) => item.client?.companyName },
-            ...(user?.role === 'super-admin' ? [{ key: 'user.firstname', header: 'Created By', sortable: true, renderCell: (item) => `${item.user?.firstname || ''} ${item.user?.lastname || ''}` }] : []),
-            { key: 'client.gstNumber', header: 'GST Number', sortable: true, renderCell: (item) => item.client?.gstNumber },
-            { key: 'grandTotal', header: 'Total (₹)', sortable: true, renderCell: (item) => item.grandTotal.toFixed(2), cellClassName: 'text-end' },
+            { key: "referenceNumber", header: "Reference No", sortable: true },
             {
-              key: 'status',
-              header: 'Status',
+              key: "client.companyName",
+              header: "Company Name",
+              sortable: true,
+              renderCell: (item) => item.client?.companyName,
+            },
+            ...(user?.role === "super-admin"
+              ? [
+                  {
+                    key: "user.firstname",
+                    header: "Created By",
+                    sortable: true,
+                    renderCell: (item) =>
+                      `${item.user?.firstname || ""} ${
+                        item.user?.lastname || ""
+                      }`,
+                  },
+                ]
+              : []),
+            {
+              key: "client.gstNumber",
+              header: "GST Number",
+              sortable: true,
+              renderCell: (item) => item.client?.gstNumber,
+            },
+            {
+              key: "grandTotal",
+              header: "Total (₹)",
+              sortable: true,
+              renderCell: (item) => item.grandTotal.toFixed(2),
+              cellClassName: "text-end",
+            },
+            {
+              key: "status",
+              header: "Status",
               sortable: true,
               renderCell: (item) => (
                 <span
-                  className={`badge ${item.status === 'open'
-                      ? 'bg-primary'
-                      : item.status === 'closed'
-                        ? 'bg-success'
-                        : 'bg-warning'
-                    }`}
+                  className={`badge ${
+                    item.status === "open"
+                      ? "bg-primary"
+                      : item.status === "closed"
+                      ? "bg-success"
+                      : "bg-warning"
+                  }`}
                 >
                   {item.status}
                 </span>
@@ -1423,7 +1598,9 @@ export default function Quotations() {
                 setCurrentQuotation(quotation);
                 setShowPdfModal(true);
               }}
-              onDelete={user?.role === 'super-admin' ? handleDeleteQuotation : undefined}
+              onDelete={
+                user?.role === "super-admin" ? handleDeleteQuotation : undefined
+              }
               isLoading={isLoading}
             />
           )}
@@ -1621,7 +1798,9 @@ export default function Quotations() {
                       type="text"
                       name="client.companyName"
                       value={quotationData.client.companyName}
-                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      onChange={
+                        !selectedClientIdForForm ? handleInputChange : undefined
+                      }
                       readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
@@ -1634,7 +1813,9 @@ export default function Quotations() {
                       type="text"
                       name="client.gstNumber"
                       value={quotationData.client.gstNumber}
-                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      onChange={
+                        !selectedClientIdForForm ? handleInputChange : undefined
+                      }
                       readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
@@ -1648,7 +1829,9 @@ export default function Quotations() {
                       type="email"
                       name="client.email"
                       value={quotationData.client.email}
-                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      onChange={
+                        !selectedClientIdForForm ? handleInputChange : undefined
+                      }
                       readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
@@ -1660,7 +1843,9 @@ export default function Quotations() {
                       type="tel"
                       name="client.phone"
                       value={quotationData.client.phone}
-                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      onChange={
+                        !selectedClientIdForForm ? handleInputChange : undefined
+                      }
                       readOnly={!!selectedClientIdForForm}
                     />
                   </Form.Group>
@@ -1679,8 +1864,7 @@ export default function Quotations() {
                     >
                       {isSavingClient ? "Saving Client..." : "Save New Client"}
                     </Button>
-                  )
-                }
+                  )}
 
                 <h5>Goods Details</h5>
                 <GoodsTable
@@ -1715,7 +1899,9 @@ export default function Quotations() {
                   </div>
                   <div className="row">
                     <div className="col-md-12">
-                      <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                      <h5>
+                        Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
+                      </h5>
                     </div>
                   </div>
                 </div>
@@ -1744,8 +1930,8 @@ export default function Quotations() {
                       ? "Updating..."
                       : "Saving..."
                     : currentQuotation
-                      ? "Update Quotation"
-                      : "Save Quotation"}
+                    ? "Update Quotation"
+                    : "Save Quotation"}
                 </Button>
               </Modal.Footer>
             </Form>
@@ -1767,25 +1953,23 @@ export default function Quotations() {
         <Modal
           show={showPdfModal}
           onHide={() => setShowPdfModal(false)}
-          dialogClassName="modal-fullscreen"
+          dialogClassName="custom-modal"
+          contentClassName="custom-modal-content"
         >
           <Modal.Header closeButton>
             <Modal.Title>
               Quotation PDF - {currentQuotation?.referenceNumber}
             </Modal.Title>
           </Modal.Header>
-          <Modal.Body
-            className="pdf-viewer-container"
-            style={{ height: "600px" }}
-          >
+          <Modal.Body className="p-0 d-flex flex-column">
             {currentQuotation && (
               <>
-                <div style={{ height: "500px", width: "100%" }}>
-                  <PDFViewer width="100%" height="100%" className="mb-3">
+                <div className="flex-grow-1 d-flex flex-column overflow-hidden">
+                  <PDFViewer className="flex-grow-1 w-100 pdf-fullscreen-viewer">
                     <QuotationPDF quotation={currentQuotation} />
                   </PDFViewer>
                 </div>
-                <div className="d-flex justify-content-center gap-2 mt-3">
+                <div className="d-flex justify-content-center gap-2 p-3 border-top">
                   <PDFDownloadLink
                     document={<QuotationPDF quotation={currentQuotation} />}
                     fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
@@ -1809,7 +1993,10 @@ export default function Quotations() {
           newestOnTop={false}
           closeOnClick
           rtl={false}
-          pauseOnFocusLoss draggable pauseOnHover />
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
 
         <Pagination
           currentPage={currentPage}
