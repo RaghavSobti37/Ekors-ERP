@@ -13,6 +13,7 @@ import Pagination from '../components/Pagination';
 import ReusableTable from '../components/ReusableTable'; // No SortIndicator needed as no sorting is implemented
 import { Table, Button, Form, Alert } from "react-bootstrap";
 import axios from "axios";
+import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
 
 const API_URL = "http://localhost:3000/api/challans";
 
@@ -39,9 +40,7 @@ export default function Challan() {
   const [documentPreview, setDocumentPreview] = useState({ url: null, type: null });
 
   // Show notification
-  const showNotification = (message, isSuccess = true) => {
-    setNotification({ message, isSuccess });
-    setTimeout(() => setNotification(null), 2000);
+  const showNotification = (message, isSuccess) => {    showToast(message, isSuccess);
   };
 
   // Fetch all challans on component mount
@@ -53,14 +52,15 @@ export default function Challan() {
     try {
       setLoading(true);
       const response = await axios.get(API_URL);
-      setAllChallans(response.data);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching challans:", err);
-      setError("Failed to load challans. Please try again.");
+        setAllChallans(response.data);
+        setError(null);
+      } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to load challans.");
+        setError(errorMessage);
+        console.error("Error fetching challans:", err);
     } finally {
       setLoading(false);
-    }
+      }
   };
 
   const handleDelete = async (id) => {
@@ -69,10 +69,11 @@ export default function Challan() {
         setLoading(true);
         await axios.delete(`${API_URL}/${id}`);
         showNotification("Challan deleted successfully!");
-        fetchChallans(); // Refreshes the list
-      } catch (err) {
-        console.error("Error deleting challan:", err);
-        setError("Failed to delete challan. Please try again.");
+          fetchChallans(); // Refreshes the list
+        } catch (err) {
+          const errorMessage = handleApiError(err, "Failed to delete challan.");
+          setError(errorMessage);
+          console.error("Error deleting challan:", err);
       } finally {
         setLoading(false);
       }
@@ -128,9 +129,10 @@ export default function Challan() {
       }
 
       fetchChallans();
-      resetForm();
-    } catch (err) {
-      console.error("Error submitting challan:", err);
+        resetForm();
+      } catch (err) {
+        console.error("Error submitting challan:", err);        
+          const errorMessage = handleApiError(err, "Failed to submit challan.");
       setError(err.response?.data?.error || "Failed to submit challan. Please try again.");
     } finally {
       setLoading(false);
@@ -161,10 +163,11 @@ export default function Challan() {
       setViewData(response.data);
       setViewMode(true);
       setEditMode(false);
-      setShowPopup(true);
-    } catch (err) {
-      console.error("Error fetching challan details:", err);
-      setError("Failed to fetch challan details");
+        setShowPopup(true);
+      } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to fetch challan details.");
+          setError(errorMessage);
+          console.error("Error fetching challan details:", err);
     } finally {
       setLoading(false);
     }
@@ -190,8 +193,9 @@ export default function Challan() {
       setEditMode(true);
       setViewMode(false);
       setShowPopup(true);
-    } catch (err) {
-      console.error("Error fetching challan details for edit:", err);
+      } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to fetch challan details for editing");
+          setError(errorMessage);
       setError("Failed to fetch challan details for editing");
     } finally {
       setLoading(false);
@@ -202,8 +206,7 @@ export default function Challan() {
     try {
       setLoading(true);
       // Clear previous errors before attempting fetch
-      setError(null); 
-      const response = await axios.get(`${API_URL}/${challanId}/document`, {
+      setError(null);        const response = await axios.get(`${API_URL}/${challanId}/document`, {
         responseType: 'blob'
       });
 
@@ -212,10 +215,8 @@ export default function Challan() {
       const url = window.URL.createObjectURL(blob);
       setDocumentPreview({ url, type: contentType });
     } catch (err) {
-      console.error("Error fetching document:", err);
-      // Set error state to display on the page
-      const errorMessage = err.response?.data?.error || "Failed to load document. Please check the server.";
-      setError(errorMessage); 
+        const errorMessage = handleApiError(err, "Failed to load document. Please check the server.");
+          setError(errorMessage);
       // Ensure preview state is cleared on error
       setDocumentPreview({ url: null, type: null });
     } finally {

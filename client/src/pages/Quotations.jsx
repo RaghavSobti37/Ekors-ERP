@@ -28,78 +28,27 @@ import 'react-toastify/dist/ReactToastify.css';
 import {
   PDFViewer,
   PDFDownloadLink,
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
 } from "@react-pdf/renderer";
 
+import { showToast, handleApiError } from '../utils/helpers';
+
 const fullScreenModalStyle = {
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: "95vw",
-  height: "95vh",
-  maxWidth: "none",
+  position: 'fixed',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '95vw',
+  height: '95vh',
+  maxWidth: 'none',
   margin: 0,
   padding: 0,
-  overflow: "auto",
+  overflow: 'auto',
+  backgroundColor: 'white',
+  border: '1px solid #dee2e6',
+  borderRadius: '0.3rem',
+  boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
+  zIndex: 1050
 };
-
-// PDF Document Styles
-const pdfStyles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontFamily: "Helvetica",
-    fontSize: 11,
-  },
-  header: {
-    fontSize: 24,
-    marginBottom: 20,
-    textAlign: "center",
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  section: {
-    marginBottom: 15,
-  },
-  table: {
-    display: "table",
-    width: "auto",
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: "#000",
-  },
-  tableRow: {
-    flexDirection: "row",
-  },
-  tableColHeader: {
-    width: "25%",
-    fontWeight: "bold",
-    border: "1px solid #000",
-    padding: 5,
-  },
-  tableCol: {
-    width: "25%",
-    border: "1px solid #000",
-    padding: 5,
-    textAlign: "center",
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingTop: 5,
-    fontWeight: "bold",
-  },
-  footer: {
-    marginTop: 20,
-    textAlign: "center",
-    fontSize: 10,
-    color: "red",
-  },
-});
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return "";
@@ -271,9 +220,9 @@ export default function Quotations() {
   const getAuthToken = () => {
     try {
       const token = localStorage.getItem("erp-user");
-    // console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token"); // Debug log commented out
-    return token || null;
-    }catch (e) {
+      // console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token"); // Debug log commented out
+      return token || null;
+    } catch (e) {
       toast.error("Error accessing local storage for authentication token.");
       const errorDetails = {
         errorMessage: e.message,
@@ -286,7 +235,7 @@ export default function Quotations() {
         frontendLogger.error("localStorageAccess", "Failed to get auth token from localStorage (user not authenticated)", null, errorDetails);
       }
       return null;
-      }
+    }
   };
 
   const generateQuotationNumber = () => {
@@ -302,122 +251,122 @@ export default function Quotations() {
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
   };
 
-const handleSaveClientDetails = async () => {
- const { 
-    companyName: rawCompanyName, 
-    gstNumber: rawGstNumber, 
-    email: rawEmail, 
-    phone: rawPhone 
-  } = quotationData.client;
+  const handleSaveClientDetails = async () => {
+    const {
+      companyName: rawCompanyName,
+      gstNumber: rawGstNumber,
+      email: rawEmail,
+      phone: rawPhone
+    } = quotationData.client;
 
-  // Trim values for validation and use
-  const companyName = rawCompanyName?.trim();
-  const gstNumber = rawGstNumber?.trim();
-  const email = rawEmail?.trim();
-  const phone = rawPhone?.trim();
+    // Trim values for validation and use
+    const companyName = rawCompanyName?.trim();
+    const gstNumber = rawGstNumber?.trim();
+    const email = rawEmail?.trim();
+    const phone = rawPhone?.trim();
 
-  if (!companyName || !gstNumber || !email || !phone) {
-    const msg = "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
-    setError(msg);
-    toast.warn(msg);
-    return;
-  }
+    if (!companyName || !gstNumber || !email || !phone) {
+      const msg = "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
+      setError(msg);
+      toast.warn(msg);
+      return;
+    }
 
-  // Additional Frontend Validations
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    const msg = "Invalid email format.";
-    setError(msg);
-    toast.warn(msg);
-    return;
-  }
+    // Additional Frontend Validations
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      const msg = "Invalid email format.";
+      setError(msg);
+      toast.warn(msg);
+      return;
+    }
 
-  // // Basic GST Number validation (must be 15 characters)
-  // if (gstNumber.length !== 15) {
-  //   const msg = "GST Number must be 15 characters long.";
-  //   setError(msg);
-  //   toast.warn(msg);
-  //   return;
-  // }
+    // // Basic GST Number validation (must be 15 characters)
+    // if (gstNumber.length !== 15) {
+    //   const msg = "GST Number must be 15 characters long.";
+    //   setError(msg);
+    //   toast.warn(msg);
+    //   return;
+    // }
 
-  // Basic Phone Number validation (must be 10 digits)
-  const phoneRegex = /^\d{10}$/;
-  if (!phoneRegex.test(phone)) {
-    const msg = "Phone number must be 10 digits.";
-    setError(msg);
-    toast.warn(msg);
-    return;
-  }
+    // Basic Phone Number validation (must be 10 digits)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+      const msg = "Phone number must be 10 digits.";
+      setError(msg);
+      toast.warn(msg);
+      return;
+    }
 
-  setIsSavingClient(true);
-  setError(null); // Clear previous form error
-  const clientPayload = { 
-    companyName: companyName, // Use trimmed value
-    gstNumber: gstNumber.toUpperCase(), // Use trimmed and then uppercased value
-    email: email.toLowerCase(), // Use trimmed and then lowercased value
-    phone: phone, // Use trimmed value
-  };
-  try {
-    const token = getAuthToken();
-    if (!token) throw new Error("No authentication token found");
+    setIsSavingClient(true);
+    setError(null); // Clear previous form error
+    const clientPayload = {
+      companyName: companyName, // Use trimmed value
+      gstNumber: gstNumber.toUpperCase(), // Use trimmed and then uppercased value
+      email: email.toLowerCase(), // Use trimmed and then lowercased value
+      phone: phone, // Use trimmed value
+    };
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
 
 
-    const response = await axios.post(
-      "http://localhost:3000/api/clients",
-      clientPayload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      const response = await axios.post(
+        "http://localhost:3000/api/clients",
+        clientPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data && response.data._id) {
+        setQuotationData((prev) => ({
+          ...prev,
+          client: { ...response.data }, // Populate with full client data from backend
+        }));
+        setSelectedClientIdForForm(response.data._id);
+        setError(null);
+        toast.success("Client saved successfully!");
+        if (auth.user) {
+          frontendLogger.info("clientActivity", "New client saved successfully", auth.user, {
+            clientId: response.data._id,
+            clientName: response.data.companyName,
+            action: "SAVE_NEW_CLIENT_SUCCESS"
+          });
+        }
+      } else {
+        setError("Failed to save client: Unexpected response from server.");
+        toast.error("Failed to save client: Unexpected response from server.");
       }
-    );
-    if (response.data && response.data._id) {
-      setQuotationData((prev) => ({
-        ...prev,
-        client: { ...response.data }, // Populate with full client data from backend
-      }));
-      setSelectedClientIdForForm(response.data._id);
-      setError(null);
-      toast.success("Client saved successfully!");
+    } catch (error) {
+      let errorMessage = "Failed to save client details.";
+      if (error.response?.data?.field === 'gstNumber') {
+        errorMessage = error.response.data.message || "This GST Number is already registered.";
+      } else if (error.response?.data?.field === 'email') {
+        errorMessage = error.response.data.message || "This Email is already registered.";
+      } else {
+        errorMessage = error.response?.data?.message || errorMessage;
+      }
+      setError(errorMessage); // Keep for form-specific feedback
+      toast.error(errorMessage); // Show toast notification
+
+      // Log the error
       if (auth.user) {
-        frontendLogger.info("clientActivity", "New client saved successfully", auth.user, { 
-          clientId: response.data._id, 
-          clientName: response.data.companyName,
-          action: "SAVE_NEW_CLIENT_SUCCESS"
+        // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
+        frontendLogger.error("clientActivity", "Failed to save new client", auth.user, {
+          clientPayload: clientPayload, // Log the payload attempted to save
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          action: "SAVE_NEW_CLIENT_FAILURE"
         });
       }
-    } else {
-      setError("Failed to save client: Unexpected response from server.");
-      toast.error("Failed to save client: Unexpected response from server.");
+    } finally {
+      setIsSavingClient(false);
     }
-    } catch (error) {
-    let errorMessage = "Failed to save client details.";
-    if (error.response?.data?.field === 'gstNumber') {
-      errorMessage = error.response.data.message || "This GST Number is already registered.";
-    } else if (error.response?.data?.field === 'email') {
-      errorMessage = error.response.data.message || "This Email is already registered.";
-    } else {
-      errorMessage = error.response?.data?.message || errorMessage;
-    }
-    setError(errorMessage); // Keep for form-specific feedback
-    toast.error(errorMessage); // Show toast notification
-
-    // Log the error
-    if (auth.user) {
-      // const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
-      frontendLogger.error("clientActivity", "Failed to save new client", auth.user, {
-        clientPayload: clientPayload, // Log the payload attempted to save
-        errorMessage: error.response?.data?.message || error.message,
-        stack: error.stack,
-        responseData: error.response?.data,
-        action: "SAVE_NEW_CLIENT_FAILURE"
-      });
-    }
-  } finally {
-    setIsSavingClient(false);
-  }
-};
+  };
 
   const initialQuotationData = {
     date: formatDateForInput(new Date()),
@@ -473,9 +422,8 @@ const handleSaveClientDetails = async () => {
       }
 
       // Construct URL with query parameters
-      const url = `http://localhost:3000/api/quotations${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
+      const url = `http://localhost:3000/api/quotations${params.toString() ? `?${params.toString()}` : ""
+        }`;
 
       const response = await axios.get(url, {
         headers: {
@@ -490,7 +438,7 @@ const handleSaveClientDetails = async () => {
       // console.error("Error fetching quotations:", error); // Debug log commented out
       const errorMessage = error.response?.data?.message || error.message || "Failed to load quotations. Please try again.";
       setError(errorMessage); // Keep for main error display
-      toast.error(errorMessage); // Show toast notification
+      showToast(errorMessage, false); // Show toast notification
 
       // Log the error
       if (auth.user) {
@@ -519,7 +467,7 @@ const handleSaveClientDetails = async () => {
 
   useEffect(() => {
     if (!loading && !user) {
-       // Only navigate if not already on login page to prevent infinite loop
+      // Only navigate if not already on login page to prevent infinite loop
       if (window.location.pathname !== '/login') navigate("/login", { state: { from: "/quotations" } });
     } else {
       fetchQuotations();
@@ -689,33 +637,33 @@ const handleSaveClientDetails = async () => {
 
     // Price validation against max discount
     // Real-time price validation
-      if (field === "price") {
-        const currentItem = updatedGoods[index];
-        const newPrice = parseFloat(value); // Value is already Number if field is 'price'
-        const originalPrice = parseFloat(currentItem.originalPrice);
-        const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
+    if (field === "price") {
+      const currentItem = updatedGoods[index];
+      const newPrice = parseFloat(value); // Value is already Number if field is 'price'
+      const originalPrice = parseFloat(currentItem.originalPrice);
+      const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
 
-        if (!isNaN(newPrice) && !isNaN(originalPrice)) {
-          if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
-            const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
-            if (newPrice < minAllowedPrice) {
-              priceValidationError = `Discount for ${currentItem.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
-            }
-          } else { // No discount slab (maxDiscountPerc is 0, undefined, or NaN)
-            if (newPrice < originalPrice) {
-              priceValidationError = `Price for ${currentItem.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
-            }
+      if (!isNaN(newPrice) && !isNaN(originalPrice)) {
+        if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
+          const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
+          if (newPrice < minAllowedPrice) {
+            priceValidationError = `Discount for ${currentItem.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
           }
-        } else {
-         // Handle cases where price input might not be a valid number yet, or originalPrice is missing.
-          // This can happen if `value` (which is `e.target.value` initially) is an empty string or non-numeric.
-          // `parseFloat('')` is NaN. `Number('')` is 0.
-          // If `value` (as string from input) is non-empty but not a number, `newPrice` will be NaN.
-          if (String(value).trim() !== "" && isNaN(newPrice)) {
-            priceValidationError = `Invalid price entered for ${currentItem.description}.`;
+        } else { // No discount slab (maxDiscountPerc is 0, undefined, or NaN)
+          if (newPrice < originalPrice) {
+            priceValidationError = `Price for ${currentItem.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
           }
         }
+      } else {
+        // Handle cases where price input might not be a valid number yet, or originalPrice is missing.
+        // This can happen if `value` (which is `e.target.value` initially) is an empty string or non-numeric.
+        // `parseFloat('')` is NaN. `Number('')` is 0.
+        // If `value` (as string from input) is non-empty but not a number, `newPrice` will be NaN.
+        if (String(value).trim() !== "" && isNaN(newPrice)) {
+          priceValidationError = `Invalid price entered for ${currentItem.description}.`;
+        }
       }
+    }
 
     updatedGoods.forEach((item) => {
       if (!item.unit) item.unit = "Nos";
@@ -866,7 +814,7 @@ const handleSaveClientDetails = async () => {
 
     // Clear discount related error if all validations pass before submission attempt
     if (error && error.includes("exceeds the maximum allowed")) {
-        setError(null);
+      setError(null);
     } // Keep other form validation errors
 
     setIsLoading(true);
@@ -929,8 +877,8 @@ const handleSaveClientDetails = async () => {
         // Log successful save/update
         if (auth.user) {
           const userForLog = { firstname: auth.user.firstname, lastname: auth.user.lastname, email: auth.user.email, id: auth.user.id };
-          frontendLogger.info("quotationActivity", `Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'}`, userForLog, { 
-            quotationId: response.data._id, 
+          frontendLogger.info("quotationActivity", `Quotation ${submissionData.referenceNumber} ${currentQuotation ? 'updated' : 'created'}`, userForLog, {
+            quotationId: response.data._id,
             referenceNumber: submissionData.referenceNumber,
             action: currentQuotation ? "UPDATE_QUOTATION_SUCCESS" : "CREATE_QUOTATION_SUCCESS"
           });
@@ -961,15 +909,15 @@ const handleSaveClientDetails = async () => {
 
       // Log the error
       if (auth.user) {
-         frontendLogger.error("quotationActivity", currentQuotation ? "Failed to update quotation" : "Failed to create quotation", auth.user, { 
-            referenceNumber: quotationData.referenceNumber, 
-            quotationId: currentQuotation?._id,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
-            submittedData: submissionData, // Be careful logging full data if it's sensitive
-            action: currentQuotation ? "UPDATE_QUOTATION_FAILURE" : "CREATE_QUOTATION_FAILURE"
-         });
+        frontendLogger.error("quotationActivity", currentQuotation ? "Failed to update quotation" : "Failed to create quotation", auth.user, {
+          referenceNumber: quotationData.referenceNumber,
+          quotationId: currentQuotation?._id,
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          submittedData: submissionData, // Be careful logging full data if it's sensitive
+          action: currentQuotation ? "UPDATE_QUOTATION_FAILURE" : "CREATE_QUOTATION_FAILURE"
+        });
       }
     } finally {
       setIsLoading(false);
@@ -1003,12 +951,12 @@ const handleSaveClientDetails = async () => {
       toast.error("Failed to generate ticket number. Using a temporary number.");
       // Log the error
       if (auth.user) {
-         frontendLogger.error("ticketActivity", "Failed to generate ticket number from API", auth.user, {
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
-            action: "GENERATE_TICKET_NUMBER_FAILURE"
-         });
+        frontendLogger.error("ticketActivity", "Failed to generate ticket number from API", auth.user, {
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          action: "GENERATE_TICKET_NUMBER_FAILURE"
+        });
       }
       // const now = new Date();
       // const year = now.getFullYear().toString().slice(-2);
@@ -1067,13 +1015,13 @@ const handleSaveClientDetails = async () => {
       // console.error("Error checking existing ticket:", error); // Debug log commented out
       toast.error("Failed to check for existing ticket.");
       if (auth.user) {
-       frontendLogger.error("ticketActivity", "Failed to check for existing ticket", auth.user, { 
-            quotationNumber,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
-            action: "CHECK_EXISTING_TICKET_FAILURE"
-         });
+        frontendLogger.error("ticketActivity", "Failed to check for existing ticket", auth.user, {
+          quotationNumber,
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          action: "CHECK_EXISTING_TICKET_FAILURE"
+        });
       }
       return false;
     }
@@ -1168,21 +1116,21 @@ const handleSaveClientDetails = async () => {
       // console.error("Error creating ticket:", error); // Debug log commented out
       let errorMessage =
         error.response?.data?.message ||
-          error.message ||
-          "Failed to create ticket. Please try again.";
+        error.message ||
+        "Failed to create ticket. Please try again.";
       setError(errorMessage); // Keep for modal feedback
       toast.error(errorMessage); // Show toast notification
 
       // Log the error
       if (auth.user) {
-         frontendLogger.error("ticketActivity", "Failed to create ticket from quotation", auth.user, { 
-            quotationNumber: ticketData.quotationNumber,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
-            ticketDataSubmitted: completeTicketData, // Be careful with sensitive data
-            action: "CREATE_TICKET_FROM_QUOTATION_FAILURE"
-         });
+        frontendLogger.error("ticketActivity", "Failed to create ticket from quotation", auth.user, {
+          quotationNumber: ticketData.quotationNumber,
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          ticketDataSubmitted: completeTicketData, // Be careful with sensitive data
+          action: "CREATE_TICKET_FROM_QUOTATION_FAILURE"
+        });
       }
     } finally {
       setIsLoading(false);
@@ -1194,19 +1142,19 @@ const handleSaveClientDetails = async () => {
 
     let orderIssuedByIdToSet = null;
     if (quotation.orderIssuedBy) {
-        // Handles both populated object { _id: '...' } and plain ID string
-        orderIssuedByIdToSet = quotation.orderIssuedBy._id || quotation.orderIssuedBy;
+      // Handles both populated object { _id: '...' } and plain ID string
+      orderIssuedByIdToSet = quotation.orderIssuedBy._id || quotation.orderIssuedBy;
     } else if (quotation.user) {
-        // Fallback to the user who created the quotation if orderIssuedBy is missing
-        orderIssuedByIdToSet = quotation.user._id || quotation.user;
+      // Fallback to the user who created the quotation if orderIssuedBy is missing
+      orderIssuedByIdToSet = quotation.user._id || quotation.user;
     } else if (user && user.id) {
-        // Further fallback to the current logged-in user if other sources are unavailable
-        orderIssuedByIdToSet = user.id;
+      // Further fallback to the current logged-in user if other sources are unavailable
+      orderIssuedByIdToSet = user.id;
     }
 
     // Ensure we only have the ID string if it was an object
     if (typeof orderIssuedByIdToSet === 'object' && orderIssuedByIdToSet !== null) {
-        orderIssuedByIdToSet = orderIssuedByIdToSet._id;
+      orderIssuedByIdToSet = orderIssuedByIdToSet._id;
     }
 
     setQuotationData({
@@ -1297,10 +1245,10 @@ const handleSaveClientDetails = async () => {
       fetchQuotations(); // Refresh data
       toast.success(`Quotation ${quotation.referenceNumber} deleted successfully.`);
       if (auth.user) {
-        frontendLogger.info("quotationActivity", `Quotation ${quotation.referenceNumber} deleted`, auth.user, { 
-            quotationId: quotation._id,
-            referenceNumber: quotation.referenceNumber,
-            action: "DELETE_QUOTATION_SUCCESS"
+        frontendLogger.info("quotationActivity", `Quotation ${quotation.referenceNumber} deleted`, auth.user, {
+          quotationId: quotation._id,
+          referenceNumber: quotation.referenceNumber,
+          action: "DELETE_QUOTATION_SUCCESS"
         });
       }
     } catch (error) {
@@ -1323,14 +1271,14 @@ const handleSaveClientDetails = async () => {
       setError(errorMessage); // Keep for main error display
       toast.error(errorMessage); // Show toast notification
       if (auth.user) {
-         frontendLogger.error("quotationActivity", "Failed to delete quotation", error, auth.user, { 
-            quotationId: quotation._id, 
-            referenceNumber: quotation.referenceNumber,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
-            action: "DELETE_QUOTATION_FAILURE"
-         });
+        frontendLogger.error("quotationActivity", "Failed to delete quotation", error, auth.user, {
+          quotationId: quotation._id,
+          referenceNumber: quotation.referenceNumber,
+          errorMessage: error.response?.data?.message || error.message,
+          stack: error.stack,
+          responseData: error.response?.data,
+          action: "DELETE_QUOTATION_FAILURE"
+        });
       }
     } finally {
       setIsLoading(false);
@@ -1448,13 +1396,12 @@ const handleSaveClientDetails = async () => {
               sortable: true,
               renderCell: (item) => (
                 <span
-                  className={`badge ${
-                    item.status === 'open'
+                  className={`badge ${item.status === 'open'
                       ? 'bg-primary'
                       : item.status === 'closed'
-                      ? 'bg-success'
-                      : 'bg-warning'
-                  }`}
+                        ? 'bg-success'
+                        : 'bg-warning'
+                    }`}
                 >
                   {item.status}
                 </span>
@@ -1542,62 +1489,63 @@ const handleSaveClientDetails = async () => {
           dialogClassName="custom-modal"
           centered
         >
-          {/* Updated Modal Header with same styling as CreateTicketModal */}
-          <Modal.Header
-            closeButton
-            onHide={() => {
-              setShowModal(false);
-              setCurrentQuotation(null);
-              resetForm();
-            }}
-            style={{
-              borderBottom: "1px solid #dee2e6",
-              padding: "1rem",
-              flexShrink: 0, // Prevent header from shrinking
-            }}
-          >
-            <Modal.Title>
-              {currentQuotation
-                ? `Edit Quotation - ${quotationData.referenceNumber}`
-                : `Create New Quotation - ${quotationData.referenceNumber}`}
-              <br />
-            </Modal.Title>
-          </Modal.Header>
-          {/* The div with fullScreenModalStyle and the unused IIFE were removed.
-                The Form is now a direct child of Modal's content area.
-                Its style is adjusted to correctly fill space and manage layout. */}
-          <Form
-            noValidate
-            validated={formValidated}
-            onSubmit={handleSubmit}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              flexGrow: 1, // Make form take available vertical space
-              overflow: "hidden", // Prevent form itself from scrolling; Modal.Body will scroll
-            }}
-          >
-            <Modal.Body
+          <div style={fullScreenModalStyle}>
+            {/* Updated Modal Header with same styling as CreateTicketModal */}
+            <Modal.Header
+              closeButton
+              onHide={() => {
+                setShowModal(false);
+                setCurrentQuotation(null);
+                resetForm();
+              }}
               style={{
-                flexGrow: 1,
-                overflowY: "auto",
-                padding: "20px",
+                borderBottom: "1px solid #dee2e6",
+                padding: "1rem",
+                flexShrink: 0, // Prevent header from shrinking
               }}
             >
-              <div className="row">
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>
-                    Date <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    required
-                    type="date"
-                    name="date"
-                    value={quotationData.date}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                {/* <Form.Group className="mb-3 col-md-4">
+              <Modal.Title>
+                {currentQuotation
+                  ? `Edit Quotation - ${quotationData.referenceNumber}`
+                  : `Create New Quotation - ${quotationData.referenceNumber}`}
+                <br />
+              </Modal.Title>
+            </Modal.Header>
+            {/* The div with fullScreenModalStyle and the unused IIFE were removed.
+                The Form is now a direct child of Modal's content area.
+                Its style is adjusted to correctly fill space and manage layout. */}
+            <Form
+              noValidate
+              validated={formValidated}
+              onSubmit={handleSubmit}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                flexGrow: 1, // Make form take available vertical space
+                overflow: "hidden", // Prevent form itself from scrolling; Modal.Body will scroll
+              }}
+            >
+              <Modal.Body
+                style={{
+                  flexGrow: 1,
+                  overflowY: "auto",
+                  padding: "20px",
+                }}
+              >
+                <div className="row">
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>
+                      Date <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      required
+                      type="date"
+                      name="date"
+                      value={quotationData.date}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  {/* <Form.Group className="mb-3 col-md-4">
                   <Form.Label>Reference Number</Form.Label>
                   <Form.Control
                     type="text"
@@ -1606,201 +1554,202 @@ const handleSaveClientDetails = async () => {
                     readOnly
                   />
                 </Form.Group> */}
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>
-                    Validity Date <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    required
-                    type="date"
-                    name="validityDate"
-                    value={quotationData.validityDate}
-                    onChange={handleInputChange}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-4">
-                  <Form.Label>
-                    Status <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Select
-                    required
-                    name="status"
-                    value={quotationData.status}
-                    onChange={handleInputChange}
-                  >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="hold">Hold</option>
-                  </Form.Select>
-                </Form.Group>
-              </div>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>
+                      Validity Date <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      required
+                      type="date"
+                      name="validityDate"
+                      value={quotationData.validityDate}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-4">
+                    <Form.Label>
+                      Status <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Select
+                      required
+                      name="status"
+                      value={quotationData.status}
+                      onChange={handleInputChange}
+                    >
+                      <option value="open">Open</option>
+                      <option value="closed">Closed</option>
+                      <option value="hold">Hold</option>
+                    </Form.Select>
+                  </Form.Group>
+                </div>
 
-              <h5>Client Details</h5>
-              <>
-                <ClientSearchComponent
-                  onClientSelect={handleClientSelect}
-                  placeholder="Search & select client"
-                  currentClientId={selectedClientIdForForm}
+                <h5>Client Details</h5>
+                <>
+                  <ClientSearchComponent
+                    onClientSelect={handleClientSelect}
+                    placeholder="Search & select client"
+                    currentClientId={selectedClientIdForForm}
+                  />
+                  {selectedClientIdForForm && (
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      className="mb-2 mt-1"
+                      onClick={() => {
+                        setSelectedClientIdForForm(null);
+                        setQuotationData((prev) => ({
+                          ...prev,
+                          client: {
+                            ...initialQuotationData.client,
+                            _id: null, // Explicitly nullify ID
+                          },
+                        }));
+                      }}
+                    >
+                      Clear/Edit Client Details
+                    </Button>
+                  )}
+                </>
+
+                <div className="row">
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>
+                      Company Name <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      required
+                      type="text"
+                      name="client.companyName"
+                      value={quotationData.client.companyName}
+                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      readOnly={!!selectedClientIdForForm}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>
+                      GST Number <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      required
+                      type="text"
+                      name="client.gstNumber"
+                      value={quotationData.client.gstNumber}
+                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      readOnly={!!selectedClientIdForForm}
+                    />
+                  </Form.Group>
+                </div>
+                <div className="row">
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>
+                      Email <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="email"
+                      name="client.email"
+                      value={quotationData.client.email}
+                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      readOnly={!!selectedClientIdForForm}
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3 col-md-6">
+                    <Form.Label>
+                      Phone <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="tel"
+                      name="client.phone"
+                      value={quotationData.client.phone}
+                      onChange={!selectedClientIdForForm ? handleInputChange : undefined}
+                      readOnly={!!selectedClientIdForForm}
+                    />
+                  </Form.Group>
+                </div>
+
+                {!selectedClientIdForForm &&
+                  quotationData.client.companyName &&
+                  quotationData.client.gstNumber &&
+                  quotationData.client.email &&
+                  quotationData.client.phone && (
+                    <Button
+                      variant="success"
+                      onClick={handleSaveClientDetails}
+                      className="mb-3"
+                      disabled={isSavingClient}
+                    >
+                      {isSavingClient ? "Saving Client..." : "Save New Client"}
+                    </Button>
+                  )
+                }
+
+                <h5>Goods Details</h5>
+                <GoodsTable
+                  goods={quotationData.goods}
+                  handleGoodsChange={handleGoodsChange}
+                  currentQuotation={currentQuotation}
+                  isEditing={true}
+                  onAddItem={handleAddItem}
+                  onDeleteItem={handleDeleteItem}
                 />
-                {selectedClientIdForForm && (
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    className="mb-2 mt-1"
-                    onClick={() => {
-                      setSelectedClientIdForForm(null);
-                      setQuotationData((prev) => ({
-                        ...prev,
-                        client: {
-                          ...initialQuotationData.client,
-                           _id: null, // Explicitly nullify ID
-                        },
-                      }));
-                    }}
-                  >
-                    Clear/Edit Client Details
-                  </Button>
-                )}
-              </>
 
-              <div className="row">
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>
-                    Company Name <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    name="client.companyName"
-                    value={quotationData.client.companyName}
-                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
-                    readOnly={!!selectedClientIdForForm}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>
-                    GST Number <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    name="client.gstNumber"
-                    value={quotationData.client.gstNumber}
-                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
-                    readOnly={!!selectedClientIdForForm}
-                  />
-                </Form.Group>
-              </div>
-              <div className="row">
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>
-                    Email <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="email"
-                    name="client.email"
-                    value={quotationData.client.email}
-                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
-                    readOnly={!!selectedClientIdForForm}
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3 col-md-6">
-                  <Form.Label>
-                    Phone <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="tel"
-                    name="client.phone"
-                    value={quotationData.client.phone}
-                    onChange={!selectedClientIdForForm ? handleInputChange : undefined}
-                    readOnly={!!selectedClientIdForForm}
-                  />
-                </Form.Group>
-              </div>
-
-              {!selectedClientIdForForm &&
-                quotationData.client.companyName &&
-                quotationData.client.gstNumber &&
-                quotationData.client.email &&
-                quotationData.client.phone && (
-                  <Button
-                    variant="success"
-                    onClick={handleSaveClientDetails}
-                    className="mb-3"
-                    disabled={isSavingClient}
-                  >
-                    {isSavingClient ? "Saving Client..." : "Save New Client"}
-                  </Button>
-                )
-              }
-
-              <h5>Goods Details</h5>
-              <GoodsTable
-                goods={quotationData.goods}
-                handleGoodsChange={handleGoodsChange}
-                currentQuotation={currentQuotation}
-                isEditing={true}
-                onAddItem={handleAddItem}
-                onDeleteItem={handleDeleteItem}
-              />
-
-              <div className="bg-light p-3 rounded">
-                <div className="row">
-                  <div className="col-md-4">
-                    <p>
-                      Total Quantity:{" "}
-                      <strong>{quotationData.totalQuantity}</strong>
-                    </p>
+                <div className="bg-light p-3 rounded">
+                  <div className="row">
+                    <div className="col-md-4">
+                      <p>
+                        Total Quantity:{" "}
+                        <strong>{quotationData.totalQuantity}</strong>
+                      </p>
+                    </div>
+                    <div className="col-md-4">
+                      <p>
+                        Total Amount:{" "}
+                        <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
+                    <div className="col-md-4">
+                      <p>
+                        GST (18%):{" "}
+                        <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
                   </div>
-                  <div className="col-md-4">
-                    <p>
-                      Total Amount:{" "}
-                      <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
-                    </p>
-                  </div>
-                  <div className="col-md-4">
-                    <p>
-                      GST (18%):{" "}
-                      <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
-                    </p>
+                  <div className="row">
+                    <div className="col-md-12">
+                      <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+                    </div>
                   </div>
                 </div>
-                <div className="row">
-                  <div className="col-md-12">
-                    <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
-                  </div>
-                </div>
-              </div>
-            </Modal.Body>
-            <Modal.Footer
-              style={{
-                borderTop: "1px solid #dee2e6",
-                padding: "15px",
-                flexShrink: 0,
-              }}
-            >
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowModal(false);
-                  setCurrentQuotation(null);
-                  resetForm();
+              </Modal.Body>
+              <Modal.Footer
+                style={{
+                  borderTop: "1px solid #dee2e6",
+                  padding: "15px",
+                  flexShrink: 0,
                 }}
-                disabled={isLoading}
               >
-                Close
-              </Button>
-              <Button variant="primary" type="submit" disabled={isLoading}>
-                {isLoading
-                  ? currentQuotation
-                    ? "Updating..."
-                    : "Saving..."
-                  : currentQuotation
-                  ? "Update Quotation"
-                  : "Save Quotation"}
-              </Button>
-            </Modal.Footer>
-          </Form>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setCurrentQuotation(null);
+                    resetForm();
+                  }}
+                  disabled={isLoading}
+                >
+                  Close
+                </Button>
+                <Button variant="primary" type="submit" disabled={isLoading}>
+                  {isLoading
+                    ? currentQuotation
+                      ? "Updating..."
+                      : "Saving..."
+                    : currentQuotation
+                      ? "Update Quotation"
+                      : "Save Quotation"}
+                </Button>
+              </Modal.Footer>
+            </Form>
+          </div>
         </Modal>
 
         {/* Create Ticket Modal */}

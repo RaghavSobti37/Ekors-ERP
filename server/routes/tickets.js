@@ -572,4 +572,22 @@ router.get("/", auth, async (req, res) => {
 
 // Route to transfer a ticket
 router.post("/:id/transfer", auth, ticketController.transferTicket);
+
+// --- Routes moved from index.js (now using controller functions) ---
+// These routes are prefixed with /from-index to distinguish them if necessary
+// and to indicate their origin. They might represent older or public/unauthenticated logic.
+
+router.get('/from-index/all', ticketController.getAllTickets_IndexLogic);
+
+router.post('/from-index/create', ticketController.createTicket_IndexLogic);
+
+// This uses the 'upload' instance defined in this file (routes/tickets.js)
+// which saves to a ticket-specific folder: 'uploads/<ticketId>/'
+router.post('/from-index/:id/documents', auth, upload.single('document'), ticketController.uploadDocument_IndexLogic);
+
+router.put('/from-index/:id', ticketController.updateTicket_IndexLogic);
+
+// General file serving (moved from index.js, consider if this is the best place long-term)
+router.get('/serve-file/:filename', ticketController.serveFile_IndexLogic);
+
 module.exports = router;

@@ -8,6 +8,7 @@ import {
   Trash, // Delete
   BarChart, // Generate Report
 } from 'react-bootstrap-icons';
+import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
@@ -68,7 +69,8 @@ export default function History() {
       if (!response.ok) {
         throw new Error('Failed to fetch history');
       }
-
+      showToast("History fetched successfully", true);
+      
       const data = await response.json();
       const withTotal = data.map((entry) => {
         let totalMinutes = 0;
@@ -83,8 +85,10 @@ export default function History() {
         };
       });
       setHistoryData(withTotal);
-    } catch (error) {
+        setError(null);
+      } catch (error) {
       console.error("Error fetching history:", error);
+      showToast(error.message || "Failed to fetch history", false);
       setError(error.message || "Failed to fetch history");
       if (error.message.includes('authentication')) {
         navigate('/login');
@@ -142,6 +146,7 @@ export default function History() {
 
         // Refresh the history after deletion
         await fetchHistory();
+        showToast("Entry deleted successfully!", true);
       } catch (error) {
         console.error("Error deleting entry:", error);
         setError(error.message || "Failed to delete entry");

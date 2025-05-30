@@ -52,7 +52,6 @@ const userBackupSchema = new mongoose.Schema({
 });
 
 userBackupSchema.index({ deletedAt: -1 });
-userBackupSchema.index({ originalId: 1 });
 userBackupSchema.index({ email: 1 }); // Keep if useful for searching backups
 
 const UserBackup = mongoose.model("UserBackup", userBackupSchema);

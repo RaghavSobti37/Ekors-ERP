@@ -26,17 +26,6 @@ export default function Logtime() {
     const year = today.getFullYear();
     return `${day}-${month}-${year}`;
   };
-
-  const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
   
   useEffect(() => {
     if (loading || !user) return;

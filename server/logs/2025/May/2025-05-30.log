@@ -110,7 +110,10 @@
 [2025-05-30 00:10:11] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 00:10:11] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> origin/vivek
 [2025-05-30 00:49:02] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
 [2025-05-30 00:49:02] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
 [2025-05-30 00:49:03] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
@@ -346,6 +349,7 @@
 [2025-05-30 01:12:14] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
 [2025-05-30 01:15:20] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
 [2025-05-30 01:15:20] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+<<<<<<< HEAD
 [2025-05-30 12:52:11] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
 [2025-05-30 12:52:11] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
 [2025-05-30 12:52:12] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
@@ -1271,3 +1275,126 @@
 [2025-05-30 14:49:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 14:49:13] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 14:49:13] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+=======
+[2025-05-30 12:22:26] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 12:22:26] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 12:22:27] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
+[2025-05-30 12:25:07] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 12:25:07] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 12:25:08] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:25:08] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:25:08] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
+[2025-05-30 12:25:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:25:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:25:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:25:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:25:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:25:40] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:25:40] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:25:40] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:25:40] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:26:58] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:26:58] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:27:05] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:27:05] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:27:05] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:27:05] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:27:05] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:27:06] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:27:18] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/export-excel"}
+[2025-05-30 12:27:18] [System] [INFO] [excel_export] - API: Starting Excel export process
+[2025-05-30 12:27:18] [System] [INFO] [excel_export] - API: Excel file generated and sent for download
+[2025-05-30 12:28:34] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:28:34] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"POST","path":"/api/items/import-uploaded-excel"}
+[2025-05-30 12:28:34] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":238}
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - Attempting to bulk create/update 238 items.
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 0, Updated: 219. | Details: {"upsertResult":{"inserted":0,"modified":219,"errors":0}}
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":0,"itemsUpdated":219,"itemsDeleted":0}
+[2025-05-30 12:28:35] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-30 12:28:35] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:29:11] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"DELETE","path":"/api/items/6838a0d68319816e868a5812"}
+[2025-05-30 12:29:11] [Vivek Kumar] [INFO] [delete] - [DELETE_INITIATED] Item ID: 6838a0d68319816e868a5812. Transaction started. | Details: {"userId":"68355349a6d86af1279c72d6","itemId":"6838a0d68319816e868a5812","model":"Item","operation":"delete","sessionId":{"id":"faZjJZtXRk+tvDEtYQUIqQ=="}}
+[2025-05-30 12:29:12] [Vivek Kumar] [INFO] [delete] - [BACKUP_SUCCESS] Item successfully backed up. Backup ID: 6838a0d68319816e868a5812. | Details: {"userId":"68355349a6d86af1279c72d6","itemId":"6838a0d68319816e868a5812","model":"Item","operation":"delete","sessionId":{"id":"faZjJZtXRk+tvDEtYQUIqQ=="},"originalId":"6838a0d68319816e868a5812","backupId":"6838a0d68319816e868a5812","backupModel":"ItemBackup"}
+[2025-05-30 12:29:12] [Vivek Kumar] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted. | Details: {"userId":"68355349a6d86af1279c72d6","itemId":"6838a0d68319816e868a5812","model":"Item","operation":"delete","sessionId":{"id":"faZjJZtXRk+tvDEtYQUIqQ=="},"originalId":"6838a0d68319816e868a5812"}
+[2025-05-30 12:29:12] [System] [INFO] [[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: 6838a0d68319816e868a5812.] - [object Object]
+[2025-05-30 12:29:12] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:32:13] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:32:13] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:32:13] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:32:13] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:32:14] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:32:14] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:32:17] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:32:17] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:06] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:06] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:37] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:35:37] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:41:02] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:11] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:13] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:34] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:39] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:46] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:42:46] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:42:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:42:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+>>>>>>> origin/vivek
+[2025-05-30 15:15:38] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 15:15:38] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 15:15:39] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
+[2025-05-30 15:15:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 15:15:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 15:15:45] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 15:15:45] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:15:45] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 15:15:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 15:15:46] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:46] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:15:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 15:15:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:15:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:15:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 15:15:47] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 15:15:47] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 15:16:07] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:07] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:07] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:07] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 15:16:08] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 15:16:08] [Raghav Sobti] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 15:16:12] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:12] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 15:16:12] [Raghav Sobti] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 15:16:16] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:16] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:16:16] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:16:16] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 15:16:16] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 15:16:16] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}

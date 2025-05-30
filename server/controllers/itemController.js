@@ -8,12 +8,6 @@ const path = require('path');
 const multer = require('multer');
 const xlsx = require('xlsx'); // For export
 
-const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DEBUG] ${message}`, data);
-  }
-};
-
 // Get all items
 exports.getAllItems = async (req, res) => {
   const user = req.user || null;
@@ -24,8 +18,7 @@ exports.getAllItems = async (req, res) => {
     // logger.info('item', `Fetched all items`, user, { count: items.length }); // Can be noisy
     res.json(items);
   } catch (error) {
-    debug("Error fetching items", error);
-    console.error('Error fetching items:', error);
+    logger.error('item', "Error fetching items", error, user);
     res.status(500).json({ 
       message: 'Server error while fetching items',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -336,57 +329,6 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
   return { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors };
 }
 
-// Helper function for upsert logic, refactored from importItemsFromExcelViaAPI
-/* // This function is now replaced by syncItemsWithDatabase for Excel import.
-async function processUpsert(itemsToUpsert, user, logContextPrefix) { 
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
-  const operationResults = [];
-  const databaseProcessingErrors = [];
-
-  for (const itemData of itemsToUpsert) {
-    try {
-      const query = { name: itemData.name }; // Using name as the unique identifier
-      
-      const updatePayload = {
-        name: itemData.name,
-        quantity: itemData.quantity || 0,
-        price: itemData.price || 0,
-        unit: itemData.unit || 'Nos',
-        category: itemData.category || 'Other',
-        subcategory: itemData.subcategory || 'General',
-        gstRate: itemData.gstRate || 0,
-        hsnCode: itemData.hsnCode || '',
-        maxDiscountPercentage: itemData.maxDiscountPercentage || 0,
-        image: itemData.image || '', // Will be '' from parser
-      };
-
-      const existingItem = await Item.findOne(query);
-
-      if (existingItem) {
-        // Preserve existing image if Excel doesn't provide one (which it won't in this flow)
-        if (updatePayload.image === '' && existingItem.image) {
-          updatePayload.image = existingItem.image;
-        }
-        await Item.updateOne(query, { $set: updatePayload }, { runValidators: true });
-        itemsUpdated++;
-        operationResults.push({ name: itemData.name, status: 'updated', id: existingItem._id });
-        logger.debug(logContextPrefix, `API: Item updated: ${itemData.name}`, { itemId: existingItem._id, userId: user?._id });
-      } else {
-        const newItem = new Item(updatePayload);
-        await newItem.save();
-        itemsCreated++;
-        operationResults.push({ name: itemData.name, status: 'created', id: newItem._id });
-        logger.debug(logContextPrefix, `API: Item created: ${itemData.name}`, { itemId: newItem._id, userId: user?._id });
-      }
-    } catch (dbError) {
-      logger.error(logContextPrefix, `API: DB Error processing item: ${itemData.name}`, { error: dbError.message, itemData, userId: user?._id });
-      databaseProcessingErrors.push({ name: itemData.name, status: 'error', message: dbError.message });
-    }
-  }
-  return { itemsCreated, itemsUpdated, operationResults, databaseProcessingErrors };
-}*/
-
 // This function is for the old flow of reading itemlist.xlsx from server root.
 // It can be removed if the new upload flow is the sole method.
 exports.importItemsFromExcelViaAPI = async (req, res) => {
@@ -437,9 +379,8 @@ exports.importItemsFromExcelViaAPI = async (req, res) => {
 // Get item categories
 exports.getCategories = async (req, res) => {
   const user = req.user || null;
-    try {
-    debug("Attempting to fetch categories");
-    
+  try {
+    logger.debug('item', "Attempting to fetch categories", user);
     // Simplified approach to get unique categories and subcategories
     const items = await Item.find({}, 'category subcategory');
     
@@ -466,12 +407,11 @@ exports.getCategories = async (req, res) => {
       subcategories: Array.from(subcategories)
     }));
     
-    logger.debug('item', "Categories fetched successfully", user, categories);
+    logger.debug('item', "Categories fetched successfully", user, { categoryCount: categories.length });
     res.json(categories);
     
   } catch (error) {
-    debug("Categories fetch failed", error);
-    console.error("Error in getCategories:", error);
+    logger.error('item', "Error in getCategories", error, user);
     res.status(500).json({ 
       success: false,
       message: 'Error fetching categories',
@@ -492,14 +432,13 @@ exports.getItemById = async (req, res) => {
 
   try {
     const item = await Item.findById(id);
-    // logger.debug('item', `Fetched item by ID: ${id}`, user); // Debug level
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
     logger.info('item', `Fetched item by ID: ${id}`, user, { itemId: id, itemName: item.name });
     res.json(item);
   } catch (error) {
-    console.error('Error fetching item details:', error);
+    logger.error('item', `Error fetching item details for ID: ${id}`, error, user);
     res.status(500).json({ message: 'Server error while fetching item' });
   }
 };
@@ -524,7 +463,6 @@ exports.createItem = async (req, res) => {
     logger.info('item', `Item created successfully`, user, { itemId: savedItem._id, itemName: savedItem.name });
     res.status(201).json(savedItem);
   } catch (error) {
-    console.error('Error creating item:', error);
     logger.error('item', `Failed to create item`, error, req.user, { requestBody: req.body });
     res.status(400).json({ 
       message: error.message.includes('validation') ? 
@@ -564,7 +502,7 @@ exports.updateItem = async (req, res) => {
     logger.info('item', `Item updated successfully`, user, { itemId: updatedItem._id, itemName: updatedItem.name });
     res.json(updatedItem);
   } catch (error) {
-    console.error('Error updating item:', error);
+    logger.error('item', `Error updating item ID: ${req.params.id}`, error, user, { requestBody: req.body });
     res.status(400).json({ 
       message: error.message.includes('validation') ? 
         'Validation failed: ' + error.message : 
@@ -694,8 +632,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
 
     res.json(formattedPurchases);
   } catch (error) {
-    logger.error('item', `Failed to fetch purchase history for item ID: ${id}`, error, user);
-    console.error('Error fetching purchase history:', error);
+    logger.error('item', `Failed to fetch purchase history for item ID: ${req.params.id}`, error, user);
     res.status(500).json({ 
       message: 'Server error while fetching purchase history',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
