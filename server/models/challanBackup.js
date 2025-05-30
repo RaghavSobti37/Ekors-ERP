@@ -24,6 +24,5 @@ const challanBackupSchema = new mongoose.Schema({
 });
 
 challanBackupSchema.index({ deletedAt: -1 });
-challanBackupSchema.index({ originalId: 1 });
 
 module.exports = mongoose.model("ChallanBackup", challanBackupSchema);

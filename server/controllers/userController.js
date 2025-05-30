@@ -29,7 +29,6 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
     
   } catch (err) {
     logger.error('user', "Fetching users failed", err, user);
-    console.error("[ERROR] Fetching users failed:", err);
     res.status(500).json({
       success: false,
       error: 'Server error while fetching users'
@@ -47,7 +46,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -65,7 +63,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
 
     // Prevent editing another super-admin's details
     if (user.role === 'super-admin' && req.user._id.toString() !== user._id.toString()) {
-      console.log("[DEBUG] Attempt to modify another super-admin by:", req.user.email);
       return res.status(403).json({
         success: false,
         error: 'Cannot edit super-admin details'
@@ -104,7 +101,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
     
   } catch (err) {
     logger.error('user', `User update failed for ID: ${req.params.id}`, err, user, { requestBody: req.body });
-    console.error("[ERROR] User update failed:", err);
     res.status(500).json({
       success: false,
       error: 'Server error during user update',
@@ -181,8 +177,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       backupId: newBackupEntry._id
     });
 
-    logger.info('userActivity', 'User profile deleted', adminUser, { event: 'USER_DELETED', deletedUserId: 'someUserId' });
-
+    logger.info('userActivity', 'User profile deleted', user, { event: 'USER_DELETED', deletedUserId: userIdToDelete, deletedUserEmail: userToBackup.email });
 
   } catch (error) {
     logger.error('delete', `[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`, error, user, logDetails);
@@ -207,7 +202,6 @@ exports.getUser = asyncHandler(async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password -__v');
     if (!user) {
-      console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -223,7 +217,6 @@ exports.getUser = asyncHandler(async (req, res) => {
       });
     }
 
-    console.log("[DEBUG] Returning user data for:", user.email);
     logger.info('user', `Fetched user details for ID: ${req.params.id}`, user, { targetUserId: user._id, targetUserEmail: user.email });
     res.status(200).json({
       success: true,
@@ -231,7 +224,6 @@ exports.getUser = asyncHandler(async (req, res) => {
     });
     
   } catch (err) {
-    console.error("[ERROR] Fetching user failed:", err);
     logger.error('user', `Failed to fetch user details for ID: ${req.params.id}`, err, user);
     res.status(500).json({
       success: false,
@@ -269,4 +261,70 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
     logger.error('user', `Failed to fetch user candidates for ticket transfer by ${initiator.email}.`, error, initiator, logContext);
     res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
   }
+});
+
+// @desc    Toggle user active status
+// @route   PATCH /api/users/:id/status
+// @access  Private/SuperAdmin
+exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
+  const { id: userIdToToggle } = req.params;
+  const { isActive } = req.body; // Expecting { isActive: boolean }
+  const performingUser = req.user; // User performing the action
+
+  logger.info('user', `[STATUS_TOGGLE_INITIATED] User ID: ${userIdToToggle} by User: ${performingUser.email}. Requested status: ${isActive}`, performingUser, { targetUserId: userIdToToggle, requestedStatus: isActive });
+
+  // Authorization check (though middleware should also handle this)
+  if (performingUser.role !== 'super-admin') {
+    logger.warn('user', `[AUTH_FAILURE] Unauthorized status toggle attempt for User ID: ${userIdToToggle} by User: ${performingUser.email}.`, performingUser);
+    return res.status(403).json({ success: false, error: 'Forbidden: Super-admin access required.' });
+  }
+
+  if (typeof isActive !== 'boolean') {
+    logger.warn('user', `[BAD_REQUEST] Invalid 'isActive' value for User ID: ${userIdToToggle}. Received: ${isActive}`, performingUser);
+    return res.status(400).json({ success: false, error: "'isActive' field must be a boolean and is required." });
+  }
+
+  const userToUpdate = await User.findById(userIdToToggle);
+
+  if (!userToUpdate) {
+    logger.warn('user', `[NOT_FOUND] User not found for status toggle: ${userIdToToggle}.`, performingUser);
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  // Prevent super-admin from disabling themselves
+  if (userToUpdate.role === 'super-admin' && userToUpdate._id.toString() === performingUser._id.toString() && !isActive) {
+    logger.warn('user', `[SELF_DISABLE_DENIED] Super-admin ${performingUser.email} attempted to disable themselves.`, performingUser);
+    return res.status(400).json({ success: false, error: 'Super-admin cannot disable themselves.' });
+  }
+
+  // Prevent disabling the last active super-admin
+  if (userToUpdate.role === 'super-admin' && !isActive && userToUpdate.isActive) { // Only check if trying to disable an currently active super-admin
+    const activeSuperAdminCount = await User.countDocuments({ role: 'super-admin', isActive: true });
+    if (activeSuperAdminCount <= 1) { // If this is the last (or only) active one
+        logger.warn('user', `[LAST_SUPER_ADMIN_DISABLE_DENIED] Attempt to disable the last active super-admin: ${userToUpdate.email} by ${performingUser.email}.`, performingUser);
+        return res.status(400).json({ success: false, error: 'Cannot disable the last active super-admin.' });
+    }
+  }
+
+  userToUpdate.isActive = isActive;
+  await userToUpdate.save();
+
+  logger.info('user', `[STATUS_TOGGLE_SUCCESS] User ${userToUpdate.email} status updated to ${isActive} by ${performingUser.email}.`, performingUser, { targetUserId: userToUpdate._id, newStatus: isActive });
+
+  res.status(200).json({
+    success: true,
+    data: { // Send back the updated user, similar to other user endpoints
+      _id: userToUpdate._id,
+      firstname: userToUpdate.firstname,
+      lastname: userToUpdate.lastname,
+      email: userToUpdate.email,
+      phone: userToUpdate.phone,
+      role: userToUpdate.role,
+      isActive: userToUpdate.isActive,
+      createdAt: userToUpdate.createdAt,
+      updatedAt: userToUpdate.updatedAt,
+      lastLogin: userToUpdate.lastLogin
+    },
+    message: `User ${userToUpdate.firstname} ${userToUpdate.lastname} has been ${isActive ? 'enabled' : 'disabled'}.`
+  });
 });

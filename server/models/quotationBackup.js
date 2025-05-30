@@ -74,7 +74,6 @@ const quotationBackupSchema = new mongoose.Schema(
 );
 
 quotationBackupSchema.index({ deletedAt: -1 });
-quotationBackupSchema.index({ originalId: 1 });
 quotationBackupSchema.index({ user: 1, referenceNumber: 1 });
 
 module.exports = mongoose.model("QuotationBackup", quotationBackupSchema);

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const logger = require('../utils/logger'); // Assuming logger is in utils
 
 const userSchema = new mongoose.Schema({
     firstname: {
@@ -76,33 +77,33 @@ userSchema.virtual('fullName').get(function() {
 
 // Hash password before saving
 userSchema.pre("save", async function(next) {
-    console.log("[DEBUG] Running pre-save hook for user:", this.email);
+    logger.debug('user-model-presave', `Running pre-save hook for user: ${this.email}`);
     
     if (!this.isModified("password")) {
-        console.log("[DEBUG] Password not modified, skipping hash");
+        logger.debug('user-model-presave', `Password not modified for ${this.email}, skipping hash`);
         return next();
     }
     
     try {
-        console.log("[DEBUG] Hashing password for user:", this.email);
+        logger.debug('user-model-presave', `Hashing password for user: ${this.email}`);
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
         next();
     } catch (err) {
-        console.error("[ERROR] Password hashing failed:", err);
+        logger.error('user-model-presave', `Password hashing failed for ${this.email}`, err);
         next(err);
     }
 });
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function(candidatePassword) {
-    console.log("[DEBUG] Comparing passwords for user:", this.email);
+    logger.debug('user-model-comparePassword', `Comparing passwords for user: ${this.email}`);
     try {
         const isMatch = await bcrypt.compare(candidatePassword, this.password);
-        console.log("[DEBUG] Password comparison result:", isMatch);
+        logger.debug('user-model-comparePassword', `Password comparison result for ${this.email}: ${isMatch}`);
         return isMatch;
     } catch (err) {
-        console.error("[ERROR] Password comparison failed:", err);
+        logger.error('user-model-comparePassword', `Password comparison failed for ${this.email}`, err);
         throw err;
     }
 };

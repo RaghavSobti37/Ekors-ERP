@@ -3,16 +3,11 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const user = require("../models/users");
 
-const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DEBUG] ${message}`, data);
-  }
-};
-
 // Add purchase to specific item
 exports.addSinglePurchase = async (req, res) => {
+  const itemId = req.params.id;
+  const user = req.user; // Assuming auth middleware populates req.user
   try {
-    const itemId = req.params.id;
     const { companyName, gstNumber, address, stateName, invoiceNumber, date, quantity, price, gstRate } = req.body;
     
     // Find the item
@@ -34,8 +29,7 @@ exports.addSinglePurchase = async (req, res) => {
       gstRate: gstRate || 0
     };
     
-    // Add to item's purchase history
-    item.purchaseHistory.push(purchaseEntry);
+    // Note: Item model (models/itemlist.js) does not have 'purchaseHistory' array anymore. This logic was removed.
     
     // Increase item quantity
     item.quantity += quantity;
@@ -63,15 +57,17 @@ exports.addSinglePurchase = async (req, res) => {
     // Save the purchase
     const savedPurchase = await purchase.save();
     
+    logger.info('purchase', `Single purchase added successfully for item ID: ${itemId}`, user, { purchaseId: savedPurchase._id, itemId });
     res.status(201).json({ success: true, data: { itemUpdated: item, purchase: savedPurchase } });
   } catch (error) {
-    console.error('Error adding purchase to item:', error);
+    logger.error('purchase', `Error adding single purchase for item ID: ${itemId}`, error, user, { requestBody: req.body });
     res.status(500).json({ success: false, message: 'Failed to add purchase', error: error.message });
   }
 };
 
 // Add bulk purchase
 exports.addBulkPurchase = async (req, res) => {
+  const user = req.user; // Assuming auth middleware populates req.user
   try {
     const { companyName, gstNumber, address, stateName, invoiceNumber, date, items } = req.body;
     
@@ -164,11 +160,6 @@ exports.addBulkPurchase = async (req, res) => {
               }
             }
 
-            // TODO: Review this. The Item model (models/itemlist.js) does not seem to have 'purchaseHistory' array anymore.
-            // Add to item's specific purchase history
-            // If you have a direct purchaseHistory array on Item model:
-            // itemToUpdate.purchaseHistory.push({ /* ... purchase details ... */ });
-
             await itemToUpdate.save(); // Save the updated item
             logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via purchase ${savedPurchase.invoiceNumber}. Added: ${quantityAdded}, New Qty: ${itemToUpdate.quantity}`, user);
         } else {
@@ -190,17 +181,18 @@ exports.addBulkPurchase = async (req, res) => {
     logger.info('purchase', `Bulk purchase added successfully. Invoice: ${invoiceNumber}`, user, { purchaseId: savedPurchase._id, itemsProcessed: purchasedItemsDetails });
     res.status(201).json({ success: true, data: savedPurchase });
   } catch (error) {
-    console.error('Error adding bulk purchase:', error);
+    logger.error('purchase', `Error adding bulk purchase. Invoice: ${req.body.invoiceNumber}`, error, user, { requestBody: req.body });
     // Check for Mongoose validation error
     if (error.name === 'ValidationError') {
         // Send back specific validation errors
         return res.status(400).json({ success: false, message: 'Validation failed creating purchase', errors: error.errors });
     }
-    res.status(500).json({ success: false, message: 'Failed to add purchase', error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to add bulk purchase', error: error.message });
   }
 };
 
 exports.getItemPurchaseHistory = async (req, res) => {
+  const user = req.user;
   try {
     // Validate item ID
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -231,26 +223,30 @@ exports.getItemPurchaseHistory = async (req, res) => {
     }).filter(Boolean); // Remove any null entries
 
     res.json(transformed);
+    logger.debug('purchase', `Fetched item purchase history for item ID: ${req.params.id}`, user, { count: transformed.length });
   } catch (err) {
-    console.error('Error fetching purchase history:', err);
+    logger.error('purchase', `Error fetching item purchase history for item ID: ${req.params.id}`, err, user);
     res.status(500).json({ message: 'Server error fetching purchase history' });
   }
 };
 
 // Get all purchases
 exports.getAllPurchases = async (req, res) => {
+  const user = req.user;
   try {
     // Fetch all purchases and sort by date descending (newest first)
     const purchases = await Purchase.find().sort({ date: -1 }).lean();;
     res.status(200).json(purchases);
+    logger.debug('purchase', `Fetched all purchases`, user, { count: purchases.length });
   } catch (error) {
-    console.error('Error fetching purchases:', error);
+    logger.error('purchase', `Error fetching all purchases`, error, user);
     res.status(500).json({ success: false, message: 'Failed to fetch purchases', error: error.message });
   }
 };
 
 // Get purchase by ID
 exports.getPurchaseById = async (req, res) => {
+  const user = req.user;
   try {
     const purchase = await Purchase.findById(req.params.id).populate('items.itemId');
     if (!purchase) {
@@ -258,7 +254,7 @@ exports.getPurchaseById = async (req, res) => {
     }
     res.json(purchase);
   } catch (error) {
-    console.error('Error fetching purchase:', error);
+    logger.error('purchase', `Error fetching purchase by ID: ${req.params.id}`, error, user);
     res.status(500).json({ message: 'Server error while fetching purchase' });
   }
 };

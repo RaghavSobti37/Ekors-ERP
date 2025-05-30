@@ -21,7 +21,7 @@ import {
   Legend,
 } from "chart.js";
 
-import { getAuthToken } from "../utils/authUtils"; 
+import { getAuthToken } from "../utils/authUtils";
 
 ChartJS.register(
   CategoryScale,
@@ -37,9 +37,27 @@ const apiClient = axios.create({
   baseURL: "http://localhost:3000", // Adjust if your backend runs on a different port/URL
 });
 
+const fullScreenModalStyle = {
+  position: 'fixed',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '95vw',
+  height: '95vh',
+  maxWidth: 'none',
+  margin: 0,
+  padding: 0,
+  overflow: 'auto',
+  backgroundColor: 'white',
+  border: '1px solid #dee2e6',
+  borderRadius: '0.3rem',
+  boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
+  zIndex: 1050
+};
+
 const UserReportModal = ({ show, onHide, user }) => {
   console.log(
-    "[UserReportModal.jsx] Component RENDER/UPDATE. Props - show:", show, 
+    "[UserReportModal.jsx] Component RENDER/UPDATE. Props - show:", show,
     "user:", user ? { _id: user._id, firstname: user.firstname } : "null"
   );
 
@@ -91,9 +109,9 @@ const UserReportModal = ({ show, onHide, user }) => {
     } catch (err) {
       console.error("[UserReportModal.jsx] fetchReport: API call FAILED.");
       console.error("[UserReportModal.jsx] fetchReport: Full Axios error object:", JSON.parse(JSON.stringify(err))); // Deep clone for better logging
-      
+
       let errorMessage = "Failed to fetch report. An unknown error occurred.";
-      
+
       if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
@@ -174,15 +192,15 @@ const UserReportModal = ({ show, onHide, user }) => {
     } catch (err) {
       console.error("[UserReportModal.jsx] generatePDF: API call FAILED.");
       console.error("[UserReportModal.jsx] generatePDF: Full Axios error object:", JSON.parse(JSON.stringify(err)));
-      
+
       let pdfErrorMessage = "Failed to generate PDF. An unknown error occurred.";
       if (err.response) {
         try {
           // Error response for PDF might be a Blob containing JSON text, or already JSON/string
           const errorData = (err.response.data instanceof Blob)
-            ? JSON.parse(await err.response.data.text()) 
+            ? JSON.parse(await err.response.data.text())
             : err.response.data;
-            
+
           if (typeof errorData === 'string') {
             pdfErrorMessage = errorData;
           } else if (errorData && errorData.error) {
@@ -210,8 +228,8 @@ const UserReportModal = ({ show, onHide, user }) => {
 
   useEffect(() => {
     console.log(
-      "[UserReportModal.jsx] useEffect [show, user?._id, period] triggered. show:", show, 
-      "user ID:", user?._id, 
+      "[UserReportModal.jsx] useEffect [show, user?._id, period] triggered. show:", show,
+      "user ID:", user?._id,
       "period:", period
     );
     if (show && user?._id) {
@@ -407,62 +425,63 @@ const UserReportModal = ({ show, onHide, user }) => {
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton>
-        <Modal.Title>
-          {user ? `${user.firstname} ${user.lastname}'s Report` : "User Report"}
-        </Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
-        <div className="report-controls mb-3">
-          <Form.Group controlId="periodSelect">
-            <Form.Label>Report Period</Form.Label>
-            <Form.Control
-              as="select"
-              value={period}
-              onChange={(e) => {
-                console.log("[UserReportModal.jsx] Period dropdown CHANGED. New value:", e.target.value);
-                setPeriod(e.target.value);
-              }}
-              disabled={loading}
-            >
-              {periodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Form.Control>
-          </Form.Group>
-        </div>
-
-        <Tabs
-          activeKey={activeTab}
-          onSelect={(k) => {
-            console.log("[UserReportModal.jsx] Tab SELECTED. New activeKey:", k);
-            setActiveTab(k);
-          }}
-          className="mb-3"
-        >
-          <Tab eventKey="summary" title="Summary">
-            {renderSummaryTab()}
-          </Tab>
-          <Tab eventKey="charts" title="Charts">
-            {renderChartsTab()}
-          </Tab>
-        </Tabs>
-      </Modal.Body>
-      <Modal.Footer>
-        <div className="d-flex justify-content-between w-100">
-          <div>
-            <Button variant="outline-primary" onClick={() => {
-              console.log("[UserReportModal.jsx] Refresh button CLICKED.");
-              fetchReport();
-            }}>
-              Refresh
-            </Button>
+      <div style={fullScreenModalStyle}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {user ? `${user.firstname} ${user.lastname}'s Report` : "User Report"}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && <Alert variant="danger">{error}</Alert>}
+          <div className="report-controls mb-3">
+            <Form.Group controlId="periodSelect">
+              <Form.Label>Report Period</Form.Label>
+              <Form.Control
+                as="select"
+                value={period}
+                onChange={(e) => {
+                  console.log("[UserReportModal.jsx] Period dropdown CHANGED. New value:", e.target.value);
+                  setPeriod(e.target.value);
+                }}
+                disabled={loading}
+              >
+                {periodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Form.Control>
+            </Form.Group>
           </div>
-          <div>
-            {/* <Button
+
+          <Tabs
+            activeKey={activeTab}
+            onSelect={(k) => {
+              console.log("[UserReportModal.jsx] Tab SELECTED. New activeKey:", k);
+              setActiveTab(k);
+            }}
+            className="mb-3"
+          >
+            <Tab eventKey="summary" title="Summary">
+              {renderSummaryTab()}
+            </Tab>
+            <Tab eventKey="charts" title="Charts">
+              {renderChartsTab()}
+            </Tab>
+          </Tabs>
+        </Modal.Body>
+        <Modal.Footer>
+          <div className="d-flex justify-content-between w-100">
+            <div>
+              <Button variant="outline-primary" onClick={() => {
+                console.log("[UserReportModal.jsx] Refresh button CLICKED.");
+                fetchReport();
+              }}>
+                Refresh
+              </Button>
+            </div>
+            <div>
+              {/* <Button
               variant="outline-success"
               onClick={exportToExcel}
               className="me-2"
@@ -470,16 +489,17 @@ const UserReportModal = ({ show, onHide, user }) => {
               <FaFileExcel className="me-1" />
               Export Excel
             </Button> */}
-            <Button variant="outline-danger" onClick={() => {
-              console.log("[UserReportModal.jsx] Generate PDF button CLICKED.");
-              generatePDF();
-            }}>
-              <FaFilePdf className="me-1" />
-              Generate PDF
-            </Button>
+              <Button variant="outline-danger" onClick={() => {
+                console.log("[UserReportModal.jsx] Generate PDF button CLICKED.");
+                generatePDF();
+              }}>
+                <FaFilePdf className="me-1" />
+                Generate PDF
+              </Button>
+            </div>
           </div>
-        </div>
-      </Modal.Footer>
+        </Modal.Footer>
+      </div>
     </Modal>
   );
 };

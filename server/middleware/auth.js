@@ -1,43 +1,44 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/users');
+const logger = require('../utils/logger'); // Assuming logger is in utils
 
 module.exports = async (req, res, next) => {
-  console.log("[DEBUG] Auth middleware triggered");
+  // logger.debug('auth-middleware', "Auth middleware triggered", null, { method: req.method, path: req.originalUrl }); // Can be too verbose
   
   try {
     // Get token from header
     const authHeader = req.header('Authorization');
     
     if (!authHeader) {
-      console.log("[DEBUG] No auth header present");
-      return res.status(401).json({ error: 'No token, authorization denied' });
+      logger.warn('auth-middleware', "No auth header present", null, { method: req.method, path: req.originalUrl });
+      return res.status(401).json({ error: 'No token, authorization denied. Please include a Bearer token in the Authorization header.' });
     }
     
     const token = authHeader.replace('Bearer ', '');
-    console.log("[DEBUG] Token extracted:", token ? "present" : "missing");
+    // logger.debug('auth-middleware', `Token extracted: ${token ? "present" : "missing"}`, null, { method: req.method, path: req.originalUrl });
     
     if (!token) {
-      return res.status(401).json({ error: 'No token, authorization denied' });
+      return res.status(401).json({ error: 'No token after Bearer, authorization denied' });
     }
 
     // Verify token
-    console.log("[DEBUG] Verifying token with secret:", process.env.JWT_SECRET ? "present" : "missing");
+    // logger.debug('auth-middleware', `Verifying token with secret: ${process.env.JWT_SECRET ? "present" : "MISSING!"}`, null, { method: req.method, path: req.originalUrl });
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("[DEBUG] Decoded token:", decoded);
+    // logger.debug('auth-middleware', "Decoded token", null, { decodedId: decoded.id, method: req.method, path: req.originalUrl });
     
     // Find user
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
-      console.log("[DEBUG] User not found for ID:", decoded.id);
+      logger.warn('auth-middleware', `User not found for ID: ${decoded.id}`, null, { method: req.method, path: req.originalUrl });
       return res.status(401).json({ error: 'User not found' });
     }
     
-    console.log("[DEBUG] Authentication successful for user:", user.email);
+    logger.info('auth-middleware', `Authentication successful for user: ${user.email}`, user, { method: req.method, path: req.originalUrl });
     req.user = user;
     next(); // Properly call next() to continue middleware chain
     
   } catch (err) {
-    console.error("[ERROR] Auth middleware error:", err);
+    logger.error('auth-middleware', "Auth middleware error", err, null, { method: req.method, path: req.originalUrl });
     
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });

@@ -56,6 +56,5 @@ const itemBackupSchema = new mongoose.Schema({
 });
 
 itemBackupSchema.index({ deletedAt: -1 });
-itemBackupSchema.index({ originalId: 1 });
 
 module.exports = mongoose.model('ItemBackup', itemBackupSchema);
