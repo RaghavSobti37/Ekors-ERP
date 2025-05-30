@@ -917,10 +917,8 @@ export default function Items() {
           <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
               {stockAlertFilterActive
-                ? `Stock Alerts (Restock or Qty < ${
-                    lowStockWarningQueryThreshold || effectiveLowStockThreshold
-                  })`
-                : "Items List"}
+                ? `Stock Alerts`
+                : "All Items List"}
             </h2>
 
             <div className="d-flex align-items-center flex-wrap gap-2">
@@ -1003,7 +1001,7 @@ export default function Items() {
           {/* Row 2: Filters */}
           <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
             <select
-              className="form-select flex-fill" // Added flex-fill, removed inline width                value={selectedCategory}
+              className="form-select flex-fill" // Added flex-fill, removed inline width
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
                 setSelectedSubcategory("All");
