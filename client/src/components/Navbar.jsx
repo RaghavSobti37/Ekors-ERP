@@ -31,10 +31,6 @@ export default function Navbar({ showPurchaseModal }) {
   const navigate = useNavigate();
   const [restockAlertCount, setRestockAlertCount] = useState(0);
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
-  const [globalLowStockThreshold, setGlobalLowStockThreshold] = useState(() => {
-    const storedThreshold = localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY);
-    return storedThreshold ? parseInt(storedThreshold, 10) : DEFAULT_LOW_QUANTITY_THRESHOLD;
-  });
   const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
@@ -44,10 +40,11 @@ export default function Navbar({ showPurchaseModal }) {
     if (!user) return; // Don't fetch if not logged in
 
     const fetchRestockData = async () => {
+      const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
       try {
         const token = getAuthToken();
         if (!token) return;
-        const response = await apiClient(`/items/restock-summary?lowGlobalThreshold=${globalLowStockThreshold}`);
+        const response = await apiClient(`/items/restock-summary?lowGlobalThreshold=${currentThreshold}`);
         setRestockAlertCount(response.restockNeededCount || 0);
         setLowStockWarningCount(response.lowStockWarningCount || 0);
       } catch (error) {
@@ -59,14 +56,8 @@ export default function Navbar({ showPurchaseModal }) {
     fetchRestockData();
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
-    return () => clearInterval(intervalId); // Re-fetch if user logs in/out or threshold changes
-  }, [user, globalLowStockThreshold]); 
-
-  const handleThresholdChange = (e) => {
-    const newThreshold = parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
-    setGlobalLowStockThreshold(newThreshold);
-    localStorage.setItem(LOCAL_STORAGE_LOW_QUANTITY_KEY, newThreshold.toString());
-  };
+    return () => clearInterval(intervalId); 
+  }, [user]); // Re-fetch if user logs in/out. Threshold changes will be picked up on next interval or page load.
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -104,7 +95,8 @@ export default function Navbar({ showPurchaseModal }) {
   };
 
   const handleStockAlertClick = () => {
-    navigate(`/itemslist?filter=stock_alerts&lowThreshold=${globalLowStockThreshold}`);
+    const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
+    navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`);
   };
 
   return (
@@ -202,7 +194,9 @@ export default function Navbar({ showPurchaseModal }) {
             <div
               className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
               onClick={handleStockAlertClick}
-              title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${globalLowStockThreshold}): ${lowStockWarningCount} items. Click to view.`}
+              title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
+                localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) || DEFAULT_LOW_QUANTITY_THRESHOLD
+              }): ${lowStockWarningCount} items. Click to view.`}
             >
               <FaExclamationTriangle className="icon-restock" />
               <span className="alert-count">{restockAlertCount}</span>
@@ -247,20 +241,6 @@ export default function Navbar({ showPurchaseModal }) {
                 <p>
                   <strong>Role:</strong> {user?.role || "N/A"}
                 </p>
-                <div className="form-group mt-2">
-                  <label htmlFor="lowStockThresholdInput" style={{fontSize: '0.85rem', marginBottom: '0.25rem'}}>
-                    Low Stock Alert Threshold:
-                  </label>
-                  <input
-                    type="number"
-                    id="lowStockThresholdInput"
-                    className="form-control form-control-sm"
-                    value={globalLowStockThreshold}
-                    onChange={handleThresholdChange}
-                    min="1"
-                    style={{color: '#333'}} // Ensure text is visible if popup bg is white
-                  />
-                </div>
               </div>
               <button
                 className="edit-btn"

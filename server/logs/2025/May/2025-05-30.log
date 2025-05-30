@@ -3178,3 +3178,466 @@
 [2025-05-30 23:22:30] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
 [2025-05-30 23:22:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
 [2025-05-30 23:22:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:22:40] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 23:22:40] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 23:22:42] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:22:42] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:22:42] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:22:42] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:22:42] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:22:42] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:22:42] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:22:42] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:22:42] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:22:43] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:22:43] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:22:43] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:33] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:33] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:24:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:39] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:39] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:24:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:24:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:24:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:24:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:24:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:27:59] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:27:59] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:27:59] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:28:03] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:28:03] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:28:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:28:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:28:03] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:28:03] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:28:03] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:28:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:28:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:28:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:28:04] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:28:04] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:29:27] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:27] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:27] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:27] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:29:27] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:29:27] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:28] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:28] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:28] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:28] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:28] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:28] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 23:29:28] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:28] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 23:29:30] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:30] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:29:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:29:31] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:31] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:31] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:31] [Raghav Sobti] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 23:29:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 23:29:32] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:32] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 23:29:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 23:29:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:33] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:34] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:34] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:34] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:29:34] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:34] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:34] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:29:52] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:52] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:29:52] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:52] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:29:52] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:29:52] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 23:30:29] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:29] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:35] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:35] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:35] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:30:35] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:35] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:35] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:30:35] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:35] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:35] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:36] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:36] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:30:36] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:59] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:59] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:30:59] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:30:59] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:01] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:31:01] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:31:01] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:31:01] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:31:02] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:31:02] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:31:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:31:03] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:31:04] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:04] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:04] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:04] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:04] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:04] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:36] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:37] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:37] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:37] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:37] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:37] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 23:31:37] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 23:31:37] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:31:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:31:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:31:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:39] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:36:40] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=31"}
+[2025-05-30 23:36:40] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:40] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:36:41] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:41] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=31"}
+[2025-05-30 23:36:41] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:41] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=3"}
+[2025-05-30 23:36:45] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:45] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:36:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:36:48] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:48] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:36:48] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:36:55] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:55] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:36:55] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:36:55] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=1"}
+[2025-05-30 23:36:59] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:36:59] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:37:01] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:01] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:01] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:01] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:37:01] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:37:01] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:01] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:37:02] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:37:02] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:02] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:37:02] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:02] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:37:43] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628463382:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628463382","lineNo":837,"columnNo":24}
+[2025-05-30 23:37:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:45] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:45] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628463382:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628463382","lineNo":837,"columnNo":24}
+[2025-05-30 23:37:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:48] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628463382:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628463382","lineNo":837,"columnNo":24}
+[2025-05-30 23:37:48] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:53] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:53] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:37:53] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:37:53] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628463382:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628463382","lineNo":837,"columnNo":24}
+[2025-05-30 23:37:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:25] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:25] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:25] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:25] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628505026:839:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628505026","lineNo":839,"columnNo":24}
+[2025-05-30 23:38:25] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:29] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:29] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:29] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628509222:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628509222","lineNo":837,"columnNo":24}
+[2025-05-30 23:38:29] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:30] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:30] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:30] [System] [ERROR] [global-error] - Uncaught ReferenceError: globalLowStockThreshold is not defined | Error: globalLowStockThreshold is not defined
+  Stack Trace:
+  ReferenceError: globalLowStockThreshold is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628510344:837:24)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628510344","lineNo":837,"columnNo":24}
+[2025-05-30 23:38:30] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:32] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:32] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:38:32] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:38:32] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:38:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:38:32] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:32] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:38:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:38:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:38:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:33] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:38:34] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:39:46] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:39:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:39:49] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:39:53] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:39:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:39:54] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:39:54] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:39:54] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:39:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:08] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628728547:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628728547","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:10] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:10] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:10] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:10] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628728547:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628728547","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:10] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:31] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:31] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:31] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628751114:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628751114","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:31] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:47] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:47] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:47] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:47] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628767498:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628767498","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:47] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:54] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628773733:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628773733","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:54] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:57] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:57] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:42:57] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:42:57] [System] [ERROR] [global-error] - Uncaught ReferenceError: FaFileExcel is not defined | Error: FaFileExcel is not defined
+  Stack Trace:
+  ReferenceError: FaFileExcel is not defined
+      at Items (http://localhost:5173/src/pages/Items.jsx?t=1748628776899:948:49)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748628776899","lineNo":948,"columnNo":49}
+[2025-05-30 23:42:57] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:44:14] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:44:14] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:44:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:44:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 23:44:14] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:44:14] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:44:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:44:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:44:14] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:44:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:44:15] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:44:15] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}
+[2025-05-30 23:46:39] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:48:46] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 23:49:14] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 23:49:14] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary?lowGlobalThreshold=2"}

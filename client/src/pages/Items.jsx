@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";import { useLocation } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
@@ -13,6 +14,8 @@ import {
   PencilSquare, // Edit
   Trash, // Delete
   BarChart, // Generate Report
+  FileEarmarkArrowDown, // For Excel Export
+  FileEarmarkArrowUp, // For Excel Upload
 } from "react-bootstrap-icons";
 
 const debug = (message, data = null) => {
@@ -22,7 +25,8 @@ const debug = (message, data = null) => {
 };
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE = 'globalLowStockThresholdSetting';
+const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
+  "globalLowStockThresholdSetting";
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -83,18 +87,42 @@ export default function Items() {
   });
 
   const location = useLocation();
-  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const stockAlertFilterActive = queryParams.get('filter') === 'stock_alerts';
-  const lowStockWarningQueryThreshold = parseInt(queryParams.get('lowThreshold'), 10);
+  const queryParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
+  const stockAlertFilterActive = queryParams.get("filter") === "stock_alerts";
+  const lowStockWarningQueryThreshold = parseInt(
+    queryParams.get("lowThreshold"),
+    10
+  );
   const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // null means 'All'
-  
-  const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE);
+
+  const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
+    DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+  );
 
   useEffect(() => {
-    const storedThreshold = localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE);
-    setEffectiveLowStockThreshold(storedThreshold ? parseInt(storedThreshold, 10) : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE);
+    const storedThreshold = localStorage.getItem(
+      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE
+    );
+    setEffectiveLowStockThreshold(
+      storedThreshold
+        ? parseInt(storedThreshold, 10)
+        : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+    );
   }, []); // Runs once on mount to get the threshold
 
+  const handleGlobalThresholdChange = (e) => {
+    const newThreshold =
+      parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
+    setEffectiveLowStockThreshold(newThreshold);
+    localStorage.setItem(
+      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
+      newThreshold.toString()
+    );
+    // Optionally, you could trigger a re-fetch of navbar summary if it's critical for it to update immediately
+  };
 
   const showSuccess = (message) => {
     showToast(message, true);
@@ -328,36 +356,56 @@ export default function Items() {
     }
 
     let processedItems = [...items];
-    debug("itemsToDisplay: Initial items count", { count: processedItems.length });
-
+    debug("itemsToDisplay: Initial items count", {
+      count: processedItems.length,
+    });
 
     // Determine the threshold to use for filtering/badging low stock items
-    const currentLowThreshold = stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
-                                  ? lowStockWarningQueryThreshold
-                                  : effectiveLowStockThreshold;
+    const currentLowThreshold =
+      stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
+        ? lowStockWarningQueryThreshold
+        : effectiveLowStockThreshold;
 
     if (stockAlertFilterActive) {
-      processedItems = processedItems.filter(item =>
-        item.needsRestock || item.quantity < currentLowThreshold
+      processedItems = processedItems.filter(
+        (item) => item.needsRestock || item.quantity < currentLowThreshold
       );
-      debug("itemsToDisplay: After stock alert filter", { count: processedItems.length, currentLowThreshold });
+      debug("itemsToDisplay: After stock alert filter", {
+        count: processedItems.length,
+        currentLowThreshold,
+      });
     } else {
       // Apply regular search and category filters
-      processedItems = processedItems.filter(item => {
-        const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+      processedItems = processedItems.filter((item) => {
+        const matchesCategory =
+          selectedCategory === "All" || item.category === selectedCategory;
         const matchesSubcategory =
-          selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
+          selectedSubcategory === "All" ||
+          item.subcategory === selectedSubcategory;
         const matchesSearch =
           item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (item.hsnCode &&
             item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesCategory && matchesSubcategory && matchesSearch;
       });
-      debug("itemsToDisplay: After regular text/category filters", { count: processedItems.length, selectedCategory, selectedSubcategory, searchTerm });
+      debug("itemsToDisplay: After regular text/category filters", {
+        count: processedItems.length,
+        selectedCategory,
+        selectedSubcategory,
+        searchTerm,
+      });
 
-      if (quantityFilterThreshold !== null && Number.isFinite(quantityFilterThreshold)) {
-        processedItems = processedItems.filter(item => item.quantity <= quantityFilterThreshold);
-        debug("itemsToDisplay: After quantity filter", { count: processedItems.length, quantityFilterThreshold });
+      if (
+        quantityFilterThreshold !== null &&
+        Number.isFinite(quantityFilterThreshold)
+      ) {
+        processedItems = processedItems.filter(
+          (item) => item.quantity <= quantityFilterThreshold
+        );
+        debug("itemsToDisplay: After quantity filter", {
+          count: processedItems.length,
+          quantityFilterThreshold,
+        });
       }
     }
 
@@ -390,9 +438,23 @@ export default function Items() {
       // Final tie-breaker: name ascending
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     });
-    debug("itemsToDisplay: After sorting", { count: processedItems.length, sortConfig, stockAlertFilterActive });
+    debug("itemsToDisplay: After sorting", {
+      count: processedItems.length,
+      sortConfig,
+      stockAlertFilterActive,
+    });
     return processedItems;
-  }, [items, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, selectedCategory, selectedSubcategory, searchTerm, quantityFilterThreshold, sortConfig]);
+  }, [
+    items,
+    stockAlertFilterActive,
+    lowStockWarningQueryThreshold,
+    effectiveLowStockThreshold,
+    selectedCategory,
+    selectedSubcategory,
+    searchTerm,
+    quantityFilterThreshold,
+    sortConfig,
+  ]);
 
   const currentItems = useMemo(() => {
     const indexOfLast = currentPage * itemsPerPage;
@@ -851,47 +913,72 @@ export default function Items() {
         )}
 
         <div className="top-controls-container">
-          {/* Row 1: Title, Add Item Button, Search Bar */}
-          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">              
+          {/* Row 1: Title, Search, Main Action Buttons */}
+          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
               {stockAlertFilterActive
-                ? `Stock Alerts (Restock or Qty < ${lowStockWarningQueryThreshold || effectiveLowStockThreshold})`
-                : "Items List"
-              }
+                ? `Stock Alerts (Restock or Qty < ${
+                    lowStockWarningQueryThreshold || effectiveLowStockThreshold
+                  })`
+                : "Items List"}
             </h2>
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
+
+            <div className="d-flex align-items-center flex-wrap gap-2">
+               <div
+              className="form-group d-flex align-items-center gap-1 flex-fill p-2 border rounded" // Added flex-fill and styling, removed fixed width
+            >
               {" "}
-              {/* mt-2 mt-md-0 for responsiveness */}{" "}
-              <button
-                onClick={() => setShowModal(true)}
-                className="btn btn-success px-3" // Adjusted padding
-                disabled={anyLoading}
+              {/* Adjusted width and gap */}
+              <label
+                htmlFor="lowStockThresholdPageInput"
+                className="form-label mb-0"
+                style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }} // Slightly smaller font
+                title="Global threshold for low stock warnings in Navbar and default item view."
               >
-                {isSubmitting ? "Processing..." : "Add New Item"}
-              </button>
+                Low Alert Qty:
+              </label>
+                <input
+                  type="number"
+                  id="lowStockThresholdPageInput"
+                  className="form-control form-control-sm"
+                  value={effectiveLowStockThreshold}
+                  onChange={handleGlobalThresholdChange}
+                  min="1"
+                  style={{ width: "60px" }} // Control input width
+                />
+            </div>
+              {/* Group all controls on the right */}
               <input
                 type="text"
                 placeholder="🔍 Search items or HSN codes..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 className="form-control search-input"
-                style={{ minWidth: "250px" }} // Ensure it has some width
+                style={{ width: "200px" }} // Adjusted width
                 disabled={anyLoading || stockAlertFilterActive}
               />
-            </div>
-          </div>
-
-          {/* Row 2: Filters and Excel Buttons */}
-          <div className="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
-              {" "}
-              {/* Group for Excel buttons */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="btn btn-success"
+                disabled={anyLoading}
+              >
+                {isSubmitting ? "Processing..." : "Add New Item"}
+              </button>
               <button
                 onClick={handleExportToExcel}
                 className="btn btn-outline-primary"
                 disabled={anyLoading}
+                title="Export to Excel"
               >
-                {isExportingExcel ? "Exporting..." : "Export to Excel"}
+                {isExportingExcel ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                ) : (
+                  <FileEarmarkArrowDown />
+                )}
               </button>
               <button
                 onClick={() =>
@@ -899,76 +986,89 @@ export default function Items() {
                 }
                 className="btn btn-info"
                 disabled={anyLoading}
+                title="Upload & Update from Excel"
               >
-                {isProcessingExcel ? "Processing..." : "Upload & Update"}
+                {isProcessingExcel ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                ) : (
+                  <FileEarmarkArrowUp />
+                )}
               </button>
             </div>
-
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
-              {" "}
-              {/* Group for filters */}
-              <select
-                className="form-select"
-                style={{ width: "200px" }}
-                value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setSelectedSubcategory("All");
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-              >
-                <option value="All">All Categories</option>
-                {Array.isArray(categories) &&
-                  categories.map((cat) => (
-                    <option key={cat.category} value={cat.category}>
-                      {cat.category}
+          </div>
+          {/* Row 2: Filters */}
+          <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
+            <select
+              className="form-select flex-fill" // Added flex-fill, removed inline width                value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setSelectedSubcategory("All");
+                setCurrentPage(1);
+              }}
+              disabled={anyLoading || stockAlertFilterActive}
+            >
+              <option value="All">All Categories</option>
+              {Array.isArray(categories) &&
+                categories.map((cat) => (
+                  <option key={cat.category} value={cat.category}>
+                    {cat.category}
+                  </option>
+                ))}
+            </select>
+            <select
+              className="form-select flex-fill" // Added flex-fill, removed inline width
+              value={selectedSubcategory}
+              onChange={(e) => {
+                setSelectedSubcategory(e.target.value);
+                setCurrentPage(1);
+              }}
+              disabled={
+                selectedCategory === "All" ||
+                anyLoading ||
+                stockAlertFilterActive
+              }
+            >
+              <option value="All">All Subcategories</option>
+              {selectedCategory !== "All" &&
+                Array.isArray(categories) &&
+                categories
+                  .find((c) => c.category === selectedCategory)
+                  ?.subcategories.map((subcat) => (
+                    <option key={subcat} value={subcat}>
+                      {subcat}
                     </option>
                   ))}
-              </select>
-              <select
-                className="form-select"
-                style={{ width: "200px" }}
-                value={selectedSubcategory}
-                onChange={(e) => {
-                  setSelectedSubcategory(e.target.value);
-                  setCurrentPage(1);
-                }}
-                disabled={selectedCategory === "All" || anyLoading || stockAlertFilterActive}
-              >
-                <option value="All">All Subcategories</option>
-                {selectedCategory !== "All" &&
-                  Array.isArray(categories) &&
-                  categories
-                    .find((c) => c.category === selectedCategory)
-                    ?.subcategories.map((subcat) => (
-                      <option key={subcat} value={subcat}>
-                        {subcat}
-                      </option>
-                    ))}
-              </select>
-              {/* New Quantity Filter Dropdown */}
-              <select
-                className="form-select"
-                style={{ width: "200px" }}
-                value={quantityFilterThreshold === null ? "All" : quantityFilterThreshold}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setQuantityFilterThreshold(value === "All" ? null : parseInt(value, 10));
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-              >
-                <option value="All">All Quantities</option>
-                <option value="0">0 (Out of Stock)</option>
-                <option value="1">1 and below</option>
-                <option value="3">3 and below</option>
-                <option value="5">5 and below</option>
-                <option value="10">10 and below</option>
-                <option value="20">20 and below</option>
-              </select>
-
-            </div>
+            </select>
+            <select
+              className="form-select flex-fill"
+              value={
+                quantityFilterThreshold === null
+                  ? "All"
+                  : quantityFilterThreshold
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setQuantityFilterThreshold(
+                  value === "All" ? null : parseInt(value, 10)
+                );
+                setCurrentPage(1);
+              }}
+              disabled={anyLoading || stockAlertFilterActive}
+              title="Filter by quantity"
+            >
+              <option value="All">All Quantities</option>
+              <option value="0">0 (Out of Stock)</option>
+              <option value="1">1 and below</option>
+              <option value="3">3 and below</option>
+              <option value="5">5 and below</option>
+              <option value="10">10 and below</option>
+              <option value="20">20 and below</option>
+            </select>
+           
           </div>
         </div>
 
@@ -1051,22 +1151,41 @@ export default function Items() {
                             className="form-control"
                             name="quantity"
                             value={formData.quantity}
-                            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                quantity: e.target.value,
+                              })
+                            }
                             disabled={anyLoading}
                           />
                         ) : (
                           <>
                             {item.quantity}
                             {item.needsRestock && (
-                              <span className="badge bg-danger ms-2" title={`Item specific threshold: ${item.lowStockThreshold}`}>
+                              <span
+                                className="badge bg-danger ms-2"
+                                title={`Item specific threshold: ${item.lowStockThreshold}`}
+                              >
                                 ⚠️ Restock
                               </span>
                             )}
-                            {!item.needsRestock && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) && (
-                              <span className="badge bg-warning text-dark ms-2" title={`Global threshold: < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}`}>
-                                🔥 Low Stock
-                              </span>
-                            )}
+                            {!item.needsRestock &&
+                              item.quantity <
+                                (stockAlertFilterActive
+                                  ? lowStockWarningQueryThreshold
+                                  : effectiveLowStockThreshold) && (
+                                <span
+                                  className="badge bg-warning text-dark ms-2"
+                                  title={`Global threshold: < ${
+                                    stockAlertFilterActive
+                                      ? lowStockWarningQueryThreshold
+                                      : effectiveLowStockThreshold
+                                  }`}
+                                >
+                                  🔥 Low Stock
+                                </span>
+                              )}
                           </>
                         )}
                       </td>
@@ -1229,10 +1348,19 @@ export default function Items() {
                                   {item.subcategory || "-"}
                                 </p>
                                 <p>
-                                  <strong>Quantity:</strong> {item.quantity}                                  
-                                  {item.needsRestock && ` (Item specific restock threshold: ${item.lowStockThreshold})`}
-                                  {!item.needsRestock && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) && 
-                                    ` (Global low stock threshold: < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold})`}
+                                  <strong>Quantity:</strong> {item.quantity}
+                                  {item.needsRestock &&
+                                    ` (Item specific restock threshold: ${item.lowStockThreshold})`}
+                                  {!item.needsRestock &&
+                                    item.quantity <
+                                      (stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold) &&
+                                    ` (Global low stock threshold: < ${
+                                      stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold
+                                    })`}
                                 </p>
                               </div>
                               <div className="col-md-6">

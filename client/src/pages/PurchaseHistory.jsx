@@ -270,13 +270,7 @@ export default function PurchaseHistory() {
                               >
                                 {expandedPurchase === purchase._id ? "Hide" : "Show"} Details
                               </button>
-                              <button
-                                onClick={() => window.location.href = `/purchase-detail/${purchase._id}`}
-                                className="btn btn-outline-primary btn-sm"
-                                title="View"
-                              >
-                                👁️
-                              </button>
+                             
                             </div>
                           </td>
                         </tr>
