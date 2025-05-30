@@ -643,15 +643,26 @@ exports.getItemPurchaseHistory = async (req, res) => {
 // New controller function for restock summary
 exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
+  // Default global low stock warning threshold, can be overridden by query param
+  const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3;
+
   try {
     logger.debug('item', "Fetching restock summary", user);
     const itemsToRestock = await Item.find({ needsRestock: true }).select('name lowStockThreshold quantity');
+    const restockNeededCount = itemsToRestock.length;
+
+    const lowStockWarningCount = await Item.countDocuments({
+      quantity: { $lt: lowGlobalThreshold }
+      // This counts all items below the threshold, regardless of their individual lowStockThreshold or needsRestock status.
+    });
+
     res.json({
-      count: itemsToRestock.length,
+      restockNeededCount: restockNeededCount, // Renamed from 'count' for clarity
+      lowStockWarningCount: lowStockWarningCount,
       items: itemsToRestock // Sending items might be useful for a detailed view later
     });
   } catch (error) {
-    logger.error('item', "Error fetching restock summary", error, user);
+    logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold });
     res.status(500).json({ message: 'Server error while fetching restock summary' });
   }
 };
