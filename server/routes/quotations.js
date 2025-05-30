@@ -106,12 +106,38 @@ const handleQuotationUpsert = async (req, res) => {
 
     let quotation;
     if (id) {
+      const existingQuotation = await Quotation.findOne({ _id: id, user: req.user._id });
+      if (!existingQuotation) {
+        logger.warn('quotation', `Update failed: Quotation ${id} not found or user ${req.user._id} not authorized.`, user, logDetails);
+        return res.status(404).json({ message: "Quotation not found or you do not have permission to update it." });
+      }
+
+      // Handle status updates:
+      // System-managed statuses ("running", "closed") cannot be manually changed by user.
+      // Users can only change status to "open" or "hold" if current status allows it.
+      if (quotationPayload.status && quotationPayload.status !== existingQuotation.status) {
+        if (existingQuotation.status === "running" || existingQuotation.status === "closed") {
+          logger.warn('quotation', `Attempt to change system-managed status for quotation ${id}. Current: ${existingQuotation.status}, Attempted: ${quotationPayload.status}`, user, logDetails);
+          return res.status(400).json({ message: `Cannot manually change status from '${existingQuotation.status}'. It is system-managed.` });
+        }
+        if (!["open", "hold"].includes(quotationPayload.status)) {
+          logger.warn('quotation', `Invalid status update attempt for quotation ${id}. Attempted: ${quotationPayload.status}`, user, logDetails);
+          return res.status(400).json({ message: "Status can only be manually changed to 'open' or 'hold'." });
+        }
+        // If valid manual status change, it will be part of 'data'
+      } else if (quotationPayload.hasOwnProperty('status') && quotationPayload.status === existingQuotation.status) {
+        // If status in payload is same as existing, no change, so remove from data to avoid issues if not intended for update
+        delete data.status;
+      } else if (!quotationPayload.hasOwnProperty('status')) {
+        // If status is not in payload, ensure it's not accidentally removed from 'data' if it was there from quotationPayload
+        data.status = existingQuotation.status; // Keep existing status
+      }
+
       quotation = await Quotation.findOneAndUpdate(
         { _id: id, user: req.user._id },
         data,
         { new: true, runValidators: true }
       );
-      logger.info('quotation', `Quotation updated successfully`, user, { ...logDetails, quotationId: quotation._id, clientId: processedClient._id });
 
       if (!quotation) {
         return res.status(404).json({ message: "Quotation not found or you do not have permission to update it." });
@@ -119,8 +145,10 @@ const handleQuotationUpsert = async (req, res) => {
     } else {
       quotation = new Quotation(data);
       await quotation.save();
-      logger.info('quotation', `Quotation created successfully`, user, { ...logDetails, quotationId: quotation._id, clientId: processedClient._id });
     }
+
+    const logMessage = id ? 'Quotation updated successfully' : 'Quotation created successfully';
+    logger.info('quotation', logMessage, user, { ...logDetails, quotationId: quotation._id, clientId: processedClient._id });
 
     const populatedQuotation = await Quotation.findById(quotation._id)
       .populate("client")

@@ -204,7 +204,8 @@ const CreateTicketModal = ({
                       ...ticketData,
                       companyName: e.target.value,
                     })
-                  }
+                  } // This onChange will not be triggered if readOnly is true
+                  readOnly // Make Company Name read-only
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
@@ -271,7 +272,7 @@ const CreateTicketModal = ({
                       value={ticketData.billingAddress[2] || ""}
                       onChange={(e) => handleAddressChange(e, 'billingAddress', 2)}
                       placeholder="State"
-                      disabled={isFetchingAddress}
+                      readOnly={!isFetchingAddress && !!ticketData.billingAddress[2]} // Read-only if fetched/pre-filled and not fetching
                     />
                   </Form.Group>
                   <Form.Group className="mb-2 col-md-4">
@@ -281,7 +282,7 @@ const CreateTicketModal = ({
                       value={ticketData.billingAddress[3] || ""}
                       onChange={(e) => handleAddressChange(e, 'billingAddress', 3)}
                       placeholder="City"
-                      disabled={isFetchingAddress}
+                      readOnly={!isFetchingAddress && !!ticketData.billingAddress[3]} // Read-only if fetched/pre-filled and not fetching
                     />
                   </Form.Group>
                 </div>
@@ -340,7 +341,7 @@ const CreateTicketModal = ({
                       value={ticketData.shippingAddress[2] || ""}
                       onChange={(e) => handleAddressChange(e, 'shippingAddress', 2)}
                       placeholder="State"
-                      disabled={isFetchingAddress || sameAsBilling}
+                      readOnly={(!isFetchingAddress && !!ticketData.shippingAddress[2]) || sameAsBilling}
                     />
                   </Form.Group>
                   <Form.Group className="mb-2 col-md-4">
@@ -350,7 +351,7 @@ const CreateTicketModal = ({
                       value={ticketData.shippingAddress[3] || ""}
                       onChange={(e) => handleAddressChange(e, 'shippingAddress', 3)}
                       placeholder="City"
-                      disabled={isFetchingAddress || sameAsBilling}
+                      readOnly={(!isFetchingAddress && !!ticketData.shippingAddress[3]) || sameAsBilling}
                     />
                   </Form.Group>
                 </div>

@@ -1,5 +1,6 @@
 const Ticket = require("../models/opentickets");
 const TicketBackup = require("../models/ticketBackup"); // Import backup model
+const Quotation = require("../models/quotation"); // Import Quotation model
 const OpenticketModel = require("../models/opentickets.js"); // Used by index.js logic
 const User = require("../models/users");
 const logger = require("../utils/logger"); // Import logger
@@ -85,6 +86,22 @@ exports.createTicket = async (req, res) => {
       $push: { tickets: ticket._id },
       // logger.debug('ticket', `Added ticket ${ticket._id} to creator's user document ${req.user.id}`, user); // Debug level
     });
+
+    // Update corresponding Quotation status to "running"
+    if (ticket.quotationNumber) {
+      try {
+        const updatedQuotation = await Quotation.findOneAndUpdate(
+          { referenceNumber: ticket.quotationNumber, user: req.user.id }, // Ensure it's the user's quotation
+          { status: "running" },
+          { new: true }
+        );
+        if (updatedQuotation) {
+          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'running' due to ticket creation.`, user, { quotationId: updatedQuotation._id });
+        }
+      } catch (quotationError) {
+        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'running'.`, quotationError, user);
+      }
+    }
 
     res.status(201).json(ticket);
   } catch (error) {
@@ -232,6 +249,23 @@ exports.updateTicket = async (req, res) => {
       ticketNumber: ticket.ticketNumber,
     });
     res.json(ticket);
+
+    // If ticket status changed to "Closed", update corresponding Quotation status to "closed"
+    // Ensure user context for quotation update is correct, e.g., originalTicket.createdBy
+    if (originalTicket.status !== ticket.status && ticket.status === "Closed" && ticket.quotationNumber) {
+      try {
+        const updatedQuotation = await Quotation.findOneAndUpdate(
+          { referenceNumber: ticket.quotationNumber, user: originalTicket.createdBy },
+          { status: "closed" },
+          { new: true }
+        );
+        if (updatedQuotation) {
+          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'closed' as ticket is closed.`, user, { quotationId: updatedQuotation._id });
+        }
+      } catch (quotationError) {
+        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'closed'.`, quotationError, user);
+      }
+    }
   } catch (error) {
     logger.error("ticket", `Failed to update ticket ID: ${ticketId}`, error, user, { requestBody: updatedTicketData });
     res.status(500).json({ error: "Failed to update ticket" });
@@ -271,6 +305,25 @@ exports.deleteTicket = async (req, res) => {
       );
       return res.status(404).json({ error: "Ticket not found" });
     }
+
+        // Update corresponding Quotation status to "hold" before deleting the ticket
+    if (ticketToBackup.quotationNumber) {
+      try {
+        const updatedQuotation = await Quotation.findOneAndUpdate(
+          { referenceNumber: ticketToBackup.quotationNumber, user: ticketToBackup.createdBy },
+          { status: "hold" },
+          { new: true }
+        );
+        if (updatedQuotation) {
+          logger.info('quotation', `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`, user, { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id });
+        } else {
+          logger.warn('quotation', `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`, user, { ticketId: ticketToBackup._id });
+        }
+      } catch (quotationError) {
+        logger.error('quotation', `Failed to update quotation ${ticketToBackup.quotationNumber} status to 'hold' during linked ticket deletion.`, quotationError, user, { ticketId: ticketToBackup._id });
+      }
+    }
+
     logger.debug(
       "delete",
       `[FETCH_SUCCESS] Found Ticket ID: ${ticketId} (Number: ${ticketToBackup.ticketNumber}). Performing authorization checks.`,

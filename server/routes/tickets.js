@@ -8,6 +8,7 @@ const fs = require("fs");
 const User = require("../models/users");
 const ticketController = require("../controllers/ticketController");
 const { Item } = require("../models/itemlist"); // Import the Item model
+const Quotation = require("../models/quotation"); // Import Quotation model
 const logger = require('../utils/logger'); // Ensure logger is available
 
 const storage = multer.diskStorage({
@@ -170,6 +171,22 @@ router.post("/", auth, async (req, res) => {
       });
     }
 
+    // Update corresponding Quotation status to "running"
+    // This logic is similar to what's in ticketController.createTicket
+    if (ticket.quotationNumber) {
+      try {
+        const updatedQuotation = await Quotation.findOneAndUpdate(
+          { referenceNumber: ticket.quotationNumber, user: req.user.id }, // Ensure it's the user's quotation
+          { status: "running" },
+          { new: true }
+        );
+        if (updatedQuotation) {
+          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'running' due to ticket creation (via routes/tickets.js).`, req.user, { quotationId: updatedQuotation._id });
+        }
+      } catch (quotationError) {
+        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'running' (via routes/tickets.js).`, quotationError, req.user);
+      }
+    }
     res.status(201).json(ticket);
   } catch (error) {
     console.error("Error creating ticket:", error);
@@ -178,6 +195,9 @@ router.post("/", auth, async (req, res) => {
       .json({ error: "Failed to create ticket", details: error.message });
   }
 });
+
+// Route to check if a ticket exists for a given quotation number
+router.get("/check/:quotationNumber", auth, ticketController.checkExistingTicket);
 
 router.get("/:id", auth, async (req, res) => {
   try {
@@ -243,8 +263,9 @@ router.get("/:id", auth, async (req, res) => {
 
 router.put("/:id", auth, async (req, res) => {
   try {
-    const ticket = await Ticket.findOneAndUpdate(
-      {
+    const ticketId = req.params.id;
+    const originalTicket = await Ticket.findById(ticketId); // Get original ticket to compare status
+    const updatedTicket = await Ticket.findOneAndUpdate(      {
         _id: req.params.id,
         $or: [
           { currentAssignee: req.user.id },
@@ -258,14 +279,30 @@ router.put("/:id", auth, async (req, res) => {
       { new: true }
     );
 
-    if (!ticket) {
+    if (!updatedTicket) {
       return res.status(404).json({
         error:
           "Ticket not found or you are not the current assignee to update it.",
       });
     }
 
-    res.json(ticket);
+    // If ticket status changed to "Closed", update corresponding Quotation status to "closed"
+    if (originalTicket && originalTicket.status !== updatedTicket.status && updatedTicket.status === "Closed" && updatedTicket.quotationNumber) {
+      try {
+        const quotationToUpdate = await Quotation.findOneAndUpdate(
+          { referenceNumber: updatedTicket.quotationNumber, user: originalTicket.createdBy }, // Use originalTicket.createdBy for user context
+          { status: "closed" },
+          { new: true }
+        );
+        if (quotationToUpdate) {
+          logger.info('quotation', `Quotation ${updatedTicket.quotationNumber} status updated to 'closed' as ticket is closed (via routes/tickets.js).`, req.user, { quotationId: quotationToUpdate._id });
+        }
+      } catch (quotationError) {
+        logger.error('quotation', `Failed to update quotation ${updatedTicket.quotationNumber} status to 'closed' (via routes/tickets.js).`, quotationError, req.user);
+      }
+    }
+
+    res.json(updatedTicket);
   } catch (error) {
     console.error("Error updating ticket:", error);
     res

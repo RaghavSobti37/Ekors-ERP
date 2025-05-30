@@ -48,7 +48,7 @@ const quotationSchema = new mongoose.Schema(
     grandTotal: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ['open', 'closed', 'hold'],
+      enum: ['open', 'closed', 'hold', 'running'], // Added 'running'
       default: 'open'
     },
     client: {
