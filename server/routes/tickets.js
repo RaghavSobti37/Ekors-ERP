@@ -7,11 +7,8 @@ const path = require("path");
 const fs = require("fs");
 const User = require("../models/users");
 const ticketController = require("../controllers/ticketController");
-<<<<<<< HEAD
-=======
 const { Item } = require("../models/itemlist"); // Import the Item model
 const logger = require('../utils/logger'); // Ensure logger is available
->>>>>>> 9df913a7 (saving changes for item update)
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

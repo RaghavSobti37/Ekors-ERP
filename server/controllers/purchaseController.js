@@ -1,5 +1,7 @@
 const { Item, Purchase } = require('../models/itemlist');
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
+const user = require("../models/users");
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === 'development') {
@@ -96,7 +98,6 @@ exports.addBulkPurchase = async (req, res) => {
             return res.status(400).json({ success: false, message: `Invalid itemId format for item: ${item.description}` });
         }
     }
-
     
     // Create the purchase document
     const purchase = new Purchase({
