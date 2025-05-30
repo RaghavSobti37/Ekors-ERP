@@ -450,12 +450,8 @@ exports.adminDeleteTicket = async (req, res) => {
 exports.generateTicketNumber = async (req, res) => {
   try {
     const user = req.user || null;
-    // TODO: The 'Counter' model is referenced here but not imported at the top of the file.
-    // Just get the counter's current value without incrementing
-    const counter = (await Counter.findById("ticketNumber")) || {
-      sequence_value: 0,
-    };
-    const nextNumber = counter.sequence_value + 1; // Calculate next value without saving
+    // This function currently generates a timestamp-based ticket number for example/fallback.
+    // A persistent counter (e.g., using a MongoDB 'Counter' collection) would be needed for sequential numbering.
 
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -464,8 +460,7 @@ exports.generateTicketNumber = async (req, res) => {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const seconds = String(now.getSeconds()).padStart(2, "0");
-
-    // Note: This generates a timestamp-based ticket number, not using the 'counter.sequence_value'.
+    // Generates a timestamp-based ticket number.
     const ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
 
     res.status(200).json({

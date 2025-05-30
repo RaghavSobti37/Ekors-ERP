@@ -3,12 +3,6 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const user = require("../models/users");
 
-const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[DEBUG] ${message}`, data);
-  }
-};
-
 // Add purchase to specific item
 exports.addSinglePurchase = async (req, res) => {
   const itemId = req.params.id;
@@ -35,9 +29,7 @@ exports.addSinglePurchase = async (req, res) => {
       gstRate: gstRate || 0
     };
     
-    // Add to item's purchase history
-    // TODO: Review this. The Item model (models/itemlist.js) does not seem to have 'purchaseHistory' array anymore.
-    item.purchaseHistory.push(purchaseEntry);
+    // Note: Item model (models/itemlist.js) does not have 'purchaseHistory' array anymore. This logic was removed.
     
     // Increase item quantity
     item.quantity += quantity;
@@ -167,11 +159,6 @@ exports.addBulkPurchase = async (req, res) => {
                 logger.info('inventory', `Item ${itemToUpdate.name} partially restocked. Still needs: ${itemToUpdate.restockAmount}. New Qty: ${itemToUpdate.quantity}`, user);
               }
             }
-
-            // TODO: Review this. The Item model (models/itemlist.js) does not seem to have 'purchaseHistory' array anymore.
-            // Add to item's specific purchase history
-            // If you have a direct purchaseHistory array on Item model:
-            // itemToUpdate.purchaseHistory.push({ /* ... purchase details ... */ });
 
             await itemToUpdate.save(); // Save the updated item
             logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via purchase ${savedPurchase.invoiceNumber}. Added: ${quantityAdded}, New Qty: ${itemToUpdate.quantity}`, user);
