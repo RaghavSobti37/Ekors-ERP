@@ -344,3 +344,6 @@
 [2025-05-30 01:12:14] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
 [2025-05-30 01:15:20] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
 [2025-05-30 01:15:20] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:22:26] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 12:22:26] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 12:22:27] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
