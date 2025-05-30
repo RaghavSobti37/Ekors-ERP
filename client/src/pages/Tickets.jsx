@@ -195,6 +195,7 @@ export default function Dashboard() {
   const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
   const [pdfPreviewConfig, setPdfPreviewConfig] = useState({ type: null, data: null });
   const [uploadingDocType, setUploadingDocType] = useState(null); // To track which doc type is being uploaded
+  const [statusChangeComment, setStatusChangeComment] = useState("");
 
   const { user: authUser, loading: authLoading } = useAuth();
   const auth = useAuth(); // Full auth context for logger
@@ -243,12 +244,7 @@ export default function Dashboard() {
     key: null,
     direction: "ascending",
   });
-  // const [loggedInUser, setLoggedInUser] = useState(null); // Replaced by authUser from context
-  const [transferTableData, setTransferTableData] = useState({
-    names: [],
-    dates: [],
-    notes: [],
-  });
+  const [transferHistoryDisplay, setTransferHistoryDisplay] = useState([]);
 
   const statusStages = [
     "Quotation Sent",
@@ -279,7 +275,7 @@ export default function Dashboard() {
         },
         params: {
           populate:
-            "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+"currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
         },
       });
 
@@ -335,39 +331,33 @@ export default function Dashboard() {
       : null;
 
     if (activeDetailedTicket) {
-      const newNames = [];
-      const newDates = [];
-      const newNotes = [];
+const history = [];
 
       let firstAssignee = activeDetailedTicket.createdBy;
       if (
         activeDetailedTicket.transferHistory &&
         activeDetailedTicket.transferHistory.length > 0
       ) {
-        firstAssignee =
-          activeDetailedTicket.transferHistory[0].from ||
-          activeDetailedTicket.createdBy;
+                // The 'from' user of the first transfer is the initial point after creation if transfers exist
+        firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
       } else if (activeDetailedTicket.currentAssignee) {
         firstAssignee = activeDetailedTicket.currentAssignee;
       }
 
-      newNames.push(firstAssignee);
-      newDates.push(activeDetailedTicket.createdAt);
-      newNotes.push("Ticket Created");
+      history.push({
+        name: firstAssignee ? `${firstAssignee.firstname} ${firstAssignee.lastname}` : "System/N/A",
+        date: activeDetailedTicket.createdAt,
+        note: "Ticket Created",
+      });
 
       activeDetailedTicket.transferHistory?.forEach((transfer) => {
-        newNames.push(transfer.to);
-        const transferTime = transfer.transferredAt || new Date();
-        newDates.push(transferTime);
-        newNotes.push(transfer.note || "N/A");
+        history.push({
+          name: transfer.to ? `${transfer.to.firstname} ${transfer.to.lastname}` : "N/A",
+          date: transfer.transferredAt || new Date(),
+          note: transfer.note || "N/A",
+        });
       });
-      setTransferTableData({
-        names: newNames,
-        dates: newDates,
-        notes: newNotes,
-      });
-    } else {
-      setTransferTableData({ names: [], dates: [], notes: [] });
+setTransferHistoryDisplay(history);
     }
   }, [editTicket, selectedTicket, showEditModal, showPaymentModal]);
 
@@ -775,6 +765,12 @@ export default function Dashboard() {
 
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
+        // Reset comment when status changes, forcing user to enter a new one
+    // if the new status is different from the original status in editTicket
+    if (editTicket && status !== editTicket.status) {
+      setStatusChangeComment("");
+    }
+
   };
 
   const handleUpdateTicket = async () => {
@@ -792,6 +788,14 @@ export default function Dashboard() {
         setError(null); // Clear specific price validation error if all items are now valid
       }
 
+      // Check for mandatory status change comment if status has changed
+      if (editTicket && ticketData.status !== editTicket.status && !statusChangeComment.trim()) {
+        toast.warn("Please provide a comment for the status change.");
+        setIsLoading(false);
+        return;
+      }
+
+
       const token = getAuthToken(auth.user);
       if (!token) {
         toast.error("Authentication required to update ticket.");
@@ -801,6 +805,7 @@ export default function Dashboard() {
       const updateData = {
         ...ticketData,
         _id: undefined, // Ensure these are not sent
+                statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined, 
         __v: undefined,
         createdAt: undefined,
         updatedAt: undefined,
@@ -846,6 +851,8 @@ export default function Dashboard() {
           ticketId: editTicket._id,
           ticketNumber: editTicket.ticketNumber,
           action: "UPDATE_TICKET_SUCCESS",
+          statusChangeCommentProvided: ticketData.status !== editTicket?.status ? !!statusChangeComment : undefined,
+
         });
       }
     } catch (error) {
@@ -864,6 +871,7 @@ export default function Dashboard() {
           errorMessage: error.response?.data?.message || error.message,
           stack: error.stack,
           submittedData: ticketData, // Be cautious with logging full data
+          statusChangeCommentAttempted: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
           action: "UPDATE_TICKET_FAILURE",
         }
       );
@@ -1089,7 +1097,7 @@ export default function Dashboard() {
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
              headers: { Authorization: `Bearer ${token}` },
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
         setSelectedTicket(updatedSingleTicket.data);
       }
@@ -1157,14 +1165,14 @@ export default function Dashboard() {
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
          const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
              headers: { Authorization: `Bearer ${token}` },
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
         setSelectedTicket(updatedSingleTicket.data);
       }
-       if (showEditModal && editTicket && editTicket._id === targetTicketId) {
+       if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
          const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, { 
             headers: { Authorization: `Bearer ${token}` },
-            params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+            params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
          });
          setEditTicket(updatedSingleTicket.data);
          // Also update ticketData if it's derived from editTicket
@@ -1291,7 +1299,7 @@ export default function Dashboard() {
               label={isCurrent ? stage : ""}
               animated={isCurrent}
               onClick={() => handleStatusChange(stage)}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: "pointer", transition: "background-color 0.3s ease" }}
               title={`Set status to: ${stage}`}
             />
           );
@@ -1309,6 +1317,8 @@ export default function Dashboard() {
             style={{
               width: `${100 / statusStages.length}%`,
               cursor: "pointer",
+                            transition: "color 0.3s ease, font-weight 0.3s ease",
+
             }}
             onClick={() => handleStatusChange(stage)}
             title={`Set status to: ${stage}`}
@@ -1333,8 +1343,9 @@ export default function Dashboard() {
           setTransferNote("");
         }}
         size="lg"
-        centered
-        dialogClassName="transfer-modal"
+        
+                dialogClassName="transfer-modal centered-modal"
+
       >
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>
@@ -1350,7 +1361,14 @@ export default function Dashboard() {
             <UserSearchComponent
               onUserSelect={handleUserSelect}
               authContext={auth}
+              
             />
+
+                        {/* This div will ensure suggestions are contained if UserSearchComponent's dropdown has position:absolute */}
+            <div style={{ position: 'relative', zIndex: 1050 }}> 
+              {/* UserSearchComponent's dropdown will render here if it's a child or uses a portal properly */}
+            </div>
+
           </div>
 
           {selectedUser && (
@@ -1619,7 +1637,7 @@ export default function Dashboard() {
                         now={progressPercentage}
                         label={`${progressPercentage}%`}
                         variant={getProgressBarVariant(progressPercentage)}
-                        style={{ height: "20px" }}
+                        style={{ height: "15px" }}
                       />
                     </div>
                   </>
@@ -1696,8 +1714,11 @@ export default function Dashboard() {
             setShowEditModal(false);
             setError(null);
           }}
-          fullscreen
-          centered
+           size="xl"
+          dialogClassName="custom-modal"
+          style={{ maxWidth: "95vw", width: "100%", height: "105vh" }}
+          contentClassName="h-100 d-flex flex-column"
+          
         >
           <Modal.Header closeButton className="bg-primary text-white">
             <div className="d-flex justify-content-between align-items-center w-100">
@@ -1728,7 +1749,59 @@ export default function Dashboard() {
               </Alert>
             )}
             <ProgressBarWithStages />
-            {/* Document section removed from Edit Modal */}
+                        {/* Status Change Comment Section */}
+            {editTicket && ticketData.status !== editTicket.status && (
+              <Form.Group className="my-3">
+                <Form.Label htmlFor="statusChangeCommentInput" className="fw-bold">
+                  Comment for Status Change (Required)
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  id="statusChangeCommentInput"
+                  rows={2}
+                  value={statusChangeComment}
+                  onChange={(e) => setStatusChangeComment(e.target.value)}
+                  placeholder={`Explain why the status is being changed to "${ticketData.status}"...`}
+                  maxLength={200}
+                  required
+                />
+                <Form.Text muted>Max 200 characters.</Form.Text>
+              </Form.Group>
+            )}
+
+            {/* Status Change History Table */}
+            {editTicket?.statusHistory && editTicket.statusHistory.length > 0 && (
+              <div className="mt-4">
+                <h5><i className="bi bi-card-list me-1"></i>Status Change History</h5>
+                <Table striped bordered hover size="sm" responsive>
+                  <thead className="table-light">
+                    <tr>
+                      <th title="User who changed the status">Changed By</th>
+                      <th title="Date of status change">Date</th>
+                      <th title="The status it was changed to">Status Changed To</th>
+                      <th title="Comment provided for the status change">Note (Limit 50 chars)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editTicket.statusHistory.slice().reverse().map((historyItem, index) => ( // Show newest first
+                      <tr key={index}>
+                                                <td>
+                          {historyItem.changedBy
+                            ? `${historyItem.changedBy.firstname || ''} ${historyItem.changedBy.lastname || ''}`.trim() || historyItem.changedBy.email || 'Unknown User'
+                            : 'N/A'}
+                        </td>
+                        <td>{new Date(historyItem.changedAt).toLocaleString()}</td>
+                        <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
+                        <td title={historyItem.note || 'No note provided'}>
+                          {(historyItem.note || 'N/A').substring(0, 50) + 
+                           (historyItem.note && historyItem.note.length > 50 ? '...' : '')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            )}
             <hr />
             <Row className="mb-3">
               <Col md={4}>
@@ -1751,6 +1824,7 @@ export default function Dashboard() {
                   <Form.Label>Company Name*</Form.Label>
                   <Form.Control
                     required
+                    readOnly
                     type="text"
                     value={ticketData.companyName}
                     onChange={(e) =>
@@ -1795,14 +1869,13 @@ export default function Dashboard() {
             <div className="table-responsive">
               <Table bordered className="mb-3">
                 <thead>
-                  <tr>
-                    <th>Sr No.</th>
-                    <th>Description*</th>
-                    <th>HSN/SAC*</th>
-                    <th>Qty*</th>
-                    <th>Price*</th>
-                    <th>Amount</th>
-                  </tr>
+                   <tr className="text-center">
+                    <th title="Serial Number">Sr No.</th>
+                    <th title="Item Description">Description*</th>
+                    <th title="HSN/SAC Code">HSN/SAC*</th>
+                    <th title="Quantity">Qty*</th>
+                    <th title="Price per unit">Price*</th>
+                    <th title="Total amount for this item">Amount</th>                  </tr>
                 </thead>
                 <tbody>
                   {ticketData.goods.map((item, index) => (
@@ -1926,7 +1999,7 @@ export default function Dashboard() {
           show={showPdfPreviewModal}
           onHide={() => setShowPdfPreviewModal(false)}
           fullscreen
-          centered
+          
         >
           <Modal.Header closeButton className="bg-info text-white">
             <Modal.Title>
@@ -1946,7 +2019,6 @@ export default function Dashboard() {
             setError(null);
           }}
           size="xl"
-          centered
           dialogClassName="custom-modal"
           style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
           contentClassName="h-100 d-flex flex-column"
@@ -2116,56 +2188,32 @@ export default function Dashboard() {
                   <i className="bi bi-arrow-repeat me-1"></i>Transfer History
                 </h5>
                 {selectedTicket &&
-                transferTableData.names &&
-                transferTableData.names.length > 0 ? (
+                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
                   <Table
                     bordered
                     responsive
                     className="mt-2 transfer-history-table table-sm"
                   >
+                                        <thead className="table-light">
+                        <tr>
+                            <th title="User involved in the transfer step">Name</th>
+                            <th title="Date of the transfer or creation">Date</th>
+                            <th title="Note or action taken">Note (Limit 50 chars)</th>
+                        </tr>
+                    </thead>
+
                     <tbody>
-                      <tr>
-                        <td style={{ fontWeight: "bold", width: "120px" }}>
-                          Name
-                        </td>
-                        {transferTableData.names.map((assignee, index) => (
-                          <td
-                            key={`payment-name-${index}`}
-                            className="text-center"
-                          >
-                            {assignee
-                              ? `${assignee.firstname} ${assignee.lastname}`
+ {transferHistoryDisplay.map((entry, index) => (
+                        <tr key={index}>
+                          <td>{entry.name}</td>
+                          <td>{new Date(entry.date).toLocaleString()}</td>
+                          <td title={entry.note}>
+                            {entry.note
+                              ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
                               : "N/A"}
                           </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: "bold", width: "120px" }}>
-                          Date
-                        </td>
-                        {transferTableData.dates.map((date, index) => (
-                          <td
-                            key={`payment-date-${index}`}
-                            className="text-center"
-                          >
-                            {date ? new Date(date).toLocaleDateString() : "N/A"}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: "bold", width: "120px" }}>
-                          Note
-                        </td>
-                        {transferTableData.notes.map((note, index) => (
-                          <td
-                            key={`payment-note-${index}`}
-                            className="text-center"
-                          >
-                            {note || "N/A"}
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
+                        </tr>
+                      ))}                    </tbody>
                   </Table>
                 ) : (
                   <div className="text-muted mt-2">

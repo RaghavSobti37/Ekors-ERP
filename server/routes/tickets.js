@@ -9,12 +9,12 @@ const User = require("../models/users");
 const ticketController = require("../controllers/ticketController");
 const { Item } = require("../models/itemlist"); // Import the Item model
 const Quotation = require("../models/quotation"); // Import Quotation model
-const logger = require('../utils/logger'); // Ensure logger is available
+const logger = require("../utils/logger"); // Ensure logger is available
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Store documents in a subfolder named by the ticket ID
-    const uploadPath = path.join(__dirname, "../uploads", req.params.id); 
+    const uploadPath = path.join(__dirname, "../uploads", req.params.id);
     fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
@@ -29,7 +29,7 @@ const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     "application/pdf",
     "image/jpeg",
-    "image/png"
+    "image/png",
     // Removed MS Word types, add back if needed. Keep it simple for now.
   ];
 
@@ -66,29 +66,45 @@ router.post("/", auth, async (req, res) => {
     // Rest of your existing code
     // Ensure ticketNumber is generated if not provided by frontend (e.g., from quotation conversion)
     if (!ticketData.ticketNumber) {
-        const now = new Date();
-        const year = now.getFullYear().toString().slice(-2);
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const day = String(now.getDate()).padStart(2, "0");
-        const hours = String(now.getHours()).padStart(2, "0");
-        const minutes = String(now.getMinutes()).padStart(2, "0");
-        const seconds = String(now.getSeconds()).padStart(2, "0");
-        ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-        logger.warn('ticket', `Ticket number was not provided. Generated timestamp-based ticket number: ${ticketData.ticketNumber}`, req.user);
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const seconds = String(now.getSeconds()).padStart(2, "0");
+      ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
+      logger.warn(
+        "ticket",
+        `Ticket number was not provided. Generated timestamp-based ticket number: ${ticketData.ticketNumber}`,
+        req.user
+      );
     }
 
     // --- START: Inventory Deduction Logic (copied and adapted from ticketController.createTicket) ---
     if (ticketData.goods && ticketData.goods.length > 0) {
       for (const good of ticketData.goods) {
         if (!good.description || !(Number(good.quantity) > 0)) {
-          logger.warn('inventory', `Skipping inventory update for ticket item due to missing description or invalid quantity: ${JSON.stringify(good)}`, req.user);
+          logger.warn(
+            "inventory",
+            `Skipping inventory update for ticket item due to missing description or invalid quantity: ${JSON.stringify(
+              good
+            )}`,
+            req.user
+          );
           continue;
         }
         try {
-          logger.debug('inventory_match', `Attempting to find item for ticket. Name: "${good.description}", HSN: "${good.hsnSacCode || 'N/A'}"`, req.user);
+          logger.debug(
+            "inventory_match",
+            `Attempting to find item for ticket. Name: "${
+              good.description
+            }", HSN: "${good.hsnSacCode || "N/A"}"`,
+            req.user
+          );
           const itemToUpdate = await Item.findOne({
             name: good.description, // Item name from ticket good
-            ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) // HSN code from ticket good
+            ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }), // HSN code from ticket good
           });
 
           if (itemToUpdate) {
@@ -103,28 +119,55 @@ router.post("/", auth, async (req, res) => {
             itemToUpdate.quantity -= quantityToDecrement;
 
             if (itemToUpdate.quantity < 0) {
-                logger.warn('inventory', `Item ${itemToUpdate.name} stock is now negative: ${itemToUpdate.quantity}.`, req.user);
+              logger.warn(
+                "inventory",
+                `Item ${itemToUpdate.name} stock is now negative: ${itemToUpdate.quantity}.`,
+                req.user
+              );
             }
 
             if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
               itemToUpdate.needsRestock = true;
               // Calculate how much is needed to get back to the threshold
-              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
-            } else if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+              itemToUpdate.restockAmount = Math.max(
+                0,
+                itemToUpdate.lowStockThreshold - itemToUpdate.quantity
+              );
+            } else if (
+              itemToUpdate.needsRestock &&
+              itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
+            ) {
               // If quantity is now above threshold and it was previously marked for restock
               itemToUpdate.needsRestock = false;
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save();
-            logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via ticket ${ticketData.ticketNumber}. Original Qty: ${originalQuantity}, Decremented by: ${quantityToDecrement}, New Qty: ${itemToUpdate.quantity}`, req.user);
+            logger.info(
+              "inventory",
+              `Inventory updated for item: ${itemToUpdate.name} via ticket ${ticketData.ticketNumber}. Original Qty: ${originalQuantity}, Decremented by: ${quantityToDecrement}, New Qty: ${itemToUpdate.quantity}`,
+              req.user
+            );
           } else {
-            logger.warn('inventory', `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found in inventory for ticket ${ticketData.ticketNumber}. Stock not updated for this item.`, req.user);
+            logger.warn(
+              "inventory",
+              `Item "${good.description}" (HSN: ${
+                good.hsnSacCode || "N/A"
+              }) not found in inventory for ticket ${
+                ticketData.ticketNumber
+              }. Stock not updated for this item.`,
+              req.user
+            );
             // Consider if ticket creation should fail if an item is not in inventory.
             // For now, we log and continue. If you want to fail, you could:
             // return res.status(400).json({ error: `Item "${good.description}" not found in inventory.` });
           }
         } catch (invError) {
-          logger.error('inventory', `Error updating inventory for item "${good.description}" in ticket ${ticketData.ticketNumber}: ${invError.message}`, req.user, { error: invError });
+          logger.error(
+            "inventory",
+            `Error updating inventory for item "${good.description}" in ticket ${ticketData.ticketNumber}: ${invError.message}`,
+            req.user,
+            { error: invError }
+          );
           // Decide on error handling: continue, or fail ticket creation?
           // For now, we log and continue. If you want to fail, you could:
           // return res.status(500).json({ error: `Error updating inventory for item "${good.description}".` });
@@ -143,6 +186,7 @@ router.post("/", auth, async (req, res) => {
         status: ticketData.status || "Quotation Sent",
         changedAt: new Date(),
         changedBy: req.user.id,
+        note: "Ticket created.",
       },
     ];
 
@@ -181,10 +225,20 @@ router.post("/", auth, async (req, res) => {
           { new: true }
         );
         if (updatedQuotation) {
-          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'running' due to ticket creation (via routes/tickets.js).`, req.user, { quotationId: updatedQuotation._id });
+          logger.info(
+            "quotation",
+            `Quotation ${ticket.quotationNumber} status updated to 'running' due to ticket creation (via routes/tickets.js).`,
+            req.user,
+            { quotationId: updatedQuotation._id }
+          );
         }
       } catch (quotationError) {
-        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'running' (via routes/tickets.js).`, quotationError, req.user);
+        logger.error(
+          "quotation",
+          `Failed to update quotation ${ticket.quotationNumber} status to 'running' (via routes/tickets.js).`,
+          quotationError,
+          req.user
+        );
       }
     }
     res.status(201).json(ticket);
@@ -197,7 +251,11 @@ router.post("/", auth, async (req, res) => {
 });
 
 // Route to check if a ticket exists for a given quotation number
-router.get("/check/:quotationNumber", auth, ticketController.checkExistingTicket);
+router.get(
+  "/check/:quotationNumber",
+  auth,
+  ticketController.checkExistingTicket
+);
 
 router.get("/:id", auth, async (req, res) => {
   try {
@@ -252,6 +310,11 @@ router.get("/:id", auth, async (req, res) => {
       .populate({
         path: "documents.other.uploadedBy",
         select: "firstname lastname email",
+      })
+      .populate({
+        // Added population for status history
+        path: "statusHistory.changedBy",
+        select: "firstname lastname email",
       });
 
     res.json(populatedTicket);
@@ -261,55 +324,7 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-router.put("/:id", auth, async (req, res) => {
-  try {
-    const ticketId = req.params.id;
-    const originalTicket = await Ticket.findById(ticketId); // Get original ticket to compare status
-    const updatedTicket = await Ticket.findOneAndUpdate(      {
-        _id: req.params.id,
-        $or: [
-          { currentAssignee: req.user.id },
-          { createdBy: req.user.id },
-          {
-            $and: [{ _id: req.params.id }, { "createdBy.role": "super-admin" }],
-          },
-        ],
-      },
-      req.body,
-      { new: true }
-    );
-
-    if (!updatedTicket) {
-      return res.status(404).json({
-        error:
-          "Ticket not found or you are not the current assignee to update it.",
-      });
-    }
-
-    // If ticket status changed to "Closed", update corresponding Quotation status to "closed"
-    if (originalTicket && originalTicket.status !== updatedTicket.status && updatedTicket.status === "Closed" && updatedTicket.quotationNumber) {
-      try {
-        const quotationToUpdate = await Quotation.findOneAndUpdate(
-          { referenceNumber: updatedTicket.quotationNumber, user: originalTicket.createdBy }, // Use originalTicket.createdBy for user context
-          { status: "closed" },
-          { new: true }
-        );
-        if (quotationToUpdate) {
-          logger.info('quotation', `Quotation ${updatedTicket.quotationNumber} status updated to 'closed' as ticket is closed (via routes/tickets.js).`, req.user, { quotationId: quotationToUpdate._id });
-        }
-      } catch (quotationError) {
-        logger.error('quotation', `Failed to update quotation ${updatedTicket.quotationNumber} status to 'closed' (via routes/tickets.js).`, quotationError, req.user);
-      }
-    }
-
-    res.json(updatedTicket);
-  } catch (error) {
-    console.error("Error updating ticket:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to update ticket", details: error.message });
-  }
-});
+router.put("/:id", auth, ticketController.updateTicket); // Use the controller
 
 router.delete("/:id", auth, ticketController.deleteTicket);
 
@@ -328,8 +343,10 @@ router.post(
       // Ensure user is authorized to upload to this ticket (e.g., assignee or creator)
       // This check might be more complex depending on your exact rules.
       // Allow creator or current assignee to upload
-      const ticket = await Ticket.findOne({ _id: ticketId, $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }] });
-
+      const ticket = await Ticket.findOne({
+        _id: ticketId,
+        $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
+      });
 
       if (!ticket) {
         return res.status(404).json({
@@ -345,28 +362,38 @@ router.post(
         uploadedAt: new Date(),
       };
 
-      if (!ticket.documents) { // Initialize documents object if it doesn't exist
+      if (!ticket.documents) {
+        // Initialize documents object if it doesn't exist
         ticket.documents = {};
       }
 
       if (documentType && documentType !== "other") {
         // If replacing an existing file for a specific type, delete the old one
-        if (ticket.documents[documentType] && ticket.documents[documentType].path) {
-          const oldFilePath = path.join(__dirname, "../uploads", ticketId, ticket.documents[documentType].path);
+        if (
+          ticket.documents[documentType] &&
+          ticket.documents[documentType].path
+        ) {
+          const oldFilePath = path.join(
+            __dirname,
+            "../uploads",
+            ticketId,
+            ticket.documents[documentType].path
+          );
           if (fs.existsSync(oldFilePath)) {
             fs.unlinkSync(oldFilePath);
           }
         }
         ticket.documents[documentType] = documentData;
-      } else { // Default to 'other' or if documentType is explicitly 'other'
+      } else {
+        // Default to 'other' or if documentType is explicitly 'other'
         if (!ticket.documents.other) {
           ticket.documents.other = [];
         }
         ticket.documents.other.push(documentData);
       }
-      
+
       // Mark 'documents' as modified if it's a Mixed type or to ensure save
-      ticket.markModified('documents');
+      ticket.markModified("documents");
 
       await ticket.save();
 
@@ -420,7 +447,8 @@ router.post(
 
       res.json(finalTicket);
     } catch (error) {
-       console.error( // Assuming logger might not be defined here, use console.error
+      console.error(
+        // Assuming logger might not be defined here, use console.error
         "Error uploading document for ticket",
         `Failed to upload document for Ticket ID: ${req.params.id}`,
         error,
@@ -458,39 +486,53 @@ router.delete("/:id/documents", auth, async (req, res) => {
 
     let fileRemoved = false;
     // Construct full path: uploads/<ticketId>/<documentPath>
-    const fullFilePath = path.join(__dirname, "../uploads", ticketId, documentPath);
+    const fullFilePath = path.join(
+      __dirname,
+      "../uploads",
+      ticketId,
+      documentPath
+    );
 
     if (!ticket.documents) {
-        return res.status(404).json({ message: "No documents found for this ticket." });
+      return res
+        .status(404)
+        .json({ message: "No documents found for this ticket." });
     }
 
     if (documentType && documentType !== "other") {
-        if (ticket.documents[documentType] && ticket.documents[documentType].path === documentPath) {
-            if (fs.existsSync(fullFilePath)) {
-                fs.unlinkSync(fullFilePath);
-                fileRemoved = true;
-            }
-            ticket.documents[documentType] = undefined; // Or delete ticket.documents[documentType];
-        } else {
-            return res.status(404).json({ message: `Document of type ${documentType} with specified path not found.` });
+      if (
+        ticket.documents[documentType] &&
+        ticket.documents[documentType].path === documentPath
+      ) {
+        if (fs.existsSync(fullFilePath)) {
+          fs.unlinkSync(fullFilePath);
+          fileRemoved = true;
         }
+        ticket.documents[documentType] = undefined; // Or delete ticket.documents[documentType];
+      } else {
+        return res.status(404).json({
+          message: `Document of type ${documentType} with specified path not found.`,
+        });
+      }
     } else {
       // Handling 'other' documents array
-        const docIndex = ticket.documents.other?.findIndex(
-            (doc) => doc.path === documentPath
-        );
+      const docIndex = ticket.documents.other?.findIndex(
+        (doc) => doc.path === documentPath
+      );
 
-        if (docIndex > -1) {
-            ticket.documents.other.splice(docIndex, 1);
-            if (fs.existsSync(fullFilePath)) {
-                fs.unlinkSync(fullFilePath);
-                fileRemoved = true;
-            }
-        } else {
-            return res.status(404).json({ message: "Document not found in 'other' documents." });
+      if (docIndex > -1) {
+        ticket.documents.other.splice(docIndex, 1);
+        if (fs.existsSync(fullFilePath)) {
+          fs.unlinkSync(fullFilePath);
+          fileRemoved = true;
         }
+      } else {
+        return res
+          .status(404)
+          .json({ message: "Document not found in 'other' documents." });
+      }
     }
-    ticket.markModified('documents');
+    ticket.markModified("documents");
     await ticket.save();
 
     // Repopulate after save
@@ -524,6 +566,11 @@ router.delete("/:id/documents", auth, async (req, res) => {
       })
       .populate({
         path: "documents.other.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        // Added population for status history
+        path: "statusHistory.changedBy",
         select: "firstname lastname email",
       });
 
@@ -598,6 +645,11 @@ router.get("/", auth, async (req, res) => {
         path: "documents.other.uploadedBy",
         select: "firstname lastname email",
       })
+      .populate({
+        // Added population for status history
+        path: "statusHistory.changedBy",
+        select: "firstname lastname email",
+      })
       .sort({ createdAt: -1 });
 
     res.json(tickets);
@@ -614,17 +666,22 @@ router.post("/:id/transfer", auth, ticketController.transferTicket);
 // These routes are prefixed with /from-index to distinguish them if necessary
 // and to indicate their origin. They might represent older or public/unauthenticated logic.
 
-router.get('/from-index/all', ticketController.getAllTickets_IndexLogic);
+router.get("/from-index/all", ticketController.getAllTickets_IndexLogic);
 
-router.post('/from-index/create', ticketController.createTicket_IndexLogic);
+router.post("/from-index/create", ticketController.createTicket_IndexLogic);
 
 // This uses the 'upload' instance defined in this file (routes/tickets.js)
 // which saves to a ticket-specific folder: 'uploads/<ticketId>/'
-router.post('/from-index/:id/documents', auth, upload.single('document'), ticketController.uploadDocument_IndexLogic);
+router.post(
+  "/from-index/:id/documents",
+  auth,
+  upload.single("document"),
+  ticketController.uploadDocument_IndexLogic
+);
 
-router.put('/from-index/:id', ticketController.updateTicket_IndexLogic);
+router.put("/from-index/:id", ticketController.updateTicket_IndexLogic);
 
 // General file serving (moved from index.js, consider if this is the best place long-term)
-router.get('/serve-file/:filename', ticketController.serveFile_IndexLogic);
+router.get("/serve-file/:filename", ticketController.serveFile_IndexLogic);
 
 module.exports = router;

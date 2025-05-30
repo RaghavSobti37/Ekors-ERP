@@ -158,8 +158,7 @@ exports.getTicket = async (req, res) => {
 exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
-  const updatedTicketData = req.body;
-
+   const { statusChangeComment, ...updatedTicketData } = req.body; 
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
 
@@ -167,6 +166,17 @@ exports.updateTicket = async (req, res) => {
       logger.warn("ticket", `Ticket not found for update: ${ticketId}`, user);
       return res.status(404).json({ error: "Ticket not found" });
     }
+
+        // Handle status change and history
+    if (updatedTicketData.status && updatedTicketData.status !== originalTicket.status) {
+      if (!statusChangeComment) {
+        logger.warn("ticket", `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`, user);
+        // return res.status(400).json({ error: "A comment is required when changing the ticket status." }); // Optional: make it strictly mandatory
+      }
+      const newStatusEntry = { status: updatedTicketData.status, changedAt: new Date(), changedBy: user.id, note: statusChangeComment || "Status updated." };
+      updatedTicketData.statusHistory = [...(originalTicket.statusHistory || []), newStatusEntry];
+          }
+
 
     // Authorization check (similar to your route but within controller)
     const canUpdate = originalTicket.createdBy.toString() === user.id.toString() ||
@@ -239,8 +249,7 @@ exports.updateTicket = async (req, res) => {
         "ticket",
         `Ticket not found for update: ${req.params.id}`,
         user,
-        { requestBody: updatedTicketData }
-      );
+        { requestBody: req.body });
       return res.status(404).json({ error: "Ticket not found" });
     }
 
