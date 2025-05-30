@@ -418,3 +418,259 @@
 [2025-05-30 12:42:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
 [2025-05-30 12:42:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
 [2025-05-30 12:42:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:46:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:46:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:47:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:47:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:47:15] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:47:15] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:47:15] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:47:15] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:50:08] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:50:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:51:22] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:51:22] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:51:30] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:51:30] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:51:31] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589690668:2220:52)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589690668","lineNo":2220,"columnNo":52}
+[2025-05-30 12:51:44] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:44] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:44] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:44] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589703853:2219:60)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589703853","lineNo":2219,"columnNo":60}
+[2025-05-30 12:51:44] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:48] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:48] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434:2219:60)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434","lineNo":2219,"columnNo":60}
+[2025-05-30 12:51:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:53] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:53] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:53] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434:2219:60)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434","lineNo":2219,"columnNo":60}
+[2025-05-30 12:51:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:55] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:55] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:51:56] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:51:56] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434:2219:60)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589707434","lineNo":2219,"columnNo":60}
+[2025-05-30 12:51:56] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:52:37] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:52:37] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:52:37] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:52:37] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:52:37] [System] [ERROR] [global-error] - Uncaught ReferenceError: fullScreenModalStyle is not defined | Error: fullScreenModalStyle is not defined
+  Stack Trace:
+  ReferenceError: fullScreenModalStyle is not defined
+      at Dashboard (http://localhost:5173/src/pages/Tickets.jsx?t=1748589756608:2220:52)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Tickets.jsx?t=1748589756608","lineNo":2220,"columnNo":52}
+[2025-05-30 12:52:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:52:45] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:52:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:52:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 12:52:45] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:45] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:52:45] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:52:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:52:49] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:49] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:52:50] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:50] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:52:52] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:52:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:55:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:55:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 12:55:50] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:55:51] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:55:55] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:55:55] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:56:01] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:56:01] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 12:56:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:56:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 12:57:33] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 12:57:33] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 12:57:40] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 12:57:40] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/logtime/all"}
+[2025-05-30 12:58:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 12:58:01] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:00:26] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:00:30] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:01:30] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:01:56] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:02:15] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:03:05] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:03:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:03:44] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:03:45] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:05:34] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:05:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"PUT","path":"/api/items/6838a0d68319816e868a57e0"}
+[2025-05-30 13:05:46] [Vivek Kumar] [INFO] [item] - Item updated successfully | Details: {"itemId":"6838a0d68319816e868a57e0","itemName":"10 Sq mm DC Cable  - Black/Red/Yellow"}
+[2025-05-30 13:05:46] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:13:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:14:06] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:14:18] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:16:16] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:07] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:40] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:48] [System] [ERROR] [global-error] - Uncaught ReferenceError: initialFormData is not defined | Error: initialFormData is not defined
+  Stack Trace:
+  ReferenceError: initialFormData is not defined
+      at onClick (http://localhost:5173/src/pages/Items.jsx?t=1748591259090:1589:29)
+      at executeDispatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11736:11)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at processDispatchQueue (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11772:37)
+      at http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:12182:11
+      at batchedUpdates$1 (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:2628:42)
+      at dispatchEventForPluginEventSystem (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11877:9)
+      at dispatchEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:14792:13)
+      at dispatchDiscreteEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:14773:62) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748591259090","lineNo":1589,"columnNo":29}
+[2025-05-30 13:17:52] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:52] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 13:17:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 13:17:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:17:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:18:12] [System] [ERROR] [global-error] - Uncaught ReferenceError: initialFormData is not defined | Error: initialFormData is not defined
+  Stack Trace:
+  ReferenceError: initialFormData is not defined
+      at onClick (http://localhost:5173/src/pages/Items.jsx?t=1748591259090:1589:29)
+      at executeDispatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11736:11)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:1485:72)
+      at processDispatchQueue (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11772:37)
+      at http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:12182:11
+      at batchedUpdates$1 (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:2628:42)
+      at dispatchEventForPluginEventSystem (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:11877:9)
+      at dispatchEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:14792:13)
+      at dispatchDiscreteEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=56d6a1dc:14773:62) | Details: {"url":"http://localhost:5173/src/pages/Items.jsx?t=1748591259090","lineNo":1589,"columnNo":29}
+[2025-05-30 13:18:21] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:18:24] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:18:25] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:18:27] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:18:30] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 13:19:21] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 13:19:21] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 13:19:22] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 13:19:22] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 13:19:36] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 13:19:36] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 13:19:36] [Vivek Kumar] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 13:23:12] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 13:23:12] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 13:23:12] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 13:23:12] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 13:23:15] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 13:23:15] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:25:52] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 14:25:52] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 14:25:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 14:25:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 14:25:52] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:25:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:25:53] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:52:47] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:52:47] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:52:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 14:52:48] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 14:52:50] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:52:50] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 14:52:50] [Vivek Kumar] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 14:56:15] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 14:56:15] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 14:56:16] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 14:56:16] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:56:16] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:56:16] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/auth/verify"}
+[2025-05-30 14:56:16] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 14:56:17] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 14:56:19] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:56:19] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 14:56:19] [Vivek Kumar] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 14:57:51] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 14:57:51] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 14:57:51] [Vivek Kumar] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 14:59:21] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:59:22] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 14:59:24] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 14:59:25] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 15:11:24] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:11:24] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:11:25] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 15:11:25] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/users"}
+[2025-05-30 15:11:27] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:11:27] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/reports/users/68343447998f984d5fcb52f9?period=7days"}
+[2025-05-30 15:11:27] [Vivek Kumar] [INFO] [report-getUserReport] - Received request for user report. UserId: 68343447998f984d5fcb52f9, Period: 7days
+[2025-05-30 15:11:33] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:11:33] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 15:11:33] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 15:11:36] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 15:16:04] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 15:16:05] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
