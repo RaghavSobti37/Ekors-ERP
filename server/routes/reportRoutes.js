@@ -4,11 +4,12 @@ const {
   getUserReport,
   generateUserReportPDF,
 } = require("../controllers/reportController");
+const auth = require("../middleware/auth");
 
 // @desc    Get user report data
 // @route   GET /api/reports/users/:userId
 // @access  Private (Admin/Super-Admin)
-router.get("/users/:userId", (req, res, next) => { // Keep existing middleware structure if other logic is there
+router.get("/users/:userId", auth, (req, res, next) => {  // Keep existing middleware structure if other logic is there
   console.log(
     `[reportRoutes.js] Route HIT: GET /api/reports/users/:userId`
   );
@@ -31,8 +32,7 @@ router.get("/users/:userId", (req, res, next) => { // Keep existing middleware s
 // @route   GET /api/reports/users/:userId/generate-pdf
 // @access  Private (Admin/Super-Admin)
 router.get(
-  "/users/:userId/generate-pdf", (req, res, next) => {
-    console.log(
+  "/users/:userId/generate-pdf", auth, (req, res, next) => {     console.log(
       `[reportRoutes.js] Route HIT: GET /api/reports/users/:userId/generate-pdf`
     );
     console.log(

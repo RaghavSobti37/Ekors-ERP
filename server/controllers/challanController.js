@@ -4,8 +4,7 @@ const logger = require("../utils/logger"); // Import logger
 
 // Create or Submit Challan
 exports.createChallan = async (req, res) => {
-  const userId = req.user ? req.user._id : null;
-  const user = req.user || null; // Pass user object if available
+  const user = req.user; // Pass user object if available (populated by auth middleware)
   try {
     const { companyName, phone, email, totalBilling, billNumber } = req.body;
     const challanData = {
@@ -30,7 +29,6 @@ exports.createChallan = async (req, res) => {
 
     res.status(201).json(newChallan);
   } catch (err) {
-    console.error("Error creating challan:", err);
     logger.error('challan', `Failed to create challan`, err, user, { requestBody: req.body });
     res.status(500).json({ error: "Failed to create challan" });
   }
@@ -43,7 +41,6 @@ exports.getAllChallans = async (req, res) => {
     // logger.info('challan', `Fetched all challans`, req.user); // Can be noisy, maybe debug level
     res.json(challans);
   } catch (err) {
-    console.error("Error fetching challans:", err);
     logger.error('challan', `Failed to fetch all challans`, err, req.user);
     res.status(500).json({ error: "Failed to fetch challans" });
   }
@@ -53,12 +50,11 @@ exports.getAllChallans = async (req, res) => {
 exports.getChallanById = async (req, res) => {
   try {
     const challan = await Challan.findById(req.params.id).select("-document.data");
-    // logger.debug('challan', `Fetched challan by ID`, req.user, { challanId: req.params.id }); // Debug level
     if (!challan) return res.status(404).json({ error: "Challan not found" });
+    logger.debug('challan', `Fetched challan by ID`, req.user, { challanId: req.params.id });
     res.json(challan);
   } catch (err) {
     logger.error('challan', `Failed to fetch challan by ID: ${req.params.id}`, err, req.user);
-    console.error("Error fetching challan:", err);
     res.status(500).json({ error: "Failed to fetch challan" });
   }
 };
@@ -72,20 +68,19 @@ exports.getDocument = async (req, res) => {
       return res.status(404).json({ error: "Document not found" });
     }
 
-    // logger.debug('challan', `Serving document for Challan ID: ${req.params.id}`, req.user); // Debug level
+    logger.debug('challan', `Serving document for Challan ID: ${req.params.id}`, req.user);
     res.set("Content-Type", challan.document.contentType);
     res.send(challan.document.data);
   } catch (err) {
-    console.error("Error retrieving document:", err);
+    logger.error('challan', `Failed to retrieve document for Challan ID: ${req.params.id}`, err, req.user);
     res.status(500).json({ error: "Failed to retrieve document" });
   }
 };
 
 // Update Challan
 exports.updateChallan = async (req, res) => {
+  const user = req.user;
   try {
-    const userId = req.user ? req.user._id : null;
-    const user = req.user || null;
     const { companyName, phone, email, totalBilling, billNumber } = req.body;
 
     const updateData = {
@@ -108,7 +103,6 @@ exports.updateChallan = async (req, res) => {
     logger.info('challan', `Challan updated successfully`, user, { challanId: updated._id, companyName: updated.companyName });
     res.json(updated);
   } catch (err) {
-    console.error("Error updating challan:", err);
     logger.error('challan', `Failed to update challan ID: ${req.params.id}`, err, req.user, { requestBody: req.body });
     res.status(500).json({ error: "Failed to update challan" });
   }
@@ -117,8 +111,8 @@ exports.updateChallan = async (req, res) => {
 // Delete Challan with backup
 exports.deleteChallan = async (req, res) => {
   const challanId = req.params.id;
-  const userId = req.user ? req.user._id : null; // Assuming req.user is populated by auth middleware
-  const user = req.user || null;
+  const user = req.user; // Assuming req.user is populated by auth middleware
+  const userId = user?._id;
 
   const logDetails = { userId, challanId, model: 'Challan' };
   logger.info('delete', `[DELETE_INITIATED] Challan ID: ${challanId}`, user, logDetails);

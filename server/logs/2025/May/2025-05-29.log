@@ -1,0 +1,831 @@
+[2025-05-29 20:02:01] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 20:31:18] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 20:31:23] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 20:31:26] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx:64:24
+[2025-05-29 20:31:26] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx:64:24
+[2025-05-29 20:33:40] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:41] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:41] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:41] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:41] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:41] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:46] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:46] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:46] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:46] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:47] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:47] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:53] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:33:53] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531020308:64:24
+[2025-05-29 20:36:45] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:64:24
+[2025-05-29 20:36:45] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:64:24
+[2025-05-29 20:36:48] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 20:36:53] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 20:37:19] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:37:25] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:37:27] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:37:35] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683731b534a251b674be828e | Error: Forbidden: Only the current assignee can transfer this ticket.
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683731b534a251b674be828e","attemptedTransferTo":"6834acdec85453f28687257b","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:37:47] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:38:06] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 6836ed652a732aeb58ad50fb | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"6836ed652a732aeb58ad50fb","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:38:15] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 20:38:29] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531186106:830:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:43:00] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 20:43:11] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:43:11] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:43:11] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Server error during ticket transfer.
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531441885:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:46:53] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:46:53] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:46:53] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:47:14] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:14] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:14] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:47:35] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68355349a6d86af1279c72d6 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:36] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:36] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68355349a6d86af1279c72d6","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:47:56] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68355349a6d86af1279c72d6 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:56] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:56] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68355349a6d86af1279c72d6","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:47:59] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68355349a6d86af1279c72d6 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:59] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68355349a6d86af1279c72d6","action":"TICKET_TRANSFER"}
+[2025-05-29 20:47:59] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68355349a6d86af1279c72d6","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:48:31] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:48:31] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:48:31] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748531780409:835:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:52:14] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:52:14] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:52:14] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748532117012:853:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 20:52:26] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:52:26] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 20:52:26] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748532117012:853:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 21:36:54] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683731b534a251b674be828e to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:36:54] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683731b534a251b674be828e currentAssignee updated to 68343447998f984d5fcb52f9. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:36:54] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683731b534a251b674be828e successfully transferred to user@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:36:54] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Test User | Details: {"ticketId":"683731b534a251b674be828e","transferredTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:37:01] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:37:02] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:37:02] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:847:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 21:37:11] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 6834acdec85453f28687257b by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:37:11] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:37:11] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:847:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"6834acdec85453f28687257b","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 21:37:42] [Raghav Sobti] [INFO] [clientActivity] - New client saved successfully | Details: {"clientId":"6838864e6a06ec591bd3a375","clientName":"testing transfer","action":"SAVE_NEW_CLIENT_SUCCESS"}
+[2025-05-29 21:37:47] [Raghav Sobti] [INFO] [quotation] - Quotation created successfully | Details: {"userId":"6834acdec85453f28687257b","operation":"create","quotationId":"683886536a06ec591bd3a37b","referenceNumber":"Q-250529-213717","clientId":"6838864e6a06ec591bd3a375"}
+[2025-05-29 21:37:47] [Raghav Sobti] [INFO] [quotationActivity] - Quotation Q-250529-213717 created | Details: {"quotationId":"683886536a06ec591bd3a37b","referenceNumber":"Q-250529-213717","action":"CREATE_QUOTATION_SUCCESS"}
+[2025-05-29 21:38:22] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to check for existing ticket | Error: Request failed with status code 404
+  Stack Trace:
+  AxiosError: Request failed with status code 404
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async checkExistingTicket (http://localhost:5173/src/pages/Quotations.jsx?t=1748529060755:1104:24)
+      at async handleTicketSubmit (http://localhost:5173/src/pages/Quotations.jsx?t=1748529060755:1134:28) | Details: {"quotationNumber":"Q-250529-213717","responseData":"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /api/tickets/check/Q-250529-213717</pre>\n</body>\n</html>\n","action":"CHECK_EXISTING_TICKET_FAILURE"}
+[2025-05-29 21:38:22] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250529-213750 created successfully from quotation Q-250529-213717 | Details: {"action":"TICKET_CREATED_FROM_QUOTATION_SUCCESS","ticketNumber":"T-250529-213750","quotationNumber":"Q-250529-213717"}
+[2025-05-29 21:38:27] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683886766a06ec591bd3a387 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:38:27] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683886766a06ec591bd3a387 currentAssignee updated to 68343447998f984d5fcb52f9. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:38:27] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683886766a06ec591bd3a387 successfully transferred to user@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:38:27] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Test User | Details: {"ticketId":"683886766a06ec591bd3a387","transferredTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:38:34] [Raghav Sobti] [INFO] [documentActivity] - PO document uploaded successfully. | Details: {"ticketId":"683886766a06ec591bd3a387","action":"UPLOAD_DOCUMENT_SUCCESS"}
+[2025-05-29 21:38:41] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:38:45] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:38:48] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:38:48] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:38:58] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:39:04] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:13] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683731b534a251b674be828e to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:13] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683731b534a251b674be828e currentAssignee updated to 68343447998f984d5fcb52f9. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:13] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683731b534a251b674be828e successfully transferred to user@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:13] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Test User | Details: {"ticketId":"683731b534a251b674be828e","transferredTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:39:19] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:19] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 683725fec468e37e5a3874b1. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"683725fec468e37e5a3874b1","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:19] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 683725fec468e37e5a3874b1 | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value `/uploads/1748444964195.pdf`, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:847:24) | Details: {"ticketId":"683725fec468e37e5a3874b1","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 21:39:24] [Raghav Sobti] [INFO] [delete] - [DELETE_INITIATED] Ticket ID: 683725fec468e37e5a3874b1 by User: test@gmail.com. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"683725fec468e37e5a3874b1","model":"Ticket","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:25] [Raghav Sobti] [INFO] [delete] - [BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: 683725fec468e37e5a3874b1. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"683725fec468e37e5a3874b1","model":"Ticket","userEmail":"test@gmail.com","originalId":"683725fec468e37e5a3874b1","backupId":"683725fec468e37e5a3874b1","backupModel":"TicketBackup"}
+[2025-05-29 21:39:25] [Raghav Sobti] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"683725fec468e37e5a3874b1","model":"Ticket","userEmail":"test@gmail.com","originalId":"683725fec468e37e5a3874b1"}
+[2025-05-29 21:39:25] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 683725fec468e37e5a3874b1 from User ID: 6834acdec85453f28687257b. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"683725fec468e37e5a3874b1","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"6834acdec85453f28687257b"}
+[2025-05-29 21:39:25] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250528-203417 deleted successfully. | Details: {"ticketId":"683725fec468e37e5a3874b1","ticketNumber":"T-250528-203417","action":"DELETE_TICKET_SUCCESS"}
+[2025-05-29 21:39:31] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 6836ed652a732aeb58ad50fb to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"6836ed652a732aeb58ad50fb","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:31] [Raghav Sobti] [ERROR] [transfer] - [TRANSFER_ERROR] Error transferring Ticket ID: 6836ed652a732aeb58ad50fb. | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value ``, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  ValidationError: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value ``, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+      at Document.invalidate (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:3343:32)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:797:18)
+      at init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:771:7)
+      at Document.$__init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:707:3)
+      at model.syncWrapper [as $__init] (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\kareem\index.js:331:25)
+      at Document.init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:651:8)
+      at Document.$init (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\document.js:667:42)
+      at Object.createModelAndInit (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\queryHelpers.js:119:12)
+      at completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:3285:11)
+      at Query._completeOne (C:\Users\Raghav Raj Sobti\Desktop\fresh\server\node_modules\mongoose\lib\query.js:2611:7) | Details: {"ticketId":"6836ed652a732aeb58ad50fb","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:39:31] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to transfer ticket 6836ed652a732aeb58ad50fb | Error: Ticket validation failed: documents.quotation: Tried to set nested object field `documents.quotation` to primitive value ``, documents.po: Tried to set nested object field `documents.po` to primitive value ``, documents.pi: Tried to set nested object field `documents.pi` to primitive value ``, documents.challan: Tried to set nested object field `documents.challan` to primitive value ``, documents.packingList: Tried to set nested object field `documents.packingList` to primitive value ``, documents.feedback: Tried to set nested object field `documents.feedback` to primitive value ``
+  Stack Trace:
+  AxiosError: Request failed with status code 500
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async handleTransferTicket (http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:847:24) | Details: {"ticketId":"6836ed652a732aeb58ad50fb","attemptedTransferTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_FAILURE"}
+[2025-05-29 21:39:36] [Raghav Sobti] [INFO] [delete] - [DELETE_INITIATED] Ticket ID: 6836ed652a732aeb58ad50fb by User: test@gmail.com. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836ed652a732aeb58ad50fb","model":"Ticket","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:36] [Raghav Sobti] [INFO] [delete] - [BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: 6836ed652a732aeb58ad50fb. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836ed652a732aeb58ad50fb","model":"Ticket","userEmail":"test@gmail.com","originalId":"6836ed652a732aeb58ad50fb","backupId":"6836ed652a732aeb58ad50fb","backupModel":"TicketBackup"}
+[2025-05-29 21:39:36] [Raghav Sobti] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836ed652a732aeb58ad50fb","model":"Ticket","userEmail":"test@gmail.com","originalId":"6836ed652a732aeb58ad50fb"}
+[2025-05-29 21:39:36] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 6836ed652a732aeb58ad50fb from User ID: 6834acdec85453f28687257b. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836ed652a732aeb58ad50fb","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"6834acdec85453f28687257b"}
+[2025-05-29 21:39:36] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250528-163252 deleted successfully. | Details: {"ticketId":"6836ed652a732aeb58ad50fb","ticketNumber":"T-250528-163252","action":"DELETE_TICKET_SUCCESS"}
+[2025-05-29 21:39:38] [Raghav Sobti] [INFO] [delete] - [DELETE_INITIATED] Ticket ID: 6836da45dfbdd9c58cbdbaeb by User: test@gmail.com. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836da45dfbdd9c58cbdbaeb","model":"Ticket","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:39] [Raghav Sobti] [INFO] [delete] - [BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: 6836da45dfbdd9c58cbdbaeb. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836da45dfbdd9c58cbdbaeb","model":"Ticket","userEmail":"test@gmail.com","originalId":"6836da45dfbdd9c58cbdbaeb","backupId":"6836da45dfbdd9c58cbdbaeb","backupModel":"TicketBackup"}
+[2025-05-29 21:39:39] [Raghav Sobti] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836da45dfbdd9c58cbdbaeb","model":"Ticket","userEmail":"test@gmail.com","originalId":"6836da45dfbdd9c58cbdbaeb"}
+[2025-05-29 21:39:39] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 6836da45dfbdd9c58cbdbaeb from User ID: 6834acdec85453f28687257b. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6836da45dfbdd9c58cbdbaeb","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"6834acdec85453f28687257b"}
+[2025-05-29 21:39:39] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250528-151116 deleted successfully. | Details: {"ticketId":"6836da45dfbdd9c58cbdbaeb","ticketNumber":"T-250528-151116","action":"DELETE_TICKET_SUCCESS"}
+[2025-05-29 21:39:42] [Raghav Sobti] [INFO] [delete] - [DELETE_INITIATED] Ticket ID: 6835e35ae76682ffe17cfd96 by User: test@gmail.com. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835e35ae76682ffe17cfd96","model":"Ticket","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:42] [Raghav Sobti] [INFO] [delete] - [BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: 6835e35ae76682ffe17cfd96. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835e35ae76682ffe17cfd96","model":"Ticket","userEmail":"test@gmail.com","originalId":"6835e35ae76682ffe17cfd96","backupId":"6835e35ae76682ffe17cfd96","backupModel":"TicketBackup"}
+[2025-05-29 21:39:42] [Raghav Sobti] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835e35ae76682ffe17cfd96","model":"Ticket","userEmail":"test@gmail.com","originalId":"6835e35ae76682ffe17cfd96"}
+[2025-05-29 21:39:42] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 6835e35ae76682ffe17cfd96 from User ID: 6834acdec85453f28687257b. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835e35ae76682ffe17cfd96","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"6834acdec85453f28687257b"}
+[2025-05-29 21:39:42] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250527-213746 deleted successfully. | Details: {"ticketId":"6835e35ae76682ffe17cfd96","ticketNumber":"T-250527-213746","action":"DELETE_TICKET_SUCCESS"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [delete] - [DELETE_INITIATED] Ticket ID: 6835513cc17908b991436347 by User: test@gmail.com. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835513cc17908b991436347","model":"Ticket","userEmail":"test@gmail.com"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [delete] - [BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: 6835513cc17908b991436347. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835513cc17908b991436347","model":"Ticket","userEmail":"test@gmail.com","originalId":"6835513cc17908b991436347","backupId":"6835513cc17908b991436347","backupModel":"TicketBackup"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [delete] - [ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835513cc17908b991436347","model":"Ticket","userEmail":"test@gmail.com","originalId":"6835513cc17908b991436347"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 6835513cc17908b991436347 from User ID: 6834acdec85453f28687257b. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835513cc17908b991436347","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"6834acdec85453f28687257b"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [delete] - [USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference 6835513cc17908b991436347 from User ID: 68355349a6d86af1279c72d6. | Details: {"userId":"6834acdec85453f28687257b","ticketId":"6835513cc17908b991436347","model":"Ticket","userEmail":"test@gmail.com","targetUserId":"68355349a6d86af1279c72d6"}
+[2025-05-29 21:39:46] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250527-111419 deleted successfully. | Details: {"ticketId":"6835513cc17908b991436347","ticketNumber":"T-250527-111419","action":"DELETE_TICKET_SUCCESS"}
+[2025-05-29 21:43:06] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:43:12] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:43:15] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:43:15] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:43:27] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:43:28] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:44:06] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:44:12] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:44:37] [Raghav Sobti] [INFO] [user] - User created successfully | Details: {"userId":"683887ec6a06ec591bd3a6c7","email":"admin@gmail.com","role":"admin"}
+[2025-05-29 21:45:29] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:45:33] [Admin Test] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:45:35] [Admin Test] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:45:41] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:45:56] [Raghav Sobti] [ERROR] [ticketActivity] - Failed to check for existing ticket | Error: Request failed with status code 404
+  Stack Trace:
+  AxiosError: Request failed with status code 404
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async checkExistingTicket (http://localhost:5173/src/pages/Quotations.jsx?t=1748529060755:1104:24)
+      at async handleTicketSubmit (http://localhost:5173/src/pages/Quotations.jsx?t=1748529060755:1134:28) | Details: {"quotationNumber":"Q-250528-151040","responseData":"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot GET /api/tickets/check/Q-250528-151040</pre>\n</body>\n</html>\n","action":"CHECK_EXISTING_TICKET_FAILURE"}
+[2025-05-29 21:45:56] [Raghav Sobti] [INFO] [ticketActivity] - Ticket T-250529-214549 created successfully from quotation Q-250528-151040 | Details: {"action":"TICKET_CREATED_FROM_QUOTATION_SUCCESS","ticketNumber":"T-250529-214549","quotationNumber":"Q-250528-151040"}
+[2025-05-29 21:46:01] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 6838883c6a06ec591bd3a71a to User ID: 683887ec6a06ec591bd3a6c7 by User: test@gmail.com. | Details: {"ticketId":"6838883c6a06ec591bd3a71a","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:46:02] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 6838883c6a06ec591bd3a71a currentAssignee updated to 683887ec6a06ec591bd3a6c7. | Details: {"ticketId":"6838883c6a06ec591bd3a71a","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:46:02] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 6838883c6a06ec591bd3a71a successfully transferred to admin@gmail.com. | Details: {"ticketId":"6838883c6a06ec591bd3a71a","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:46:02] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Admin Test | Details: {"ticketId":"6838883c6a06ec591bd3a71a","transferredTo":"683887ec6a06ec591bd3a6c7","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:46:05] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:46:11] [Admin Test] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:46:13] [Admin Test] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:46:13] [Admin Test] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748534029377:64:24 | Details: {"specificMessageDisplayed":"Request failed with status code 403"}
+[2025-05-29 21:46:18] [Admin Test] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:52:03] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:52:06] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748535640567:64:24 | Details: {"specificMessageDisplayed":"You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators)."}
+[2025-05-29 21:52:06] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748535640567:64:24 | Details: {"specificMessageDisplayed":"You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators)."}
+[2025-05-29 21:54:05] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 21:54:09] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748535640567:64:24 | Details: {"specificMessageDisplayed":"You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators)."}
+[2025-05-29 21:54:09] [Test User] [ERROR] [userSearch] - Failed to fetch users | Error: Request failed with status code 403
+  Stack Trace:
+  AxiosError: Request failed with status code 403
+      at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1218:12)
+      at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:1550:7)
+      at Axios.request (http://localhost:5173/node_modules/.vite/deps/axios.js?v=7e050fbd:2108:41)
+      at async http://localhost:5173/src/pages/Tickets.jsx?t=1748535640567:64:24 | Details: {"specificMessageDisplayed":"You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators)."}
+[2025-05-29 21:54:55] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:54:55] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:00] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:00] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:01] [Test User] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683886766a06ec591bd3a387 to User ID: 6834acdec85453f28687257b by User: user@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:01] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:01] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:01] [Test User] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683886766a06ec591bd3a387 currentAssignee updated to 6834acdec85453f28687257b. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:01] [Test User] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683886766a06ec591bd3a387 successfully transferred to test@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:01] [Test User] [INFO] [ticketActivity] - Ticket successfully transferred to Raghav Sobti | Details: {"ticketId":"683886766a06ec591bd3a387","transferredTo":"6834acdec85453f28687257b","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:55:20] [Test User] [INFO] [documentActivity] - PO document uploaded successfully. | Details: {"ticketId":"683731b534a251b674be828e","action":"UPLOAD_DOCUMENT_SUCCESS"}
+[2025-05-29 21:55:31] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:31] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:35] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:35] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:37] [Test User] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683731b534a251b674be828e to User ID: 683887ec6a06ec591bd3a6c7 by User: user@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:37] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:38] [Test User] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683731b534a251b674be828e currentAssignee updated to 683887ec6a06ec591bd3a6c7. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:38] [Test User] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by user@gmail.com. | Details: {"initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:55:38] [Test User] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683731b534a251b674be828e successfully transferred to admin@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"68343447998f984d5fcb52f9","initiatorEmail":"user@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 21:55:38] [Test User] [INFO] [ticketActivity] - Ticket successfully transferred to Admin Test | Details: {"ticketId":"683731b534a251b674be828e","transferredTo":"683887ec6a06ec591bd3a6c7","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:56:53] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 21:56:58] [Admin Test] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:57:26] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:26] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:30] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:30] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:48] [Admin Test] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683731b534a251b674be828e to User ID: 6834acdec85453f28687257b by User: admin@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:57:48] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:48] [Admin Test] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683731b534a251b674be828e currentAssignee updated to 6834acdec85453f28687257b. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:57:48] [Admin Test] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by admin@gmail.com. | Details: {"initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:57:48] [Admin Test] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683731b534a251b674be828e successfully transferred to test@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"683887ec6a06ec591bd3a6c7","initiatorEmail":"admin@gmail.com","newAssigneeId":"6834acdec85453f28687257b","action":"TICKET_TRANSFER"}
+[2025-05-29 21:57:49] [Admin Test] [INFO] [ticketActivity] - Ticket successfully transferred to Raghav Sobti | Details: {"ticketId":"683731b534a251b674be828e","transferredTo":"6834acdec85453f28687257b","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 21:58:51] [Admin Test] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 21:58:56] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 21:59:18] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:18] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:22] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:22] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683731b534a251b674be828e to User ID: 68343447998f984d5fcb52f9 by User: test@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683731b534a251b674be828e currentAssignee updated to 68343447998f984d5fcb52f9. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683731b534a251b674be828e successfully transferred to user@gmail.com. | Details: {"ticketId":"683731b534a251b674be828e","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"68343447998f984d5fcb52f9","action":"TICKET_TRANSFER"}
+[2025-05-29 21:59:29] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Test User | Details: {"ticketId":"683731b534a251b674be828e","transferredTo":"68343447998f984d5fcb52f9","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 22:08:40] [System] [ERROR] [global-error] - Uncaught TypeError: users.filter is not a function | Error: users.filter is not a function
+  Stack Trace:
+  TypeError: users.filter is not a function
+      at Users (http://localhost:5173/src/pages/Users.jsx:241:31)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Users.jsx","lineNo":241,"columnNo":31}
+[2025-05-29 22:08:42] [System] [ERROR] [global-error] - Uncaught TypeError: users.filter is not a function | Error: users.filter is not a function
+  Stack Trace:
+  TypeError: users.filter is not a function
+      at Users (http://localhost:5173/src/pages/Users.jsx:241:31)
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:17424:20)
+      at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:4206:24)
+      at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:6619:21)
+      at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:7654:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:1485:72)
+      at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10868:98)
+      at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10728:43)
+      at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10711:13)
+      at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=7e050fbd:10359:46) | Details: {"url":"http://localhost:5173/src/pages/Users.jsx","lineNo":241,"columnNo":31}
+[2025-05-29 22:12:54] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 22:13:03] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:03] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:06] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:06] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:08] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:08] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:09] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_INITIATED] Ticket ID: 683886766a06ec591bd3a387 to User ID: 683887ec6a06ec591bd3a6c7 by User: test@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 22:13:09] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:09] [Raghav Sobti] [INFO] [user] - Successfully fetched 6 user candidates for ticket transfer by test@gmail.com. | Details: {"initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","action":"FETCH_TRANSFER_CANDIDATES"}
+[2025-05-29 22:13:09] [Raghav Sobti] [INFO] [transfer] - [TICKET_UPDATED] Ticket ID: 683886766a06ec591bd3a387 currentAssignee updated to 683887ec6a06ec591bd3a6c7. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 22:13:09] [Raghav Sobti] [INFO] [transfer] - [TRANSFER_SUCCESS] Ticket ID: 683886766a06ec591bd3a387 successfully transferred to admin@gmail.com. | Details: {"ticketId":"683886766a06ec591bd3a387","initiatorId":"6834acdec85453f28687257b","initiatorEmail":"test@gmail.com","newAssigneeId":"683887ec6a06ec591bd3a6c7","action":"TICKET_TRANSFER"}
+[2025-05-29 22:13:10] [Raghav Sobti] [INFO] [ticketActivity] - Ticket successfully transferred to Admin Test | Details: {"ticketId":"683886766a06ec591bd3a387","transferredTo":"683887ec6a06ec591bd3a6c7","action":"TRANSFER_TICKET_SUCCESS"}
+[2025-05-29 22:14:13] [Raghav Sobti] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 22:14:18] [Admin Test] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 22:14:27] [Admin Test] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"683887ec6a06ec591bd3a6c7","userEmail":"admin@gmail.com"}
+[2025-05-29 22:14:31] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 22:20:34] [Test User] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 22:22:06] [Test User] [INFO] [userActivity] - User logged out | Details: {"event":"USER_LOGOUT","userId":"68343447998f984d5fcb52f9","userEmail":"user@gmail.com"}
+[2025-05-29 22:22:11] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 22:49:11] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 22:49:20] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:49:20] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:50:37] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:50:37] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:51:37] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 22:51:43] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:51:43] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:52:47] [System] [INFO] [excel_import_api] - API: Starting Excel import process
+[2025-05-29 22:52:47] [System] [INFO] [excel_import_api] - API: No items found in Excel to process
+[2025-05-29 22:58:13] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 22:59:09] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:02:08] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:03:00] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:03:11] [Raghav Sobti] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"6834acdec85453f28687257b","userEmail":"test@gmail.com"}
+[2025-05-29 23:07:04] [System] [INFO] [excel_export] - API: Starting Excel export process
+[2025-05-29 23:07:04] [System] [INFO] [excel_export] - API: Excel file generated and sent for download
+[2025-05-29 23:10:09] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:10:25] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:11:05] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:11:23] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:12:20] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:12:35] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:24:17] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:24:39] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:24:40] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:25:57] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:26:26] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:26:26] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 0, Updated: 202. | Details: {"upsertResult":{"inserted":0,"modified":202,"errors":0}}
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:26:27] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":0,"itemsUpdated":202,"itemsDeleted":0}
+[2025-05-29 23:26:27] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:29:20] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:29:34] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 0, Updated: 202. | Details: {"upsertResult":{"inserted":0,"modified":202,"errors":0}}
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:29:34] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":0,"itemsUpdated":202,"itemsDeleted":0}
+[2025-05-29 23:29:34] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:30:43] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:30:54] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - No items from DB are marked for deletion (all DB items present in Excel or DB is empty).
+[2025-05-29 23:30:54] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 236, Updated: 0. | Details: {"upsertResult":{"inserted":236,"modified":0,"errors":0}}
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - No items to delete, or all deletions were cancelled due to backup issues.
+[2025-05-29 23:30:55] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":236,"itemsUpdated":0,"itemsDeleted":0}
+[2025-05-29 23:30:55] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:38:30] [System] [INFO] [excel_export] - API: Starting Excel export process
+[2025-05-29 23:38:30] [System] [INFO] [excel_export] - API: Excel file generated and sent for download
+[2025-05-29 23:39:38] [System] [INFO] [excel_upload_import] - API: Starting Excel import from uploaded file
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Starting database sync with Excel data. | Details: {"itemCountExcel":236}
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - 1 items identified for DELETION. Preparing backups.
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk insert 1 item backups.
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Item backups bulk operation completed. Inserted: 1. | Details: {"backupResult":{"inserted":1,"errors":0}}
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk create/update 236 items.
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Item create/update bulk operation completed. Created: 1, Updated: 201. | Details: {"upsertResult":{"inserted":1,"modified":201,"errors":0}}
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Attempting to bulk delete 1 items (whose backups were processed).
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Item delete bulk operation completed. Deleted: 1. | Details: {"deleteResult":{"deleted":1,"errors":0}}
+[2025-05-29 23:39:38] [Raghav Sobti] [INFO] [excel_upload_import] - Database sync with Excel data finished. | Details: {"itemsCreated":1,"itemsUpdated":201,"itemsDeleted":1}
+[2025-05-29 23:39:38] [System] [INFO] [excel_upload_import] - API: Excel import from upload process completed
+[2025-05-29 23:43:42] [System] [ERROR] [unhandled-rejection] - Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at generatePDF (http://localhost:5173/src/components/UserReportModal.jsx:142:59)
+      at onClick (http://localhost:5173/src/components/UserReportModal.jsx:673:9)
+      at executeDispatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11736:11)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at processDispatchQueue (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11772:37)
+      at http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:12182:11
+      at batchedUpdates$1 (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:2628:42)
+      at dispatchEventForPluginEventSystem (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11877:9)
+      at dispatchEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:14792:13) | Details: {"rejectionDetails":{}}
+[2025-05-29 23:43:44] [System] [ERROR] [unhandled-rejection] - Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at generatePDF (http://localhost:5173/src/components/UserReportModal.jsx:142:59)
+      at onClick (http://localhost:5173/src/components/UserReportModal.jsx:673:9)
+      at executeDispatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11736:11)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at processDispatchQueue (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11772:37)
+      at http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:12182:11
+      at batchedUpdates$1 (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:2628:42)
+      at dispatchEventForPluginEventSystem (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:11877:9)
+      at dispatchEvent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:14792:13) | Details: {"rejectionDetails":{}}
+[2025-05-29 23:59:41] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000
+[2025-05-29 23:59:52] [System] [ERROR] [localStorageAccessOrParse] - Failed to get/parse auth token from localStorage | Error: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at getAuthToken (http://localhost:5173/src/utils/authUtils.js:17:27)
+      at fetchUsers (http://localhost:5173/src/pages/Users.jsx:78:31)
+      at http://localhost:5173/src/pages/Users.jsx:132:5
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at commitPassiveMountOnFiber (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9887:29)
+      at recursivelyTraversePassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9868:13) | Details: {"context":"getAuthToken - localStorage access or JSON.parse error"}
+[2025-05-29 23:59:52] [System] [ERROR] [localStorageAccessOrParse] - Failed to get/parse auth token from localStorage | Error: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+  Stack Trace:
+  SyntaxError: Unexpected token 'e', "eyJhbGciOi"... is not valid JSON
+      at JSON.parse (<anonymous>)
+      at getAuthToken (http://localhost:5173/src/utils/authUtils.js:17:27)
+      at fetchUsers (http://localhost:5173/src/pages/Users.jsx:78:31)
+      at http://localhost:5173/src/pages/Users.jsx:132:5
+      at react-stack-bottom-frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:17478:20)
+      at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:1485:72)
+      at commitHookEffectListMount (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8460:122)
+      at commitHookPassiveMountEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:8518:60)
+      at reconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:10016:13)
+      at recursivelyTraverseReconnectPassiveEffects (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=91971e34:9995:11) | Details: {"context":"getAuthToken - localStorage access or JSON.parse error"}

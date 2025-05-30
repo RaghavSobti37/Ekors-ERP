@@ -4,11 +4,12 @@ const path = require('path');
 const fs = require('fs');
 const connectDB = require('./db');
 const Item = require('./models/itemlist');
+const logger = require('./utils/logger'); // Assuming logger is available
 
 const importItemsFromExcel = async () => {
   try {
     await connectDB();
-    console.log('✅ MongoDB connected');
+    logger.info('excel-import-script', 'MongoDB connected');
 
     const filePath = path.resolve(__dirname, 'itemlist.xlsx');
     const workbook = xlsx.readFile(filePath);
@@ -21,7 +22,7 @@ const importItemsFromExcel = async () => {
       header: 1    // Use 1-indexed array format to access all rows including headers
     });
     
-    console.log('Raw data first few rows:', rawData.slice(0, 5));
+    logger.debug('excel-import-script', 'Raw data first few rows:', { data: rawData.slice(0, 5) });
     
     const itemsToInsert = [];
     let currentCategory = 'Other'; // Default category
@@ -41,7 +42,7 @@ const importItemsFromExcel = async () => {
     const uploadDir = path.resolve(__dirname, 'public', 'uploads', 'items');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
-      console.log(`Created upload directory at ${uploadDir}`);
+      logger.info('excel-import-script', `Created upload directory at ${uploadDir}`);
     }
     
     // Map subcategories to their main categories based on your model's enum
@@ -91,12 +92,12 @@ const importItemsFromExcel = async () => {
           
           // Write image to file
           fs.writeFileSync(filePath, imageData, 'binary');
-          console.log(`✅ Saved image for item "${itemName}" to ${fileName}`);
+          logger.info('excel-import-script', `Saved image for item "${itemName}" to ${fileName}`);
           
           return `/uploads/items/${fileName}`;
         }
       } catch (error) {
-        console.error(`❌ Error processing image for item "${itemName}":`, error.message);
+        logger.error('excel-import-script', `Error processing image for item "${itemName}": ${error.message}`);
       }
       
       return '';
@@ -127,7 +128,7 @@ const importItemsFromExcel = async () => {
           currentCategory = 'Other';
         }
         
-        console.log(`📂 Found main category at row ${i+1}: ${currentCategory}`);
+        logger.info('excel-import-script', `Found main category at row ${i+1}: ${currentCategory}`);
         continue;
       }
       
@@ -139,7 +140,7 @@ const importItemsFromExcel = async () => {
         if (categoryMap[currentSubcategory]) {
           currentCategory = categoryMap[currentSubcategory];
         }
-        console.log(`🏷️ Found subcategory at row ${i+1}: ${currentSubcategory} (Category: ${currentCategory})`);
+        logger.info('excel-import-script', `Found subcategory at row ${i+1}: ${currentSubcategory} (Category: ${currentCategory})`);
         continue;
       }
       
@@ -160,17 +161,17 @@ const importItemsFromExcel = async () => {
         }
         
         // Debug output
-        console.log(`Row ${i+1}: Name=${name}, Unit=${unit}, Price=${price}, HSN=${hsnCode}, Qty=${quantity}, Category=${currentCategory}, Subcategory=${currentSubcategory}, Image=${imageUrl ? 'Yes' : 'No'}`);
+        logger.debug('excel-import-script', `Processing row ${i+1}: Name=${name}, Unit=${unit}, Price=${price}, HSN=${hsnCode}, Qty=${quantity}, Category=${currentCategory}, Subcategory=${currentSubcategory}, Image=${imageUrl ? 'Yes' : 'No'}`);
         
         if (!name || price === 0) {
-          console.warn(`⚠️ Skipped row ${i+1}: Missing required fields (name=${name}, price=${price}).`);
+          logger.warn('excel-import-script', `Skipped row ${i+1}: Missing required fields (name=${name}, price=${price}).`);
           continue;
         }
         
         // Make sure unit is one of the allowed enum values
         let validUnit = unit;
         if (!['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG'].includes(unit)) {
-          console.warn(`⚠️ Invalid unit ${unit} for ${name}, defaulting to "Nos"`);
+          logger.warn('excel-import-script', `Invalid unit ${unit} for ${name}, defaulting to "Nos"`);
           validUnit = 'Nos';
         }
         
@@ -192,19 +193,19 @@ const importItemsFromExcel = async () => {
     }
 
     if (itemsToInsert.length === 0) {
-      console.log('❌ No valid items to insert.');
+      logger.info('excel-import-script', 'No valid items to insert.');
       process.exit(0);
     }
 
-    console.log(`🔄 Attempting to insert ${itemsToInsert.length} items...`);
+    logger.info('excel-import-script', `Attempting to insert ${itemsToInsert.length} items...`);
     const result = await Item.insertMany(itemsToInsert);
-    console.log(`✅ Successfully imported ${result.length} items.`);
+    logger.info('excel-import-script', `Successfully imported ${result.length} items.`);
     process.exit();
   } catch (error) {
-    console.error('❌ Error importing items:', error.message);
+    logger.error('excel-import-script', `Error importing items: ${error.message}`, error);
     if (error.errors) {
       for (const field in error.errors) {
-        console.error(`  - ${field}: ${error.errors[field].message}`);
+        logger.error('excel-import-script', `  - Validation Error for ${field}: ${error.errors[field].message}`);
       }
     }
     process.exit(1);

@@ -69,29 +69,38 @@ export default function Navbar({ showPurchaseModal }) {
           </div>
 
           <div className="nav-links">
-            <NavLink 
-              to="/quotations" 
-              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            <NavLink
+              to="/quotations"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
             >
               <FaFileInvoice /> Quotations
             </NavLink>
-            <NavLink 
-              to="/tickets" 
-              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            <NavLink
+              to="/tickets"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
             >
               <FaTicketAlt /> Tickets
             </NavLink>
-            <NavLink 
-              to="/challan" 
-              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
-            >
-              <FaClipboardList /> Challan
-            </NavLink>
-            <NavLink 
-              to="/logtime" 
-              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            <NavLink
+              to="/logtime"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
             >
               <FaClock /> Log Time
+            </NavLink>
+
+            <NavLink
+              to="/challan"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <FaClipboardList /> Challan
             </NavLink>
 
             <div
@@ -99,9 +108,11 @@ export default function Navbar({ showPurchaseModal }) {
               onMouseEnter={handleMouseEnterDropdown}
               onMouseLeave={handleMouseLeaveDropdown}
             >
-              <NavLink 
-                to="/itemslist" 
-                className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+              <NavLink
+                to="/itemslist"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
               >
                 <FaBoxOpen /> Items List
               </NavLink>
@@ -135,9 +146,11 @@ export default function Navbar({ showPurchaseModal }) {
               )}
             </div>
 
-            <NavLink 
-              to="/users" 
-              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
             >
               <FaUsers /> Users
             </NavLink>
@@ -165,13 +178,24 @@ export default function Navbar({ showPurchaseModal }) {
               /> */}
               <div className="profile-details">
                 <p>
-                  <strong>{user?.firstname} {user?.lastname}</strong>
+                  <strong>
+                    {user?.firstname} {user?.lastname}
+                  </strong>
                 </p>
-                <p><strong>Email:</strong> {user?.email || "N/A"}</p>
-                <p><strong>Phone:</strong> {user?.phone || "N/A"}</p>
-                <p><strong>Role:</strong> {user?.role || "N/A"}</p>
+                <p>
+                  <strong>Email:</strong> {user?.email || "N/A"}
+                </p>
+                <p>
+                  <strong>Phone:</strong> {user?.phone || "N/A"}
+                </p>
+                <p>
+                  <strong>Role:</strong> {user?.role || "N/A"}
+                </p>
               </div>
-              <button className="edit-btn" onClick={() => setShowEditModal(true)}>
+              <button
+                className="edit-btn"
+                onClick={() => setShowEditModal(true)}
+              >
                 Edit
               </button>
               <button className="logout-btn" onClick={handleSignOut}>
@@ -211,10 +235,16 @@ export default function Navbar({ showPurchaseModal }) {
               <input type="password" placeholder="Enter new password" />
             </div>
             <div className="modal-buttons">
-              <button className="save-btn" onClick={() => setShowEditModal(false)}>
+              <button
+                className="save-btn"
+                onClick={() => setShowEditModal(false)}
+              >
                 Save
               </button>
-              <button className="cancel-btn" onClick={() => setShowEditModal(false)}>
+              <button
+                className="cancel-btn"
+                onClick={() => setShowEditModal(false)}
+              >
                 Cancel
               </button>
             </div>

@@ -13,8 +13,10 @@ import ReusableTable from "../components/ReusableTable";
 import SortIndicator from "../components/SortIndicator";
 import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
+import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
 import "../css/Style.css";
 import ActionButtons from "../components/ActionButtons";
+import { getAuthToken } from "../utils/authUtils";
 import {
   Eye, // View
   PencilSquare, // Edit
@@ -30,6 +32,7 @@ const Users = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isUnauthorized, setIsUnauthorized] = useState(false); // State for 403 error
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     firstname: "",
@@ -50,16 +53,16 @@ const Users = () => {
     setShowReportModal(true);
   };
 
-    const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
+  //   const getAuthToken = () => {
+  //   try {
+  //     const token = localStorage.getItem("erp-user");
+  //   console.log("[DEBUG Client Users.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
+  //   return token || null;
+  //   } catch (e) {
+  //     console.error("Failed to parse user data:", e);
+  //     return null;
+  //   }
+  // };
   
 
   // Axios instance with base URL and auth header
@@ -78,11 +81,14 @@ const Users = () => {
           "[Users.jsx] fetchUsers: No token found. Aborting fetch."
         );
         setError("Authentication token not found. Please log in again.");
+        setLoading(false);
         // navigate("/login"); // Optional: redirect to login
         return;
       }
       setLoading(true);
-      // Ensure the API instance uses the latest token if it could have changed
+      setError(""); // Clear previous errors
+      setIsUnauthorized(false); // Reset unauthorized state
+
       api.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${authTokenString}`;
@@ -92,10 +98,16 @@ const Users = () => {
       );
       const response = await api.get("/api/users");
       console.log(
-        "[Users.jsx] fetchUsers: Successfully fetched users:",
+        "[Users.jsx] fetchUsers: Raw response from /api/users:",
         response.data
       );
-      setUsers(response.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setUsers(response.data.data);
+      } else {
+        console.warn("[Users.jsx] fetchUsers: response.data.data is not an array or is missing. Setting users to [].", response.data);
+        setUsers([]); // Ensure users is an array
+        setError("Received unexpected data format from server.");
+      }
       setLoading(false);
     } catch (err) {
       console.error(
@@ -103,13 +115,21 @@ const Users = () => {
         err.response || err
       );
       setError(err.response?.data?.error || "Failed to fetch users");
-      if (err.response?.status === 401) {
+      if (err.response?.status === 403) {
+        console.error(
+          "[Users.jsx] fetchUsers: Received 403 Forbidden. User is not authorized."
+        );
+        setError("You are not authorized to view this page. Only super-admins can access this.");
+        setIsUnauthorized(true);
+      } else if (err.response?.status === 401) {
         console.error(
           "[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired."
         );
+        setError("Authentication failed. Please log in again.");
         // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
         // navigate("/login");
       }
+      setUsers([]); // Ensure users is an empty array on error
       setLoading(false);
     }
   };
@@ -140,10 +160,19 @@ const Users = () => {
     setShowEditModal(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
+  const handleDelete = async (userArg) => { // userArg can be the user object or just the ID string
+    const userIdToDelete = typeof userArg === 'string' ? userArg : userArg?._id;
+
+    if (!userIdToDelete) {
+      console.error("[Users.jsx] handleDelete: Invalid user ID for deletion. Argument received:", userArg);
+      alert("Cannot delete user: User ID is missing or invalid.");
+      return;
+    }
+
+    // Improved confirmation message
+    if (window.confirm(`Are you sure you want to delete user ${userArg?.firstname || 'this user'} (ID: ${userIdToDelete})?`)) {
       console.log(
-        `[Users.jsx] handleDelete: Attempting to delete user ${userId}`
+        `[Users.jsx] handleDelete: Attempting to delete user ${userIdToDelete}`
       );
       const authTokenString = getAuthToken();
       if (!authTokenString) {
@@ -157,17 +186,17 @@ const Users = () => {
         api.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${authTokenString}`;
-        await api.delete(`/api/users/${userId}`);
+        await api.delete(`/api/users/${userIdToDelete}`);
         console.log(
-          `[Users.jsx] handleDelete: Successfully deleted user ${userId}`
+          `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
         );
-        setUsers(users.filter((user) => user._id !== userId));
+        setUsers(users.filter((user) => user._id !== userIdToDelete));
       } catch (err) {
         console.error(
-          "[Users.jsx] handleDelete: Error deleting user:",
-          err.response || err
+          "[Users.jsx] handleDelete: Error deleting user. Status:",
+          err.response?.status, "Message:", err.response?.data?.message || err.message
         );
-        alert(err.response?.data?.error || "Failed to delete user");
+        alert(err.response?.data?.message || err.message || "Failed to delete user");
         if (err.response?.status === 401) {
         }
       }
@@ -276,6 +305,10 @@ const Users = () => {
   // console.log("[Users.jsx] Current items for page:", currentItems.length, "Total pages:", totalPages);
 
   return (
+    <>
+      {isUnauthorized ? (
+        <Unauthorized />
+      ) : (
     <div>
       <Navbar />
 
@@ -587,6 +620,8 @@ const Users = () => {
                 />
       </div>
     </div>
+      )}
+    </>
   );
 };
 

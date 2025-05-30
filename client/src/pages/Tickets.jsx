@@ -48,29 +48,44 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
         throw new Error("Authentication token not found for fetching users.");
       }
 
-      const response = await axios.get("http://localhost:3000/api/users", {
+      const response = await axios.get("http://localhost:3000/api/users/transfer-candidates", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       setUsers(response.data);
     } catch (err) {
-      const errorMessage = err.message || "Failed to load users for search.";
-      setError(errorMessage);
-      // toast.error(errorMessage);
+      let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
+      if (err.response) {
+        // Check for 403 Forbidden specifically when fetching users
+        if (err.response.status === 403) {
+          // Provide a more informative message for 403 on user list fetching
+          specificMessage = err.response.data?.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
+        } else if (err.response.data && err.response.data.message) {
+          // Use message from backend response if available and not a 403, or if 403 had a specific message
+          specificMessage = err.response.data.message;
+        } else if (err.message) {
+          // Fallback to generic error message from the error object if no backend message
+          specificMessage = `Failed to load users: ${err.message}`;
+        }
+      } else if (err.message) {
+        specificMessage = `Failed to load users: ${err.message}`; // Network error or other non-response error
+      }
+      setError(specificMessage); // Set the more specific message
+      
       if (authContext?.user) {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users",
           authContext.user,
-          { errorMessage, stack: err.stack }
+{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
         );
       } else {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users (user context unavailable)",
           null,
-          { errorMessage, stack: err.stack }
+{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
         );
       }
     } finally {
@@ -210,9 +225,14 @@ export default function Dashboard() {
     grandTotal: 0,
     status: "Quotation Sent",
     documents: {
-      quotation: "",
-      po: "",
-      pi: "",
+      quotation: null,
+      po: null,
+      pi: null,
+      challan: null,
+      packingList: null,
+      feedback: null,
+      other: [], // 'other' is an array of subdocuments
+
     },
     dispatchDays: "7-10 working",
     validityDate: new Date(
@@ -672,6 +692,13 @@ export default function Dashboard() {
 
   const handleEdit = (selectedTicketToEdit) => {
     setEditTicket(selectedTicketToEdit);
+    const documentsFromServer = selectedTicketToEdit.documents || {};
+    const ensureObjectOrNull = (docField) => {
+      if (docField && typeof docField === 'object' && docField.path) {
+        return docField; // It's a valid-like document object
+      }
+      return null; // Otherwise, treat as not present or invalid
+    };
     const billingAddress = Array.isArray(selectedTicketToEdit.billingAddress)
       ? {
           address1: selectedTicketToEdit.billingAddress[0] || "",
@@ -890,10 +917,12 @@ export default function Dashboard() {
         });
       }
     } catch (error) {
-      const errorMsg = `Failed to transfer ticket: ${
-        error.response?.data?.message || error.message
-      }`;
-      setError(errorMsg);
+       let detailedErrorMessage = error.message; // Default to generic error message
+      if (error.response && error.response.data) {
+        // Prioritize 'details' if available, then 'message' from backend error response
+        detailedErrorMessage = error.response.data.details || error.response.data.message || error.message;
+      }
+      const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;      setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
         "ticketActivity",
@@ -902,7 +931,7 @@ export default function Dashboard() {
         {
           ticketId: transferTicket?._id,
           attemptedTransferTo: userToTransferTo?._id,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: detailedErrorMessage, 
           stack: error.stack,
           action: "TRANSFER_TICKET_FAILURE",
         }
@@ -1608,7 +1637,12 @@ export default function Dashboard() {
             const canModifyTicket =
               authUser?.role === "admin" ||
               authUser?.role === "super-admin" ||
-              ticket.currentAssignee?._id === authUser?.id;
+              (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+
+            const canTransferThisTicket = 
+              authUser?.role === 'super-admin' || 
+              (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+
             return (
               <div className="d-flex gap-2">
                 <Button
@@ -1617,9 +1651,8 @@ export default function Dashboard() {
                   onClick={() => handleEdit(ticket)}
                   disabled={!canModifyTicket || isLoading}
                   title={
-                    !canModifyTicket
-                      ? "Only admin or current assignee can edit"
-                      : "Edit Ticket"
+                     !canModifyTicket 
+                      ? "Only admin, super-admin, or current assignee can edit"                      : "Edit Ticket"
                   }
                 >
                   <i className="bi bi-pencil-square"></i>
@@ -1639,10 +1672,11 @@ export default function Dashboard() {
                   variant="warning"
                   size="sm"
                   onClick={() => handleTransfer(ticket)}
-                  disabled={!canModifyTicket || isLoading}
+                  disabled={!canTransferThisTicket || isLoading}
+
                   title={
-                    !canModifyTicket
-                      ? "Only admin or current assignee can transfer"
+                    !canTransferThisTicket
+                      ? "Only super-admin or current assignee can transfer"
                       : "Transfer Ticket"
                   }
                 >
@@ -1974,7 +2008,10 @@ export default function Dashboard() {
                         {docData && docData.path ? (
                           <>
                             <small className="text-muted">
-                              Uploaded by: {docData.uploadedBy ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname}` : "N/A"}
+                               Uploaded by:{" "}
+                              {docData.uploadedBy && docData.uploadedBy.firstname
+                                ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
+                                : "N/A"}
                               <br />
                               On: {new Date(docData.uploadedAt).toLocaleDateString()}
                             </small>
@@ -2055,7 +2092,11 @@ export default function Dashboard() {
                   {selectedTicket.documents.other.map((doc, index) => (
                     <tr key={doc.path || index}>
                       <td>{doc.originalName}</td>
-                      <td>{doc.uploadedBy ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname}` : 'N/A'}</td>
+                     <td>
+                        {doc.uploadedBy && doc.uploadedBy.firstname
+                          ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
+                          : "N/A"}
+                      </td>
                       <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
                       <td>
                         <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
@@ -2070,7 +2111,7 @@ export default function Dashboard() {
              <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{display: 'none'}} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null);}}} />
             <hr />
             <Row>
-              <Col md={8}>
+              <Col md={12}>
                 <h5>
                   <i className="bi bi-arrow-repeat me-1"></i>Transfer History
                 </h5>

@@ -7,6 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const User = require("../models/users");
 const ticketController = require("../controllers/ticketController");
+const logger = require('../utils/logger'); // Ensure logger is available
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -499,67 +500,24 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
-router.post("/:id/transfer", auth, async (req, res) => {
-  try {
-    const { userId, note } = req.body;
-    const currentUser = req.user || null;
-    const ticketId = req.params.id;
+// Route to transfer a ticket
+router.post("/:id/transfer", auth, ticketController.transferTicket);
 
-    const ticket = await Ticket.findById(ticketId);
-    if (!ticket) {
-      return res.status(404).json({ message: "Ticket not found" });
-    }
+// --- Routes moved from index.js (now using controller functions) ---
+// These routes are prefixed with /from-index to distinguish them if necessary
+// and to indicate their origin. They might represent older or public/unauthenticated logic.
 
-    if (ticket.currentAssignee.toString() !== currentUser.id.toString()) {
-      return res.status(403).json({
-        message:
-          "Forbidden: Only the current assignee can transfer this ticket.",
-      });
-    }
+router.get('/from-index/all', ticketController.getAllTickets_IndexLogic);
 
-    const assignedUser = await User.findById(userId);
-    if (!assignedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+router.post('/from-index/create', ticketController.createTicket_IndexLogic);
 
-    ticket.transferHistory.push({
-      from: ticket.currentAssignee,
-      to: userId,
-      transferredBy: currentUser.id,
-      note: note || "",
-      transferredAt: new Date(),
-      statusAtTransfer: ticket.status,
-    });
+// This uses the 'upload' instance defined in this file (routes/tickets.js)
+// which saves to a ticket-specific folder: 'uploads/<ticketId>/'
+router.post('/from-index/:id/documents', auth, upload.single('document'), ticketController.uploadDocument_IndexLogic);
 
-    ticket.assignmentLog.push({
-      assignedTo: userId,
-      assignedBy: currentUser.id,
-      action: "transferred",
-    });
+router.put('/from-index/:id', ticketController.updateTicket_IndexLogic);
 
-    ticket.currentAssignee = userId;
-    await ticket.save();
-
-    const populatedTicket = await Ticket.findById(ticket._id)
-      .populate("currentAssignee", "firstname lastname email")
-      .populate(
-        "transferHistory.from transferHistory.to transferHistory.transferredBy",
-        "firstname lastname email"
-      );
-
-    res.status(200).json({
-      ticket: populatedTicket,
-      currentAssignee: {
-        _id: assignedUser._id,
-        firstname: assignedUser.firstname,
-        lastname: assignedUser.lastname,
-        email: assignedUser.email,
-      },
-    });
-  } catch (error) {
-    console.error("Error transferring ticket:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
+// General file serving (moved from index.js, consider if this is the best place long-term)
+router.get('/serve-file/:filename', ticketController.serveFile_IndexLogic);
 
 module.exports = router;
