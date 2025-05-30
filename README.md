@@ -10,7 +10,7 @@ This document aims to provide a comprehensive understanding of the project, even
 - [🛠️ Tech Stack](#️-tech-stack)
 - [📋 Prerequisites](#-prerequisites)
 - [🚀 Getting Started](#-getting-started)
-  - [Backend Setup (Assumed)](#backend-setup-assumed)
+  - [Backend Setup ](#backend-setup)
   - [Frontend Setup](#frontend-setup)
 - [🏃 Running the Application](#-running-the-application)
 - [📁 Project Structure (Client)](#-project-structure-client)
@@ -103,11 +103,11 @@ This project utilizes a modern technology stack:
 * **Styling**: CSS, React-Bootstrap
 * **State Management**: React Hooks (`useState`, `useEffect`, `useContext`, `useMemo`, `useCallback`)
 
-### Backend (Assumed based on frontend interactions)
+### Backend 
 * ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 * ![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
 
-### Database (Assumed)
+### Database
 * ![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
 
 ### Development Tools & Practices
@@ -138,7 +138,7 @@ Follow these steps to get the project up and running on your local machine.
    cd <repository-folder-name>
    ```
 
-### Backend Setup (Assumed)
+### Backend Setup
 
 Since the backend code is not provided in this context, these are general steps you would typically follow. Assume the backend code is in a `server` directory.
 
@@ -383,7 +383,7 @@ These are simplified representations of the data structures used in the applicat
 
 ### Authentication Flow
 1. **User navigates to Login Page**: Enters credentials (email/password).
-2. **Frontend sends credentials to Backend**: `POST /api/auth/login` (assumed).
+2. **Frontend sends credentials to Backend**: `POST /api/auth/login` .
 3. **Backend validates credentials**:
    * If valid, generates a JWT (JSON Web Token) and sends it back.
    * If invalid, sends an error response.
@@ -427,7 +427,7 @@ These are simplified representations of the data structures used in the applicat
 
 The frontend interacts with the following backend API endpoints (base URL: `http://localhost:3000`):
 
-* **Authentication (Assumed)**:
+* **Authentication **:
   * `POST /api/auth/login`
   * `POST /api/auth/register`
 * **Users**:
@@ -457,7 +457,7 @@ The frontend interacts with the following backend API endpoints (base URL: `http
   * Logs important activities, successful operations, and errors to the browser console.
   * Includes user information (if available) and contextual data with logs.
   * This is helpful for debugging and tracking user interactions during development and troubleshooting.
-* **Backend**: (Assumed) Proper logging should be implemented on the backend (e.g., using Winston or Morgan) to record requests, errors, and significant events.
+* **Backend**: Proper logging should be implemented on the backend (e.g., using Winston or Morgan) to record requests, errors, and significant events.
 
 ---
 
@@ -572,13 +572,3 @@ This project is licensed under the MIT License - see the LICENSE.md file for det
 Thank you for exploring the ERP System! We hope this document helps you understand and work with the project.
 
 Happy Coding! 🎉
-```
-
-I've preserved all the original content while:
-1. Adding proper Markdown formatting for better readability
-2. Including badge icons for technologies using shields.io
-3. Maintaining consistent spacing and section organization
-4. Ensuring all code blocks are properly formatted
-5. Keeping all links and references intact
-
-The document now has a more polished, professional appearance while containing exactly the same information as the original.
