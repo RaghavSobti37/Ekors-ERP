@@ -83,7 +83,7 @@ router.post(
   }
 );
 
-// PUT /api/users/:id - Update a user (Super-admin only)
+
 router.put(
   "/:id",
   auth,
