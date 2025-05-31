@@ -16,8 +16,6 @@ lerna-debug.log*
 node_modules/
 
 # Build outputs
-dist/
-dist-ssr/
 
 # Local-only files
 *.local
