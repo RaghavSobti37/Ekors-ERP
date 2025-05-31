@@ -57,6 +57,10 @@ app.use('/api/audit', auditLogRoutes);
 app.use('/api/init', initRouter);
 app.use('/api', frontendLogRoute);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.get("/api/health", (req, res) => {
+  console.log("Health check endpoint hit");
+  res.status(200).json({ status: "ok", message: "Server is healthy" });
+});
 logger.info('server-setup', '[SERVER INFO] /api/audit routes mounted.');
 
 // // ----------------------------
