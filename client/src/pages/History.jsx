@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
 import { Table, Button, Alert } from "react-bootstrap";
 import Pagination from '../components/Pagination';
+import apiClient from "../utils/apiClient"; // Import apiClient
 import ReusableTable from "../components/ReusableTable";
 import SortIndicator from "../components/SortIndicator";
 
@@ -25,17 +26,7 @@ const formatDisplayDate = (dateString) => {
   return `${day}-${month}-${year}`;
 };
 
-   const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-  
+// Removed local getAuthToken, apiClient will handle token internally via authUtils
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -55,23 +46,10 @@ export default function History() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      // apiClient handles token and base URL
+      const data = await apiClient("logtime/all");
 
-      const response = await fetch("http://localhost:3000/api/logtime/all", {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch history');
-      }
       showToast("History fetched successfully", true);
-      
-      const data = await response.json();
       const withTotal = data.map((entry) => {
         let totalMinutes = 0;
         entry.logs?.forEach((log) => {
@@ -87,9 +65,9 @@ export default function History() {
       setHistoryData(withTotal);
         setError(null);
       } catch (error) {
-      console.error("Error fetching history:", error);
-      showToast(error.message || "Failed to fetch history", false);
-      setError(error.message || "Failed to fetch history");
+      const errorMessage = handleApiError(error, "Failed to fetch history"); // handleApiError might need adjustment for apiClient's error structure
+      showToast(error.data?.message || error.message || "Failed to fetch history", false);
+      setError(error.data?.message || error.message || "Failed to fetch history");
       if (error.message.includes('authentication')) {
         navigate('/login');
       }
@@ -128,21 +106,8 @@ export default function History() {
   const handleDelete = async (entryId) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       try {
-        const token = getAuthToken();
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-
-        const response = await fetch(`http://localhost:3000/api/logtime/${entryId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete entry');
-        }
+        // apiClient handles token, base URL, and method
+        await apiClient(`logtime/${entryId}`, { method: 'DELETE' });
 
         // Refresh the history after deletion
         await fetchHistory();
@@ -150,6 +115,7 @@ export default function History() {
       } catch (error) {
         console.error("Error deleting entry:", error);
         setError(error.message || "Failed to delete entry");
+        showToast(error.data?.message || error.message || "Failed to delete entry", false);
       }
     }
   };

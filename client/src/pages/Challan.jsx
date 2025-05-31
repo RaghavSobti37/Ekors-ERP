@@ -12,10 +12,8 @@ import "../css/Challan.css";
 import Pagination from '../components/Pagination';
 import ReusableTable from '../components/ReusableTable'; // No SortIndicator needed as no sorting is implemented
 import { Table, Button, Form, Alert } from "react-bootstrap";
-import axios from "axios";
+import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
-
-const API_URL = "http://localhost:3000/api/challans";
 
 export default function Challan() {
   const [showPopup, setShowPopup] = useState(false);
@@ -51,8 +49,8 @@ export default function Challan() {
   const fetchChallans = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(API_URL);
-        setAllChallans(response.data);
+      const responseData = await apiClient("challans"); // Use apiClient
+        setAllChallans(responseData);
         setError(null);
       } catch (err) {
         const errorMessage = handleApiError(err, "Failed to load challans.");
@@ -67,7 +65,7 @@ export default function Challan() {
     if (window.confirm("Are you sure you want to delete this challan?")) {
       try {
         setLoading(true);
-        await axios.delete(`${API_URL}/${id}`);
+        await apiClient(`challans/${id}`, { method: "DELETE" }); // Use apiClient
         showNotification("Challan deleted successfully!");
           fetchChallans(); // Refreshes the list
         } catch (err) {
@@ -113,21 +111,20 @@ export default function Challan() {
       }
 
       if (editMode && editId) {
-        await axios.put(`${API_URL}/${editId}`, submitData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+        await apiClient(`challans/${editId}`, { // Use apiClient
+          method: "PUT",
+          body: submitData,
+          // apiClient handles FormData Content-Type
         });
         showNotification("Challan updated successfully!");
       } else {
-        await axios.post(API_URL, submitData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+        await apiClient("challans", { // Use apiClient
+          method: "POST",
+          body: submitData,
+          // apiClient handles FormData Content-Type
         });
         showNotification("Challan submitted successfully!");
       }
-
       fetchChallans();
         resetForm();
       } catch (err) {
@@ -159,8 +156,8 @@ export default function Challan() {
   const openViewPopup = async (challan) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/${challan._id}`);
-      setViewData(response.data);
+      const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
+      setViewData(responseData);
       setViewMode(true);
       setEditMode(false);
         setShowPopup(true);
@@ -176,8 +173,8 @@ export default function Challan() {
   const openEditPopup = async (challan) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/${challan._id}`);
-      const challanDataFromServer = response.data;
+      const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
+      const challanDataFromServer = responseData;
 
       setFormData({
         companyName: challanDataFromServer.companyName,
@@ -206,12 +203,14 @@ export default function Challan() {
     try {
       setLoading(true);
       // Clear previous errors before attempting fetch
-      setError(null);        const response = await axios.get(`${API_URL}/${challanId}/document`, {
-        responseType: 'blob'
+      setError(null);
+      const blob = await apiClient(`challans/${challanId}/document`, { // Use apiClient
+        responseType: 'blob', // Tell apiClient to expect a blob
       });
-
-      const contentType = response.headers['content-type'];
-      const blob = new Blob([response.data], { type: contentType });
+      // For blob, apiClient returns the blob directly. We need to know the content type.
+      // This is a limitation if the server doesn't send it or if apiClient doesn't expose response headers.
+      // Assuming server sends correct content-type and it's accessible or inferred.
+      const contentType = blob.type; // Blob object has a 'type' property
       const url = window.URL.createObjectURL(blob);
       setDocumentPreview({ url, type: contentType });
     } catch (err) {

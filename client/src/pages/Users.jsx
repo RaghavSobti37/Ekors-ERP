@@ -4,8 +4,8 @@ import {
   FaTimes,
   FaUserShield,
   FaChartBar,
-} from "react-icons/fa";
-import axios from "axios";
+} from "react-icons/fa"; // FaChartBar is not used, consider removing
+import apiClient from "../utils/apiClient"; // Import apiClient
 import Navbar from "../components/Navbar";
 import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
 import Pagination from "../components/Pagination";
@@ -56,46 +56,30 @@ const Users = () => {
     setShowReportModal(true);
   };
 
-  // Axios instance with base URL and auth header
-  const api = axios.create({
-    baseURL: "http://localhost:3000",
-    headers: { "Content-Type": "application/json" },
-  });
 
   // Fetch users from backend
   const fetchUsers = async () => {
     try {
       console.log("[Users.jsx] fetchUsers: Attempting to fetch users.");      
       const authTokenString = getAuthToken();
-      if (!authTokenString) {
-        console.error(
-          "[Users.jsx] fetchUsers: No token found. Aborting fetch."
-        );
-        setError("Authentication token not found. Please log in again.");
-        setLoading(false);
-        // navigate("/login"); // Optional: redirect to login
-        return;
-      }
+      // apiClient handles token internally, but we can check here for early exit if needed
+      // if (!authTokenString) { ... } 
+
       setLoading(true);
       setError(""); // Clear previous errors
       setIsUnauthorized(false); // Reset unauthorized state
 
-      api.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${authTokenString}`;
-      console.log(
-        "[Users.jsx] fetchUsers: Axios instance headers:",
-        JSON.stringify(api.defaults.headers.common)
-      );
-      const response = await api.get("/api/users");
+      // Use apiClient - endpoint is "users" relative to API_BASE_URL (which includes /api)
+      const responseData = await apiClient("users"); 
+
       console.log(
         "[Users.jsx] fetchUsers: Raw response from /api/users:",
-        response.data
+        responseData
       );
-      if (response.data && Array.isArray(response.data.data)) {
-        setUsers(response.data.data);
+      if (responseData && Array.isArray(responseData.data)) {
+        setUsers(responseData.data);
       } else {
-        console.warn("[Users.jsx] fetchUsers: response.data.data is not an array or is missing. Setting users to [].", response.data);
+        console.warn("[Users.jsx] fetchUsers: responseData.data is not an array or is missing. Setting users to [].", responseData);
         setUsers([]); // Ensure users is an array
         setError("Received unexpected data format from server.");
       }
@@ -103,16 +87,16 @@ const Users = () => {
     } catch (err) {
       console.error(
         "[Users.jsx] fetchUsers: Error fetching users:",
-        err.response || err
+        err.data || err // apiClient error structure
       );
-      setError(err.response?.data?.error || "Failed to fetch users");
-      if (err.response?.status === 403) {
+      setError(err.data?.error || err.data?.message || "Failed to fetch users");
+      if (err.status === 403) { // apiClient error structure
         console.error(
           "[Users.jsx] fetchUsers: Received 403 Forbidden. User is not authorized."
         );
         setError("You are not authorized to view this page. Only super-admins can access this.");
         setIsUnauthorized(true);
-      } else if (err.response?.status === 401) {
+      } else if (err.status === 401) { // apiClient error structure
         console.error(
           "[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired."
         );
@@ -161,17 +145,17 @@ const Users = () => {
       return;
     }
 
-    const authTokenString = getAuthToken();
-    if (!authTokenString) {
-      alert("Authentication token not found. Please log in again.");
-      return;
-    }
+    // apiClient handles token
+    // const authTokenString = getAuthToken();
+    // if (!authTokenString) { ... }
 
     try {
-      api.defaults.headers.common["Authorization"] = `Bearer ${authTokenString}`;
-      const response = await api.patch(`/api/users/${userToToggle._id}/status`, { isActive: newStatus });
+      const responseData = await apiClient(`users/${userToToggle._id}/status`, { // Use apiClient
+        method: "PATCH",
+        body: { isActive: newStatus },
+      });
 
-      setUsers(users.map(u => u._id === userToToggle._id ? response.data.data : u));
+      setUsers(users.map(u => u._id === userToToggle._id ? responseData.data : u));
       alert(`User ${userToToggle.firstname} ${newStatus ? 'enabled' : 'disabled'} successfully.`);
 
     } catch (err) {
@@ -200,30 +184,23 @@ const Users = () => {
       console.log(
         `[Users.jsx] handleDelete: Attempting to delete user ${userIdToDelete}`
       );
-      const authTokenString = getAuthToken();
-      if (!authTokenString) {
-        console.error(
-          "[Users.jsx] handleDelete: No token found. Aborting delete."
-        );
-        alert("Authentication token not found. Please log in again.");
-        return;
-      }
+      // apiClient handles token
+      // const authTokenString = getAuthToken();
+      // if (!authTokenString) { ... }
       try {
-        api.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${authTokenString}`;
-        await api.delete(`/api/users/${userIdToDelete}`);
+        await apiClient(`users/${userIdToDelete}`, { method: "DELETE" }); // Use apiClient
+
         console.log(
           `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
         );
         setUsers(users.filter((user) => user._id !== userIdToDelete));
       } catch (err) {
         console.error(
-          "[Users.jsx] handleDelete: Error deleting user. Status:",
-          err.response?.status, "Message:", err.response?.data?.message || err.message
+          "[Users.jsx] handleDelete: Error deleting user. Status:", // apiClient error structure
+          err.status, "Message:", err.data?.message || err.message
         );
-        alert(err.response?.data?.message || err.message || "Failed to delete user");
-        if (err.response?.status === 401) {
+        alert(err.data?.message || err.message || "Failed to delete user");
+        if (err.status === 401) { // apiClient error structure
         }
       }
     }
@@ -243,13 +220,9 @@ const Users = () => {
         "FormData:",
         formData
       );
-      const authTokenString = getAuthToken();
-
-      if (!authTokenString) {
-        console.error("[Users.jsx] handleSave: No token found. Aborting save.");
-        alert("Authentication token not found. Please log in again.");
-        return;
-      }
+      // apiClient handles token
+      // const authTokenString = getAuthToken();
+      // if (!authTokenString) { ... }
 
       if (!formData.firstname || !formData.lastname || !formData.email) {
         throw new Error("First name, last name and email are required");
@@ -259,19 +232,15 @@ const Users = () => {
         throw new Error("Password is required for new users");
       }
 
-      api.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${authTokenString}`;
-
       if (selectedUser) {
         // Update existing user
-        const response = await api.put(
-          `/api/users/${selectedUser._id}`,
-          formData
-        );
+        const responseData = await apiClient(`users/${selectedUser._id}`, { // Use apiClient
+          method: "PUT",
+          body: formData,
+        });
         setUsers(
           users.map((user) =>
-            user._id === selectedUser._id ? response.data : user
+            user._id === selectedUser._id ? responseData : user // apiClient returns data directly
           )
         );
       } else {
@@ -280,9 +249,11 @@ const Users = () => {
           ...formData,
           isActive: true, // Ensure new users are active
         };
-
-        const response = await api.post("/api/users", userData);
-        setUsers([...users, response.data]);
+        const responseData = await apiClient("users", { // Use apiClient
+          method: "POST",
+          body: userData,
+        });
+        setUsers([...users, responseData]); // apiClient returns data directly
       }
       console.log(`[Users.jsx] handleSave: Successfully ${action} user.`);
 
@@ -301,8 +272,8 @@ const Users = () => {
       // Refresh the list
       fetchUsers();
     } catch (err) {
-      console.error("[Users.jsx] handleSave: Error saving user:", err.response || err);
-      alert(err.response?.data?.error || err.message || "Failed to save user");
+      console.error("[Users.jsx] handleSave: Error saving user:", err.data || err); // apiClient error structure
+      alert(err.data?.error || err.data?.message || err.message || "Failed to save user");
     }
   };
 

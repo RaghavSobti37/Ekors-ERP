@@ -1878,7 +1878,7 @@ p {
 .user-search-component .search-suggestions-dropdown {
   position: absolute; /* If not already */
   width: 100%;
-  background-color: purple;
+  background-color: white;
   border: 1px solid #ced4da;
   border-top: none;
   z-index: 1050; /* Ensure it's above other elements */

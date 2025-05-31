@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
+import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
 import {
   Eye, // View
@@ -23,6 +23,7 @@ import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 // SortIndicator is not directly used here but ReusableTable might use it.
 // import SortIndicator from "../components/SortIndicator.jsx";
 
+import { getAuthToken as retrieveAuthToken } from "../utils/authUtils"; // Use utility for token
 import ActionButtons from "../components/ActionButtons";
 import { ToastContainer, toast } from "react-toastify";
 import frontendLogger from "../utils/frontendLogger.js";
@@ -217,36 +218,7 @@ export default function Quotations() {
   const auth = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
-
-  const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-      return token || null;
-    } catch (e) {
-      toast.error("Error accessing local storage for authentication token.");
-      const errorDetails = {
-        errorMessage: e.message,
-        stack: e.stack,
-        context: "getAuthToken - localStorage access",
-      };
-      if (auth.user) {
-        frontendLogger.error(
-          "localStorageAccess",
-          "Failed to get auth token from localStorage",
-          auth.user,
-          errorDetails
-        );
-      } else {
-        frontendLogger.error(
-          "localStorageAccess",
-          "Failed to get auth token from localStorage (user not authenticated)",
-          null,
-          errorDetails
-        );
-      }
-      return null;
-    }
-  };
+  // Removed local getAuthToken, apiClient handles token internally via authUtils
 
   const generateQuotationNumber = () => {
     const now = new Date();
@@ -305,23 +277,17 @@ export default function Quotations() {
       phone: phone,
     };
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) throw new Error("No authentication token found");
 
-      const response = await axios.post(
-        "http://localhost:3000/api/clients",
-        clientPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (response.data && response.data._id) {
+      const responseData = await apiClient("clients", { // Use apiClient
+        method: "POST",
+        body: clientPayload,
+      });
+      if (responseData && responseData._id) {
         setQuotationData((prev) => ({
           ...prev,
-          client: { ...response.data },
+          client: { ...responseData },
         }));
         setSelectedClientIdForForm(response.data._id);
         setError(null);
@@ -332,8 +298,8 @@ export default function Quotations() {
             "New client saved successfully",
             auth.user,
             {
-              clientId: response.data._id,
-              clientName: response.data.companyName,
+              clientId: responseData._id,
+              clientName: responseData.companyName,
               action: "SAVE_NEW_CLIENT_SUCCESS",
             }
           );
@@ -344,15 +310,15 @@ export default function Quotations() {
       }
     } catch (error) {
       let errorMessage = "Failed to save client details.";
-      if (error.response?.data?.field === "gstNumber") {
+      if (error.data?.field === "gstNumber") { // apiClient error structure
         errorMessage =
-          error.response.data.message ||
+          error.data.message ||
           "This GST Number is already registered.";
-      } else if (error.response?.data?.field === "email") {
+      } else if (error.data?.field === "email") { // apiClient error structure
         errorMessage =
-          error.response.data.message || "This Email is already registered.";
+          error.data.message || "This Email is already registered.";
       } else {
-        errorMessage = error.response?.data?.message || errorMessage;
+        errorMessage = error.data?.message || errorMessage;
       }
       setError(errorMessage);
       toast.error(errorMessage);
@@ -364,9 +330,9 @@ export default function Quotations() {
           auth.user,
           {
             clientPayload: clientPayload,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             action: "SAVE_NEW_CLIENT_FAILURE",
           }
         );
@@ -417,7 +383,7 @@ export default function Quotations() {
 
     setIsLoading(true);
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -427,27 +393,22 @@ export default function Quotations() {
         params.append("status", statusFilter);
       }
 
-      const url = `http://localhost:3000/api/quotations${
+      const endpoint = `quotations${
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const responseData = await apiClient(endpoint); // Use apiClient
 
-      setQuotations(response.data);
-      setQuotationsCount(response.data.length);
+      setQuotations(responseData);
+      setQuotationsCount(responseData.length);
       setError(null);
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message ||
+        error.data?.message || // apiClient error structure
         error.message ||
         "Failed to load quotations. Please try again.";
       setError(errorMessage);
       showToast(errorMessage, false);
-
       if (auth.user) {
         frontendLogger.error(
           "quotationActivity",
@@ -456,14 +417,14 @@ export default function Quotations() {
           {
             errorMessage: error.response?.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             statusFilter,
             action: "FETCH_QUOTATIONS_FAILURE",
           }
         );
       }
 
-      if (error.response?.status === 401) {
+      if (error.status === 401) { // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
@@ -856,7 +817,7 @@ export default function Quotations() {
     setError(null);
 
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -888,21 +849,16 @@ export default function Quotations() {
       };
 
       const url = currentQuotation
-        ? `http://localhost:3000/api/quotations/${currentQuotation._id}`
-        : "http://localhost:3000/api/quotations";
+        ? `quotations/${currentQuotation._id}`
+        : "quotations";
       const method = currentQuotation ? "put" : "post";
 
-      const response = await axios({
-        method: method.toLowerCase(),
-        url: url,
-        data: submissionData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      const responseData = await apiClient(url, { // Use apiClient
+        method: method,
+        body: submissionData,
       });
 
-      if (response.status === 200 || response.status === 201) {
+      if (responseData) { // apiClient returns data on success, or throws error
         fetchQuotations();
         setShowModal(false);
         resetForm();
@@ -921,7 +877,7 @@ export default function Quotations() {
             }`,
             auth.user,
             {
-              quotationId: response.data._id,
+              quotationId: responseData._id,
               referenceNumber: submissionData.referenceNumber,
               action: currentQuotation
                 ? "UPDATE_QUOTATION_SUCCESS"
@@ -932,12 +888,12 @@ export default function Quotations() {
       }
     } catch (error) {
       let errorMessage = "Failed to save quotation. Please try again.";
-      if (error.response) {
+      if (error.data) { // apiClient error structure
         errorMessage =
-          error.response.data.message ||
-          error.response.data.error ||
+          error.data.message ||
+          error.data.error ||
           errorMessage;
-        if (error.response.status === 401) {
+        if (error.status === 401) {
           navigate("/login", { state: { from: "/quotations" } });
           toast.error("Authentication failed. Please log in again.");
           return;
@@ -959,9 +915,9 @@ export default function Quotations() {
           {
             referenceNumber: quotationData.referenceNumber,
             quotationId: currentQuotation?._id,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             submittedData: submissionData,
             action: currentQuotation
               ? "UPDATE_QUOTATION_FAILURE"
@@ -983,7 +939,7 @@ export default function Quotations() {
 
   const generateTicketNumber = async () => {
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1005,9 +961,9 @@ export default function Quotations() {
           "Failed to generate ticket number from API",
           auth.user,
           {
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             action: "GENERATE_TICKET_NUMBER_FAILURE",
           }
         );
@@ -1061,20 +1017,13 @@ export default function Quotations() {
 
   const checkExistingTicket = async (quotationNumber) => {
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
 
-      const response = await axios.get(
-        `http://localhost:3000/api/tickets/check/${quotationNumber}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data.exists;
+      const responseData = await apiClient(`tickets/check/${quotationNumber}`); // Use apiClient
+      return responseData.exists;
     } catch (error) {
       toast.error("Failed to check for existing ticket.");
       if (auth.user) {
@@ -1084,9 +1033,9 @@ export default function Quotations() {
           auth.user,
           {
             quotationNumber,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             action: "CHECK_EXISTING_TICKET_FAILURE",
           }
         );
@@ -1114,7 +1063,7 @@ export default function Quotations() {
         return;
       }
 
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1149,31 +1098,25 @@ export default function Quotations() {
         },
       };
 
-      const response = await axios.post(
-        "http://localhost:3000/api/tickets",
-        completeTicketData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const responseData = await apiClient("tickets", { // Use apiClient
+        method: "POST",
+        body: completeTicketData,
+      });
 
-      if (response.status === 201) {
+      if (responseData) { // apiClient returns data on success
         setShowTicketModal(false);
         setError(null);
         toast.success(
-          `Ticket ${response.data.ticketNumber} created successfully!`
+          `Ticket ${responseData.ticketNumber} created successfully!`
         );
         if (auth.user) {
           frontendLogger.info(
             "ticketActivity",
-            `Ticket ${response.data.ticketNumber} created successfully from quotation ${ticketData.quotationNumber}`,
+            `Ticket ${responseData.ticketNumber} created successfully from quotation ${ticketData.quotationNumber}`,
             auth.user,
             {
               action: "TICKET_CREATED_FROM_QUOTATION_SUCCESS",
-              ticketNumber: response.data.ticketNumber,
+              ticketNumber: responseData.ticketNumber,
               quotationNumber: ticketData.quotationNumber,
             }
           );
@@ -1183,8 +1126,8 @@ export default function Quotations() {
       }
     } catch (error) {
       let errorMessage =
-        error.response?.data?.message ||
-        error.message ||
+        error.data?.message || // apiClient error structure
+        error.message || // apiClient error structure
         "Failed to create ticket. Please try again.";
       setError(errorMessage);
       toast.error(errorMessage);
@@ -1196,9 +1139,9 @@ export default function Quotations() {
           auth.user,
           {
             quotationNumber: ticketData.quotationNumber,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             ticketDataSubmitted: completeTicketData,
             action: "CREATE_TICKET_FROM_QUOTATION_FAILURE",
           }
@@ -1293,16 +1236,9 @@ export default function Quotations() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
+      const token = retrieveAuthToken(); // Use utility
       if (!token) throw new Error("No authentication token found");
-      await axios.delete(
-        `http://localhost:3000/api/quotations/${quotation._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await apiClient(`quotations/${quotation._id}`, { method: "DELETE" }); // Use apiClient
       setError(null);
       setCurrentQuotation(null);
       setShowModal(false);
@@ -1325,10 +1261,10 @@ export default function Quotations() {
       }
     } catch (error) {
       let errorMessage =
-        error.response?.data?.message ||
+        error.data?.message || // apiClient error structure
         "Failed to delete quotation. Please try again.";
-      if (error.response) {
-        if (error.response.status === 401) {
+      if (error.data) { // apiClient error structure
+        if (error.status === 401) {
           navigate("/login", { state: { from: "/quotations" } });
           toast.error("Authentication failed. Please log in again.");
           setIsLoading(false);
@@ -1349,9 +1285,9 @@ export default function Quotations() {
           {
             quotationId: quotation._id,
             referenceNumber: quotation.referenceNumber,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             action: "DELETE_QUOTATION_FAILURE",
           }
         );

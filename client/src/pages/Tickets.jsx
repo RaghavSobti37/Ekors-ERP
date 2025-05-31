@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Pagination from "../components/Pagination";
-import axios from "axios";
+import apiClient from "../utils/apiClient"; // Import apiClient
 import {
   Modal,
   Button,
@@ -27,7 +27,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import frontendLogger from "../utils/frontendLogger.js";
 import { getAuthToken } from "../utils/authUtils";
-import ReusableTable from "../components/ReusableTable.jsx";
+import ReusableTable from "../components/ReusableTable.jsx"; // Assuming ReusableTable does not use axios internally
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx"; 
 
@@ -44,50 +44,37 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
     try {
       setLoading(true);
       setError(null);
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("Authentication token not found for fetching users.");
-      }
-
-      const response = await axios.get("http://localhost:3000/api/users/transfer-candidates", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUsers(response.data);
+      // apiClient handles token internally via getAuthToken from authUtils
+      const responseData = await apiClient("users/transfer-candidates");
+      setUsers(responseData);
     } catch (err) {
       let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
-      if (err.response) {
-        // Check for 403 Forbidden specifically when fetching users
-        if (err.response.status === 403) {
-          // Provide a more informative message for 403 on user list fetching
-          specificMessage = err.response.data?.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
-        } else if (err.response.data && err.response.data.message) {
-          // Use message from backend response if available and not a 403, or if 403 had a specific message
-          specificMessage = err.response.data.message;
-        } else if (err.message) {
-          // Fallback to generic error message from the error object if no backend message
-          specificMessage = `Failed to load users: ${err.message}`;
-        }
+      // err from apiClient has .message, .status, .data
+      if (err.status === 403) {
+        specificMessage = err.data?.message || err.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
+      } else if (err.data?.message) {
+        specificMessage = err.data.message;
+      } else if (err.message) { // Fallback to apiClient's constructed error message
+        specificMessage = `Failed to load users: ${err.message}`;
       } else if (err.message) {
         specificMessage = `Failed to load users: ${err.message}`; // Network error or other non-response error
       }
       setError(specificMessage); // Set the more specific message
       
       if (authContext?.user) {
-        frontendLogger.error(
-          "userSearch",
-          "Failed to fetch users",
-          authContext.user,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
-        );
+        frontendLogger.error("userSearch", "Failed to fetch users", authContext.user, {
+          errorMessage: err.message,
+          originalError: err,
+          specificMessageDisplayed: specificMessage,
+          stack: err.stack,
+        });
       } else {
-        frontendLogger.error(
-          "userSearch",
-          "Failed to fetch users (user context unavailable)",
-          null,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
-        );
+        frontendLogger.error("userSearch", "Failed to fetch users (user context unavailable)", null, {
+          errorMessage: err.message,
+          originalError: err,
+          specificMessageDisplayed: specificMessage,
+          stack: err.stack,
+        });
       }
     } finally {
       setLoading(false);
@@ -264,28 +251,20 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to fetch tickets. Please log in.");
-        throw new Error("No authentication token found");
-      }
-
-      const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // apiClient handles token internally
+      const responseData = await apiClient("tickets", {
         params: {
           populate:
 "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
         },
       });
 
-      setTickets(response.data);
+      setTickets(responseData);
       // frontendLogger.info("ticketActivity", "Tickets fetched successfully", auth.user, { count: response.data.length });
-    } catch (error) {
+    } catch (err) {
       const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
+        err.data?.message || // Prioritize message from error.data
+        err.message || // Fallback to apiClient's constructed message
         "Failed to load tickets";
       setError(errorMsg);
       toast.error(errorMsg);
@@ -295,19 +274,20 @@ export default function Dashboard() {
         auth.user,
         {
           errorMessage: errorMsg,
-          stack: error.stack,
-          status: error.response?.status,
+          originalError: err,
+          stack: err.stack,
+          status: err.status,
           action: "FETCH_TICKETS_FAILURE",
         }
       );
-      if (error.response?.status === 401) {
+      if (err.status === 401) {
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/tickets" } });
       }
     } finally {
       setIsLoading(false);
     }
-  }, [authUser, navigate, auth.user]); // Removed getAuthToken from dependencies as it's now a direct import
+  }, [authUser, navigate, auth.user]);
 
   useEffect(() => {
     if (!authLoading && !authUser) {
@@ -386,20 +366,11 @@ setTransferHistoryDisplay(history);
     ) {
       setIsLoading(true);
       try {
-        const token = getAuthToken(auth.user);
-        if (!token) {
-          toast.error("Authentication required for delete operation.");
-          throw new Error(
-            "Authentication token not found for delete operation."
-          );
-        }
+        // apiClient handles token internally
+        await apiClient(`tickets/admin/${ticketToDelete._id}`, {
+          method: "DELETE",
+        });
 
-        await axios.delete(
-          `http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
 
         fetchTickets();
         setError(null);
@@ -410,9 +381,9 @@ setTransferHistoryDisplay(history);
           ticketNumber: ticketToDelete.ticketNumber,
           action: "DELETE_TICKET_SUCCESS",
         });
-      } catch (error) {
+      } catch (err) {
         const errorMsg =
-          "Delete failed: " + (error.response?.data?.message || error.message);
+          "Delete failed: " + (err.data?.message || err.message);
         setError(errorMsg);
         toast.error(errorMsg);
         frontendLogger.error(
@@ -422,8 +393,9 @@ setTransferHistoryDisplay(history);
           {
             ticketId: ticketToDelete._id,
             ticketNumber: ticketToDelete.ticketNumber,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
+            errorMessage: err.data?.message || err.message,
+            originalError: err,
+            stack: err.stack,
             action: "DELETE_TICKET_FAILURE",
           }
         );
@@ -446,21 +418,19 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to record payment.");
-        throw new Error("No authentication token found");
-      }
-      const response = await axios.post(
+      // apiClient handles token and Content-Type for JSON
+      const responseData = await apiClient(
         `http://localhost:3000/api/tickets/${selectedTicket?._id}/payments`,
         {
-          amount: paymentAmount,
-          date: paymentDate,
-          reference: paymentReference,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+          method: "POST",
+          body: {
+            amount: paymentAmount,
+            date: paymentDate,
+            reference: paymentReference,
+          },
+        }
       );
-      if (response.status === 200) {
+      if (responseData) { // apiClient returns data on success, or throws error
         await fetchTickets();
         setShowPaymentModal(false);
         const successMsg = "Payment recorded successfully!";
@@ -473,9 +443,9 @@ setTransferHistoryDisplay(history);
         setPaymentAmount(0);
         setPaymentReference("");
       }
-    } catch (error) {
+    } catch (err) {
       const errorMsg = `Failed to record payment: ${
-        error.response?.data?.message || error.message
+        err.data?.message || err.message
       }`;
       setError(errorMsg);
       toast.error(errorMsg);
@@ -486,8 +456,9 @@ setTransferHistoryDisplay(history);
         {
           ticketId: selectedTicket?._id,
           amount: paymentAmount,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
+          errorMessage: err.data?.message || err.message,
+          originalError: err,
+          stack: err.stack,
           action: "RECORD_PAYMENT_FAILURE",
         }
       );
@@ -741,7 +712,7 @@ setTransferHistoryDisplay(history);
       status: selectedTicketToEdit.status || statusStages[0],
       documents: selectedTicketToEdit.documents || {
         quotation: "",
-        po: "",
+        // po: "", // PO document handling might be different now
       },
       dispatchDays: selectedTicketToEdit.dispatchDays || "7-10 working",
       validityDate:
@@ -749,7 +720,12 @@ setTransferHistoryDisplay(history);
         new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
     });
     setShowEditModal(true);
-    setError(null); // Clear any previous errors when opening modal
+    setError(null);
+    // Ensure goods is an array for mapping in the table
+    setTicketData(prev => ({
+      ...prev,
+      goods: (selectedTicketToEdit.goods || []).map(g => ({ ...g, originalPrice: g.originalPrice || g.price, maxDiscountPercentage: g.maxDiscountPercentage }))
+    }));
   };
 
   const handleTransfer = (ticketToTransfer) => {
@@ -796,13 +772,7 @@ setTransferHistoryDisplay(history);
         return;
       }
 
-
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to update ticket.");
-        throw new Error("Authentication token not found");
-      }
-
+      // apiClient handles token and Content-Type
       const updateData = {
         ...ticketData,
         _id: undefined, // Ensure these are not sent
@@ -832,20 +802,14 @@ setTransferHistoryDisplay(history);
         })),
       };
 
-      const response = await axios.put(
+      const responseData = await apiClient(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
-        updateData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { method: "PUT", body: updateData }
       );
-      if (response.status === 200) {
+      if (responseData) { // apiClient returns data on success
         fetchTickets();
         setShowEditModal(false);
-        setError(null);
+        setError(null); // Clear error on successful update
         const successMsg = `Ticket ${editTicket.ticketNumber} updated successfully!`;
         toast.success(successMsg);
         frontendLogger.info("ticketActivity", successMsg, auth.user, {
@@ -856,9 +820,9 @@ setTransferHistoryDisplay(history);
 
         });
       }
-    } catch (error) {
+    } catch (err) {
       const errorMsg = `Failed to update ticket: ${
-        error.response?.data?.message || error.message
+        err.data?.message || err.message
       }`;
       setError(errorMsg);
       toast.error(errorMsg);
@@ -869,8 +833,9 @@ setTransferHistoryDisplay(history);
         {
           ticketId: editTicket?._id,
           ticketNumber: editTicket?.ticketNumber,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
+          errorMessage: err.data?.message || err.message,
+          originalError: err,
+          stack: err.stack,
           submittedData: ticketData, // Be cautious with logging full data
           statusChangeCommentAttempted: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
           action: "UPDATE_TICKET_FAILURE",
@@ -891,24 +856,15 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to transfer ticket.");
-        throw new Error("Authentication token not found");
-      }
-      const response = await axios.post(
+      // apiClient handles token and Content-Type
+      const responseData = await apiClient(
         `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
-        { userId: userToTransferTo._id, note },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { method: "POST", body: { userId: userToTransferTo._id, note } }
       );
 
-      if (response.status === 200) {
-        const updatedTicketFromServer = response.data.ticket;
+
+      if (responseData && responseData.ticket) {
+        const updatedTicketFromServer = responseData.ticket;
         setTickets((prevTickets) =>
           prevTickets.map((t) =>
             t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
@@ -925,12 +881,8 @@ setTransferHistoryDisplay(history);
           action: "TRANSFER_TICKET_SUCCESS",
         });
       }
-    } catch (error) {
-       let detailedErrorMessage = error.message; // Default to generic error message
-      if (error.response && error.response.data) {
-        // Prioritize 'details' if available, then 'message' from backend error response
-        detailedErrorMessage = error.response.data.details || error.response.data.message || error.message;
-      }
+    } catch (err) {
+      const detailedErrorMessage = err.data?.details || err.data?.message || err.message;
       const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;      setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -941,7 +893,8 @@ setTransferHistoryDisplay(history);
           ticketId: transferTicket?._id,
           attemptedTransferTo: userToTransferTo?._id,
           errorMessage: detailedErrorMessage, 
-          stack: error.stack,
+          originalError: err,
+          stack: err.stack,
           action: "TRANSFER_TICKET_FAILURE",
         }
       );
@@ -1066,41 +1019,30 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to upload document.");
-        throw new Error("Authentication token not found");
-      }
+      // apiClient handles token and FormData Content-Type
       const formData = new FormData();
       formData.append("document", file);
       formData.append("documentType", docType); // Send the specific document type
 
-      const response = await axios.post(
+      const responseData = await apiClient(
         `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { method: "POST", body: formData }
       );
 
-      if (!response.data || !response.data.documents) {
+      if (!responseData || !responseData.documents) {
         throw new Error("Invalid response from server after document upload");
       }
-
+      
       // Instead of updating local state directly, fetch all tickets or the specific ticket
       // to ensure data consistency, especially if the payment modal is open.
       await fetchTickets(); // Re-fetch all tickets to update the list and selectedTicket
       
       // If the payment modal is open and showing selectedTicket, update it
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-        const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
+        const updatedSingleTicketData = await apiClient(`tickets/${targetTicketId}`, {
              params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicketData);
       }
 
 
@@ -1111,9 +1053,9 @@ setTransferHistoryDisplay(history);
         action: "UPLOAD_DOCUMENT_SUCCESS",
       });
       return true;
-    } catch (error) {
+    } catch (err) {
       const errorMsg = `Failed to upload document: ${
-        error.response?.data?.message || error.message
+        err.data?.message || err.message
       }`;
       setError(errorMsg);
       toast.error(errorMsg);
@@ -1123,8 +1065,9 @@ setTransferHistoryDisplay(history);
         auth.user,
         {
           ticketId: targetTicketId,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
+          errorMessage: err.data?.message || err.message,
+          originalError: err,
+          stack: err.stack,
           action: "UPLOAD_DOCUMENT_FAILURE",
         }
       );
@@ -1141,12 +1084,7 @@ setTransferHistoryDisplay(history);
     const targetTicketId = ticketIdForDelete || editTicket?._id || selectedTicket?._id;
 
     try {
-      const token = getAuthToken(auth.user);
-      if (!token) {
-        toast.error("Authentication required to delete document.");
-        throw new Error("No authentication token found");
-      }
-
+      // apiClient handles token
       if (!documentPathToDelete) {
         toast.warn("Document path not found for deletion.");
         setIsLoading(false);
@@ -1154,30 +1092,28 @@ setTransferHistoryDisplay(history);
       }
 
       const response = await axios.delete(
-        `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
+      await apiClient(`tickets/${targetTicketId}/documents`,
         {
-          headers: { Authorization: `Bearer ${token}` },
-          data: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
+          method: "DELETE",
+          body: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
         }
-      );
+      ));
 
       // Re-fetch tickets or specific ticket
       await fetchTickets();
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
+         const updatedSingleTicketData = await apiClient(`tickets/${targetTicketId}`, {
              params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicketData);
       }
        if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, { 
-            headers: { Authorization: `Bearer ${token}` },
+         const updatedSingleTicketData = await apiClient(`tickets/${targetTicketId}`, {
             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
          });
-         setEditTicket(updatedSingleTicket.data);
+         setEditTicket(updatedSingleTicketData);
          // Also update ticketData if it's derived from editTicket
-         // This part might be less relevant as document section is removed from edit modal
+         // This part is relevant if editTicket state is used to re-populate ticketData
        }
 
       const successMsg = `${docTypeToDelete.toUpperCase()} document deleted successfully.`;
@@ -1187,9 +1123,9 @@ setTransferHistoryDisplay(history);
         deletedPath: documentPathToDelete,
         action: "DELETE_DOCUMENT_SUCCESS",
       });
-    } catch (error) {
+    } catch (err) {
       const errorMsg = `Failed to delete document: ${
-        error.response?.data?.message || error.message
+        err.data?.message || err.message
       }`;
       setError(errorMsg);
       toast.error(errorMsg);
@@ -1200,8 +1136,9 @@ setTransferHistoryDisplay(history);
         {
           ticketId: targetTicketId,
           attemptedDeletePath: documentPathToDelete,
-          errorMessage: error.response?.data?.message || error.message,
-          stack: error.stack,
+          errorMessage: err.data?.message || err.message,
+          originalError: err,
+          stack: err.stack,
           action: "DELETE_DOCUMENT_FAILURE",
         }
       );
@@ -1875,8 +1812,8 @@ setTransferHistoryDisplay(history);
                     <tr key={index}>
                       <td className="align-middle">{item.srNo}</td>
                       <td>
-                        {index === ticketData.goods.length - 1 &&
-                        !item.description ? (
+                        {/* Show ItemSearchComponent only for the very last row IF it's truly empty and meant for adding a new item */}
+                        {index === ticketData.goods.length - 1 && !item.description && !item.hsnSacCode && (item.price === 0 || item.price === undefined) ? (
                           <ItemSearchComponent
                             onItemSelect={handleItemSelect}
                             index={index}
@@ -1886,21 +1823,22 @@ setTransferHistoryDisplay(history);
                         ) : (
                           <Form.Control
                             type="text"
-                            value={item.description}
-                            readOnly
-                            disabled
+                            value={item.description || ""}
+                            onChange={(e) => handleGoodsChange(index, "description", e.target.value)}
+                            placeholder="Item description"
                           />
                         )}
                       </td>
                       <td>
                         <Form.Control
                           type="text"
-                          value={item.hsnSacCode}
-                          readOnly
-                          disabled
+                          value={item.hsnSacCode || ""}
+                          onChange={(e) => handleGoodsChange(index, "hsnSacCode", e.target.value)}
+                          placeholder="HSN/SAC"
                         />
                       </td>
                       <td>
+                        {/* Quantity */}
                         <Form.Control
                           required
                           type="number"
@@ -1912,6 +1850,7 @@ setTransferHistoryDisplay(history);
                         />
                       </td>
                       <td>
+                        {/* Price */}
                         <Form.Control
                           type="number"
                           min="0"
@@ -1923,7 +1862,6 @@ setTransferHistoryDisplay(history);
                           readOnly={
                             !(Number(item.maxDiscountPercentage || 0) > 0)
                           }
-                          // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
                         />
                       </td>
                       <td className="align-middle">

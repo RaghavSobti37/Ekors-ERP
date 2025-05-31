@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
-import Pagination from "../components/Pagination";
+import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
 import { getAuthToken } from "../utils/authUtils";
 import { showToast, handleApiError } from "../utils/helpers";
@@ -702,26 +702,16 @@ export default function Items() {
       return;
     }
     try {
-      // Using fetch directly for blob handling simplicity here:
-      const token = localStorage.getItem("erp-user");
-      const fetchResponse = await fetch("/api/items/export-excel", {
-        // Adjust API_URL if your proxy isn't set up
+      // Use apiClient for blob response
+      const blob = await apiClient("items/export-excel", { // Endpoint relative to API_BASE_URL
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        responseType: 'blob' // Tell apiClient to expect a blob
       });
 
-      if (!fetchResponse.ok) {
-        const errorData = await fetchResponse
-          .json()
-          .catch(() => ({ message: fetchResponse.statusText }));
-        throw new Error(
-          errorData.message || `Failed to export Excel: ${fetchResponse.status}`
-        );
+      if (!blob) {
+        throw new Error("Failed to export Excel: No data received.");
       }
 
-      const blob = await fetchResponse.blob();
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({
         error: null,
@@ -731,7 +721,7 @@ export default function Items() {
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
       console.error("Error exporting to Excel:", err);
-      const message = err.message || "Failed to export items to Excel.";
+      const message = err.data?.message || err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
       setError(message); // Show error in the main error display
     } finally {
@@ -766,35 +756,21 @@ export default function Items() {
     formData.append("excelFile", file);
 
     try {
-      const token = getAuthToken(); // Use authUtils
-      const fetchResponse = await fetch("/api/items/import-uploaded-excel", {
-        // Adjust API_URL if needed
+      // Use apiClient for FormData upload
+      const responseData = await apiClient("items/import-uploaded-excel", { // Endpoint relative to API_BASE_URL
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // 'Content-Type': 'multipart/form-data' // Fetch sets this automatically for FormData
-        },
         body: formData,
+        // apiClient handles Content-Type for FormData
       });
 
-      const responseData = await fetchResponse.json();
-
-      if (!fetchResponse.ok) {
-        throw new Error(
-          responseData.message ||
-          `Failed to process Excel: ${fetchResponse.status}`
-        );
-      }
-
-      const response = responseData;
-
-      let successMessage = `Excel sync complete: ${response.itemsCreated || 0
-        } created, ${response.itemsUpdated || 0} updated, ${response.itemsDeleted || 0
+      // responseData is already the parsed JSON from apiClient
+      let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
+        } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
         } deleted.`;
 
-      if (response.parsingErrors && response.parsingErrors.length > 0) {
-        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
-        console.warn("Excel Parsing Issues:", response.parsingErrors);
+      if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
+        successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
+        console.warn("Excel Parsing Issues:", responseData.parsingErrors);
       }
       if (
         response.databaseProcessingErrors &&
@@ -803,13 +779,13 @@ export default function Items() {
         successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
         console.warn(
           "Database Processing Errors:",
-          response.databaseProcessingErrors
+          responseData.databaseProcessingErrors
         );
       }
       setExcelUpdateStatus({
         error: null,
         success: successMessage,
-        details: response.databaseProcessingDetails || [],
+        details: responseData.databaseProcessingDetails || [],
       });
       showSuccess(successMessage);
       fetchItems(); // Refresh the list
@@ -820,8 +796,7 @@ export default function Items() {
       }
     } catch (err) {
       console.error("Error updating from Excel:", err);
-      const message =
-        err.response?.data?.message ||
+      const message = err.data?.message || // apiClient error structure
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
