@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://ekors-erp.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const apiClient = async (endpoint, { body, method = 'GET', ...customConfig } = {}) => {
   const token = localStorage.getItem('erp-user');
