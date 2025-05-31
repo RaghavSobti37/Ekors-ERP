@@ -1519,6 +1519,7 @@ export default function Quotations() {
           error={error && currentItems.length === 0 ? error : null}
           onSort={requestSort}
           sortConfig={sortConfig}
+          
           renderActions={(quotation) => (
             <ActionButtons
               item={quotation}
