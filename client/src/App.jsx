@@ -17,6 +17,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
 import frontendLogger from './utils/frontendLogger.js';
+import apiClient from "./utils/apiClient.js";
 
 function App() {
   const [items, setItems] = useState([]);
@@ -24,15 +25,8 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Point to your actual API endpoint for items
-        // Assuming your items are fetched from '/api/items'
-        // and your server is running on localhost:3000
-        // Also, ensure your API returns data in the format { items: [...] }
-        // or adjust how you access `data.items` below.
-        const res = await fetch("http://localhost:3000/api/items"); 
-        const data = await res.json();
-        // If your API directly returns an array of items, use: setItems(data);
-        // If it returns an object like { items: [...] }, use: setItems(data.items);
+        // Using apiClient to fetch items
+        const data = await apiClient("/items");
         setItems(data); // Adjust based on your API response structure
       } catch (error) {
         console.error("Error fetching data:", error);
