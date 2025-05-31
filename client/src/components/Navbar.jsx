@@ -9,9 +9,14 @@ import {
   FaBoxOpen,
   FaUsers,
   FaExclamationTriangle, // For restock alerts
-  FaExclamationCircle,   // For low quantity warnings
+  FaExclamationCircle, // For low quantity warnings
 } from "react-icons/fa";
-import { Navbar as BootstrapNavbar, Nav, NavDropdown, Button } from "react-bootstrap";
+import {
+  Navbar as BootstrapNavbar,
+  Nav,
+  NavDropdown,
+  Button,
+} from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -21,7 +26,7 @@ import { getAuthToken } from "../utils/authUtils"; // Assuming you have this
 // import AddNewItem from '../pages/AddNewItem';
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY = 'globalLowStockThresholdSetting';
+const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -40,11 +45,15 @@ export default function Navbar({ showPurchaseModal }) {
     if (!user) return; // Don't fetch if not logged in
 
     const fetchRestockData = async () => {
-      const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
+      const currentThreshold =
+        parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
+        DEFAULT_LOW_QUANTITY_THRESHOLD;
       try {
         const token = getAuthToken();
         if (!token) return;
-        const response = await apiClient(`/items/restock-summary?lowGlobalThreshold=${currentThreshold}`);
+        const response = await apiClient(
+          `/items/restock-summary?lowGlobalThreshold=${currentThreshold}`
+        );
         setRestockAlertCount(response.restockNeededCount || 0);
         setLowStockWarningCount(response.lowStockWarningCount || 0);
       } catch (error) {
@@ -56,7 +65,7 @@ export default function Navbar({ showPurchaseModal }) {
     fetchRestockData();
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
-    return () => clearInterval(intervalId); 
+    return () => clearInterval(intervalId);
   }, [user]); // Re-fetch if user logs in/out. Threshold changes will be picked up on next interval or page load.
 
   const handlePurchaseHistoryClick = () => {
@@ -95,7 +104,9 @@ export default function Navbar({ showPurchaseModal }) {
   };
 
   const handleStockAlertClick = () => {
-    const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
+    const currentThreshold =
+      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
+      DEFAULT_LOW_QUANTITY_THRESHOLD;
     navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`);
   };
 
@@ -190,20 +201,21 @@ export default function Navbar({ showPurchaseModal }) {
             </NavLink>
 
             {/* Stock Alert Notification Area */}
-          {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && (
-            <div
-              className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
-              onClick={handleStockAlertClick}
-              title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
-                localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) || DEFAULT_LOW_QUANTITY_THRESHOLD
-              }): ${lowStockWarningCount} items. Click to view.`}
-            >
-              <FaExclamationTriangle className="icon-restock" />
-              <span className="alert-count">{restockAlertCount}</span>
-              <FaExclamationCircle className="icon-low-stock" />
-              <span className="alert-count">{lowStockWarningCount}</span>
-            </div>
-          )}
+            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && (
+              <div
+                className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
+                onClick={handleStockAlertClick}
+                title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
+                  localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
+                  DEFAULT_LOW_QUANTITY_THRESHOLD
+                }): ${lowStockWarningCount} items. Click to view.`}
+              >
+                <FaExclamationTriangle className="icon-low-stock" />
+                <span className="alert-count">{restockAlertCount}</span>
+                <FaExclamationCircle className="icon-restock" />
+                <span className="alert-count">{lowStockWarningCount}</span>
+              </div>
+            )}
           </div>
         </div>
 

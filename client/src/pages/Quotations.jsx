@@ -14,7 +14,6 @@ import ClientSearchComponent from "../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../components/ItemSearch";
 import QuotationPDF from "../components/QuotationPDF";
 import CreateTicketModal from "../components/CreateTicketModal.jsx";
-import "../css/Quotation.css";
 import "../css/Style.css";
 import Pagination from "../components/Pagination";
 import "../css/Items.css";
@@ -1556,7 +1555,7 @@ export default function Quotations() {
               isLoading={isLoading}
               // Disable create ticket button if status is 'closed' or 'running'
               isCreateTicketDisabled={
-                quotation.status === "closed" || quotation.status === "running"
+                quotation.status === "closed" || quotation.status === "running" || quotations.status ==="hold"
               }
               createTicketDisabledTooltip={
                 quotation.status === "closed" || quotation.status === "running"

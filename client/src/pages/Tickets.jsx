@@ -1591,13 +1591,13 @@ setTransferHistoryDisplay(history);
                   day: "numeric",
                 }),
             },
-            {
-              key: "grandTotal",
-              header: "Grand Total (₹)",
-              sortable: true,
-              renderCell: (ticket) => ticket.grandTotal.toFixed(2),
-              cellClassName: "text-end",
-            },
+            // {
+            //   key: "grandTotal",
+            //   header: "Grand Total (₹)",
+            //   sortable: true,
+            //   renderCell: (ticket) => ticket.grandTotal.toFixed(2),
+            //   cellClassName: "text-end",
+            // },
             {
               key: "progress",
               header: "Progress",
