@@ -7,7 +7,7 @@ import SortIndicator from './SortIndicator'; // Assuming SortIndicator.jsx is in
  *
  * @param {object} props - The component props.
  * @param {Array<object>} props.columns - Array of column definitions.
- *   Each column object: { key: string, header: string, sortable?: boolean, renderCell?: (item) => JSX, headerClassName?: string, cellClassName?: string }
+ *   Each column object: { key: string, header: string, sortable?: boolean, renderCell?: (item) => JSX, headerClassName?: string, cellClassName?: string, tooltip?: string }
  * @param {Array<object>} props.data - Array of data items to display.
  * @param {string} props.keyField - The unique key field in data items (e.g., '_id').
  * @param {boolean} [props.isLoading=false] - Whether data is currently loading.
@@ -53,9 +53,13 @@ const ReusableTable = ({
               key={col.key}
               onClick={() => col.sortable !== false && onSort && onSort(col.key)}
               style={onSort && col.sortable !== false ? { cursor: 'pointer' } : {}}
-              className={col.headerClassName}
+              className={`${col.headerClassName || ''} ${col.tooltip ? 'has-tooltip' : ''}`}
+              title={col.tooltip} // Native browser tooltip
             >
               {col.header}
+              {col.tooltip && (
+                <span className="ms-1" style={{ cursor: 'help' }}>❓</span>
+              )}
               {onSort && sortConfig && <SortIndicator columnKey={col.key} sortConfig={sortConfig} />}
             </th>
           ))}

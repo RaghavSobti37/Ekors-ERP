@@ -770,3 +770,119 @@
   border-right: 8px solid transparent;
   border-top: 8px solid #4b0082;
 }
+
+.profile-popup .edit-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.profile-popup .logout-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Styles for the new stock alert notification */
+.stock-alert-notification {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin-left: 15px; /* Adjust as needed for spacing */
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease-in-out;
+  color: #fff; /* White text to match navbar */
+}
+
+.stock-alert-notification:hover {
+  background-color: rgba(255, 255, 255, 0.2); /* Slightly more visible hover */
+}
+
+.stock-alert-notification svg {
+  font-size: 1.1em; /* Slightly larger icons */
+}
+
+.stock-alert-notification .alert-count {
+  font-weight: bold;
+  font-size: 0.9em;
+  margin-left: 4px; /* Space after icon */
+}
+
+.stock-alert-notification .icon-restock {
+  color: #ffc107; /* Amber/Orange */
+}
+
+.stock-alert-notification .icon-low-stock {
+  color: #f56c6c; /* A slightly softer red */
+  margin-left: 12px; /* Space between the two alert groups */
+}
+
+/* Edit Profile Modal (Basic Styling - can be enhanced) */
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.edit-modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+  color: #333;
+}
+
+.edit-modal h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.edit-modal .form-group {
+  margin-bottom: 15px;
+}
+
+.edit-modal .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.edit-modal .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.edit-modal .modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.edit-modal .modal-buttons button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-modal .save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.edit-modal .cancel-btn {
+  background-color: #6c757d;
+  color: white;
+}

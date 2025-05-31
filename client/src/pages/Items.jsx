@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
@@ -13,6 +14,8 @@ import {
   PencilSquare, // Edit
   Trash, // Delete
   BarChart, // Generate Report
+  FileEarmarkArrowDown, // For Excel Export
+  FileEarmarkArrowUp, // For Excel Upload
 } from "react-bootstrap-icons";
 
 const debug = (message, data = null) => {
@@ -20,6 +23,10 @@ const debug = (message, data = null) => {
     console.log(`[DEBUG] ${message}`, data);
   }
 };
+
+const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
+const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
+  "globalLowStockThresholdSetting";
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -78,6 +85,44 @@ export default function Items() {
     success: null,
     details: [],
   });
+
+  const location = useLocation();
+  const queryParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  );
+  const stockAlertFilterActive = queryParams.get("filter") === "stock_alerts";
+  const lowStockWarningQueryThreshold = parseInt(
+    queryParams.get("lowThreshold"),
+    10
+  );
+  const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // null means 'All'
+
+  const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
+    DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+  );
+
+  useEffect(() => {
+    const storedThreshold = localStorage.getItem(
+      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE
+    );
+    setEffectiveLowStockThreshold(
+      storedThreshold
+        ? parseInt(storedThreshold, 10)
+        : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+    );
+  }, []); // Runs once on mount to get the threshold
+
+  const handleGlobalThresholdChange = (e) => {
+    const newThreshold =
+      parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
+    setEffectiveLowStockThreshold(newThreshold);
+    localStorage.setItem(
+      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
+      newThreshold.toString()
+    );
+    // Optionally, you could trigger a re-fetch of navbar summary if it's critical for it to update immediately
+  };
 
   const showSuccess = (message) => {
     showToast(message, true);
@@ -303,53 +348,123 @@ export default function Items() {
     setSortConfig({ key, direction });
   };
 
-  const sortedItems = useMemo(() => {
-    // First check if items is a valid array
+  // Combined filtering and sorting logic
+  const itemsToDisplay = useMemo(() => {
     if (!Array.isArray(items)) {
+      debug("itemsToDisplay: items is not an array, returning []");
       return [];
     }
 
-    // Create a copy for sorting
-    const sortableItems = [...items];
-
-    sortableItems.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === "asc" ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === "asc" ? 1 : -1;
-      }
-      return 0;
+    let processedItems = [...items];
+    debug("itemsToDisplay: Initial items count", {
+      count: processedItems.length,
     });
 
-    return sortableItems;
-  }, [items, sortConfig]);
+    // Determine the threshold to use for filtering/badging low stock items
+    const currentLowThreshold =
+      stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
+        ? lowStockWarningQueryThreshold
+        : effectiveLowStockThreshold;
 
-  const filteredItems = useMemo(() => {
-    return sortedItems.filter((item) => {
-      const matchesCategory =
-        selectedCategory === "All" || item.category === selectedCategory;
-      const matchesSubcategory =
-        selectedSubcategory === "All" ||
-        item.subcategory === selectedSubcategory;
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.hsnCode &&
-          item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (stockAlertFilterActive) {
+      processedItems = processedItems.filter(
+        (item) => item.needsRestock || item.quantity < currentLowThreshold
+      );
+      debug("itemsToDisplay: After stock alert filter", {
+        count: processedItems.length,
+        currentLowThreshold,
+      });
+    } else {
+      // Apply regular search and category filters
+      processedItems = processedItems.filter((item) => {
+        const matchesCategory =
+          selectedCategory === "All" || item.category === selectedCategory;
+        const matchesSubcategory =
+          selectedSubcategory === "All" ||
+          item.subcategory === selectedSubcategory;
+        const matchesSearch =
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.hsnCode &&
+            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesCategory && matchesSubcategory && matchesSearch;
+      });
+      debug("itemsToDisplay: After regular text/category filters", {
+        count: processedItems.length,
+        selectedCategory,
+        selectedSubcategory,
+        searchTerm,
+      });
 
-      return matchesCategory && matchesSubcategory && matchesSearch;
+      if (
+        quantityFilterThreshold !== null &&
+        Number.isFinite(quantityFilterThreshold)
+      ) {
+        processedItems = processedItems.filter(
+          (item) => item.quantity <= quantityFilterThreshold
+        );
+        debug("itemsToDisplay: After quantity filter", {
+          count: processedItems.length,
+          quantityFilterThreshold,
+        });
+      }
+    }
+
+    // Apply sorting
+    processedItems.sort((a, b) => {
+      const aIsLowStock = a.quantity < currentLowThreshold;
+      const bIsLowStock = b.quantity < currentLowThreshold;
+
+      // Priority 1: Needs Restock
+      if (a.needsRestock && !b.needsRestock) return -1;
+      if (!a.needsRestock && b.needsRestock) return 1;
+
+      // Priority 2: Is Low Stock (below global/effective threshold)
+      if (aIsLowStock && !bIsLowStock) return -1;
+      if (!aIsLowStock && bIsLowStock) return 1;
+
+      if (stockAlertFilterActive) {
+        // Within alerts, sort by quantity ascending then name
+        if (a.quantity < b.quantity) return -1;
+        if (a.quantity > b.quantity) return 1;
+      } else {
+        // Regular view: apply user-defined sort key after restock/low stock priority
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+      }
+      // Final tie-breaker: name ascending
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     });
-  }, [sortedItems, selectedCategory, selectedSubcategory, searchTerm]);
+    debug("itemsToDisplay: After sorting", {
+      count: processedItems.length,
+      sortConfig,
+      stockAlertFilterActive,
+    });
+    return processedItems;
+  }, [
+    items,
+    stockAlertFilterActive,
+    lowStockWarningQueryThreshold,
+    effectiveLowStockThreshold,
+    selectedCategory,
+    selectedSubcategory,
+    searchTerm,
+    quantityFilterThreshold,
+    sortConfig,
+  ]);
 
   const currentItems = useMemo(() => {
     const indexOfLast = currentPage * itemsPerPage;
     const indexOfFirst = indexOfLast - itemsPerPage;
-    return filteredItems.slice(indexOfFirst, indexOfLast);
-  }, [filteredItems, currentPage, itemsPerPage]);
+    return itemsToDisplay.slice(indexOfFirst, indexOfLast);
+  }, [itemsToDisplay, currentPage, itemsPerPage]);
 
   const totalPages = useMemo(
-    () => Math.ceil(filteredItems.length / itemsPerPage),
-    [filteredItems, itemsPerPage]
+    () => Math.ceil(itemsToDisplay.length / itemsPerPage),
+    [itemsToDisplay, itemsPerPage]
   );
 
   const addNewPurchaseItem = () => {
@@ -689,9 +804,9 @@ export default function Items() {
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-          "Are you absolutely sure you want to proceed?"
+        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+        "Are you absolutely sure you want to proceed?"
       )
     ) {
       return;
@@ -718,17 +833,15 @@ export default function Items() {
       if (!fetchResponse.ok) {
         throw new Error(
           responseData.message ||
-            `Failed to process Excel: ${fetchResponse.status}`
+          `Failed to process Excel: ${fetchResponse.status}`
         );
       }
 
       const response = responseData;
 
-      let successMessage = `Excel sync complete: ${
-        response.itemsCreated || 0
-      } created, ${response.itemsUpdated || 0} updated, ${
-        response.itemsDeleted || 0
-      } deleted.`;
+      let successMessage = `Excel sync complete: ${response.itemsCreated || 0
+        } created, ${response.itemsUpdated || 0} updated, ${response.itemsDeleted || 0
+        } deleted.`;
 
       if (response.parsingErrors && response.parsingErrors.length > 0) {
         successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
@@ -798,45 +911,70 @@ export default function Items() {
         )}
 
         <div className="top-controls-container">
-          {/* Row 1: Title, Add Item Button, Search Bar */}
-          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+          {/* Row 1: Title, Search, Main Action Buttons */}
+          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              Items List
+              {stockAlertFilterActive
+                ? `Stock Alerts`
+                : "All Items List"}
             </h2>
 
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
-              {" "}
-              {/* mt-2 mt-md-0 for responsiveness */}{" "}
-              <button
-                onClick={() => setShowModal(true)}
-                className="btn btn-success px-3" // Adjusted padding
-                disabled={anyLoading}
+            <div className="d-flex align-items-center flex-wrap gap-2">
+              {/* <div
+                className="form-group d-flex align-items-center gap-1 flex-fill p-2 border rounded" // Added flex-fill and styling, removed fixed width
               >
-                {isSubmitting ? "Processing..." : "Add New Item"}
-              </button>
+                {" "} */}
+                {/* Adjusted width and gap */}
+                {/* <label
+                  htmlFor="lowStockThresholdPageInput"
+                  className="form-label mb-0"
+                  style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }} // Slightly smaller font
+                  title="Global threshold for low stock warnings in Navbar and default item view."
+                >
+                  Low Alert Qty:
+                </label> */}
+                {/* <input
+                  type="number"
+                  id="lowStockThresholdPageInput"
+                  className="form-control form-control-sm"
+                  value={effectiveLowStockThreshold}
+                  onChange={handleGlobalThresholdChange}
+                  min="1"
+                  style={{ width: "60px" }} // Control input width
+                />
+              </div> */}
+              {/* Group all controls on the right */}
               <input
                 type="text"
                 placeholder="🔍 Search items or HSN codes..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 className="form-control search-input"
-                style={{ minWidth: "250px" }} // Ensure it has some width
-                disabled={anyLoading}
+                style={{ width: "200px" }} // Adjusted width
+                disabled={anyLoading || stockAlertFilterActive}
               />
-            </div>
-          </div>
-
-          {/* Row 2: Filters and Excel Buttons */}
-          <div className="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
-              {" "}
-              {/* Group for Excel buttons */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="btn btn-success"
+                disabled={anyLoading}
+              >
+                {isSubmitting ? "Processing..." : "Add New Item"}
+              </button>
               <button
                 onClick={handleExportToExcel}
                 className="btn btn-outline-primary"
                 disabled={anyLoading}
+                title="Export to Excel"
               >
-                {isExportingExcel ? "Exporting..." : "Export to Excel"}
+                {isExportingExcel ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                ) : (
+                  <FileEarmarkArrowDown />
+                )}
               </button>
               <button
                 onClick={() =>
@@ -844,24 +982,32 @@ export default function Items() {
                 }
                 className="btn btn-info"
                 disabled={anyLoading}
+                title="Upload & Update from Excel"
               >
-                {isProcessingExcel ? "Processing..." : "Upload & Update"}
+                {isProcessingExcel ? (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                ) : (
+                  <FileEarmarkArrowUp />
+                )}
               </button>
             </div>
-
-            <div className="d-flex align-items-center gap-2 mt-2 mt-md-0">
-              {" "}
-              {/* Group for filters */}
+          </div>
+          {/* Row 2: Filters */}
+          <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
+            {/* Categories Select */}
+            <div className="flex-fill" style={{ minWidth: '150px' }}>
               <select
-                className="form-select"
-                style={{ width: "200px" }}
-                value={selectedCategory}
+                className="form-select w-100"
                 onChange={(e) => {
                   setSelectedCategory(e.target.value);
                   setSelectedSubcategory("All");
                   setCurrentPage(1);
                 }}
-                disabled={anyLoading}
+                disabled={anyLoading || stockAlertFilterActive}
               >
                 <option value="All">All Categories</option>
                 {Array.isArray(categories) &&
@@ -871,15 +1017,22 @@ export default function Items() {
                     </option>
                   ))}
               </select>
+            </div>
+
+            {/* Subcategories Select */}
+            <div className="flex-fill" style={{ minWidth: '150px' }}>
               <select
-                className="form-select"
-                style={{ width: "200px" }}
+                className="form-select w-100"
                 value={selectedSubcategory}
                 onChange={(e) => {
                   setSelectedSubcategory(e.target.value);
                   setCurrentPage(1);
                 }}
-                disabled={selectedCategory === "All" || anyLoading}
+                disabled={
+                  selectedCategory === "All" ||
+                  anyLoading ||
+                  stockAlertFilterActive
+                }
               >
                 <option value="All">All Subcategories</option>
                 {selectedCategory !== "All" &&
@@ -891,6 +1044,35 @@ export default function Items() {
                         {subcat}
                       </option>
                     ))}
+              </select>
+            </div>
+
+            {/* Quantities Select */}
+            <div className="flex-fill" style={{ minWidth: '150px' }}>
+              <select
+                className="form-select w-100"
+                value={
+                  quantityFilterThreshold === null
+                    ? "All"
+                    : quantityFilterThreshold
+                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setQuantityFilterThreshold(
+                    value === "All" ? null : parseInt(value, 10)
+                  );
+                  setCurrentPage(1);
+                }}
+                disabled={anyLoading || stockAlertFilterActive}
+                title="Filter by quantity"
+              >
+                <option value="All">All Quantities</option>
+                <option value="0">0 (Out of Stock)</option>
+                <option value="1">1 and below</option>
+                <option value="3">3 and below</option>
+                <option value="5">5 and below</option>
+                <option value="10">10 and below</option>
+                <option value="20">20 and below</option>
               </select>
             </div>
           </div>
@@ -968,8 +1150,6 @@ export default function Items() {
                           item.name
                         )}
                       </td>
-                      {/* <td>{item.category || "-"}</td>
-                      <td>{item.subcategory || "-"}</td> */}
                       <td>
                         {editingItem === item._id ? (
                           <input
@@ -986,9 +1166,36 @@ export default function Items() {
                             disabled={anyLoading}
                           />
                         ) : (
-                          item.quantity
+                          <>
+                            {item.quantity}
+                            {item.needsRestock && (
+                              <span
+                                className="badge bg-danger ms-2"
+                                title={`Item specific threshold: ${item.lowStockThreshold}`}
+                              >
+                                ⚠️ Restock
+                              </span>
+                            )}
+                            {!item.needsRestock &&
+                              item.quantity <
+                              (stockAlertFilterActive
+                                ? lowStockWarningQueryThreshold
+                                : effectiveLowStockThreshold) && (
+                                <span
+                                  className="badge bg-warning text-dark ms-2"
+                                  title={`Global threshold: < ${stockAlertFilterActive
+                                      ? lowStockWarningQueryThreshold
+                                      : effectiveLowStockThreshold
+                                    }`}
+                                >
+                                  🔥 Low Stock
+                                </span>
+                              )}
+                          </>
                         )}
                       </td>
+                      {/* <td>{item.category || "-"}</td>
+                      <td>{item.subcategory || "-"}</td> */}
                       <td>
                         {editingItem === item._id ? (
                           <input
@@ -1147,6 +1354,17 @@ export default function Items() {
                                 </p>
                                 <p>
                                   <strong>Quantity:</strong> {item.quantity}
+                                  {item.needsRestock &&
+                                    ` (Item specific restock threshold: ${item.lowStockThreshold})`}
+                                  {!item.needsRestock &&
+                                    item.quantity <
+                                    (stockAlertFilterActive
+                                      ? lowStockWarningQueryThreshold
+                                      : effectiveLowStockThreshold) &&
+                                    ` (Global low stock threshold: < ${stockAlertFilterActive
+                                      ? lowStockWarningQueryThreshold
+                                      : effectiveLowStockThreshold
+                                    })`}
                                 </p>
                               </div>
                               <div className="col-md-6">
@@ -1178,7 +1396,7 @@ export default function Items() {
                             </div>
                             {purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
-                                <thead>
+                                <thead className="table-secondary">
                                   <tr>
                                     <th>Date</th>
                                     <th>Supplier</th>

@@ -1867,3 +1867,28 @@ p {
   }
 }
 
+/* In your Style.css or a relevant global CSS file */
+.centered-modal .modal-dialog {
+  display: flex;
+  align-items: center;
+  min-height: calc(100% - 1rem); /* Adjust as needed */
+}
+
+/* For the user search dropdown if it's overflowing */
+.user-search-component .search-suggestions-dropdown {
+  position: absolute; /* If not already */
+  width: 100%;
+  background-color: white;
+  border: 1px solid #ced4da;
+  border-top: none;
+  z-index: 1050; /* Ensure it's above other elements */
+  max-height: 250px; /* Or your desired max height */
+  overflow-y: auto;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.user-search-component .search-input-container {
+  position: relative; /* For positioning the dropdown relative to the input */
+}
+
+

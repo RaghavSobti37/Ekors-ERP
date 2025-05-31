@@ -25,6 +25,7 @@ import {
 } from 'react-bootstrap-icons';
 
 const Users = () => {
+  const [currentUser, setCurrentUser] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportUser, setReportUser] = useState(null);
   const [users, setUsers] = useState([]);
@@ -52,18 +53,6 @@ const Users = () => {
     setReportUser(user);
     setShowReportModal(true);
   };
-
-  //   const getAuthToken = () => {
-  //   try {
-  //     const token = localStorage.getItem("erp-user");
-  //   console.log("[DEBUG Client Users.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-  //   return token || null;
-  //   } catch (e) {
-  //     console.error("Failed to parse user data:", e);
-  //     return null;
-  //   }
-  // };
-  
 
   // Axios instance with base URL and auth header
   const api = axios.create({
@@ -154,10 +143,45 @@ const Users = () => {
       phone: user?.phone || "",
       role: user?.role || "user",
       password: "",
-      isActive: true,
+      isActive: user ? user.isActive : true, 
     });
     console.log("[Users.jsx] handleEdit: Selected user for edit:", user, "FormData initialized:", formData);
     setShowEditModal(true);
+  };
+
+  const handleToggleActiveStatus = async (userToToggle) => {
+    const newStatus = !userToToggle.isActive;
+
+    if (!newStatus && !window.confirm(`Are you sure you want to disable user ${userToToggle.firstname} ${userToToggle.lastname}? They will not be able to log in.`)) {
+      return;
+    }
+    if (newStatus && !window.confirm(`Are you sure you want to enable user ${userToToggle.firstname} ${userToToggle.lastname}?`)) {
+      return;
+    }
+
+    const authTokenString = getAuthToken();
+    if (!authTokenString) {
+      alert("Authentication token not found. Please log in again.");
+      return;
+    }
+
+    try {
+      api.defaults.headers.common["Authorization"] = `Bearer ${authTokenString}`;
+      const response = await api.patch(`/api/users/${userToToggle._id}/status`, { isActive: newStatus });
+
+      setUsers(users.map(u => u._id === userToToggle._id ? response.data.data : u));
+      alert(`User ${userToToggle.firstname} ${newStatus ? 'enabled' : 'disabled'} successfully.`);
+
+    } catch (err) {
+      console.error("[Users.jsx] handleToggleActiveStatus: Error toggling user status:", err.response || err);
+      alert(err.response?.data?.error || err.response?.data?.message || "Failed to update user status.");
+      // If the API call fails, we might want to revert the UI,
+      // but for now, the user state won't be changed if an error occurs,
+      // and an alert will be shown. The checkbox will remain in its original state
+      // unless the page is reloaded or state is manually reset.
+      // To ensure UI consistency, one might refetch the specific user or the whole list,
+      // or revert the optimistic update if one was made before await.
+    }
   };
 
   const handleDelete = async (userArg) => { // userArg can be the user object or just the ID string
@@ -360,7 +384,7 @@ const Users = () => {
               ),
             },
             { key: 'email', header: 'Email' },
-            { key: 'phone', header: 'Phone', renderCell: (user) => user.phone || "-" },
+            // { key: 'phone', header: 'Phone', renderCell: (user) => user.phone || "-" },
             {
               key: 'role',
               header: 'Role',
@@ -370,7 +394,21 @@ const Users = () => {
                 </span>
               ),
             },
-            { key: 'createdAt', header: 'Created At', renderCell: (user) => formatDate(user.createdAt) },
+            // { key: 'createdAt', header: 'Created At', renderCell: (user) => formatDate(user.createdAt) },
+                        {
+              key: 'isActive',
+              header: 'Status',
+              renderCell: (user) => (
+                <Form.Check
+                  type="switch"
+                  id={`user-active-switch-${user._id}`}
+                  checked={user.isActive}
+                  onChange={() => handleToggleActiveStatus(user)}
+                  disabled={currentUser?.id === user._id && user.role === 'super-admin'} // Super-admin cannot toggle their own status via this switch
+                  title={currentUser?.id === user._id && user.role === 'super-admin' ? "Super-admins cannot change their own status here." : (user.isActive ? "User is Active (click to disable)" : "User is Inactive (click to enable)")}
+                />
+              ),
+            },
           ]}
           data={currentItems}
           keyField="_id"

@@ -253,4 +253,10 @@ router.get(
   userController.getTransferCandidates // Uses the new controller function
 );
 
+// @route   PATCH /api/users/:id/status
+// @desc    Toggle user active status (enable/disable)
+// @access  Private/SuperAdmin
+// Ensure toggleUserActiveStatus is imported from userController
+router.patch("/:id/status", auth, requireSuperAdmin, userController.toggleUserActiveStatus);
+
 module.exports = router;

@@ -87,8 +87,7 @@ const itemSchema = new mongoose.Schema({
   },
   quantity: {
     type: Number,
-    default: 0,
-    min: 0
+    default: 0
   },
   price: {
     type: Number,
@@ -133,6 +132,9 @@ const itemSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
+    needsRestock: { type: Boolean, default: false },
+    lowStockThreshold: { type: Number, default: 5 } // Default low stock threshold
+,
   // Reference to purchases instead of embedding them
   lastPurchaseDate: {
     type: Date,

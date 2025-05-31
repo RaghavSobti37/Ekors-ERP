@@ -12,9 +12,8 @@ router.post('/purchase', purchaseController.addBulkPurchase);     // Add bulk pu
 router.get('/categories', itemController.getCategories);          // GET categories
 router.get('/export-excel', auth, itemController.exportItemsToExcel); // New route for export
 router.post('/import-uploaded-excel', auth, itemController.uploadMiddleware, itemController.importItemsFromUploadedExcel); // New route for uploaded excel import
+router.get('/restock-summary', auth, itemController.getRestockSummary); // Added route for restock summary
 
-// Move this implementation to purchaseController and use a controller method instead
-// router.post('/import-from-excel', auth, itemController.importItemsFromExcelViaAPI); // Old route for server-side Excel import - commented out
 router.get('/:id/purchases', purchaseController.getItemPurchaseHistory);
 
 router.post('/:id/purchase', purchaseController.addSinglePurchase);  // Add purchase to specific item

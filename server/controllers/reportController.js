@@ -9,7 +9,6 @@ const mongoose = require("mongoose");
 
 // Helper function to calculate date ranges
 const getDateRange = (period) => {
-  logger.debug('report-getDateRange', `Calculating date range for period: ${period}`);
   const now = new Date();
   let startDate;
 
@@ -44,10 +43,7 @@ const getDateRange = (period) => {
 
   const endDate = new Date();
 
-  logger.debug('report-getDateRange', "Calculated dates", {
-    start: startDate.toISOString(), // Ensure 'now' is not modified if '1year' case is hit first
-    end: endDate.toISOString()
-  }, null);
+  logger.debug('report-getDateRange', `Calculated date range for period: ${period}`, null, { start: startDate.toISOString(), end: endDate.toISOString() });
 
   return { startDate, endDate };
 };

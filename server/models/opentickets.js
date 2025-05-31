@@ -62,7 +62,8 @@ const ticketSchema = new mongoose.Schema({
   statusHistory: [{
     status: { type: String },
     changedAt: { type: Date, default: Date.now },
-    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+        changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    note: { type: String } // Add the note field here
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -99,19 +100,14 @@ function arrayLimit(val) {
 }
 
 // Add a pre-save hook to automatically populate the status history
-ticketSchema.pre('save', function(next) {
-  // Only add to history if status is modified on an existing document
-  // and not during initial creation as the POST route handles the first entry.
-  // Note: This entry will not have 'changedBy' as req.user is not available here.
-  // For full 'changedBy' tracking, status updates should explicitly add to statusHistory in route handlers.
-  if (!this.isNew && this.isModified('status')) {
-    this.statusHistory.push({
-      status: this.status,
-      changedAt: new Date()
-    });
-  }
-  next();
-});
+// Removing this pre-save hook. Status history should be managed explicitly
+// in controller/route handlers where user context (for changedBy) and comments (for note) are available.
+// This prevents incomplete history entries.
+// ticketSchema.pre('save', function(next) {
+  // ... existing pre-save logic if any, but the statusHistory part is removed ...
+//   next();
+// });
+
 
 // Create a unique compound index to ensure one ticket per quotation
 ticketSchema.index({ quotationNumber: 1 }, { unique: true });
