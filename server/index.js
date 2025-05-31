@@ -24,14 +24,30 @@ const logger = require('./utils/logger');
 const app = express();
 connectDB();
 
-app.use(express.json());
+const allowedOrigins = [
+  'http://localhost:5173', // For local development
+  'https://ekors-erp.vercel.app', // Your Vercel production domain
+  /^https:\/\/ekors-erp-.*\.vercel\.app$/, // Regex for Vercel preview deployments
+];
+
 const corsOptions = {
-  origin: 'http://localhost:5173', // Your client's URL
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests) or from allowed origins
+    if (!origin || allowedOrigins.some(pattern => 
+      typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
+    )) {
+      callback(null, true);
+    } else {
+      logger.warn('cors', `CORS: Blocked origin - ${origin}`);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Must include PATCH and OPTIONS
   allowedHeaders: ['Content-Type', 'Authorization'], // Must include headers sent by client
   credentials: true // If you use cookies or sessions
 };
 app.use(cors(corsOptions));
+app.use(express.json()); // Place after CORS middleware if CORS needs to inspect headers first, though usually order is fine.
 // Static file serving
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads');
@@ -62,12 +78,13 @@ app.get("/api/health", (req, res) => {
 });
 logger.info('server-setup', '[SERVER INFO] /api/audit routes mounted.');
 
-// ----------------------------
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info('server-lifecycle', `Server started and listening on port ${PORT}. JWT_SECRET is ${process.env.JWT_SECRET ? 'set' : 'NOT SET'}.`);
-});
+// // ----------------------------
+// // Start server (This block should be commented out or removed for Vercel deployment)
+// // Vercel handles starting the serverless function via api/index.js
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+//   logger.info('server-lifecycle', `Server started and listening on port ${PORT}. JWT_SECRET is ${process.env.JWT_SECRET ? 'set' : 'NOT SET'}.`);
+// });
 
 app.use((err, req, res, next) => {
   console.error('[SERVER CRITICAL GlobalErrorHandler] Unhandled error:', err);
