@@ -59,12 +59,12 @@ app.use('/api', frontendLogRoute);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 logger.info('server-setup', '[SERVER INFO] /api/audit routes mounted.');
 
-// ----------------------------
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info('server-lifecycle', `Server started and listening on port ${PORT}. JWT_SECRET is ${process.env.JWT_SECRET ? 'set' : 'NOT SET'}.`);
-});
+// // ----------------------------
+// // Start server
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+//   logger.info('server-lifecycle', `Server started and listening on port ${PORT}. JWT_SECRET is ${process.env.JWT_SECRET ? 'set' : 'NOT SET'}.`);
+// });
 
 app.use((err, req, res, next) => {
   console.error('[SERVER CRITICAL GlobalErrorHandler] Unhandled error:', err);
