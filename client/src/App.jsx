@@ -22,19 +22,6 @@ import apiClient from "./utils/apiClient.js";
 function App() {
   const [items, setItems] = useState([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Using apiClient to fetch items
-        const data = await apiClient("/items");
-        setItems(data); // Adjust based on your API response structure
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, []);
-
    useEffect(() => {
     const originalOnError = window.onerror;
     window.onerror = (msg, url, lineNo, columnNo, error) => {
@@ -105,8 +92,6 @@ function App() {
           <Route path="/pipdf" element={<PIPDF />} />
           <Route path="/pagination" element={<Pagination />} />
           <Route path="/users" element={<Users />} />
-          {/* <Route path="/addnewitem" element={<AddNewItem />} /> */}
-          {/* <Route path="/logtime" element={<Logtime />} /> */}
 
           {/* Protected Routes */}
           <Route
@@ -171,24 +156,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute allowedRoles={["super-admin"]}>
-                <AnalystPage />
-              </ProtectedRoute>
-            }
-          /> */}
-          {/* <Route
-            path="/history/:userId"
-            element={
-              <ProtectedRoute allowedRoles={["super-admin", "admin"]}>
-                <UserHistoryPage />
-              </ProtectedRoute>
-            }
-          /> */}
-          {/* 
-            <Route path='/searchbar' element={<Searchbar />} /> */}
           <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
       </BrowserRouter>
