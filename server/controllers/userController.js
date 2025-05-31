@@ -29,7 +29,6 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
     
   } catch (err) {
     logger.error('user', "Fetching users failed", err, user);
-    console.error("[ERROR] Fetching users failed:", err);
     res.status(500).json({
       success: false,
       error: 'Server error while fetching users'
@@ -47,7 +46,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -65,7 +63,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
 
     // Prevent editing another super-admin's details
     if (user.role === 'super-admin' && req.user._id.toString() !== user._id.toString()) {
-      console.log("[DEBUG] Attempt to modify another super-admin by:", req.user.email);
       return res.status(403).json({
         success: false,
         error: 'Cannot edit super-admin details'
@@ -104,7 +101,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
     
   } catch (err) {
     logger.error('user', `User update failed for ID: ${req.params.id}`, err, user, { requestBody: req.body });
-    console.error("[ERROR] User update failed:", err);
     res.status(500).json({
       success: false,
       error: 'Server error during user update',
@@ -181,8 +177,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       backupId: newBackupEntry._id
     });
 
-    logger.info('userActivity', 'User profile deleted', adminUser, { event: 'USER_DELETED', deletedUserId: 'someUserId' });
-
+    logger.info('userActivity', 'User profile deleted', user, { event: 'USER_DELETED', deletedUserId: userIdToDelete, deletedUserEmail: userToBackup.email });
 
   } catch (error) {
     logger.error('delete', `[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`, error, user, logDetails);
@@ -207,7 +202,6 @@ exports.getUser = asyncHandler(async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password -__v');
     if (!user) {
-      console.log("[DEBUG] User not found with ID:", req.params.id);
       return res.status(404).json({
         success: false,
         error: 'User not found'
@@ -223,7 +217,6 @@ exports.getUser = asyncHandler(async (req, res) => {
       });
     }
 
-    console.log("[DEBUG] Returning user data for:", user.email);
     logger.info('user', `Fetched user details for ID: ${req.params.id}`, user, { targetUserId: user._id, targetUserEmail: user.email });
     res.status(200).json({
       success: true,
@@ -231,7 +224,6 @@ exports.getUser = asyncHandler(async (req, res) => {
     });
     
   } catch (err) {
-    console.error("[ERROR] Fetching user failed:", err);
     logger.error('user', `Failed to fetch user details for ID: ${req.params.id}`, err, user);
     res.status(500).json({
       success: false,
