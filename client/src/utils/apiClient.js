@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'https://ekors-erp.onrender.com/api';
 
 const apiClient = async (endpoint, { body, method = 'GET', ...customConfig } = {}) => {
   const token = localStorage.getItem('erp-user');
