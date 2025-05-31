@@ -1728,3 +1728,39 @@
 [2025-05-30 16:33:53] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
 [2025-05-30 16:33:53] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
 [2025-05-30 16:33:53] [Raghav Sobti] [INFO] [auth-middleware] - Authentication successful for user: test@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 16:37:26] [System] [INFO] [server-setup] - [SERVER INFO] /api/audit routes mounted.
+[2025-05-30 16:37:26] [System] [INFO] [server-lifecycle] - Server started and listening on port 3000. JWT_SECRET is set.
+[2025-05-30 16:37:27] [System] [INFO] [db] - MongoDB Connected: ac-2spmfmd-shard-00-00.ikklapw.mongodb.net
+[2025-05-30 16:39:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 16:39:54] [System] [WARN] [auth-middleware] - No auth header present | Details: {"method":"GET","path":"/api/items"}
+[2025-05-30 16:40:09] [Vivek Kumar] [INFO] [userActivity] - User logged in | Details: {"event":"USER_LOGIN","userId":"68355349a6d86af1279c72d6","userEmail":"vivek@gmail.com"}
+[2025-05-30 16:40:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:40:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:40:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:40:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 16:40:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:40:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/quotations"}
+[2025-05-30 16:45:10] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:45:10] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:50:10] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:50:10] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:55:08] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:55:08] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:55:08] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:55:08] [Vivek Kumar] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 16:55:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:55:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 16:55:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 16:55:08] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/tickets?populate=currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"}
+[2025-05-30 17:00:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:00:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 17:05:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:05:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 17:10:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:10:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 17:15:09] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:15:09] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 17:21:03] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:21:03] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
+[2025-05-30 17:26:03] [System] [WARN] [authDataFormat] - Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token. | Details: {"storedDataPreview":"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik"}
+[2025-05-30 17:26:03] [Vivek Kumar] [INFO] [auth-middleware] - Authentication successful for user: vivek@gmail.com | Details: {"method":"GET","path":"/api/items/restock-summary"}
