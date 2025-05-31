@@ -19,6 +19,7 @@ import "../css/Style.css";
 import Pagination from "../components/Pagination";
 import "../css/Items.css";
 import ReusableTable from "../components/ReusableTable.jsx";
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 // SortIndicator is not directly used here but ReusableTable might use it.
 // import SortIndicator from "../components/SortIndicator.jsx";
 
@@ -1385,21 +1386,14 @@ export default function Quotations() {
             className="d-flex align-items-center gap-3"
             style={{ width: "80%" }}
           >
-            <Form.Control
-              type="search"
-              placeholder="🔍 Search here"
-              className="me-2"
-              aria-label="Search"
+            <SearchBar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                borderRadius: "20px",
-                padding: "8px 20px",
-                border: "1px solid #ced4da",
-                boxShadow: "none",
-              }}
+              setSearchTerm={setSearchTerm}
+              placeholder="Search quotations..."
+              className="flex-grow-1" // Allow search bar to take available space
             />
             <div className="d-flex align-items-center gap-2">
+              {/* Status Filters */}
               <Form.Check
                 inline
                 label="All"

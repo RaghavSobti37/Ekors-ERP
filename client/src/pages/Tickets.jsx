@@ -27,7 +27,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import frontendLogger from "../utils/frontendLogger.js";
 import { getAuthToken } from "../utils/authUtils";
-import ReusableTable from "../components/ReusableTable.jsx"; // Added
+import ReusableTable from "../components/ReusableTable.jsx";
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx"; 
 
 const UserSearchComponent = ({ onUserSelect, authContext }) => {
@@ -1497,22 +1498,14 @@ setTransferHistoryDisplay(history);
             className="d-flex align-items-center gap-3"
             style={{ width: "80%" }}
           >
-            <Form.Control
-              type="search"
-              placeholder="🔍 Search here"
-              className="me-2"
-              aria-label="Search"
+            <SearchBar
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
+              setSearchTerm={(value) => {
+                setSearchTerm(value);
+                setCurrentPage(1); // Reset page on new search
               }}
-              style={{
-                borderRadius: "20px",
-                padding: "8px 20px",
-                border: "1px solid #ced4da",
-                boxShadow: "none",
-              }}
+              placeholder="Search tickets..."
+              className="flex-grow-1"
             />
             <div className="filter-radio-group">
               <Form.Check

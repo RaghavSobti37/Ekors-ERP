@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
+import { getAuthToken } from "../utils/authUtils"; // Make sure this path is correct
 import Pagination from '../components/Pagination';
 
 export default function PurchaseHistory() {
@@ -22,15 +23,23 @@ export default function PurchaseHistory() {
     try {
       setLoading(true);
       setError(null);
+      const token = getAuthToken();
+
+      if (!token) {
+        setError("Authentication token not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
 
       // Add error handling and timeout
       const response = await axios.get("http://localhost:3000/api/items/purchases/all", {
         timeout: 10000, // 10 second timeout
         headers: {
           'Content-Type': 'application/json',
-          // Add any auth headers if needed
+          'Authorization': `Bearer ${token}` // Added Authorization header
         }
       });
+
 
       setPurchases(response.data);
       console.log("Purchases fetched:", response.data.length);
