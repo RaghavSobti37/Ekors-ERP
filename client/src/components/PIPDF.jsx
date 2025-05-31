@@ -6,35 +6,44 @@ const styles = StyleSheet.create({
     padding: 30,
     fontFamily: "Helvetica",
     fontSize: 11,
-    position: 'relative' // Needed for absolute positioning of logo
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 80,
+    height: 'auto',
+    marginBottom: 10
   },
   header: {
     fontSize: 12,
     textAlign: "center",
-    marginBottom: 10
+    marginBottom: 4
   },
   companyName: {
     fontSize: 16,
-    textAlign: "center",
     fontWeight: "bold",
-    marginBottom: 5
+    textAlign: "center",
+    marginBottom: 4
   },
   subHeader: {
     fontSize: 10,
     textAlign: "center",
-    marginBottom: 15
+    marginBottom: 10
   },
   invoiceTitle: {
     textAlign: "center",
     textDecoration: "underline",
-    marginBottom: 15
+    marginBottom: 10
   },
   row: {
     flexDirection: "row",
-    marginBottom: 8
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 6
   },
   col: {
-    width: "50%"
+    width: "48%"
   },
   bold: {
     fontWeight: "bold"
@@ -43,50 +52,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottom: "1px solid #000",
     paddingBottom: 5,
-    marginTop: 15
+    marginTop: 15,
+    width: '100%'
   },
   cell: {
     borderRight: "1px solid #000",
-    padding: 3
+    padding: 3,
+    textAlign: "center"
   },
   tableRow: {
     flexDirection: "row",
     borderBottom: "1px solid #eee",
-    paddingVertical: 5
+    paddingVertical: 5,
+    width: '100%'
   },
   bankDetails: {
     marginTop: 15,
     borderTop: "1px solid #000",
-    paddingTop: 10
+    paddingTop: 10,
+    width: '100%',
+    alignItems: 'center'
   },
-  centerText: {
-    textAlign: "center"
-  },
-  logo: {
-    position: 'absolute',
-    right: 30,
-    top: 30,
-    width: 80,
-    height: 'auto'
+  fullWidthText: {
+    textAlign: "center",
+    width: '100%',
+    marginTop: 6
   }
 });
 
-// Helper function to get parts of an address, handling both object and array formats
 const getAddressPart = (address, part) => {
-  if (!address) return part === 'address2' ? "" : "N/A"; // address2 can be empty, others N/A
-
+  if (!address) return part === 'address2' ? "" : "N/A";
   if (Array.isArray(address)) {
-    // Array format: [address1, address2, state, city, pincode]
     switch (part) {
       case 'address1': return address[0] || "N/A";
       case 'address2': return address[1] || ""; 
-      case 'city':     return address[3] || "N/A"; // City is at index 3
-      case 'state':    return address[2] || "N/A"; // State is at index 2
-      case 'pincode':  return address[4] || "N/A"; // Pincode is at index 4
+      case 'city':     return address[3] || "N/A";
+      case 'state':    return address[2] || "N/A";
+      case 'pincode':  return address[4] || "N/A";
       default: return "N/A";
     }
-  } else if (typeof address === 'object' && address !== null) {
-    // Object format
+  } else if (typeof address === 'object') {
     switch (part) {
       case 'address1': return address.address1 || "N/A";
       case 'address2': return address.address2 || "";
@@ -96,20 +101,13 @@ const getAddressPart = (address, part) => {
       default: return "N/A";
     }
   }
-  // Fallback if address is not in expected format
   return part === 'address2' ? "" : "N/A";
 };
-
 
 const PIPDF = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      {/* Logo in top right corner */}
-      <Image 
-        style={styles.logo} 
-        src="/src/assets/logo.png" // Update this path to your actual logo path
-      />
-      
+      <Image style={styles.logo} src="/src/assets/logo.png" />
       <Text style={styles.header}>GSTIN : 09AAFCE8706R1ZV</Text>
       <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
       <Text style={styles.subHeader}>
@@ -117,48 +115,52 @@ const PIPDF = ({ ticket }) => (
       </Text>
       <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
 
-      <View style={styles.row}>
-        <Text>Quotation No. : {ticket.quotationNumber}</Text>
-        <Text>Date : {new Date(ticket.createdAt).toLocaleDateString()}</Text>
+      <View style={[styles.row, { justifyContent: "center", gap: 40 }]}>
+        <Text>Quotation No.: {ticket.quotationNumber}</Text>
+        <Text>Date: {new Date(ticket.createdAt).toLocaleDateString()}</Text>
       </View>
 
-      <View style={styles.row}>
+      <View style={[styles.row, { gap: 20 }]}>
         <View style={styles.col}>
-          <Text style={styles.bold}>Quotation to :</Text>
-          <Text> {ticket.companyName}</Text>
-          <Text> {getAddressPart(ticket.billingAddress, 'address1')}</Text>
-          <Text> {getAddressPart(ticket.billingAddress, 'address2')}</Text>
-          <Text> {`${getAddressPart(ticket.billingAddress, 'city')}, ${getAddressPart(ticket.billingAddress, 'state')} - ${getAddressPart(ticket.billingAddress, 'pincode')}`}</Text>
-          <Text> Party Mobile No : {ticket.client?.phone || "N/A"}</Text>
-          <Text> State : {getAddressPart(ticket.billingAddress, 'state')}</Text>
-          <Text> GSTIN / UIN : {ticket.client?.gstNumber || "N/A"}</Text>
+          <Text style={styles.bold}>Quotation to:</Text>
+          <Text>{ticket.companyName}</Text>
+          <Text>{getAddressPart(ticket.billingAddress, 'address1')}</Text>
+          <Text>{getAddressPart(ticket.billingAddress, 'address2')}</Text>
+          <Text>
+            {getAddressPart(ticket.billingAddress, 'city')}, {getAddressPart(ticket.billingAddress, 'state')} - {getAddressPart(ticket.billingAddress, 'pincode')}
+          </Text>
+          <Text>Party Mobile No: {ticket.client?.phone || "N/A"}</Text>
+          <Text>State: {getAddressPart(ticket.billingAddress, 'state')}</Text>
+          <Text>GSTIN / UIN: {ticket.client?.gstNumber || "N/A"}</Text>
         </View>
         <View style={styles.col}>
-          <Text style={styles.bold}>Shipped to :</Text>
-          <Text> {ticket.companyName}</Text>
-          <Text> {getAddressPart(ticket.shippingAddress, 'address1')}</Text>
-          <Text> {getAddressPart(ticket.shippingAddress, 'address2')}</Text>
-          <Text> {`${getAddressPart(ticket.shippingAddress, 'city')}, ${getAddressPart(ticket.shippingAddress, 'state')} - ${getAddressPart(ticket.shippingAddress, 'pincode')}`}</Text>
-          <Text> Party Mobile No : {ticket.client?.phone || "N/A"}</Text>
-          <Text> State : {getAddressPart(ticket.shippingAddress, 'state')}</Text>
-          <Text> GSTIN / UIN : {ticket.client?.gstNumber || "N/A"}</Text>
+          <Text style={styles.bold}>Shipped to:</Text>
+          <Text>{ticket.companyName}</Text>
+          <Text>{getAddressPart(ticket.shippingAddress, 'address1')}</Text>
+          <Text>{getAddressPart(ticket.shippingAddress, 'address2')}</Text>
+          <Text>
+            {getAddressPart(ticket.shippingAddress, 'city')}, {getAddressPart(ticket.shippingAddress, 'state')} - {getAddressPart(ticket.shippingAddress, 'pincode')}
+          </Text>
+          <Text>Party Mobile No: {ticket.client?.phone || "N/A"}</Text>
+          <Text>State: {getAddressPart(ticket.shippingAddress, 'state')}</Text>
+          <Text>GSTIN / UIN: {ticket.client?.gstNumber || "N/A"}</Text>
         </View>
       </View>
 
       <View style={styles.tableHeader}>
         <Text style={[styles.cell, { width: "5%" }]}>S.N.</Text>
-        <Text style={[styles.cell, { width: "35%" }]}>Description of Goods</Text>
-        <Text style={[styles.cell, { width: "15%" }]}>HSN/SAC Code</Text>
+        <Text style={[styles.cell, { width: "35%", textAlign: "left" }]}>Description of Goods</Text>
+        <Text style={[styles.cell, { width: "15%" }]}>HSN/SAC</Text>
         <Text style={[styles.cell, { width: "10%" }]}>Qty.</Text>
         <Text style={[styles.cell, { width: "10%" }]}>Unit</Text>
         <Text style={[styles.cell, { width: "10%" }]}>Price</Text>
-        <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>Amount(*)</Text>
+        <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>Amount</Text>
       </View>
 
       {ticket.goods.map((item, i) => (
         <View style={styles.tableRow} key={i}>
           <Text style={[styles.cell, { width: "5%" }]}>{i + 1}</Text>
-          <Text style={[styles.cell, { width: "35%" }]}>{item.description}</Text>
+          <Text style={[styles.cell, { width: "35%", textAlign: "left" }]}>{item.description}</Text>
           <Text style={[styles.cell, { width: "15%" }]}>{item.hsnSacCode}</Text>
           <Text style={[styles.cell, { width: "10%" }]}>{item.quantity}</Text>
           <Text style={[styles.cell, { width: "10%" }]}>PCS</Text>
@@ -167,31 +169,27 @@ const PIPDF = ({ ticket }) => (
         </View>
       ))}
 
-      <View style={{ marginTop: 10 }}>
-        <Text>Add : GST @ 18.00%</Text>
-        <Text style={{ fontWeight: "bold", marginTop: 5 }}>
-          Grand Total : ₹{ticket.grandTotal.toFixed(2)}
-        </Text>
-        <Text style={{ marginTop: 5, fontSize: 9 }}>
-          Taxable Rate Total = Sub Total Amt. + Total Tax.{"\n"}18%
-        </Text>
-        <Text style={{ marginTop: 10 }}>
-          Rupees Eighteen Thousand Five Hundred Twenty Six Only
-        </Text>
-      </View>
+      <Text style={styles.fullWidthText}>Add : GST @ 18.00%</Text>
+      <Text style={[styles.fullWidthText, { fontWeight: "bold" }]}>
+        Grand Total : ₹{ticket.grandTotal.toFixed(2)}
+      </Text>
+      <Text style={styles.fullWidthText}>
+        Taxable Rate Total = Sub Total Amt. + Total Tax. 18%
+      </Text>
+      <Text style={styles.fullWidthText}>
+        Rupees Eighteen Thousand Five Hundred Twenty Six Only
+      </Text>
 
       <View style={styles.bankDetails}>
-        <Text style={{ fontWeight: "bold" }}>Bank Details :</Text>
-        <Text>
-          Bank : ICICI Bank{"\n"}Bank Account No:: 628906029990, IFSC CODE No.:
-          ICIC0006284
+        <Text style={{ fontWeight: "bold", textAlign: "center" }}>Bank Details:</Text>
+        <Text style={{ textAlign: "center" }}>
+          Bank: ICICI Bank{"\n"}Account No.: 628906029990, IFSC CODE: ICIC0006284
         </Text>
       </View>
 
-      <View style={{ marginTop: 20 }}>
-        <Text style={{ textAlign: "right" }}>for E-KORS PRIVATE LIMITED</Text>
-        <Text style={{ textAlign: "right" }}>Authorized Signatory</Text>
-      </View>
+      <Text style={[styles.fullWidthText, { marginTop: 20 }]}>
+        for E-KORS PRIVATE LIMITED{"\n"}Authorized Signatory
+      </Text>
     </Page>
   </Document>
 );

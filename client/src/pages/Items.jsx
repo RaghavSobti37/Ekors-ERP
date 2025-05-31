@@ -868,40 +868,6 @@ export default function Items() {
                 : "All Items List"}
             </h2>
 
-<<<<<<< HEAD
-            <div className="d-flex align-items-center flex-wrap gap-2">
-              {/* <div
-                className="form-group d-flex align-items-center gap-1 flex-fill p-2 border rounded" // Added flex-fill and styling, removed fixed width
-              >
-                {" "} */}
-                {/* Adjusted width and gap */}
-                {/* <label
-                  htmlFor="lowStockThresholdPageInput"
-                  className="form-label mb-0"
-                  style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }} // Slightly smaller font
-                  title="Global threshold for low stock warnings in Navbar and default item view."
-                >
-                  Low Alert Qty:
-                </label> */}
-                {/* <input
-                  type="number"
-                  id="lowStockThresholdPageInput"
-                  className="form-control form-control-sm"
-                  value={effectiveLowStockThreshold}
-                  onChange={handleGlobalThresholdChange}
-                  min="1"
-                  style={{ width: "60px" }} // Control input width
-                />
-              </div> */}
-              {/* Group all controls on the right */}
-              <input
-                type="text"
-                placeholder="🔍 Search items or HSN codes..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="form-control search-input"
-                style={{ width: "200px" }} // Adjusted width
-=======
             <div className="d-flex align-items-center gap-2"> {/* Removed flex-wrap */}
               <SearchBar
                 searchTerm={searchTerm}
@@ -912,7 +878,6 @@ export default function Items() {
                 placeholder="Search items or HSN codes..."
                 showButton={false} // Disable internal button for SearchBar
                 className="flex-grow-1" // Allow search bar to take space
->>>>>>> raghav
                 disabled={anyLoading || stockAlertFilterActive}
               />
               {/* Export to Excel Button */}

@@ -1535,6 +1535,18 @@ setTransferHistoryDisplay(history);
               <Form.Check
                 type="radio"
                 inline
+                id="filter-open"
+                label="Running"
+                name="statusFilter"
+                checked={statusFilter === "Running"}
+                onChange={() => {
+                  setStatusFilter("Running");
+                  setCurrentPage(1);
+                }}
+              />
+              <Form.Check
+                type="radio"
+                inline
                 id="filter-closed"
                 label="Closed"
                 name="statusFilter"

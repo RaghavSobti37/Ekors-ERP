@@ -1530,6 +1530,7 @@ export default function Quotations() {
               tooltip:
                 "Current status of the quotation (Open, Running, Hold, Closed).",
             },
+            
           ]}
           data={currentItems}
           keyField="_id"
