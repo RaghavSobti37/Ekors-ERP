@@ -13,6 +13,7 @@ import ReusableTable from "../components/ReusableTable";
 import SortIndicator from "../components/SortIndicator";
 import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
 import "../css/Style.css";
 import ActionButtons from "../components/ActionButtons";
@@ -22,6 +23,7 @@ import {
   PencilSquare, // Edit
   Trash, // Delete
   BarChart, // Generate Report
+  PlusCircle, // For Add User button icon
 } from 'react-bootstrap-icons';
 
 const Users = () => {
@@ -349,19 +351,20 @@ const Users = () => {
           {/* Standard header */}
           <h2 style={{ color: "black" }}>User Management</h2>
           <div className="d-flex align-items-center">
-            <Form.Control // Using Form.Control for search
-              type="text"
-              placeholder="🔍 Search Users..."
-              value={searchTerm}
-              onChange={(e) => {
-                console.log("[Users.jsx] Search term changed:", e.target.value);
-                setSearchTerm(e.target.value);
+            <SearchBar
+              searchTerm={searchTerm}
+              setSearchTerm={(value) => {
+                console.log("[Users.jsx] Search term changed to:", value);
+                setSearchTerm(value);
+                setCurrentPage(1); // Reset to first page on new search
               }}
-              className="me-2" // search-input class can be used for further styling if needed
+              placeholder="Search users by name, email, role..."
+              showButton={true}
+              onAddNew={() => handleEdit(null)}
+              buttonText="Add New User"
+              buttonIcon={<PlusCircle size={18}/>}
+              className="me-0" // No margin needed if SearchBar handles its own gap or parent does
             />
-            <BsButton variant="primary" onClick={() => handleEdit(null)}>
-              + Add New User
-            </BsButton>
           </div>
         </div>
         {/* users-table-container can be removed or kept if it adds specific styling not covered by Bootstrap */}

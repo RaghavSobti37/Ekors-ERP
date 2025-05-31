@@ -19,6 +19,7 @@ import "../css/Style.css";
 import Pagination from "../components/Pagination";
 import "../css/Items.css";
 import ReusableTable from "../components/ReusableTable.jsx";
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 // SortIndicator is not directly used here but ReusableTable might use it.
 // import SortIndicator from "../components/SortIndicator.jsx";
 
@@ -501,8 +502,12 @@ export default function Quotations() {
           : b.grandTotal - a.grandTotal;
       }
       // For string comparisons like client.companyName or referenceNumber
-      const valA = sortConfig.key.includes('.') ? sortConfig.key.split('.').reduce((o, i) => o?.[i], a) : a[sortConfig.key];
-      const valB = sortConfig.key.includes('.') ? sortConfig.key.split('.').reduce((o, i) => o?.[i], b) : b[sortConfig.key];
+      const valA = sortConfig.key.includes(".")
+        ? sortConfig.key.split(".").reduce((o, i) => o?.[i], a)
+        : a[sortConfig.key];
+      const valB = sortConfig.key.includes(".")
+        ? sortConfig.key.split(".").reduce((o, i) => o?.[i], b)
+        : b[sortConfig.key];
 
       if (valA < valB) {
         return sortConfig.direction === "ascending" ? -1 : 1;
@@ -887,7 +892,15 @@ export default function Quotations() {
         : "http://localhost:3000/api/quotations";
       const method = currentQuotation ? "put" : "post";
 
-      const response = await axiosmethod;
+      const response = await axios({
+        method: method.toLowerCase(),
+        url: url,
+        data: submissionData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (response.status === 200 || response.status === 201) {
         fetchQuotations();
@@ -1010,12 +1023,18 @@ export default function Quotations() {
     const clientShippingAddress = quotation.client?.shippingAddress || {};
 
     const billingAddressArray = [
-      clientBillingAddress.address1 || "", clientBillingAddress.address2 || "",
-      clientBillingAddress.state || "", clientBillingAddress.city || "", clientBillingAddress.pincode || ""
+      clientBillingAddress.address1 || "",
+      clientBillingAddress.address2 || "",
+      clientBillingAddress.state || "",
+      clientBillingAddress.city || "",
+      clientBillingAddress.pincode || "",
     ];
     const shippingAddressArray = [
-      clientShippingAddress.address1 || "", clientShippingAddress.address2 || "",
-      clientShippingAddress.state || "", clientShippingAddress.city || "", clientShippingAddress.pincode || ""
+      clientShippingAddress.address1 || "",
+      clientShippingAddress.address2 || "",
+      clientShippingAddress.state || "",
+      clientShippingAddress.city || "",
+      clientShippingAddress.pincode || "",
     ];
 
     setTicketData({
@@ -1367,21 +1386,14 @@ export default function Quotations() {
             className="d-flex align-items-center gap-3"
             style={{ width: "80%" }}
           >
-            <Form.Control
-              type="search"
-              placeholder="🔍 Search here"
-              className="me-2"
-              aria-label="Search"
+            <SearchBar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                borderRadius: "20px",
-                padding: "8px 20px",
-                border: "1px solid #ced4da",
-                boxShadow: "none",
-              }}
+              setSearchTerm={setSearchTerm}
+              placeholder="Search quotations..."
+              className="flex-grow-1" // Allow search bar to take available space
             />
             <div className="d-flex align-items-center gap-2">
+              {/* Status Filters */}
               <Form.Check
                 inline
                 label="All"
@@ -1406,7 +1418,7 @@ export default function Quotations() {
                   setCurrentPage(1);
                 }}
               />
-               <Form.Check
+              <Form.Check
                 inline
                 label="Running"
                 name="statusFilter"
@@ -1454,7 +1466,12 @@ export default function Quotations() {
 
         <ReusableTable
           columns={[
-            { key: "referenceNumber", header: "Reference No", sortable: true, tooltip: "year month day - (24h) hrs mins secs" },
+            {
+              key: "referenceNumber",
+              header: "Reference No",
+              sortable: true,
+              tooltip: "year month day - (24h) hrs mins secs",
+            },
             {
               key: "client.companyName",
               header: "Company Name",
@@ -1503,14 +1520,15 @@ export default function Quotations() {
                       : item.status === "closed"
                       ? "bg-success"
                       : item.status === "running"
-                      ? "bg-info" 
+                      ? "bg-info"
                       : "bg-warning" // for 'hold'
                   }`}
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
               ),
-              tooltip: "Current status of the quotation (Open, Running, Hold, Closed)."
+              tooltip:
+                "Current status of the quotation (Open, Running, Hold, Closed).",
             },
           ]}
           data={currentItems}
@@ -1523,7 +1541,11 @@ export default function Quotations() {
             <ActionButtons
               item={quotation}
               onEdit={handleEdit}
-              onCreateTicket={quotation.status !== 'closed' && quotation.status !== 'running' ? handleCreateTicket : undefined} // Disable if closed or running
+              onCreateTicket={
+                quotation.status !== "closed" && quotation.status !== "running"
+                  ? handleCreateTicket
+                  : undefined
+              } // Disable if closed or running
               onView={() => {
                 setCurrentQuotation(quotation);
                 setShowPdfModal(true);
@@ -1533,11 +1555,13 @@ export default function Quotations() {
               }
               isLoading={isLoading}
               // Disable create ticket button if status is 'closed' or 'running'
-              isCreateTicketDisabled={quotation.status === 'closed' || quotation.status === 'running'}
+              isCreateTicketDisabled={
+                quotation.status === "closed" || quotation.status === "running"
+              }
               createTicketDisabledTooltip={
-                (quotation.status === 'closed' || quotation.status === 'running') 
-                ? `Cannot create ticket for a quotation that is already ${quotation.status}.` 
-                : "Create a new ticket from this quotation."
+                quotation.status === "closed" || quotation.status === "running"
+                  ? `Cannot create ticket for a quotation that is already ${quotation.status}.`
+                  : "Create a new ticket from this quotation."
               }
             />
           )}
@@ -1594,7 +1618,7 @@ export default function Quotations() {
                   padding: "20px",
                 }}
               >
-                 {error && <Alert variant="danger">{error}</Alert>}
+                {error && <Alert variant="danger">{error}</Alert>}
                 <div className="row">
                   <Form.Group className="mb-3 col-md-4">
                     <Form.Label>
@@ -1624,10 +1648,17 @@ export default function Quotations() {
                     <Form.Label>
                       Status <span className="text-danger">*</span>
                     </Form.Label>
-                    {(currentQuotation && (currentQuotation.status === 'running' || currentQuotation.status === 'closed')) || (quotationData.status === 'running' || quotationData.status === 'closed') ? (
+                    {(currentQuotation &&
+                      (currentQuotation.status === "running" ||
+                        currentQuotation.status === "closed")) ||
+                    quotationData.status === "running" ||
+                    quotationData.status === "closed" ? (
                       <Form.Control
                         type="text"
-                        value={quotationData.status.charAt(0).toUpperCase() + quotationData.status.slice(1)}
+                        value={
+                          quotationData.status.charAt(0).toUpperCase() +
+                          quotationData.status.slice(1)
+                        }
                         readOnly
                       />
                     ) : (

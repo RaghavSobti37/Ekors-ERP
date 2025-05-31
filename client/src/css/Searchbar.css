@@ -1,53 +1,64 @@
-.top-search-bar {
-    display: flex;
-    justify-content: center;
-  
-    /* 🔽 Don't use margin-top as it affects layout */
-    /* Instead, shift it visually */
-    transform: translateY(30px); /* You can adjust this value as needed */
-    position: relative;
-    z-index: 1; /* Make sure it appears above nearby content if needed */
-  }
-  
-  .search-container {
-    position: relative;
-    width: 400px;
-  }
-  
-  .search-container input {
-    width: 100%;
-    padding: 10px 35px 10px 15px;
-    border-radius: 20px;
-    border: 1px solid #ccc;
-    outline: none;
-    font-size: 16px;
-  }
-  
-  .search-icon {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: gray;
-  }
-  
-  .search-results {
-    position: absolute;
-    top: 42px;
-    left: 0;
-    width: 100%;
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 10;
-  }
-  
-  .search-results li {
-    padding: 10px;
-    cursor: pointer;
-  }
-  
-  .search-results li:hover {
-    background: #f0f0f0;
-  }
-  
+.search-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Space between search input and button */
+  width: 100%; /* Takes full width of its parent by default */
+  /* max-width: 700px; /* Example: constrain max width if needed, or let parent do it */
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex-grow: 1; /* Allows the input to take up available space */
+  display: flex; /* Needed for icon alignment if any */
+  align-items: center;
+}
+
+.search-input {
+  border-radius: 25px !important; /* More rounded */
+  padding: 0.6rem 1.2rem !important; /* Slightly more padding */
+  border: 1px solid #ced4da !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important; /* Subtle shadow */
+  width: 100% !important; /* Make input take full width of its wrapper */
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.search-input.has-icon {
+ padding-left: 2.75rem !important; /* More space for icon */
+}
+
+
+.search-input:focus {
+  border-color: #86b7fe !important;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2), 0 2px 4px rgba(0, 0, 0, 0.05) !important; /* Focus shadow */
+}
+
+.search-icon-prefix {
+  position: absolute;
+  left: 1rem; /* Adjust as needed */
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  z-index: 3;
+  pointer-events: none;
+  font-size: 1rem; /* Adjust icon size */
+}
+
+.search-add-button {
+  border-radius: 25px !important; /* Rounded button */
+  padding: 0.6rem 1.2rem !important;
+  white-space: nowrap; /* Prevent button text from wrapping */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07) !important;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.search-add-button:hover {
+    filter: brightness(95%);
+}
+
+.button-icon-prefix {
+    display: inline-flex;
+    align-items: center;
+}

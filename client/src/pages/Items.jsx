@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { saveAs } from "file-saver"; // For downloading files
 import { getAuthToken } from "../utils/authUtils";
 import { showToast, handleApiError } from "../utils/helpers";
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import * as XLSX from "xlsx";
 import ActionButtons from "../components/ActionButtons";
 import {
@@ -16,6 +17,7 @@ import {
   BarChart, // Generate Report
   FileEarmarkArrowDown, // For Excel Export
   FileEarmarkArrowUp, // For Excel Upload
+  PlusCircle, // For Add Item button icon
 } from "react-bootstrap-icons";
 
 const debug = (message, data = null) => {
@@ -38,7 +40,7 @@ export default function Items() {
     key: "name",
     direction: "asc",
   });
-  const [editingItem, setEditingItem] = useState(null);
+  // const [editingItem, setEditingItem] = useState(null); // Removed: Editing functionality is being removed
   const [formData, setFormData] = useState({
     name: "",
     quantity: "",
@@ -51,7 +53,7 @@ export default function Items() {
     maxDiscountPercentage: "",
   });
   const [showModal, setShowModal] = useState(false);
-  const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
   const [currentPage, setCurrentPage] = useState(1);
@@ -253,9 +255,9 @@ export default function Items() {
         timeout: 5000,
       });
 
-      setPurchaseHistory((prev) => ({
+      setPurchaseHistory(prev => ({
         ...prev,
-        [itemId]: response.data || [],
+        [itemId]: response || [], // apiClient likely returns response.data directly
       }));
       setError(null);
     } catch (err) {
@@ -273,24 +275,9 @@ export default function Items() {
     }
   }, []);
 
-  const handleEdit = (item) => {
-    setEditingItem(item._id);
-    setFormData({
-      name: item.name,
-      quantity: item.quantity.toString(),
-      price: item.price.toString(),
-      gstRate: item.gstRate.toString(),
-      hsnCode: item.hsnCode || "",
-      unit: item.unit || "Nos",
-      category: item.category || "",
-      subcategory: item.subcategory || "General",
-      maxDiscountPercentage: (item.maxDiscountPercentage || 0).toString(),
-    });
-  };
+  // Removed handleEdit and handleCancel as editing functionality is being removed.
+  // The `formData` state will now primarily be used for the "Add New Item" modal.
 
-  const handleCancel = () => {
-    setEditingItem(null);
-  };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value.toLowerCase());
@@ -298,46 +285,8 @@ export default function Items() {
   };
 
   const handleSave = async () => {
-    if (!formData.name) {
-      setError("Item name is required");
-      return;
-    }
-
-    if (!editingItem) {
-      setError("No item selected for editing.");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const updatedItem = {
-        name: formData.name,
-        quantity: parseFloat(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
-        gstRate: parseFloat(formData.gstRate) || 0,
-        hsnCode: formData.hsnCode || "",
-        unit: formData.unit,
-        category: formData.category,
-        subcategory: formData.subcategory,
-        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
-      };
-
-      await apiClient(`/items/${editingItem}`, {
-        method: "PUT",
-        body: updatedItem,
-      });
-      await fetchItems();
-      setEditingItem(null);
-      setError(null);
-      showSuccess("Item saved successfully!");
-    } catch (err) {
-      console.error("Error updating item:", err);
-      setError(
-        `Failed to update item: ${err.response?.data?.message || err.message}`
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    // This function was for saving edited items. Since editing is removed, this is no longer needed.
+    // The "Add New Item" modal will use `handleAddItem`.
   };
 
   const requestSort = (key) => {
@@ -919,6 +868,7 @@ export default function Items() {
                 : "All Items List"}
             </h2>
 
+<<<<<<< HEAD
             <div className="d-flex align-items-center flex-wrap gap-2">
               {/* <div
                 className="form-group d-flex align-items-center gap-1 flex-fill p-2 border rounded" // Added flex-fill and styling, removed fixed width
@@ -951,21 +901,28 @@ export default function Items() {
                 onChange={handleSearchChange}
                 className="form-control search-input"
                 style={{ width: "200px" }} // Adjusted width
+=======
+            <div className="d-flex align-items-center gap-2"> {/* Removed flex-wrap */}
+              <SearchBar
+                searchTerm={searchTerm}
+                setSearchTerm={(value) => {
+                  setSearchTerm(value.toLowerCase());
+                  setCurrentPage(1); // Reset page on new search
+                }}
+                placeholder="Search items or HSN codes..."
+                showButton={false} // Disable internal button for SearchBar
+                className="flex-grow-1" // Allow search bar to take space
+>>>>>>> raghav
                 disabled={anyLoading || stockAlertFilterActive}
               />
-              <button
-                onClick={() => setShowModal(true)}
-                className="btn btn-success"
-                disabled={anyLoading}
-              >
-                {isSubmitting ? "Processing..." : "Add New Item"}
-              </button>
+              {/* Export to Excel Button */}
               <button
                 onClick={handleExportToExcel}
-                className="btn btn-outline-primary"
+                className="btn btn-info"
                 disabled={anyLoading}
                 title="Export to Excel"
               >
+              Export Excel
                 {isExportingExcel ? (
                   <span
                     className="spinner-border spinner-border-sm"
@@ -976,6 +933,7 @@ export default function Items() {
                   <FileEarmarkArrowDown />
                 )}
               </button>
+              {/* Upload & Update Button */}
               <button
                 onClick={() =>
                   document.getElementById("excel-upload-input")?.click()
@@ -983,7 +941,8 @@ export default function Items() {
                 className="btn btn-info"
                 disabled={anyLoading}
                 title="Upload & Update from Excel"
-              >
+              > 
+              Upload Excel
                 {isProcessingExcel ? (
                   <span
                     className="spinner-border spinner-border-sm"
@@ -992,6 +951,23 @@ export default function Items() {
                   ></span>
                 ) : (
                   <FileEarmarkArrowUp />
+                )}
+              </button>
+              {/* Add New Item Button (Now separate) */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="btn btn-success d-flex align-items-center"
+                disabled={anyLoading}
+                title="Add New Item"
+                style={{gap: '0.35rem'}}
+              >
+                {isSubmitting ? (
+                  "Processing..."
+                ) : (
+                  <>
+                    <PlusCircle size={18} />
+                    Add New Item
+                  </>
                 )}
               </button>
             </div>
@@ -1136,107 +1112,44 @@ export default function Items() {
                   <React.Fragment key={item._id}>
                     <tr>
                       <td>
-                        {editingItem === item._id ? (
-                          <input
-                            className="form-control"
-                            name="name"
-                            value={formData.name}
-                            onChange={(e) =>
-                              setFormData({ ...formData, name: e.target.value })
-                            }
-                            disabled={anyLoading}
-                          />
-                        ) : (
-                          item.name
-                        )}
+                        {item.name}
                       </td>
                       <td>
-                        {editingItem === item._id ? (
-                          <input
-                            type="number"
-                            className="form-control"
-                            name="quantity"
-                            value={formData.quantity}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                quantity: e.target.value,
-                              })
-                            }
-                            disabled={anyLoading}
-                          />
-                        ) : (
-                          <>
-                            {item.quantity}
-                            {item.needsRestock && (
+                        <>
+                          {item.quantity}
+                          {item.needsRestock && (
+                            <span
+                              className="badge bg-danger ms-2"
+                              title={`Item specific threshold: ${item.lowStockThreshold}`}
+                            >
+                              ⚠️ Restock
+                            </span>
+                          )}
+                          {!item.needsRestock &&
+                            item.quantity <
+                            (stockAlertFilterActive
+                              ? lowStockWarningQueryThreshold
+                              : effectiveLowStockThreshold) && (
                               <span
-                                className="badge bg-danger ms-2"
-                                title={`Item specific threshold: ${item.lowStockThreshold}`}
+                                className="badge bg-warning text-dark ms-2"
+                                title={`Global threshold: < ${stockAlertFilterActive
+                                    ? lowStockWarningQueryThreshold
+                                    : effectiveLowStockThreshold
+                                  }`}
                               >
-                                ⚠️ Restock
+                                🔥 Low Stock
                               </span>
                             )}
-                            {!item.needsRestock &&
-                              item.quantity <
-                              (stockAlertFilterActive
-                                ? lowStockWarningQueryThreshold
-                                : effectiveLowStockThreshold) && (
-                                <span
-                                  className="badge bg-warning text-dark ms-2"
-                                  title={`Global threshold: < ${stockAlertFilterActive
-                                      ? lowStockWarningQueryThreshold
-                                      : effectiveLowStockThreshold
-                                    }`}
-                                >
-                                  🔥 Low Stock
-                                </span>
-                              )}
-                          </>
-                        )}
+                        </>
                       </td>
                       {/* <td>{item.category || "-"}</td>
                       <td>{item.subcategory || "-"}</td> */}
-                      <td>
-                        {editingItem === item._id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            name="price"
-                            value={formData.price}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                price: e.target.value,
-                              })
-                            }
-                            disabled={anyLoading}
-                          />
-                        ) : (
-                          `₹${parseFloat(item.price).toFixed(2)}`
-                        )}
-                      </td>
+                      <td>{`₹${parseFloat(item.price).toFixed(2)}`}</td>
                       <td>{item.unit || "Nos"}</td>
                       <td>
-                        {editingItem === item._id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control"
-                            name="gstRate"
-                            value={formData.gstRate}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                gstRate: e.target.value,
-                              })
-                            }
-                            disabled={anyLoading}
-                          />
-                        ) : (
-                          `${item.gstRate || 0}%`
-                        )}
+                        {`${item.gstRate || 0}%`}
                       </td>
+
                       {/* <td>
                         {item.image ? (
                           <img
@@ -1250,24 +1163,7 @@ export default function Items() {
                         )}
                       </td> */}
                       <td>
-                        {editingItem === item._id ? (
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            name="maxDiscountPercentage"
-                            value={formData.maxDiscountPercentage}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                maxDiscountPercentage: e.target.value,
-                              })
-                            }
-                            min="0"
-                            max="100"
-                            placeholder="Max %"
-                            disabled={anyLoading}
-                          />
-                        ) : item.maxDiscountPercentage > 0 ? (
+                        {item.maxDiscountPercentage > 0 ? (
                           `${item.maxDiscountPercentage}%`
                         ) : (
                           "-"
@@ -1275,52 +1171,22 @@ export default function Items() {
                       </td>
                       <td>
                         <div className="d-flex gap-1">
-                          {editingItem === item._id ? (
-                            <>
-                              <button
-                                onClick={handleSave}
-                                className="btn btn-success btn-sm"
-                                disabled={anyLoading}
-                              >
-                                {isSubmitting ? "Saving..." : "Save"}
-                              </button>
-                              <button
-                                onClick={handleCancel}
-                                className="btn btn-secondary btn-sm"
-                                disabled={anyLoading}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => toggleDetails(item._id)}
-                                className="btn btn-info btn-sm"
-                                disabled={anyLoading}
-                                title="View"
-                              >
-                                👁️
-                              </button>
-
-                              <button
-                                onClick={() => handleEdit(item)}
-                                className="btn btn-primary btn-sm"
-                                disabled={anyLoading}
-                                title="Edit"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item._id)}
-                                className="btn btn-danger btn-sm"
-                                disabled={anyLoading}
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </>
-                          )}
+                          <button
+                            onClick={() => toggleDetails(item._id)}
+                            className="btn btn-info btn-sm"
+                            disabled={anyLoading}
+                            title="View Details"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item._id)}
+                            className="btn btn-danger btn-sm"
+                            disabled={anyLoading}
+                            title="Delete Item"
+                          >
+                            <Trash size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1339,57 +1205,62 @@ export default function Items() {
                                 />
                               )}
                             </div>
-                            <div className="row">
-                              <div className="col-md-6">
-                                <p>
-                                  <strong>Name:</strong> {item.name}
-                                </p>
-                                <p>
-                                  <strong>Category:</strong>{" "}
-                                  {item.category || "-"}
-                                </p>
-                                <p>
-                                  <strong>Subcategory:</strong>{" "}
-                                  {item.subcategory || "-"}
-                                </p>
-                                <p>
-                                  <strong>Quantity:</strong> {item.quantity}
-                                  {item.needsRestock &&
-                                    ` (Item specific restock threshold: ${item.lowStockThreshold})`}
-                                  {!item.needsRestock &&
-                                    item.quantity <
-                                    (stockAlertFilterActive
-                                      ? lowStockWarningQueryThreshold
-                                      : effectiveLowStockThreshold) &&
-                                    ` (Global low stock threshold: < ${stockAlertFilterActive
-                                      ? lowStockWarningQueryThreshold
-                                      : effectiveLowStockThreshold
-                                    })`}
-                                </p>
-                              </div>
-                              <div className="col-md-6">
-                                <p>
-                                  <strong>Price:</strong> ₹
-                                  {item.price.toFixed(2)}
-                                </p>
-                                <p>
-                                  <strong>Unit:</strong> {item.unit || "Nos"}
-                                </p>
-                                <p>
-                                  <strong>GST Rate:</strong> {item.gstRate}%
-                                </p>
-                                <p>
-                                  <strong>HSN Code:</strong>{" "}
-                                  {item.hsnCode || "-"}
-                                </p>
-                                <p>
-                                  <strong>Max Discount:</strong>{" "}
-                                  {item.maxDiscountPercentage > 0
-                                    ? `${item.maxDiscountPercentage}%`
-                                    : "N/A"}
-                                </p>
-                              </div>
-                            </div>
+                            <table className="table table-sm table-bordered item-details-table">
+                              <tbody>
+                                <tr>
+                                  <td><strong>Name</strong></td>
+                                  <td>{item.name}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Category</strong></td>
+                                  <td>{item.category || "-"}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Subcategory</strong></td>
+                                  <td>{item.subcategory || "-"}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Quantity</strong></td>
+                                  <td>
+                                    {item.quantity}
+                                    {item.needsRestock &&
+                                      ` (Item specific restock threshold: ${item.lowStockThreshold})`}
+                                    {!item.needsRestock &&
+                                      item.quantity <
+                                      (stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold) &&
+                                      ` (Global low stock threshold: < ${stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold
+                                      })`}
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Price</strong></td>
+                                  <td>₹{item.price.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Unit</strong></td>
+                                  <td>{item.unit || "Nos"}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>GST Rate</strong></td>
+                                  <td>{item.gstRate}%</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>HSN Code</strong></td>
+                                  <td>{item.hsnCode || "-"}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Max Discount</strong></td>
+                                  <td>{item.maxDiscountPercentage > 0
+                                      ? `${item.maxDiscountPercentage}%`
+                                      : "N/A"}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
 
                             <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
                               <h6>Purchase History</h6>
@@ -1400,24 +1271,15 @@ export default function Items() {
                                   <tr>
                                     <th>Date</th>
                                     <th>Supplier</th>
-                                    <th>GST No</th>
+                                    <th>Added By</th>
                                     <th>Invoice No</th>
                                     <th>Qty</th>
-                                    <th>Price</th>
-                                    <th>GST Amt</th>
-                                    <th>Total</th>
+                                    <th>Price (₹)</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {purchaseHistory[item._id].map(
                                     (purchase, idx) => {
-                                      const itemTotal =
-                                        purchase.price * purchase.quantity;
-                                      const gstAmount =
-                                        itemTotal * (purchase.gstRate / 100);
-                                      const totalWithGst =
-                                        itemTotal + gstAmount;
-
                                       return (
                                         <tr key={purchase._id || idx}>
                                           <td>
@@ -1426,12 +1288,10 @@ export default function Items() {
                                             ).toLocaleDateString()}
                                           </td>
                                           <td>{purchase.companyName}</td>
-                                          <td>{purchase.gstNumber || "-"}</td>
+                                          <td>{purchase.createdByName || "N/A"}</td>
                                           <td>{purchase.invoiceNumber}</td>
                                           <td>{purchase.quantity}</td>
                                           <td>₹{purchase.price.toFixed(2)}</td>
-                                          <td>₹{gstAmount.toFixed(2)}</td>
-                                          <td>₹{totalWithGst.toFixed(2)}</td>
                                         </tr>
                                       );
                                     }

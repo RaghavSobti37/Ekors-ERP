@@ -51,7 +51,8 @@ exports.addSinglePurchase = async (req, res) => {
         quantity,
         price,
         gstRate: gstRate || 0
-      }]
+      }],
+      createdBy: user._id // Store the user who created this purchase
     });
     
     // Save the purchase
@@ -118,7 +119,8 @@ exports.addBulkPurchase = async (req, res) => {
           price: pItem.price,       // Assumed to be valid number due to prior validation loop
           gstRate: finalGstRate
         };
-      })
+      }),
+      createdBy: user._id // Store the user who created this purchase
     });
     
     // Save the purchase
@@ -200,25 +202,35 @@ exports.getItemPurchaseHistory = async (req, res) => {
     }
 
     const purchases = await Purchase.find({ 'items.itemId': req.params.id })
+      .populate('createdBy', 'firstname lastname email') // Populate createdBy
       .sort({ date: -1 })
-      .select('companyName gstNumber invoiceNumber date items')
+      .select('companyName invoiceNumber date items createdBy') // Select necessary fields
       .lean();
+
+        logger.debug('purchase_history_fetch', `For item ID ${req.params.id}, found ${purchases.length} parent purchase documents.`, { purchasesData: JSON.stringify(purchases) }); // Log fetched data
 
     // Transform the data to match frontend expectations
     const transformed = purchases.map(purchase => {
-      const item = purchase.items.find(i => 
+      const itemInPurchase = purchase.items.find(i => 
         i.itemId && i.itemId.toString() === req.params.id
       );
       
-      if (!item) return null;
+          if (!itemInPurchase) {
+            // This log helps identify if a parent purchase doc was found, but the specific item was not found within its 'items' array.
+            logger.warn('purchase_history_transform', `Item ID ${req.params.id} not found in items array of purchase ${purchase._id}, though parent document matched. This is unexpected.`, { purchaseItems: JSON.stringify(purchase.items) });
+          }
+      if (!itemInPurchase) return null;
       
       return {
         _id: purchase._id,
         companyName: purchase.companyName,
-        gstNumber: purchase.gstNumber,
         invoiceNumber: purchase.invoiceNumber,
         date: purchase.date,
-        ...item
+        createdByName: purchase.createdBy ? `${purchase.createdBy.firstname} ${purchase.createdBy.lastname}`.trim() : 'System/N/A',
+        quantity: itemInPurchase.quantity,
+        price: itemInPurchase.price,
+        // description: itemInPurchase.description, // Not needed for this specific table
+        // gstRate: itemInPurchase.gstRate, // Not needed for this specific table
       };
     }).filter(Boolean); // Remove any null entries
 

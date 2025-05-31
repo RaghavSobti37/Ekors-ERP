@@ -72,6 +72,11 @@ const purchaseSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     default: 0
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Assuming your user model is named 'User'
+    required: false // Make it not strictly required for existing data
   }
 }, { 
   timestamps: true 
