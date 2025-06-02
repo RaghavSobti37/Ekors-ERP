@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getUserReport,
   generateUserReportPDF,
+  generateQuotationsReport, // Import the quotations report controller
 } = require("../controllers/reportController");
 const auth = require("../middleware/auth");
 
@@ -41,5 +42,22 @@ router.get(
     generateUserReportPDF(req, res, next); // Controller handles req, res, next
   }
 );
+
+// @desc    Get quotations report summary
+// @route   GET /api/reports/quotations
+// @access  Private
+router.get("/quotations", auth, (req, res, next) => {
+  console.log(`[reportRoutes.js] Route HIT: GET /api/reports/quotations. Query=${JSON.stringify(req.query)}`);
+  generateQuotationsReport(req, res, next);
+});
+
+// @desc    Export quotations report to Excel
+// @route   GET /api/reports/quotations/export
+// @access  Private
+router.get("/quotations/export", auth, (req, res, next) => {
+  console.log(`[reportRoutes.js] Route HIT: GET /api/reports/quotations/export. Query=${JSON.stringify(req.query)}. Forcing exportToExcel=true.`);
+  req.query.exportToExcel = "true"; // Ensure the controller knows to export
+  generateQuotationsReport(req, res, next);
+});
 
 module.exports = router;

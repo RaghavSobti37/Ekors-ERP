@@ -15,146 +15,153 @@ import { ToastContainer, toast } from "react-toastify"; // Library for toast not
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import "react-toastify/dist/ReactToastify.css";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"; // Components for PDF viewing and downloading
-import { showToast, handleApiError, formatDateForInput as formatDateForInputHelper } from "../utils/helpers"; // Utility functions
+import {
+  showToast,
+  handleApiError,
+  formatDateForInput as formatDateForInputHelper,
+} from "../utils/helpers"; // Utility functions
 import apiClient from "../utils/apiClient"; // Utility for making API requests
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
 import "../css/Style.css"; // General styles
-import "../css/Items.css"; 
+import "../css/Items.css"; // Assuming this is still needed for other parts of Quotations.jsx
 import ReusableModal from "../components/ReusableModal.jsx";
+import QuotationReportModal from "../components/QuotationReportModal.jsx";
+import { Modal as BsModal, Spinner } from "react-bootstrap";
+import { saveAs } from "file-saver"; // Import saveAs statically
 
 const GoodsTable = ({
-    goods,
-    handleGoodsChange,
-    isEditing, // currentQuotation prop removed as isEditing implies its context
-    onAddItem,
-    onDeleteItem,
-  }) => {
-    return (
-      <div className="table-responsive">
-        <Table bordered className="mb-3">
-          <thead>
-            <tr>
-              <th>Sr No.</th>
-              <th>
-                Description <span className="text-danger">*</span>
-              </th>
-              <th>HSN/SAC</th>
-              <th>
-                Qty <span className="text-danger">*</span>
-              </th>
-              <th>
-                Unit <span className="text-danger">*</span>
-              </th>
-              <th>
-                Price <span className="text-danger">*</span>
-              </th>
-              <th>Amount</th>
-              <th>Action</th>
+  goods,
+  handleGoodsChange,
+  isEditing, // currentQuotation prop removed as isEditing implies its context
+  onAddItem,
+  onDeleteItem,
+}) => {
+  return (
+    <div className="table-responsive">
+      <Table bordered className="mb-3">
+        <thead>
+          <tr>
+            <th>Sr No.</th>
+            <th>
+              Description <span className="text-danger">*</span>
+            </th>
+            <th>HSN/SAC</th>
+            <th>
+              Qty <span className="text-danger">*</span>
+            </th>
+            <th>
+              Unit <span className="text-danger">*</span>
+            </th>
+            <th>
+              Price <span className="text-danger">*</span>
+            </th>
+            <th>Amount</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {goods.map((item, index) => (
+            <tr key={index}>
+              <td>{item.srNo}</td>
+              <td>
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.description || ""}
+                />
+              </td>
+              <td>
+                <Form.Control
+                  plaintext
+                  readOnly
+                  value={item.hsnSacCode || ""}
+                />
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.quantity || 0
+                ) : (
+                  <Form.Control
+                    required
+                    type="number"
+                    min="1"
+                    value={item.quantity || 1}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "quantity", e.target.value)
+                    }
+                  />
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  item.unit || "Nos"
+                ) : (
+                  <Form.Control
+                    as="select"
+                    value={item.unit || "Nos"}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
+                  >
+                    <option value="Nos">Nos</option>
+                    <option value="Mtr">Mtr</option>
+                    <option value="PKT">PKT</option>
+                    <option value="Pair">Pair</option>
+                    <option value="Set">Set</option>
+                    <option value="Bottle">Bottle</option>
+                    <option value="KG">KG</option>
+                  </Form.Control>
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  (item.price || 0).toFixed(2)
+                ) : (
+                  <Form.Control
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.price || 0}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "price", e.target.value)
+                    }
+                    readOnly={
+                      isEditing &&
+                      !(Number(item.maxDiscountPercentage || 0) > 0)
+                    }
+                  />
+                )}
+              </td>
+              <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+              <td className="align-middle">
+                {isEditing && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onDeleteItem(index)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {goods.map((item, index) => (
-              <tr key={index}>
-                <td>{item.srNo}</td>
-                <td>
-                  <Form.Control
-                    plaintext
-                    readOnly
-                    value={item.description || ""}
-                  />
-                </td>
-                <td>
-                  <Form.Control
-                    plaintext
-                    readOnly
-                    value={item.hsnSacCode || ""}
-                  />
-                </td>
-                <td>
-                  {!isEditing ? (
-                    item.quantity || 0
-                  ) : (
-                    <Form.Control
-                      required
-                      type="number"
-                      min="1"
-                      value={item.quantity || 1}
-                      onChange={(e) =>
-                        handleGoodsChange(index, "quantity", e.target.value)
-                      }
-                    />
-                  )}
-                </td>
-                <td>
-                  {!isEditing ? (
-                    item.unit || "Nos"
-                  ) : (
-                    <Form.Control
-                      as="select"
-                      value={item.unit || "Nos"}
-                      onChange={(e) =>
-                        handleGoodsChange(index, "unit", e.target.value)
-                      }
-                    >
-                      <option value="Nos">Nos</option>
-                      <option value="Mtr">Mtr</option>
-                      <option value="PKT">PKT</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Set">Set</option>
-                      <option value="Bottle">Bottle</option>
-                      <option value="KG">KG</option>
-                    </Form.Control>
-                  )}
-                </td>
-                <td>
-                  {!isEditing ? (
-                    (item.price || 0).toFixed(2)
-                  ) : (
-                    <Form.Control
-                      required
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.price || 0}
-                      onChange={(e) =>
-                        handleGoodsChange(index, "price", e.target.value)
-                      }
-                      readOnly={
-                        isEditing &&
-                        !(Number(item.maxDiscountPercentage || 0) > 0)
-                      }
-                    />
-                  )}
-                </td>
-                <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
-                <td className="align-middle">
-                  {isEditing && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => onDeleteItem(index)}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-  
-        {isEditing && (
-          <div className="mb-3">
-            <h6>Search and Add Items</h6>
-            <ItemSearchComponent
-              onItemSelect={onAddItem}
-              placeholder="Search items to add to quotation..."
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
+          ))}
+        </tbody>
+      </Table>
+
+      {isEditing && (
+        <div className="mb-3">
+          <h6>Search and Add Items</h6>
+          <ItemSearchComponent
+            onItemSelect={onAddItem}
+            placeholder="Search items to add to quotation..."
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
@@ -179,7 +186,9 @@ export default function Quotations() {
   const auth = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
-
+  const [showQuotationReportModal, setShowQuotationReportModal] = useState(false);
+  // reportPeriod, quotationReportSummary, reportLoading, exportLoading states are removed
+  // as QuotationReportModal will manage these internally.
   const quotationFormId = "quotation-form";
   const generateQuotationNumber = () => {
     const now = new Date();
@@ -241,7 +250,8 @@ export default function Quotations() {
       const token = getAuthTokenUtil(); // Use utility
       if (!token) throw new Error("No authentication token found");
 
-      const responseData = await apiClient("/clients", { // Use apiClient
+      const responseData = await apiClient("/clients", {
+        // Use apiClient
         method: "POST",
         body: clientPayload,
       });
@@ -270,7 +280,12 @@ export default function Quotations() {
         toast.error("Failed to save client: Unexpected response from server.");
       }
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to save client details.", auth.user, "clientActivity");
+      const errorMessage = handleApiError(
+        error,
+        "Failed to save client details.",
+        auth.user,
+        "clientActivity"
+      );
       setError(errorMessage);
       toast.error(errorMessage);
 
@@ -299,7 +314,8 @@ export default function Quotations() {
   const initialQuotationData = {
     date: formatDateForInputHelper(new Date()), // Use helper
     referenceNumber: generateQuotationNumber(),
-    validityDate: formatDateForInputHelper( // Use helper
+    validityDate: formatDateForInputHelper(
+      // Use helper
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
     orderIssuedBy: "",
@@ -357,7 +373,12 @@ export default function Quotations() {
       setQuotationsCount(data.length);
       setError(null);
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to load quotations. Please try again.", auth.user, "quotationActivity");
+      const errorMessage = handleApiError(
+        error,
+        "Failed to load quotations. Please try again.",
+        auth.user,
+        "quotationActivity"
+      );
       setError(errorMessage);
       showToast(errorMessage, false);
       // handleApiError already logs, but if more specific logging is needed:
@@ -376,7 +397,8 @@ export default function Quotations() {
         );
       }
 
-      if (error.status === 401) { // apiClient error structure
+      if (error.status === 401) {
+        // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
@@ -805,9 +827,13 @@ export default function Quotations() {
         : "/quotations";
       const method = currentQuotation ? "put" : "post";
 
-      const responseData = await apiClient(url, { method, body: submissionData }); // Use apiClient
+      const responseData = await apiClient(url, {
+        method,
+        body: submissionData,
+      }); // Use apiClient
 
-      if (responseData) { // apiClient returns data directly on success
+      if (responseData) {
+        // apiClient returns data directly on success
         fetchQuotations();
         setShowModal(false);
         resetForm();
@@ -835,8 +861,14 @@ export default function Quotations() {
         }
       }
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to save quotation. Please try again.", auth.user, "quotationActivity");
-      if (error.status === 401) { // apiClient error structure
+      const errorMessage = handleApiError(
+        error,
+        "Failed to save quotation. Please try again.",
+        auth.user,
+        "quotationActivity"
+      );
+      if (error.status === 401) {
+        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
         return; // Already handled by handleApiError and toast
       }
@@ -963,7 +995,12 @@ export default function Quotations() {
       const data = await apiClient(`/tickets/check/${quotationNumber}`);
       return data.exists;
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to check for existing ticket.", auth.user, "ticketActivity");
+      const errorMessage = handleApiError(
+        error,
+        "Failed to check for existing ticket.",
+        auth.user,
+        "ticketActivity"
+      );
       toast.error(errorMessage);
       if (auth.user) {
         frontendLogger.error(
@@ -1037,12 +1074,14 @@ export default function Quotations() {
         },
       };
 
-      const responseData = await apiClient("/tickets", { // Use apiClient
+      const responseData = await apiClient("/tickets", {
+        // Use apiClient
         method: "POST",
         body: completeTicketData,
       });
 
-      if (responseData) { // apiClient returns data directly on success
+      if (responseData) {
+        // apiClient returns data directly on success
         setShowTicketModal(false);
         setError(null);
         toast.success(
@@ -1064,7 +1103,12 @@ export default function Quotations() {
         // navigate("/tickets"); // Optional: navigate to tickets page
       }
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to create ticket. Please try again.", auth.user, "ticketActivity");
+      const errorMessage = handleApiError(
+        error,
+        "Failed to create ticket. Please try again.",
+        auth.user,
+        "ticketActivity"
+      );
       setError(errorMessage);
       toast.error(errorMessage);
 
@@ -1198,8 +1242,14 @@ export default function Quotations() {
         );
       }
     } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to delete quotation. Please try again.", auth.user, "quotationActivity");
-      if (error.status === 401) { // apiClient error structure
+      const errorMessage = handleApiError(
+        error,
+        "Failed to delete quotation. Please try again.",
+        auth.user,
+        "quotationActivity"
+      );
+      if (error.status === 401) {
+        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
         // toast.error is handled by handleApiError
         setIsLoading(false);
@@ -1325,6 +1375,13 @@ export default function Quotations() {
             <Button variant="primary" onClick={openCreateModal}>
               Create New Quotation
             </Button>
+            <Button
+              variant="info"
+              onClick={() => setShowQuotationReportModal(true)}
+              disabled={isLoading}
+            >
+              View Report
+            </Button>
           </div>
         </div>
 
@@ -1422,7 +1479,9 @@ export default function Quotations() {
               isLoading={isLoading}
               // Disable create ticket button if status is 'closed' or 'running'
               isCreateTicketDisabled={
-                quotation.status === "closed" || quotation.status === "running" || quotations.status ==="hold"
+                quotation.status === "closed" ||
+                quotation.status === "running" ||
+                quotations.status === "hold"
               }
               createTicketDisabledTooltip={
                 quotation.status === "closed" || quotation.status === "running"
@@ -1461,7 +1520,12 @@ export default function Quotations() {
               >
                 Close
               </Button>
-              <Button variant="primary" type="submit" form={quotationFormId} disabled={isLoading}>
+              <Button
+                variant="primary"
+                type="submit"
+                form={quotationFormId}
+                disabled={isLoading}
+              >
                 {isLoading
                   ? currentQuotation
                     ? "Updating..."
@@ -1505,10 +1569,11 @@ export default function Quotations() {
                   onChange={handleInputChange}
                 />
               </Form.Group>
-              {new Date(quotationData.validityDate) < new Date(quotationData.date) && (
-                  <Alert variant="warning" className="mt-0 mb-2 p-2 small">
-                    Warning: Validity date is before the issue date.
-                  </Alert>
+              {new Date(quotationData.validityDate) <
+                new Date(quotationData.date) && (
+                <Alert variant="warning" className="mt-0 mb-2 p-2 small">
+                  Warning: Validity date is before the issue date.
+                </Alert>
               )}
               <Form.Group className="mb-3 col-md-4">
                 <Form.Label>
@@ -1679,9 +1744,7 @@ export default function Quotations() {
               </div>
               <div className="row">
                 <div className="col-md-12">
-                  <h5>
-                    Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
-                  </h5>
+                  <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
                 </div>
               </div>
             </div>
@@ -1720,7 +1783,12 @@ export default function Quotations() {
           }
         >
           {currentQuotation && (
-            <div className="flex-grow-1 d-flex flex-column overflow-hidden" style={{ height: '80vh' }}> {/* Adjust height as needed */}
+            <div
+              className="flex-grow-1 d-flex flex-column overflow-hidden"
+              style={{ height: "80vh" }}
+            >
+              {" "}
+              {/* Adjust height as needed */}
               <PDFViewer className="flex-grow-1 w-100">
                 <QuotationPDF quotation={currentQuotation} />
               </PDFViewer>
@@ -1748,6 +1816,11 @@ export default function Quotations() {
           }}
         />
       </div>
+      {/* Replaced BsModal with QuotationReportModal */}
+      <QuotationReportModal
+        show={showQuotationReportModal}
+        onHide={() => setShowQuotationReportModal(false)}
+      />
     </div>
   );
 }
