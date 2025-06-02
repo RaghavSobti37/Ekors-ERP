@@ -26,6 +26,7 @@ import "../css/Style.css"; // General styles
 import "../css/Items.css"; // Assuming this is still needed for other parts of Quotations.jsx
 import ReusableModal from "../components/ReusableModal.jsx";
 import QuotationReportModal from "../components/QuotationReportModal.jsx";
+import { FaChartBar } from "react-icons/fa"; // Import icon for report button
 import { Modal as BsModal, Spinner } from "react-bootstrap";
 import { saveAs } from "file-saver"; // Import saveAs statically
 
@@ -1300,7 +1301,7 @@ export default function Quotations() {
           <h2 style={{ color: "black" }}>Quotations</h2>
           <div
             className="d-flex align-items-center gap-3"
-            style={{ width: "80%" }}
+            style={{ width: "82%" }}
           >
             <SearchBar
               value={searchTerm}
@@ -1373,14 +1374,14 @@ export default function Quotations() {
             </div>
 
             <Button variant="primary" onClick={openCreateModal}>
-              Create New Quotation
+              ➕ Quotation
             </Button>
             <Button
               variant="info"
               onClick={() => setShowQuotationReportModal(true)}
               disabled={isLoading}
             >
-              View Report
+              <FaChartBar className="me-1" /> Report
             </Button>
           </div>
         </div>

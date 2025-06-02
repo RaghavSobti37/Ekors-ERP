@@ -1475,17 +1475,10 @@ setTransferHistoryDisplay(history);
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Tickets Overview</h2>
-          <div className="d-flex align-items-center gap-2">
-            <Button
-              variant="info"
-              onClick={() => setShowTicketReportModal(true)}
-              title="View Ticket Reports"
-            >
-              <FaChartBar className="me-1" /> Reports
-            </Button>
+         
             <div
               className="d-flex align-items-center gap-3"
-              style={{ minWidth: "500px" }} // Adjust as needed
+              style={{ width: "35%" }}
             >
               <SearchBar
                 value={searchTerm}
@@ -1497,7 +1490,7 @@ setTransferHistoryDisplay(history);
                 className="flex-grow-1"
               />
             </div>
-            <div className="filter-radio-group">
+            <div className="filter-radio-group d-flex flex-wrap align-items-center">
               <Form.Check
                 type="radio"
                 inline
@@ -1547,7 +1540,14 @@ setTransferHistoryDisplay(history);
                 }}
               />
             </div>
-          </div>
+            <Button
+              variant="info"
+              onClick={() => setShowTicketReportModal(true)}
+              title="View Ticket Reports"
+            >
+              <FaChartBar className="me-1" /> Report
+            </Button>
+          
         </div>
 
         {error && (
