@@ -66,15 +66,15 @@ mountRoute('/api', frontendLogRoute);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log(`[ROUTE MOUNTED] /uploads (static)`);
 
-// ---------------------------
-// Static Serving for Frontend (React)
-app.use(express.static(path.join(__dirname, '../client/dist')));
-console.log('[STATIC] Serving React frontend');
+// // ---------------------------
+// // Static Serving for Frontend (React)
+// app.use(express.static(path.join(__dirname, '../client/dist')));
+// console.log('[STATIC] Serving React frontend');
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
-console.log('[CATCH-ALL] React Router fallback enabled');
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+// });
+// console.log('[CATCH-ALL] React Router fallback enabled');
 
 // ---------------------------
 // Global Error Handler
