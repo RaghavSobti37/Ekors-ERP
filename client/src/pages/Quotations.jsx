@@ -1,198 +1,160 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import axios from "axios";
-import { Modal, Button, Form, Table, Alert } from "react-bootstrap";
-import {
-  Eye, // View
-  PencilSquare, // Edit
-  Trash, // Delete
-  PlusSquare, // Create Ticket
-} from "react-bootstrap-icons";
-import Navbar from "../components/Navbar.jsx";
-import { useAuth } from "../context/AuthContext";
+import { Button, Form, Table, Alert } from "react-bootstrap";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
+import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-import ClientSearchComponent from "../components/ClientSearchComponent.jsx";
-import ItemSearchComponent from "../components/ItemSearch";
-import QuotationPDF from "../components/QuotationPDF";
-import CreateTicketModal from "../components/CreateTicketModal.jsx";
-import "../css/Quotation.css";
-import "../css/Style.css";
-import Pagination from "../components/Pagination";
-import "../css/Items.css";
-import ReusableTable from "../components/ReusableTable.jsx";
+import ClientSearchComponent from "../components/ClientSearchComponent.jsx"; // Component for searching clients
+import ItemSearchComponent from "../components/ItemSearch"; // Component for searching items
+import QuotationPDF from "../components/QuotationPDF"; // Component for rendering Quotation PDF
+import CreateTicketModal from "../components/CreateTicketModal.jsx"; // Modal for creating tickets from quotations
+import Pagination from "../components/Pagination"; // Component for table pagination
+import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-// SortIndicator is not directly used here but ReusableTable might use it.
-// import SortIndicator from "../components/SortIndicator.jsx";
-
-import ActionButtons from "../components/ActionButtons";
-import { ToastContainer, toast } from "react-toastify";
-import frontendLogger from "../utils/frontendLogger.js";
+import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
+import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
+import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import "react-toastify/dist/ReactToastify.css";
-import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
-
-import { showToast, handleApiError } from "../utils/helpers";
-
-const fullScreenModalStyle = {
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: "95vw",
-  height: "95vh",
-  maxWidth: "none",
-  margin: 0,
-  padding: 0,
-  overflow: "auto",
-  backgroundColor: "white",
-  border: "1px solid #dee2e6",
-  borderRadius: "0.3rem",
-  boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-  zIndex: 1050,
-};
-
-const formatDateForInput = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"; // Components for PDF viewing and downloading
+import { showToast, handleApiError, formatDateForInput as formatDateForInputHelper } from "../utils/helpers"; // Utility functions
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import "../css/Style.css"; // General styles
+import "../css/Items.css"; 
+import ReusableModal from "../components/ReusableModal.jsx";
 
 const GoodsTable = ({
-  goods,
-  handleGoodsChange,
-  currentQuotation,
-  isEditing,
-  onAddItem,
-  onDeleteItem,
-}) => {
-  return (
-    <div className="table-responsive">
-      <Table bordered className="mb-3">
-        <thead>
-          <tr>
-            <th>Sr No.</th>
-            <th>
-              Description <span className="text-danger">*</span>
-            </th>
-            <th>HSN/SAC</th>
-            <th>
-              Qty <span className="text-danger">*</span>
-            </th>
-            <th>
-              Unit <span className="text-danger">*</span>
-            </th>
-            <th>
-              Price <span className="text-danger">*</span>
-            </th>
-            <th>Amount</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {goods.map((item, index) => (
-            <tr key={index}>
-              <td>{item.srNo}</td>
-              <td>
-                <Form.Control
-                  plaintext
-                  readOnly
-                  value={item.description || ""}
-                />
-              </td>
-              <td>
-                <Form.Control
-                  plaintext
-                  readOnly
-                  value={item.hsnSacCode || ""}
-                />
-              </td>
-              <td>
-                {!isEditing ? (
-                  item.quantity || 0
-                ) : (
-                  <Form.Control
-                    required
-                    type="number"
-                    min="1"
-                    value={item.quantity || 1}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "quantity", e.target.value)
-                    }
-                  />
-                )}
-              </td>
-              <td>
-                {!isEditing ? (
-                  item.unit || "Nos"
-                ) : (
-                  <Form.Control
-                    as="select"
-                    value={item.unit || "Nos"}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "unit", e.target.value)
-                    }
-                  >
-                    <option value="Nos">Nos</option>
-                    <option value="Mtr">Mtr</option>
-                    <option value="PKT">PKT</option>
-                    <option value="Pair">Pair</option>
-                    <option value="Set">Set</option>
-                    <option value="Bottle">Bottle</option>
-                    <option value="KG">KG</option>
-                  </Form.Control>
-                )}
-              </td>
-              <td>
-                {!isEditing ? (
-                  (item.price || 0).toFixed(2)
-                ) : (
-                  <Form.Control
-                    required
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.price || 0}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "price", e.target.value)
-                    }
-                    readOnly={
-                      isEditing &&
-                      !(Number(item.maxDiscountPercentage || 0) > 0)
-                    }
-                  />
-                )}
-              </td>
-              <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
-              <td className="align-middle">
-                {isEditing && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => onDeleteItem(index)}
-                  >
-                    Delete
-                  </Button>
-                )}
-              </td>
+    goods,
+    handleGoodsChange,
+    isEditing, // currentQuotation prop removed as isEditing implies its context
+    onAddItem,
+    onDeleteItem,
+  }) => {
+    return (
+      <div className="table-responsive">
+        <Table bordered className="mb-3">
+          <thead>
+            <tr>
+              <th>Sr No.</th>
+              <th>
+                Description <span className="text-danger">*</span>
+              </th>
+              <th>HSN/SAC</th>
+              <th>
+                Qty <span className="text-danger">*</span>
+              </th>
+              <th>
+                Unit <span className="text-danger">*</span>
+              </th>
+              <th>
+                Price <span className="text-danger">*</span>
+              </th>
+              <th>Amount</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-
-      {isEditing && (
-        <div className="mb-3">
-          <h6>Search and Add Items</h6>
-          <ItemSearchComponent
-            onItemSelect={onAddItem}
-            placeholder="Search items to add to quotation..."
-          />
-        </div>
-      )}
-    </div>
-  );
-};
+          </thead>
+          <tbody>
+            {goods.map((item, index) => (
+              <tr key={index}>
+                <td>{item.srNo}</td>
+                <td>
+                  <Form.Control
+                    plaintext
+                    readOnly
+                    value={item.description || ""}
+                  />
+                </td>
+                <td>
+                  <Form.Control
+                    plaintext
+                    readOnly
+                    value={item.hsnSacCode || ""}
+                  />
+                </td>
+                <td>
+                  {!isEditing ? (
+                    item.quantity || 0
+                  ) : (
+                    <Form.Control
+                      required
+                      type="number"
+                      min="1"
+                      value={item.quantity || 1}
+                      onChange={(e) =>
+                        handleGoodsChange(index, "quantity", e.target.value)
+                      }
+                    />
+                  )}
+                </td>
+                <td>
+                  {!isEditing ? (
+                    item.unit || "Nos"
+                  ) : (
+                    <Form.Control
+                      as="select"
+                      value={item.unit || "Nos"}
+                      onChange={(e) =>
+                        handleGoodsChange(index, "unit", e.target.value)
+                      }
+                    >
+                      <option value="Nos">Nos</option>
+                      <option value="Mtr">Mtr</option>
+                      <option value="PKT">PKT</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Set">Set</option>
+                      <option value="Bottle">Bottle</option>
+                      <option value="KG">KG</option>
+                    </Form.Control>
+                  )}
+                </td>
+                <td>
+                  {!isEditing ? (
+                    (item.price || 0).toFixed(2)
+                  ) : (
+                    <Form.Control
+                      required
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.price || 0}
+                      onChange={(e) =>
+                        handleGoodsChange(index, "price", e.target.value)
+                      }
+                      readOnly={
+                        isEditing &&
+                        !(Number(item.maxDiscountPercentage || 0) > 0)
+                      }
+                    />
+                  )}
+                </td>
+                <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+                <td className="align-middle">
+                  {isEditing && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => onDeleteItem(index)}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+  
+        {isEditing && (
+          <div className="mb-3">
+            <h6>Search and Add Items</h6>
+            <ItemSearchComponent
+              onItemSelect={onAddItem}
+              placeholder="Search items to add to quotation..."
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
 export default function Quotations() {
   const [showModal, setShowModal] = useState(false);
@@ -218,36 +180,7 @@ export default function Quotations() {
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
 
-  const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-      return token || null;
-    } catch (e) {
-      toast.error("Error accessing local storage for authentication token.");
-      const errorDetails = {
-        errorMessage: e.message,
-        stack: e.stack,
-        context: "getAuthToken - localStorage access",
-      };
-      if (auth.user) {
-        frontendLogger.error(
-          "localStorageAccess",
-          "Failed to get auth token from localStorage",
-          auth.user,
-          errorDetails
-        );
-      } else {
-        frontendLogger.error(
-          "localStorageAccess",
-          "Failed to get auth token from localStorage (user not authenticated)",
-          null,
-          errorDetails
-        );
-      }
-      return null;
-    }
-  };
-
+  const quotationFormId = "quotation-form";
   const generateQuotationNumber = () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -305,20 +238,14 @@ export default function Quotations() {
       phone: phone,
     };
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) throw new Error("No authentication token found");
 
-      const response = await axios.post(
-        "http://localhost:3000/api/clients",
-        clientPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (response.data && response.data._id) {
+      const responseData = await apiClient("/clients", { // Use apiClient
+        method: "POST",
+        body: clientPayload,
+      });
+      if (responseData && responseData._id) {
         setQuotationData((prev) => ({
           ...prev,
           client: { ...response.data },
@@ -332,8 +259,8 @@ export default function Quotations() {
             "New client saved successfully",
             auth.user,
             {
-              clientId: response.data._id,
-              clientName: response.data.companyName,
+              clientId: responseData._id,
+              clientName: responseData.companyName, // Corrected: use responseData
               action: "SAVE_NEW_CLIENT_SUCCESS",
             }
           );
@@ -343,30 +270,23 @@ export default function Quotations() {
         toast.error("Failed to save client: Unexpected response from server.");
       }
     } catch (error) {
-      let errorMessage = "Failed to save client details.";
-      if (error.response?.data?.field === "gstNumber") {
-        errorMessage =
-          error.response.data.message ||
-          "This GST Number is already registered.";
-      } else if (error.response?.data?.field === "email") {
-        errorMessage =
-          error.response.data.message || "This Email is already registered.";
-      } else {
-        errorMessage = error.response?.data?.message || errorMessage;
-      }
+      const errorMessage = handleApiError(error, "Failed to save client details.", auth.user, "clientActivity");
       setError(errorMessage);
       toast.error(errorMessage);
 
       if (auth.user) {
+        // handleApiError already logs, but if more specific logging is needed:
         frontendLogger.error(
           "clientActivity",
           "Failed to save new client",
           auth.user,
           {
             clientPayload: clientPayload,
-            errorMessage: error.response?.data?.message || error.message,
+            // Error details are already part of the error object passed to handleApiError
+            // but can be logged again if needed for this specific context
+            errorMessage: error.data?.message || error.message, // apiClient error structure
             stack: error.stack,
-            responseData: error.response?.data,
+            responseData: error.data,
             action: "SAVE_NEW_CLIENT_FAILURE",
           }
         );
@@ -377,9 +297,9 @@ export default function Quotations() {
   };
 
   const initialQuotationData = {
-    date: formatDateForInput(new Date()),
+    date: formatDateForInputHelper(new Date()), // Use helper
     referenceNumber: generateQuotationNumber(),
-    validityDate: formatDateForInput(
+    validityDate: formatDateForInputHelper( // Use helper
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
     orderIssuedBy: "",
@@ -417,7 +337,7 @@ export default function Quotations() {
 
     setIsLoading(true);
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -427,27 +347,20 @@ export default function Quotations() {
         params.append("status", statusFilter);
       }
 
-      const url = `http://localhost:3000/api/quotations${
+      const endpoint = `/quotations${
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const data = await apiClient(endpoint); // Use apiClient
 
-      setQuotations(response.data);
-      setQuotationsCount(response.data.length);
+      setQuotations(data);
+      setQuotationsCount(data.length);
       setError(null);
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to load quotations. Please try again.";
+      const errorMessage = handleApiError(error, "Failed to load quotations. Please try again.", auth.user, "quotationActivity");
       setError(errorMessage);
       showToast(errorMessage, false);
-
+      // handleApiError already logs, but if more specific logging is needed:
       if (auth.user) {
         frontendLogger.error(
           "quotationActivity",
@@ -455,15 +368,15 @@ export default function Quotations() {
           auth.user,
           {
             errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
+            // stack: error.stack, // Already in handleApiError
+            // responseData: error.response?.data, // Already in handleApiError
             statusFilter,
             action: "FETCH_QUOTATIONS_FAILURE",
           }
         );
       }
 
-      if (error.response?.status === 401) {
+      if (error.status === 401) { // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
@@ -856,7 +769,7 @@ export default function Quotations() {
     setError(null);
 
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -888,21 +801,13 @@ export default function Quotations() {
       };
 
       const url = currentQuotation
-        ? `http://localhost:3000/api/quotations/${currentQuotation._id}`
-        : "http://localhost:3000/api/quotations";
+        ? `/quotations/${currentQuotation._id}`
+        : "/quotations";
       const method = currentQuotation ? "put" : "post";
 
-      const response = await axios({
-        method: method.toLowerCase(),
-        url: url,
-        data: submissionData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const responseData = await apiClient(url, { method, body: submissionData }); // Use apiClient
 
-      if (response.status === 200 || response.status === 201) {
+      if (responseData) { // apiClient returns data directly on success
         fetchQuotations();
         setShowModal(false);
         resetForm();
@@ -922,8 +827,7 @@ export default function Quotations() {
             auth.user,
             {
               quotationId: response.data._id,
-              referenceNumber: submissionData.referenceNumber,
-              action: currentQuotation
+              action: currentQuotation // Corrected: use responseData
                 ? "UPDATE_QUOTATION_SUCCESS"
                 : "CREATE_QUOTATION_SUCCESS",
             }
@@ -931,20 +835,10 @@ export default function Quotations() {
         }
       }
     } catch (error) {
-      let errorMessage = "Failed to save quotation. Please try again.";
-      if (error.response) {
-        errorMessage =
-          error.response.data.message ||
-          error.response.data.error ||
-          errorMessage;
-        if (error.response.status === 401) {
-          navigate("/login", { state: { from: "/quotations" } });
-          toast.error("Authentication failed. Please log in again.");
-          return;
-        }
-      } else if (error.request) {
-        errorMessage =
-          "No response from server. Check your network connection.";
+      const errorMessage = handleApiError(error, "Failed to save quotation. Please try again.", auth.user, "quotationActivity");
+      if (error.status === 401) { // apiClient error structure
+        navigate("/login", { state: { from: "/quotations" } });
+        return; // Already handled by handleApiError and toast
       }
       setError(errorMessage);
       toast.error(errorMessage);
@@ -959,9 +853,9 @@ export default function Quotations() {
           {
             referenceNumber: quotationData.referenceNumber,
             quotationId: currentQuotation?._id,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
+            // errorMessage: error.data?.message || error.message, // Already in handleApiError
+            // stack: error.stack, // Already in handleApiError
+            // responseData: error.data, // Already in handleApiError
             submittedData: submissionData,
             action: currentQuotation
               ? "UPDATE_QUOTATION_FAILURE"
@@ -983,7 +877,7 @@ export default function Quotations() {
 
   const generateTicketNumber = async () => {
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1005,9 +899,9 @@ export default function Quotations() {
           "Failed to generate ticket number from API",
           auth.user,
           {
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
+            // errorMessage: error.data?.message || error.message, // apiClient error structure
+            // stack: error.stack,
+            // responseData: error.data,
             action: "GENERATE_TICKET_NUMBER_FAILURE",
           }
         );
@@ -1061,22 +955,16 @@ export default function Quotations() {
 
   const checkExistingTicket = async (quotationNumber) => {
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
-
-      const response = await axios.get(
-        `http://localhost:3000/api/tickets/check/${quotationNumber}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return response.data.exists;
+      // Use apiClient
+      const data = await apiClient(`/tickets/check/${quotationNumber}`);
+      return data.exists;
     } catch (error) {
-      toast.error("Failed to check for existing ticket.");
+      const errorMessage = handleApiError(error, "Failed to check for existing ticket.", auth.user, "ticketActivity");
+      toast.error(errorMessage);
       if (auth.user) {
         frontendLogger.error(
           "ticketActivity",
@@ -1114,7 +1002,7 @@ export default function Quotations() {
         return;
       }
 
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1149,31 +1037,25 @@ export default function Quotations() {
         },
       };
 
-      const response = await axios.post(
-        "http://localhost:3000/api/tickets",
-        completeTicketData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const responseData = await apiClient("/tickets", { // Use apiClient
+        method: "POST",
+        body: completeTicketData,
+      });
 
-      if (response.status === 201) {
+      if (responseData) { // apiClient returns data directly on success
         setShowTicketModal(false);
         setError(null);
         toast.success(
-          `Ticket ${response.data.ticketNumber} created successfully!`
+          `Ticket ${responseData.ticketNumber} created successfully!`
         );
         if (auth.user) {
           frontendLogger.info(
             "ticketActivity",
-            `Ticket ${response.data.ticketNumber} created successfully from quotation ${ticketData.quotationNumber}`,
+            `Ticket ${responseData.ticketNumber} created successfully from quotation ${ticketData.quotationNumber}`,
             auth.user,
             {
               action: "TICKET_CREATED_FROM_QUOTATION_SUCCESS",
-              ticketNumber: response.data.ticketNumber,
+              ticketNumber: responseData.ticketNumber, // Corrected: use responseData
               quotationNumber: ticketData.quotationNumber,
             }
           );
@@ -1182,10 +1064,7 @@ export default function Quotations() {
         // navigate("/tickets"); // Optional: navigate to tickets page
       }
     } catch (error) {
-      let errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to create ticket. Please try again.";
+      const errorMessage = handleApiError(error, "Failed to create ticket. Please try again.", auth.user, "ticketActivity");
       setError(errorMessage);
       toast.error(errorMessage);
 
@@ -1196,9 +1075,9 @@ export default function Quotations() {
           auth.user,
           {
             quotationNumber: ticketData.quotationNumber,
-            errorMessage: error.response?.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.response?.data,
+            // errorMessage: error.data?.message || error.message, // apiClient error structure
+            // stack: error.stack,
+            // responseData: error.data,
             ticketDataSubmitted: completeTicketData,
             action: "CREATE_TICKET_FROM_QUOTATION_FAILURE",
           }
@@ -1228,9 +1107,9 @@ export default function Quotations() {
     }
 
     setQuotationData({
-      date: formatDateForInput(quotation.date),
+      date: formatDateForInputHelper(quotation.date), // Use helper
       referenceNumber: quotation.referenceNumber,
-      validityDate: formatDateForInput(quotation.validityDate),
+      validityDate: formatDateForInputHelper(quotation.validityDate), // Use helper
       orderIssuedBy: orderIssuedByIdToSet,
       goods: quotation.goods.map((item) => ({
         ...item,
@@ -1269,7 +1148,7 @@ export default function Quotations() {
     setCurrentQuotation(null);
     setQuotationData({
       ...initialQuotationData,
-      date: formatDateForInput(new Date()),
+      date: formatDateForInputHelper(new Date()), // Use helper
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null },
@@ -1293,16 +1172,11 @@ export default function Quotations() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) throw new Error("No authentication token found");
-      await axios.delete(
-        `http://localhost:3000/api/quotations/${quotation._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+
+      await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" }); // Use apiClient
+
       setError(null);
       setCurrentQuotation(null);
       setShowModal(false);
@@ -1324,19 +1198,12 @@ export default function Quotations() {
         );
       }
     } catch (error) {
-      let errorMessage =
-        error.response?.data?.message ||
-        "Failed to delete quotation. Please try again.";
-      if (error.response) {
-        if (error.response.status === 401) {
-          navigate("/login", { state: { from: "/quotations" } });
-          toast.error("Authentication failed. Please log in again.");
-          setIsLoading(false);
-          return;
-        }
-      } else if (error.request) {
-        errorMessage =
-          "No response from server. Check your network connection.";
+      const errorMessage = handleApiError(error, "Failed to delete quotation. Please try again.", auth.user, "quotationActivity");
+      if (error.status === 401) { // apiClient error structure
+        navigate("/login", { state: { from: "/quotations" } });
+        // toast.error is handled by handleApiError
+        setIsLoading(false);
+        return;
       }
       setError(errorMessage);
       toast.error(errorMessage);
@@ -1344,7 +1211,6 @@ export default function Quotations() {
         frontendLogger.error(
           "quotationActivity",
           "Failed to delete quotation",
-          error, // Changed from error to auth.user, then back to error for full object
           auth.user,
           {
             quotationId: quotation._id,
@@ -1497,7 +1363,7 @@ export default function Quotations() {
               key: "validityDate",
               header: "Validity Date",
               sortable: true,
-              renderCell: (item) => formatDateForInput(item.validityDate),
+              renderCell: (item) => formatDateForInputHelper(item.validityDate), // Use helper
               // tooltip: "The date until which the quotation is valid."
             },
             {
@@ -1557,7 +1423,7 @@ export default function Quotations() {
               isLoading={isLoading}
               // Disable create ticket button if status is 'closed' or 'running'
               isCreateTicketDisabled={
-                quotation.status === "closed" || quotation.status === "running"
+                quotation.status === "closed" || quotation.status === "running" || quotations.status ==="hold"
               }
               createTicketDisabledTooltip={
                 quotation.status === "closed" || quotation.status === "running"
@@ -1571,288 +1437,257 @@ export default function Quotations() {
           theadClassName="table-dark"
         />
 
-        <Modal
+        <ReusableModal
           show={showModal}
           onHide={() => {
             setShowModal(false);
             setCurrentQuotation(null);
             resetForm();
           }}
-          dialogClassName="custom-modal"
-          centered
+          title={
+            currentQuotation
+              ? `Edit Quotation - ${quotationData.referenceNumber}`
+              : `Create New Quotation - ${quotationData.referenceNumber}`
+          }
+          footerContent={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowModal(false);
+                  setCurrentQuotation(null);
+                  resetForm();
+                }}
+                disabled={isLoading}
+              >
+                Close
+              </Button>
+              <Button variant="primary" type="submit" form={quotationFormId} disabled={isLoading}>
+                {isLoading
+                  ? currentQuotation
+                    ? "Updating..."
+                    : "Saving..."
+                  : currentQuotation
+                  ? "Update Quotation"
+                  : "Save Quotation"}
+              </Button>
+            </>
+          }
         >
-          <div style={fullScreenModalStyle}>
-            <Modal.Header
-              closeButton
-              onHide={() => {
-                setShowModal(false);
-                setCurrentQuotation(null);
-                resetForm();
-              }}
-              style={{
-                borderBottom: "1px solid #dee2e6",
-                padding: "1rem",
-                flexShrink: 0,
-              }}
-            >
-              <Modal.Title>
-                {currentQuotation
-                  ? `Edit Quotation - ${quotationData.referenceNumber}`
-                  : `Create New Quotation - ${quotationData.referenceNumber}`}
-              </Modal.Title>
-            </Modal.Header>
-            <Form
-              noValidate
-              validated={formValidated}
-              onSubmit={handleSubmit}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                flexGrow: 1,
-                overflow: "hidden",
-              }}
-            >
-              <Modal.Body
-                style={{
-                  flexGrow: 1,
-                  overflowY: "auto",
-                  padding: "20px",
-                }}
-              >
-                {error && <Alert variant="danger">{error}</Alert>}
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Issue Date <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="date"
-                      name="date"
-                      value={quotationData.date}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Validity Date <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="date"
-                      name="validityDate"
-                      value={quotationData.validityDate}
-                      onChange={handleInputChange}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-4">
-                    <Form.Label>
-                      Status <span className="text-danger">*</span>
-                    </Form.Label>
-                    {(currentQuotation &&
-                      (currentQuotation.status === "running" ||
-                        currentQuotation.status === "closed")) ||
-                    quotationData.status === "running" ||
-                    quotationData.status === "closed" ? (
-                      <Form.Control
-                        type="text"
-                        value={
-                          quotationData.status.charAt(0).toUpperCase() +
-                          quotationData.status.slice(1)
-                        }
-                        readOnly
-                      />
-                    ) : (
-                      <Form.Select
-                        required
-                        name="status"
-                        value={quotationData.status}
-                        onChange={handleInputChange}
-                      >
-                        <option value="open">Open</option>
-                        <option value="hold">Hold</option>
-                      </Form.Select>
-                    )}
-                  </Form.Group>
-                </div>
-
-                <h5>Client Details</h5>
-                <>
-                  <ClientSearchComponent
-                    onClientSelect={handleClientSelect}
-                    placeholder="Search & select client"
-                    currentClientId={selectedClientIdForForm}
-                  />
-                  {selectedClientIdForForm && (
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      className="mb-2 mt-1"
-                      onClick={() => {
-                        setSelectedClientIdForForm(null);
-                        setQuotationData((prev) => ({
-                          ...prev,
-                          client: {
-                            ...initialQuotationData.client,
-                            _id: null,
-                          },
-                        }));
-                      }}
-                    >
-                      Clear/Edit Client Details
-                    </Button>
-                  )}
-                </>
-
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Company Name <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      name="client.companyName"
-                      value={quotationData.client.companyName}
-                      onChange={
-                        !selectedClientIdForForm ? handleInputChange : undefined
-                      }
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      GST Number <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      required
-                      type="text"
-                      name="client.gstNumber"
-                      value={quotationData.client.gstNumber}
-                      onChange={
-                        !selectedClientIdForForm ? handleInputChange : undefined
-                      }
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                </div>
-                <div className="row">
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Email <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="email"
-                      name="client.email"
-                      value={quotationData.client.email}
-                      onChange={
-                        !selectedClientIdForForm ? handleInputChange : undefined
-                      }
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3 col-md-6">
-                    <Form.Label>
-                      Phone <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="tel"
-                      name="client.phone"
-                      value={quotationData.client.phone}
-                      onChange={
-                        !selectedClientIdForForm ? handleInputChange : undefined
-                      }
-                      readOnly={!!selectedClientIdForForm}
-                    />
-                  </Form.Group>
-                </div>
-
-                {!selectedClientIdForForm &&
-                  quotationData.client.companyName &&
-                  quotationData.client.gstNumber &&
-                  quotationData.client.email &&
-                  quotationData.client.phone && (
-                    <Button
-                      variant="success"
-                      onClick={handleSaveClientDetails}
-                      className="mb-3"
-                      disabled={isSavingClient}
-                    >
-                      {isSavingClient ? "Saving Client..." : "Save New Client"}
-                    </Button>
-                  )}
-
-                <h5>Goods Details</h5>
-                <GoodsTable
-                  goods={quotationData.goods}
-                  handleGoodsChange={handleGoodsChange}
-                  currentQuotation={currentQuotation}
-                  isEditing={true}
-                  onAddItem={handleAddItem}
-                  onDeleteItem={handleDeleteItem}
+          <Form
+            id={quotationFormId}
+            noValidate
+            validated={formValidated}
+            onSubmit={handleSubmit}
+          >
+            {error && <Alert variant="danger">{error}</Alert>}
+            <div className="row">
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  Issue Date <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="date"
+                  name="date"
+                  value={quotationData.date}
+                  onChange={handleInputChange}
                 />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  Validity Date <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="date"
+                  name="validityDate"
+                  value={quotationData.validityDate}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+              {new Date(quotationData.validityDate) < new Date(quotationData.date) && (
+                  <Alert variant="warning" className="mt-0 mb-2 p-2 small">
+                    Warning: Validity date is before the issue date.
+                  </Alert>
+              )}
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  Status <span className="text-danger">*</span>
+                </Form.Label>
+                {(currentQuotation &&
+                  (currentQuotation.status === "running" ||
+                    currentQuotation.status === "closed")) ||
+                quotationData.status === "running" ||
+                quotationData.status === "closed" ? (
+                  <Form.Control
+                    type="text"
+                    value={
+                      quotationData.status.charAt(0).toUpperCase() +
+                      quotationData.status.slice(1)
+                    }
+                    readOnly
+                  />
+                ) : (
+                  <Form.Select
+                    required
+                    name="status"
+                    value={quotationData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value="open">Open</option>
+                    <option value="hold">Hold</option>
+                  </Form.Select>
+                )}
+              </Form.Group>
+            </div>
 
-                <div className="bg-light p-3 rounded">
-                  <div className="row">
-                    <div className="col-md-4">
-                      <p>
-                        Total Quantity:{" "}
-                        <strong>{quotationData.totalQuantity}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        Total Amount:{" "}
-                        <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                    <div className="col-md-4">
-                      <p>
-                        GST (18%):{" "}
-                        <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
-                      </p>
-                    </div>
-                  </div>
-                  <div className="row">
-                    <div className="col-md-12">
-                      <h5>
-                        Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
-                      </h5>
-                    </div>
-                  </div>
-                </div>
-              </Modal.Body>
-              <Modal.Footer
-                style={{
-                  borderTop: "1px solid #dee2e6",
-                  padding: "15px",
-                  flexShrink: 0,
-                }}
-              >
+            <h5>Client Details</h5>
+            <>
+              <ClientSearchComponent
+                onClientSelect={handleClientSelect}
+                placeholder="Search & select client"
+                currentClientId={selectedClientIdForForm}
+              />
+              {selectedClientIdForForm && (
                 <Button
-                  variant="secondary"
+                  variant="outline-secondary"
+                  size="sm"
+                  className="mb-2 mt-1"
                   onClick={() => {
-                    setShowModal(false);
-                    setCurrentQuotation(null);
-                    resetForm();
+                    setSelectedClientIdForForm(null);
+                    setQuotationData((prev) => ({
+                      ...prev,
+                      client: {
+                        ...initialQuotationData.client,
+                        _id: null,
+                      },
+                    }));
                   }}
-                  disabled={isLoading}
                 >
-                  Close
+                  Clear/Edit Client Details
                 </Button>
-                <Button variant="primary" type="submit" disabled={isLoading}>
-                  {isLoading
-                    ? currentQuotation
-                      ? "Updating..."
-                      : "Saving..."
-                    : currentQuotation
-                    ? "Update Quotation"
-                    : "Save Quotation"}
+              )}
+            </>
+
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  Company Name <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="client.companyName"
+                  value={quotationData.client.companyName}
+                  onChange={
+                    !selectedClientIdForForm ? handleInputChange : undefined
+                  }
+                  readOnly={!!selectedClientIdForForm}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  GST Number <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="client.gstNumber"
+                  value={quotationData.client.gstNumber}
+                  onChange={
+                    !selectedClientIdForForm ? handleInputChange : undefined
+                  }
+                  readOnly={!!selectedClientIdForForm}
+                />
+              </Form.Group>
+            </div>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  Email <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="email"
+                  name="client.email"
+                  value={quotationData.client.email}
+                  onChange={
+                    !selectedClientIdForForm ? handleInputChange : undefined
+                  }
+                  readOnly={!!selectedClientIdForForm}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  Phone <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="tel"
+                  name="client.phone"
+                  value={quotationData.client.phone}
+                  onChange={
+                    !selectedClientIdForForm ? handleInputChange : undefined
+                  }
+                  readOnly={!!selectedClientIdForForm}
+                />
+              </Form.Group>
+            </div>
+
+            {!selectedClientIdForForm &&
+              quotationData.client.companyName &&
+              quotationData.client.gstNumber &&
+              quotationData.client.email &&
+              quotationData.client.phone && (
+                <Button
+                  variant="success"
+                  onClick={handleSaveClientDetails}
+                  className="mb-3"
+                  disabled={isSavingClient}
+                >
+                  {isSavingClient ? "Saving Client..." : "Save New Client"}
                 </Button>
-              </Modal.Footer>
-            </Form>
-          </div>
-        </Modal>
+              )}
+
+            <h5>Goods Details</h5>
+            <GoodsTable
+              goods={quotationData.goods}
+              handleGoodsChange={handleGoodsChange}
+              isEditing={true} // Always editing in this modal
+              onAddItem={handleAddItem}
+              onDeleteItem={handleDeleteItem}
+            />
+
+            <div className="bg-light p-3 rounded">
+              <div className="row">
+                <div className="col-md-4">
+                  <p>
+                    Total Quantity:{" "}
+                    <strong>{quotationData.totalQuantity}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    Total Amount:{" "}
+                    <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    GST (18%):{" "}
+                    <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <div className="row">
+                <div className="col-md-12">
+                  <h5>
+                    Grand Total: ₹{quotationData.grandTotal.toFixed(2)}
+                  </h5>
+                </div>
+              </div>
+            </div>
+          </Form>
+        </ReusableModal>
 
         <CreateTicketModal
           show={showTicketModal}
@@ -1864,41 +1699,35 @@ export default function Quotations() {
           error={error}
         />
 
-        <Modal
+        <ReusableModal
           show={showPdfModal}
           onHide={() => setShowPdfModal(false)}
-          dialogClassName="custom-modal"
-          contentClassName="custom-modal-content"
+          title={`Quotation PDF - ${currentQuotation?.referenceNumber}`}
+          footerContent={
+            currentQuotation && (
+              <div className="d-flex justify-content-center gap-2">
+                <PDFDownloadLink
+                  document={<QuotationPDF quotation={currentQuotation} />}
+                  fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
+                >
+                  {({ loading }) => (
+                    <Button variant="primary" disabled={loading}>
+                      {loading ? "Generating PDF..." : "Download PDF"}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+              </div>
+            )
+          }
         >
-          <Modal.Header closeButton>
-            <Modal.Title>
-              Quotation PDF - {currentQuotation?.referenceNumber}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body className="p-0 d-flex flex-column">
-            {currentQuotation && (
-              <>
-                <div className="flex-grow-1 d-flex flex-column overflow-hidden">
-                  <PDFViewer className="flex-grow-1 w-100 pdf-fullscreen-viewer">
-                    <QuotationPDF quotation={currentQuotation} />
-                  </PDFViewer>
-                </div>
-                <div className="d-flex justify-content-center gap-2 p-3 border-top">
-                  <PDFDownloadLink
-                    document={<QuotationPDF quotation={currentQuotation} />}
-                    fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
-                  >
-                    {({ loading }) => (
-                      <Button variant="primary" disabled={loading}>
-                        {loading ? "Generating PDF..." : "Download PDF"}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
-                </div>
-              </>
-            )}
-          </Modal.Body>
-        </Modal>
+          {currentQuotation && (
+            <div className="flex-grow-1 d-flex flex-column overflow-hidden" style={{ height: '80vh' }}> {/* Adjust height as needed */}
+              <PDFViewer className="flex-grow-1 w-100">
+                <QuotationPDF quotation={currentQuotation} />
+              </PDFViewer>
+            </div>
+          )}
+        </ReusableModal>
 
         <ToastContainer
           position="top-right"

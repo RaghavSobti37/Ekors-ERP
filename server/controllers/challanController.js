@@ -4,15 +4,16 @@ const logger = require("../utils/logger"); // Import logger
 
 // Create or Submit Challan
 exports.createChallan = async (req, res) => {
-  const user = req.user; // Pass user object if available (populated by auth middleware)
+  const user = req.user;
   try {
     const { companyName, phone, email, totalBilling, billNumber } = req.body;
     const challanData = {
-      companyName, // Log this detail
+      companyName,
       phone,
       email,
       totalBilling,
       billNumber,
+      createdBy: user._id, // Track creator
     };
 
     if (req.file) {
@@ -25,23 +26,40 @@ exports.createChallan = async (req, res) => {
 
     const newChallan = new Challan(challanData);
     await newChallan.save();
-    logger.info('challan', `Challan created successfully`, user, { challanId: newChallan._id, companyName: newChallan.companyName });
+    
+    logger.info('challan', `Challan created by user: ${user._id}`, user, { 
+      challanId: newChallan._id,
+      companyName: newChallan.companyName 
+    });
 
     res.status(201).json(newChallan);
   } catch (err) {
-    logger.error('challan', `Failed to create challan`, err, user, { requestBody: req.body });
+    logger.error('challan', `Failed to create challan by user: ${user._id}`, err, user);
     res.status(500).json({ error: "Failed to create challan" });
   }
 };
 
+
 // Get All Challans
 exports.getAllChallans = async (req, res) => {
+  const user = req.user; // Get the authenticated user
   try {
-    const challans = await Challan.find().select("-document");
-    // logger.info('challan', `Fetched all challans`, req.user); // Can be noisy, maybe debug level
+    let query = {};
+
+    // If the user is not a super-admin, filter challans by createdBy
+    if (user.role !== 'super-admin') {
+      query.createdBy = user._id;
+    }
+
+    const challans = await Challan.find(query) // Apply the query
+      .sort({ createdAt: -1 }) // Sort by creation date, newest first
+      .select("-document")
+      .populate('createdBy', 'firstname lastname email') // Populate creator info
+      .populate('updatedBy', 'firstname lastname email'); // Populate updater info
+      
     res.json(challans);
   } catch (err) {
-    logger.error('challan', `Failed to fetch all challans`, err, req.user);
+    logger.error('challan', `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`, err, user);
     res.status(500).json({ error: "Failed to fetch challans" });
   }
 };
@@ -49,15 +67,20 @@ exports.getAllChallans = async (req, res) => {
 // Get Single Challan
 exports.getChallanById = async (req, res) => {
   try {
-    const challan = await Challan.findById(req.params.id).select("-document.data");
+    const challan = await Challan.findById(req.params.id)
+      .select("-document.data")
+      .populate('createdBy', 'firstname lastname email')
+      .populate('updatedBy', 'firstname lastname email');
+      
     if (!challan) return res.status(404).json({ error: "Challan not found" });
-    logger.debug('challan', `Fetched challan by ID`, req.user, { challanId: req.params.id });
     res.json(challan);
   } catch (err) {
-    logger.error('challan', `Failed to fetch challan by ID: ${req.params.id}`, err, req.user);
+    logger.error('challan', `Failed to fetch challan: ${req.params.id}`, err);
     res.status(500).json({ error: "Failed to fetch challan" });
   }
 };
+
+
 
 // Get Document Preview
 exports.getDocument = async (req, res) => {
@@ -81,15 +104,20 @@ exports.getDocument = async (req, res) => {
 exports.updateChallan = async (req, res) => {
   const user = req.user;
   try {
+    // Explicitly pick fields to update to prevent unintended modifications
     const { companyName, phone, email, totalBilling, billNumber } = req.body;
+    const updateData = {};
 
-    const updateData = {
-      companyName,
-      phone,
-      email,
-      totalBilling,
-      billNumber,
-    };
+    if (companyName !== undefined) updateData.companyName = companyName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (email !== undefined) updateData.email = email;
+    if (totalBilling !== undefined) updateData.totalBilling = totalBilling;
+    // Allow billNumber to be set to an empty string (cleared) or a new value
+    if (billNumber !== undefined) updateData.billNumber = billNumber;
+
+    // Always set updatedBy
+    updateData.updatedBy = user._id;
+
 
     if (req.file) {
       updateData.document = {
@@ -99,11 +127,25 @@ exports.updateChallan = async (req, res) => {
       };
     }
 
-    const updated = await Challan.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    logger.info('challan', `Challan updated successfully`, user, { challanId: updated._id, companyName: updated.companyName });
+    // If no actual data fields are being updated (e.g., only a file or nothing)
+    // and no file, we might still want to update 'updatedBy' and 'updatedAt'
+    // Mongoose handles updatedAt automatically. findByIdAndUpdate will proceed.
+    // If updateData (excluding updatedBy and document) is empty, it means only metadata or file might change.
+
+    const updated = await Challan.findByIdAndUpdate(
+      req.params.id, 
+      updateData, 
+      { new: true }
+    );
+    
+    logger.info('challan', `Challan updated by user: ${user._id}`, user, {
+      challanId: updated._id,
+      companyName: updated.companyName 
+    });
+    
     res.json(updated);
   } catch (err) {
-    logger.error('challan', `Failed to update challan ID: ${req.params.id}`, err, req.user, { requestBody: req.body });
+    logger.error('challan', `Update failed by user: ${user._id}`, err, user);
     res.status(500).json({ error: "Failed to update challan" });
   }
 };
@@ -113,6 +155,7 @@ exports.deleteChallan = async (req, res) => {
   const challanId = req.params.id;
   const user = req.user; // Assuming req.user is populated by auth middleware
   const userId = user?._id;
+  let newBackupEntry = null; // Declare newBackupEntry here to ensure it's in scope for the catch block
 
   const logDetails = { userId, challanId, model: 'Challan' };
   logger.info('delete', `[DELETE_INITIATED] Challan ID: ${challanId}`, user, logDetails);
@@ -129,7 +172,7 @@ exports.deleteChallan = async (req, res) => {
 
     const backupData = challanToBackup.toObject();
 
-    const newBackupEntry = new ChallanBackup({
+    newBackupEntry = new ChallanBackup({ // Assign to the already declared variable
       ...backupData,
       originalId: challanToBackup._id,
       deletedBy: userId,
@@ -156,7 +199,9 @@ exports.deleteChallan = async (req, res) => {
   } catch (error) {
     logger.error('delete', `[DELETE_ERROR] Error during Challan deletion process for ID: ${challanId}.`, error, user, logDetails);
     // Check if backup was made before error
-    if (error.name === 'ValidationError' || !newBackupEntry || !newBackupEntry.isNew) { // Assuming newBackupEntry is defined if findById succeeds
+    // If newBackupEntry is null (error before its creation) OR
+    // if newBackupEntry exists but isNew is true (meaning .save() likely failed or didn't happen)
+    if (error.name === 'ValidationError' || !newBackupEntry || (newBackupEntry && newBackupEntry.isNew)) {
         logger.warn('delete', `[ROLLBACK_DELETE] Backup failed or error before backup for Challan ID: ${challanId}. Original document will not be deleted.`, user, logDetails);
     } else {
         const backupExists = await ChallanBackup.findOne({ originalId: challanId });

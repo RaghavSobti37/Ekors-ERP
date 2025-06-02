@@ -13,9 +13,6 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       console.log("[DEBUG Client AuthContext] Token found. Attempting to fetch current user.");
       try {
-        // IMPORTANT: Ensure you have a '/auth/me' or similar endpoint on your server
-        // that verifies the token and returns user details.
-        // It should respond with { user: { id, firstname, lastname, email, role, ... } } or similar
         const data = await apiClient("/auth/verify"); // Changed to /auth/verify to match server route
         setUser(data.user || data); // Adjust based on your /me endpoint response
         console.log("[DEBUG Client AuthContext] Current user fetched successfully:", data.user || data);

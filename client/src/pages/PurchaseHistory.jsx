@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
+import Pagination from '../components/Pagination'; // Component for table pagination
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import { handleApiError } from '../utils/helpers'; // Utility for consistent API error handling
+import { Table, Button, Alert, Form } from "react-bootstrap"; // Bootstrap components
 import "../css/Style.css";
-import Navbar from "../components/Navbar.jsx";
-import { getAuthToken } from "../utils/authUtils"; // Make sure this path is correct
-import Pagination from '../components/Pagination';
 
 export default function PurchaseHistory() {
   const [purchases, setPurchases] = useState([]);
@@ -23,37 +25,25 @@ export default function PurchaseHistory() {
     try {
       setLoading(true);
       setError(null);
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
 
       if (!token) {
         setError("Authentication token not found. Please log in again.");
         setLoading(false);
         return;
       }
-
-      // Add error handling and timeout
-      const response = await axios.get("http://localhost:3000/api/items/purchases/all", {
-        timeout: 10000, // 10 second timeout
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Added Authorization header
-        }
-      });
-
-
-      setPurchases(response.data);
-      console.log("Purchases fetched:", response.data.length);
+      // Use apiClient
+      const data = await apiClient("/items/purchases/all", { timeout: 10000 });
+      setPurchases(data);
     } catch (err) {
-      console.error("Error fetching purchases:", err);
-
-      // More detailed error handling
+      const errorMessage = handleApiError(err, "Failed to load purchase history.");
+      setError(errorMessage);
+      // Specific error messages based on error type can be part of handleApiError or added here
       if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
         setError("Cannot connect to the server. Please check if the backend is running.");
       } else if (err.response) {
-        // Server responded with an error status
         setError(`Server error: ${err.response.status} ${err.response.data?.message || err.response.statusText}`);
       } else if (err.request) {
-        // Request was made but no response received
         setError("No response received from server. Please check your connection.");
       } else {
         setError("Failed to load purchase history. Please try again.");
@@ -92,12 +82,10 @@ export default function PurchaseHistory() {
     setExpandedPurchase(expandedPurchase === purchaseId ? null : purchaseId);
   };
 
-  // Handle retry
   const handleRetry = () => {
     fetchPurchases();
   };
 
-  // Apply filters
   const filteredPurchases = purchases.filter((purchase) => {
     // Search term filter
     const matchesSearch =
@@ -105,7 +93,6 @@ export default function PurchaseHistory() {
       purchase.invoiceNumber.toString().toLowerCase().includes(searchTerm) ||
       (purchase.gstNumber && purchase.gstNumber.toLowerCase().includes(searchTerm));
 
-    // Date filter
     const purchaseDate = new Date(purchase.date);
     const matchesStartDate = dateFilter.startDate
       ? purchaseDate >= new Date(dateFilter.startDate)
@@ -114,7 +101,6 @@ export default function PurchaseHistory() {
       ? purchaseDate <= new Date(dateFilter.endDate)
       : true;
 
-    // Vendor filter
     const matchesVendor = vendorFilter
       ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase())
       : true;
@@ -122,7 +108,6 @@ export default function PurchaseHistory() {
     return matchesSearch && matchesStartDate && matchesEndDate && matchesVendor;
   });
 
-  // Pagination
   const indexOfLastPurchase = currentPage * purchasesPerPage;
   const indexOfFirstPurchase = indexOfLastPurchase - purchasesPerPage;
   const currentPurchases = filteredPurchases.slice(indexOfFirstPurchase, indexOfLastPurchase);
@@ -131,37 +116,12 @@ export default function PurchaseHistory() {
   // Get unique vendors for filter dropdown
   const uniqueVendors = [...new Set(purchases.map(p => p.companyName))];
 
-  // Calculate total purchase amount
   const calculatePurchaseTotal = (purchase) => {
     return purchase.items.reduce((total, item) => {
       const itemTotal = item.quantity * item.price * (1 + (item.gstRate || 0) / 100);
       return total + itemTotal;
     }, 0);
   };
-
-  // // Export purchases to CSV
-  // const exportToCSV = () => {
-  //   // Create CSV headers
-  //   let csv = "Date,Invoice Number,Vendor,GST Number,Item Count,Total Amount\n";
-
-  //   // Add data rows
-  //   filteredPurchases.forEach(purchase => {
-  //     const date = new Date(purchase.date).toLocaleDateString();
-  //     const total = calculatePurchaseTotal(purchase).toFixed(2);
-  //     csv += `"${date}","${purchase.invoiceNumber}","${purchase.companyName}","${purchase.gstNumber || ''}",${purchase.items.length},${total}\n`;
-  //   });
-
-  //   // Create download link
-  //   // const blob = new Blob([csv], { type: 'text/csv' });
-  //   const url = window.URL.createObjectURL(blob);
-  //   const a = document.createElement('a');
-  //   a.setAttribute('hidden', '');
-  //   a.setAttribute('href', url);
-  //   a.setAttribute('download', 'purchase_history.csv');
-  //   document.body.appendChild(a);
-  //   a.click();
-  //   document.body.removeChild(a);
-  // };
 
   return (
     <div className="purchase-history-container">

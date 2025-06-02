@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
 import { Form, ListGroup, Spinner } from 'react-bootstrap';
+import apiClient from '../utils/apiClient'; // Utility for making API requests
+import { getAuthToken } from '../utils/authUtils'; // Utility for retrieving auth token
+import { handleApiError } from '../utils/helpers'; // Utility for consistent API error handling
 
 const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -8,18 +10,6 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
-
-    const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-  
 
   const fetchClients = useCallback(async (term) => {
     if (!term || term.trim().length < 2) {
@@ -31,16 +21,15 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
     setError('');
     try {
       const token = getAuthToken();
-      if (!token) throw new Error("Authentication token not found.");
-      
-      const response = await axios.get(`http://localhost:3000/api/clients/search?q=${term}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setResults(response.data);
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
+      // Use apiClient for the request
+      const data = await apiClient(`/clients/search?q=${term}`);
+      setResults(data);
       setShowResults(true);
     } catch (err) {
-      console.error('Error fetching clients:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to search clients.');
+      setError(handleApiError(err, 'Failed to search clients.'));
       setResults([]);
       setShowResults(false);
     } finally {

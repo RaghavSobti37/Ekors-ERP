@@ -24,7 +24,7 @@ const userBackupSchema = new mongoose.Schema({
     },
     password: { // Store the already hashed password
         type: String,
-        required: [true, "Password is required"],
+        // required: [true, "Password is required"], // Password is not strictly required in backup if we are removing it
     },
     role: {
         type: String,

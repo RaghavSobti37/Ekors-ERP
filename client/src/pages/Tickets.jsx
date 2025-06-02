@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Pagination from "../components/Pagination";
-import axios from "axios";
 import {
   Modal,
   Button,
@@ -14,22 +13,24 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import Navbar from "../components/Navbar.jsx";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
-import "../css/Style.css";
-import SortIndicator from "../components/SortIndicator.jsx"; // Import SortIndicator
-import QuotationPDF from "../components/QuotationPDF.jsx";
-import PIPDF from "../components/PIPDF.jsx";
-import { useAuth } from "../context/AuthContext";
+import SortIndicator from "../components/SortIndicator.jsx"; // Component for sort direction indicator
+import QuotationPDF from "../components/QuotationPDF.jsx"; // Component for rendering Quotation PDF
+import PIPDF from "../components/PIPDF.jsx"; // Component for rendering PI PDF
+import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-// Import Toastify and Logger
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
 import "react-toastify/dist/ReactToastify.css";
-import frontendLogger from "../utils/frontendLogger.js";
-import { getAuthToken } from "../utils/authUtils";
-import ReusableTable from "../components/ReusableTable.jsx";
+import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import ItemSearchComponent from "../components/ItemSearch.jsx"; 
+import ItemSearchComponent from "../components/ItemSearch.jsx";
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
+import "../css/Style.css"; // General styles
+import ReusableModal from "../components/ReusableModal.jsx";
 
 const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,22 +40,17 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // Local error
 
-  // Use the shared getAuthToken
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("Authentication token not found for fetching users.");
       }
 
-      const response = await axios.get("http://localhost:3000/api/users/transfer-candidates", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUsers(response.data);
+      const data = await apiClient("/users/transfer-candidates"); // Use apiClient
+      setUsers(data);
     } catch (err) {
       let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
       if (err.response) {
@@ -73,20 +69,20 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
         specificMessage = `Failed to load users: ${err.message}`; // Network error or other non-response error
       }
       setError(specificMessage); // Set the more specific message
-      
+
       if (authContext?.user) {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users",
           authContext.user,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
+          { errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
         );
       } else {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users (user context unavailable)",
           null,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
+          { errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
         );
       }
     } finally {
@@ -264,29 +260,21 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to fetch tickets. Please log in.");
         throw new Error("No authentication token found");
       }
-
-      const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
+      const data = await apiClient("/tickets", {
+        params: { // Use apiClient
           populate:
-"currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+            "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
         },
       });
 
-      setTickets(response.data);
-      // frontendLogger.info("ticketActivity", "Tickets fetched successfully", auth.user, { count: response.data.length });
+      setTickets(data);
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to load tickets";
+      const errorMsg = handleApiError(error, "Failed to load tickets", auth.user, "ticketActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -296,11 +284,11 @@ export default function Dashboard() {
         {
           errorMessage: errorMsg,
           stack: error.stack,
-          status: error.response?.status,
+          status: error.status, // apiClient error structure
           action: "FETCH_TICKETS_FAILURE",
         }
       );
-      if (error.response?.status === 401) {
+      if (error.status === 401) { // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/tickets" } });
       }
@@ -309,7 +297,7 @@ export default function Dashboard() {
     }
   }, [authUser, navigate, auth.user]); // Removed getAuthToken from dependencies as it's now a direct import
 
-  useEffect(() => {
+  useEffect(() => { // Effect for authentication check and initial data fetch
     if (!authLoading && !authUser) {
       if (window.location.pathname !== "/login") {
         toast.info("Redirecting to login page.");
@@ -321,25 +309,21 @@ export default function Dashboard() {
   }, [authUser, authLoading, navigate, fetchTickets]);
 
   useEffect(() => {
-    // Removed automatic status update based on document uploads, as PO is removed and logic simplified.
   }, [editTicket, ticketData.status, statusStages]);
-
   useEffect(() => {
     const activeDetailedTicket = showEditModal
       ? editTicket
       : showPaymentModal
-      ? selectedTicket
-      : null;
+        ? selectedTicket
+        : null;
 
     if (activeDetailedTicket) {
-const history = [];
+      const history = [];
 
       let firstAssignee = activeDetailedTicket.createdBy;
       if (
         activeDetailedTicket.transferHistory &&
-        activeDetailedTicket.transferHistory.length > 0
-      ) {
-                // The 'from' user of the first transfer is the initial point after creation if transfers exist
+        activeDetailedTicket.transferHistory.length > 0) {
         firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
       } else if (activeDetailedTicket.currentAssignee) {
         firstAssignee = activeDetailedTicket.currentAssignee;
@@ -358,7 +342,7 @@ const history = [];
           note: transfer.note || "N/A",
         });
       });
-setTransferHistoryDisplay(history);
+      setTransferHistoryDisplay(history);
     }
   }, [editTicket, selectedTicket, showEditModal, showPaymentModal]);
 
@@ -386,20 +370,14 @@ setTransferHistoryDisplay(history);
     ) {
       setIsLoading(true);
       try {
-        const token = getAuthToken(auth.user);
+        const token = getAuthTokenUtil(auth.user); // Use utility
         if (!token) {
           toast.error("Authentication required for delete operation.");
           throw new Error(
             "Authentication token not found for delete operation."
           );
         }
-
-        await axios.delete(
-          `http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await apiClient(`/tickets/admin/${ticketToDelete._id}`, { method: 'DELETE' }); // Use apiClient
 
         fetchTickets();
         setError(null);
@@ -411,8 +389,7 @@ setTransferHistoryDisplay(history);
           action: "DELETE_TICKET_SUCCESS",
         });
       } catch (error) {
-        const errorMsg =
-          "Delete failed: " + (error.response?.data?.message || error.message);
+        const errorMsg = handleApiError(error, "Delete failed", auth.user, "ticketActivity");
         setError(errorMsg);
         toast.error(errorMsg);
         frontendLogger.error(
@@ -422,7 +399,7 @@ setTransferHistoryDisplay(history);
           {
             ticketId: ticketToDelete._id,
             ticketNumber: ticketToDelete.ticketNumber,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message, // apiClient error structure
             stack: error.stack,
             action: "DELETE_TICKET_FAILURE",
           }
@@ -437,7 +414,7 @@ setTransferHistoryDisplay(history);
     setSelectedTicket(ticket);
     setPaymentAmount(
       ticket.grandTotal -
-        (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
+      (ticket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
     );
     setShowPaymentModal(true);
   };
@@ -446,21 +423,20 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to record payment.");
         throw new Error("No authentication token found");
       }
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${selectedTicket?._id}/payments`,
-        {
+      const responseData = await apiClient(`/tickets/${selectedTicket?._id}/payments`, { // Use apiClient
+        method: 'POST',
+        body: {
           amount: paymentAmount,
           date: paymentDate,
           reference: paymentReference,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.status === 200) {
+      });
+      if (responseData) { // apiClient returns data on success
         await fetchTickets();
         setShowPaymentModal(false);
         const successMsg = "Payment recorded successfully!";
@@ -474,9 +450,7 @@ setTransferHistoryDisplay(history);
         setPaymentReference("");
       }
     } catch (error) {
-      const errorMsg = `Failed to record payment: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = handleApiError(error, "Failed to record payment", auth.user, "paymentActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -486,7 +460,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: selectedTicket?._id,
           amount: paymentAmount,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "RECORD_PAYMENT_FAILURE",
         }
@@ -610,7 +584,6 @@ setTransferHistoryDisplay(history);
         validateItemPrice(updatedGoods[index]);
       }
     }
-    updateTotals(updatedGoods);
   };
 
   const updateTotals = (goods) => {
@@ -627,7 +600,7 @@ setTransferHistoryDisplay(history);
     setTicketData((prev) => ({
       ...prev,
       goods,
-      totalQuantity,
+      totalQuantity, // Corrected: updateTotals should set this
       totalAmount,
       gstAmount,
       grandTotal,
@@ -644,21 +617,19 @@ setTransferHistoryDisplay(history);
       if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
         const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
         if (newPrice < minAllowedPrice) {
-          priceValidationError = `Discount for ${
-            item.description
-          } exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(
-            2
-          )}.`;
+          priceValidationError = `Discount for ${item.description
+            } exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(
+              2
+            )}.`;
         }
       } else {
         if (newPrice < originalPrice) {
-          priceValidationError = `Price for ${
-            item.description
-          } (₹${newPrice.toFixed(
-            2
-          )}) cannot be lower than the original price (₹${originalPrice.toFixed(
-            2
-          )}) as no discount is applicable.`;
+          priceValidationError = `Price for ${item.description
+            } (₹${newPrice.toFixed(
+              2
+            )}) cannot be lower than the original price (₹${originalPrice.toFixed(
+              2
+            )}) as no discount is applicable.`;
         }
       }
     } else if (String(item.price).trim() !== "" && isNaN(newPrice)) {
@@ -681,6 +652,31 @@ setTransferHistoryDisplay(history);
     }
   };
 
+  const handleAddItemToTicket = (item) => { // New handler for adding item in edit modal
+    const itemExists = ticketData.goods.some(
+      (existingItem) => existingItem.description === item.name
+    );
+    if (itemExists) {
+      toast.warn("This item is already added to the ticket.");
+      return;
+    }
+    const newGoods = [
+      ...ticketData.goods,
+      {
+        srNo: ticketData.goods.length + 1,
+        description: item.name,
+        hsnSacCode: item.hsnCode || "",
+        quantity: 1,
+        unit: item.unit || "Nos",
+        price: item.price,
+        amount: item.price, // Initial amount
+        originalPrice: item.price,
+        maxDiscountPercentage: item.maxDiscountPercentage,
+      },
+    ];
+    updateTotals(newGoods); // This will set ticketData
+  };
+
   const handleEdit = (selectedTicketToEdit) => {
     setEditTicket(selectedTicketToEdit);
     const documentsFromServer = selectedTicketToEdit.documents || {};
@@ -692,35 +688,35 @@ setTransferHistoryDisplay(history);
     };
     const billingAddress = Array.isArray(selectedTicketToEdit.billingAddress)
       ? {
-          address1: selectedTicketToEdit.billingAddress[0] || "",
-          address2: selectedTicketToEdit.billingAddress[1] || "",
-          city: selectedTicketToEdit.billingAddress[3] || "",
-          state: selectedTicketToEdit.billingAddress[2] || "",
-          pincode: selectedTicketToEdit.billingAddress[4] || "",
-        }
+        address1: selectedTicketToEdit.billingAddress[0] || "",
+        address2: selectedTicketToEdit.billingAddress[1] || "",
+        city: selectedTicketToEdit.billingAddress[3] || "",
+        state: selectedTicketToEdit.billingAddress[2] || "",
+        pincode: selectedTicketToEdit.billingAddress[4] || "",
+      }
       : selectedTicketToEdit.billingAddress || {
-          address1: "",
-          address2: "",
-          city: "",
-          state: "",
-          pincode: "",
-        };
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      };
 
     const shippingAddress = Array.isArray(selectedTicketToEdit.shippingAddress)
       ? {
-          address1: selectedTicketToEdit.shippingAddress[0] || "",
-          address2: selectedTicketToEdit.shippingAddress[1] || "",
-          city: selectedTicketToEdit.shippingAddress[3] || "",
-          state: selectedTicketToEdit.shippingAddress[2] || "",
-          pincode: selectedTicketToEdit.shippingAddress[4] || "",
-        }
+        address1: selectedTicketToEdit.shippingAddress[0] || "",
+        address2: selectedTicketToEdit.shippingAddress[1] || "",
+        city: selectedTicketToEdit.shippingAddress[3] || "",
+        state: selectedTicketToEdit.shippingAddress[2] || "",
+        pincode: selectedTicketToEdit.shippingAddress[4] || "",
+      }
       : selectedTicketToEdit.shippingAddress || {
-          address1: "",
-          address2: "",
-          city: "",
-          state: "",
-          pincode: "",
-        };
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      };
 
     setTicketData({
       companyName: selectedTicketToEdit.companyName || "",
@@ -752,6 +748,20 @@ setTransferHistoryDisplay(history);
     setError(null); // Clear any previous errors when opening modal
   };
 
+  const handleDeleteItemFromTicket = (indexToDelete) => {
+    const updatedGoods = ticketData.goods.filter((_, index) => index !== indexToDelete);
+    const renumberedGoods = updatedGoods.map((item, index) => ({
+      ...item,
+      srNo: index + 1,
+    }));
+    // Update totals based on renumberedGoods
+    updateTotals(renumberedGoods); // This will update ticketData with new goods and totals
+    // No need to call setTicketData directly for goods here, updateTotals handles it.
+  };
+
+
+
+
   const handleTransfer = (ticketToTransfer) => {
     setTransferTicket(ticketToTransfer);
     setSelectedUser(null);
@@ -766,7 +776,7 @@ setTransferHistoryDisplay(history);
 
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
-        // Reset comment when status changes, forcing user to enter a new one
+    // Reset comment when status changes, forcing user to enter a new one
     // if the new status is different from the original status in editTicket
     if (editTicket && status !== editTicket.status) {
       setStatusChangeComment("");
@@ -797,7 +807,7 @@ setTransferHistoryDisplay(history);
       }
 
 
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to update ticket.");
         throw new Error("Authentication token not found");
@@ -806,7 +816,7 @@ setTransferHistoryDisplay(history);
       const updateData = {
         ...ticketData,
         _id: undefined, // Ensure these are not sent
-                statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined, 
+        statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
         __v: undefined,
         createdAt: undefined,
         updatedAt: undefined,
@@ -832,17 +842,11 @@ setTransferHistoryDisplay(history);
         })),
       };
 
-      const response = await axios.put(
-        `http://localhost:3000/api/tickets/${editTicket._id}`,
+      const responseData = await apiClient(`/tickets/${editTicket._id}`, { // Use apiClient
+        method: 'PUT',
         updateData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.status === 200) {
+      });
+      if (responseData) { // apiClient returns data on success
         fetchTickets();
         setShowEditModal(false);
         setError(null);
@@ -857,9 +861,7 @@ setTransferHistoryDisplay(history);
         });
       }
     } catch (error) {
-      const errorMsg = `Failed to update ticket: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = handleApiError(error, "Failed to update ticket", auth.user, "ticketActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -869,7 +871,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: editTicket?._id,
           ticketNumber: editTicket?.ticketNumber,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           submittedData: ticketData, // Be cautious with logging full data
           statusChangeCommentAttempted: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
@@ -891,24 +893,18 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to transfer ticket.");
         throw new Error("Authentication token not found");
       }
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
-        { userId: userToTransferTo._id, note },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const responseData = await apiClient(`/tickets/${transferTicket._id}/transfer`, { // Use apiClient
+        method: 'POST',
+        body: { userId: userToTransferTo._id, note },
+      });
 
-      if (response.status === 200) {
-        const updatedTicketFromServer = response.data.ticket;
+      if (responseData && responseData.ticket) {
+        const updatedTicketFromServer = responseData.ticket;
         setTickets((prevTickets) =>
           prevTickets.map((t) =>
             t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
@@ -926,12 +922,12 @@ setTransferHistoryDisplay(history);
         });
       }
     } catch (error) {
-       let detailedErrorMessage = error.message; // Default to generic error message
-      if (error.response && error.response.data) {
-        // Prioritize 'details' if available, then 'message' from backend error response
-        detailedErrorMessage = error.response.data.details || error.response.data.message || error.message;
+      let detailedErrorMessage = error.data?.details || error.data?.message || error.message; // apiClient error structure
+      if (!detailedErrorMessage) { // Fallback if error.data is not as expected
+        detailedErrorMessage = "An unexpected error occurred during transfer.";
       }
-      const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;      setError(errorMsg);
+      const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;
+      setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
         "ticketActivity",
@@ -940,7 +936,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: transferTicket?._id,
           attemptedTransferTo: userToTransferTo?._id,
-          errorMessage: detailedErrorMessage, 
+          errorMessage: detailedErrorMessage,
           stack: error.stack,
           action: "TRANSFER_TICKET_FAILURE",
         }
@@ -950,7 +946,6 @@ setTransferHistoryDisplay(history);
     }
   };
 
-  // This function will be part of the new PDF Preview Modal, not directly in Edit Modal
   const renderPdfPreview = (previewType, ticketForPdf) => {
     if (!previewType || !ticketForPdf) return null;
 
@@ -972,24 +967,24 @@ setTransferHistoryDisplay(history);
 
     const pdfData = currentTicketForPdf
       ? {
-          // Common fields
-          ...currentTicketForPdf,
-          // Fields specific to QuotationPDF
-          referenceNumber: currentTicketForPdf.quotationNumber,
-          date: currentTicketForPdf.createdAt,
-          client: {
-            companyName: currentTicketForPdf.companyName,
-            siteLocation: getAddressString(
-              currentTicketForPdf.shippingAddress || currentTicketForPdf.billingAddress
-            ),
-          },
-          goods: currentTicketForPdf.goods.map((item) => ({
-            ...item,
-            unit: item.unit || "Nos",
-          })),
-          dispatchDays: currentTicketForPdf.dispatchDays || "7-10 working",
-          validityDate: currentTicketForPdf.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-        }
+        // Common fields
+        ...currentTicketForPdf,
+        // Fields specific to QuotationPDF
+        referenceNumber: currentTicketForPdf.quotationNumber,
+        date: currentTicketForPdf.createdAt,
+        client: {
+          companyName: currentTicketForPdf.companyName,
+          siteLocation: getAddressString(
+            currentTicketForPdf.shippingAddress || currentTicketForPdf.billingAddress
+          ),
+        },
+        goods: currentTicketForPdf.goods.map((item) => ({
+          ...item,
+          unit: item.unit || "Nos",
+        })),
+        dispatchDays: currentTicketForPdf.dispatchDays || "7-10 working",
+        validityDate: currentTicketForPdf.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+      }
       : null;
 
     if (!pdfData) return <Alert variant="warning">Could not load data for PDF preview.</Alert>;
@@ -1049,7 +1044,7 @@ setTransferHistoryDisplay(history);
       </div>
     );
   };
-  
+
   const handleSpecificDocumentUpload = async (file, docType, ticketIdForUpload = null) => {
     if (!file) {
       toast.warn("Please select a file to upload");
@@ -1066,55 +1061,45 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to upload document.");
         throw new Error("Authentication token not found");
       }
       const formData = new FormData();
       formData.append("document", file);
-      formData.append("documentType", docType); // Send the specific document type
+      formData.append("documentType", docType);
 
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
+      const responseData = await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
+        method: 'POST',
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data || !response.data.documents) {
+      });
+      if (!responseData || !responseData.documents) {
         throw new Error("Invalid response from server after document upload");
       }
 
       // Instead of updating local state directly, fetch all tickets or the specific ticket
       // to ensure data consistency, especially if the payment modal is open.
       await fetchTickets(); // Re-fetch all tickets to update the list and selectedTicket
-      
+
       // If the payment modal is open and showing selectedTicket, update it
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-        const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
+          params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicket);
       }
 
 
       const successMsg = `${docType.toUpperCase()} document uploaded successfully.`;
       toast.success(successMsg);
       frontendLogger.info("documentActivity", successMsg, auth.user, {
-        ticketId: targetTicketId,
         action: "UPLOAD_DOCUMENT_SUCCESS",
       });
       return true;
     } catch (error) {
-      const errorMsg = `Failed to upload document: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = `Failed to upload document: ${error.response?.data?.message || error.message
+        }`;
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -1123,7 +1108,7 @@ setTransferHistoryDisplay(history);
         auth.user,
         {
           ticketId: targetTicketId,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "UPLOAD_DOCUMENT_FAILURE",
         }
@@ -1141,7 +1126,7 @@ setTransferHistoryDisplay(history);
     const targetTicketId = ticketIdForDelete || editTicket?._id || selectedTicket?._id;
 
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to delete document.");
         throw new Error("No authentication token found");
@@ -1153,44 +1138,35 @@ setTransferHistoryDisplay(history);
         return;
       }
 
-      const response = await axios.delete(
-        `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          data: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
-        }
-      );
+      await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
+        method: 'DELETE',
+        body: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
+      });
 
       // Re-fetch tickets or specific ticket
       await fetchTickets();
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
+          params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicket);
       }
-       if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, { 
-            headers: { Authorization: `Bearer ${token}` },
-            params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-         });
-         setEditTicket(updatedSingleTicket.data);
-         // Also update ticketData if it's derived from editTicket
-         // This part might be less relevant as document section is removed from edit modal
-       }
+      if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, {  // Use apiClient
+          params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+        });
+        setEditTicket(updatedSingleTicket);
+      }
 
       const successMsg = `${docTypeToDelete.toUpperCase()} document deleted successfully.`;
       toast.success(successMsg);
       frontendLogger.info("documentActivity", successMsg, auth.user, {
-        ticketId: targetTicketId,
         deletedPath: documentPathToDelete,
         action: "DELETE_DOCUMENT_SUCCESS",
       });
     } catch (error) {
-      const errorMsg = `Failed to delete document: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = `Failed to delete document: ${error.response?.data?.message || error.message
+        }`;
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -1200,7 +1176,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: targetTicketId,
           attemptedDeletePath: documentPathToDelete,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "DELETE_DOCUMENT_FAILURE",
         }
@@ -1310,15 +1286,14 @@ setTransferHistoryDisplay(history);
         {statusStages.map((stage) => (
           <small
             key={stage}
-            className={`text-center ${
-              ticketData.status === stage
-                ? `fw-bold text-${getStatusBadgeColor(stage)}`
-                : "text-muted"
-            }`}
+            className={`text-center ${ticketData.status === stage
+              ? `fw-bold text-${getStatusBadgeColor(stage)}`
+              : "text-muted"
+              }`}
             style={{
               width: `${100 / statusStages.length}%`,
               cursor: "pointer",
-                            transition: "color 0.3s ease, font-weight 0.3s ease",
+              transition: "color 0.3s ease, font-weight 0.3s ease",
 
             }}
             onClick={() => handleStatusChange(stage)}
@@ -1334,8 +1309,33 @@ setTransferHistoryDisplay(history);
   const TransferModal = () => {
     const [transferNote, setTransferNote] = useState("");
 
+    const transferModalFooter = (
+      <>
+        <Button
+          variant="outline-secondary"
+          onClick={() => {
+            setShowTransferModal(false);
+            setError(null);
+            setSelectedUser(null);
+            setTransferNote("");
+          }}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => handleTransferTicket(selectedUser, transferNote)}
+          disabled={!selectedUser || isLoading}
+          className="px-4"
+        >
+          {isLoading ? "Transferring..." : "Confirm Transfer"}
+        </Button>
+      </>
+    );
+
     return (
-      <Modal
+      <ReusableModal
         show={showTransferModal}
         onHide={() => {
           setShowTransferModal(false);
@@ -1343,148 +1343,122 @@ setTransferHistoryDisplay(history);
           setSelectedUser(null);
           setTransferNote("");
         }}
-        size="lg"
-        
-                dialogClassName="transfer-modal centered-modal"
-
-      >
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
+        title={
+          <>
             <i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket -{" "}
             {transferTicket?.ticketNumber}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4">
-          <div className="mb-4">
-            <h5 className="mb-3">
-              <i className="bi bi-search me-2"></i>Search User to Transfer To
-            </h5>
-            <UserSearchComponent
-              onUserSelect={handleUserSelect}
-              authContext={auth}
-              
-            />
+          </>
+        }
+        footerContent={transferModalFooter}
+        isLoading={isLoading}
+      >
+        <div className="mb-4">
+          <h5 className="mb-3">
+            <i className="bi bi-search me-2"></i>Search User to Transfer To
+          </h5>
+          <UserSearchComponent
+            onUserSelect={handleUserSelect}
+            authContext={auth}
 
-                        {/* This div will ensure suggestions are contained if UserSearchComponent's dropdown has position:absolute */}
-            <div style={{ position: 'relative', zIndex: 1050 }}> 
-              {/* UserSearchComponent's dropdown will render here if it's a child or uses a portal properly */}
-            </div>
+          />
 
+          {/* This div will ensure suggestions are contained if UserSearchComponent's dropdown has position:absolute */}
+          <div style={{ position: 'relative', zIndex: 1050 }}>
+            {/* UserSearchComponent's dropdown will render here if it's a child or uses a portal properly */}
           </div>
 
-          {selectedUser && (
-            <>
-              <div className="selected-user-info p-4 border rounded bg-light">
-                <h6 className="mb-3">
-                  <i className="bi bi-person-circle me-2"></i>Selected User
-                  Details:
-                </h6>
-                <div className="row">
-                  <div className="col-md-6">
-                    <p>
-                      <i className="bi bi-person me-2"></i>
-                      <strong>Name:</strong> {selectedUser.firstname}{" "}
-                      {selectedUser.lastname}
-                    </p>
-                    <p>
-                      <i className="bi bi-envelope me-2"></i>
-                      <strong>Email:</strong> {selectedUser.email}
-                    </p>
-                  </div>
-                  <div className="col-md-6">
-                    <p>
-                      <i className="bi bi-person-badge me-2"></i>
-                      <strong>Role:</strong>{" "}
-                      <Badge bg="info">{selectedUser.role}</Badge>
-                    </p>
-                    <p>
-                      <strong>Department:</strong>{" "}
-                      {selectedUser.department || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+        </div>
 
-              <Form.Group className="mt-3">
-                <Form.Label>Transfer Note (Optional)</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                  placeholder="Add any notes about this transfer..."
-                />
-              </Form.Group>
-            </>
-          )}
-
-          {error && ( // Display error if any, regardless of selectedUser
-            <Alert variant="danger" className="mt-3">
-              {error}
-            </Alert>
-          )}
-
-          {transferTicket && (
-            <div className="ticket-summary mt-4 p-3 border rounded">
-              <h6 className="mb-3">Ticket Summary</h6>
+        {selectedUser && (
+          <>
+            <div className="selected-user-info p-4 border rounded bg-light">
+              <h6 className="mb-3">
+                <i className="bi bi-person-circle me-2"></i>Selected User
+                Details:
+              </h6>
               <div className="row">
                 <div className="col-md-6">
                   <p>
-                    <strong>Company:</strong> {transferTicket.companyName}
+                    <i className="bi bi-person me-2"></i>
+                    <strong>Name:</strong> {selectedUser.firstname}{" "}
+                    {selectedUser.lastname}
                   </p>
                   <p>
-                    <strong>Quotation:</strong> {transferTicket.quotationNumber}
-                  </p>
-                  <p>
-                    <strong>Current Assignee:</strong>{" "}
-                    {transferTicket.currentAssignee?.firstname}{" "}
-                    {transferTicket.currentAssignee?.lastname || "N/A"}
+                    <i className="bi bi-envelope me-2"></i>
+                    <strong>Email:</strong> {selectedUser.email}
                   </p>
                 </div>
                 <div className="col-md-6">
                   <p>
-                    <strong>Status:</strong>{" "}
-                    <Badge bg={getStatusBadgeColor(transferTicket.status)}>
-                      {transferTicket.status}
-                    </Badge>
+                    <i className="bi bi-person-badge me-2"></i>
+                    <strong>Role:</strong>{" "}
+                    <Badge bg="info">{selectedUser.role}</Badge>
                   </p>
                   <p>
-                    <strong>Amount:</strong> ₹
-                    {transferTicket.grandTotal?.toFixed(2)}
-                  </p>
-                  <p>
-                    <strong>Created By:</strong>{" "}
-                    {transferTicket.createdBy?.firstname}{" "}
-                    {transferTicket.createdBy?.lastname || "N/A"}
+                    <strong>Department:</strong>{" "}
+                    {selectedUser.department || "N/A"}
                   </p>
                 </div>
               </div>
             </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer className="justify-content-between">
-          <Button
-            variant="outline-secondary"
-            onClick={() => {
-              setShowTransferModal(false);
-              setError(null);
-              setSelectedUser(null);
-              setTransferNote("");
-            }}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => handleTransferTicket(selectedUser, transferNote)}
-            disabled={!selectedUser || isLoading}
-            className="px-4"
-          >
-            {isLoading ? "Transferring..." : "Confirm Transfer"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
+            <Form.Group className="mt-3">
+              <Form.Label>Transfer Note (Optional)</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={transferNote}
+                onChange={(e) => setTransferNote(e.target.value)}
+                placeholder="Add any notes about this transfer..."
+              />
+            </Form.Group>
+          </>
+        )}
+
+        {error && ( // Display error if any, regardless of selectedUser
+          <Alert variant="danger" className="mt-3">
+            {error}
+          </Alert>
+        )}
+
+        {transferTicket && (
+          <div className="ticket-summary mt-4 p-3 border rounded">
+            <h6 className="mb-3">Ticket Summary</h6>
+            <div className="row">
+              <div className="col-md-6">
+                <p>
+                  <strong>Company:</strong> {transferTicket.companyName}
+                </p>
+                <p>
+                  <strong>Quotation:</strong> {transferTicket.quotationNumber}
+                </p>
+                <p>
+                  <strong>Current Assignee:</strong>{" "}
+                  {transferTicket.currentAssignee?.firstname}{" "}
+                  {transferTicket.currentAssignee?.lastname || "N/A"}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p>
+                  <strong>Status:</strong>{" "}
+                  <Badge bg={getStatusBadgeColor(transferTicket.status)}>
+                    {transferTicket.status}
+                  </Badge>
+                </p>
+                <p>
+                  <strong>Amount:</strong> ₹
+                  {transferTicket.grandTotal?.toFixed(2)}
+                </p>
+                <p>
+                  <strong>Created By:</strong>{" "}
+                  {transferTicket.createdBy?.firstname}{" "}
+                  {transferTicket.createdBy?.lastname || "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </ReusableModal>
     );
   };
 
@@ -1494,20 +1468,18 @@ setTransferHistoryDisplay(history);
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div
-            className="d-flex align-items-center gap-3"
-            style={{ width: "80%" }}
-          >
+          <div className="d-flex align-items-center" style={{ width: "80%", gap: "8px" }}>
             <SearchBar
               value={searchTerm}
               setSearchTerm={(value) => {
                 setSearchTerm(value);
-                setCurrentPage(1); // Reset page on new search
+                setCurrentPage(1);
               }}
               placeholder="Search tickets..."
-              className="flex-grow-1"
+              style={{ width: "200px" }} // Fixed width for search bar
             />
-            <div className="filter-radio-group">
+
+            <div className="d-flex align-items-center" style={{ gap: "8px", flexWrap: "nowrap" }}>
               <Form.Check
                 type="radio"
                 inline
@@ -1535,7 +1507,7 @@ setTransferHistoryDisplay(history);
               <Form.Check
                 type="radio"
                 inline
-                id="filter-open"
+                id="filter-running"
                 label="Running"
                 name="statusFilter"
                 checked={statusFilter === "Running"}
@@ -1588,8 +1560,8 @@ setTransferHistoryDisplay(history);
                 ticket.currentAssignee
                   ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}`
                   : ticket.createdBy?.firstname
-                  ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}`
-                  : "N/A",
+                    ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}`
+                    : "N/A",
             },
             { key: "companyName", header: "Company Name", sortable: true },
             {
@@ -1603,13 +1575,13 @@ setTransferHistoryDisplay(history);
                   day: "numeric",
                 }),
             },
-            {
-              key: "grandTotal",
-              header: "Grand Total (₹)",
-              sortable: true,
-              renderCell: (ticket) => ticket.grandTotal.toFixed(2),
-              cellClassName: "text-end",
-            },
+            // {
+            //   key: "grandTotal",
+            //   header: "Grand Total (₹)",
+            //   sortable: true,
+            //   renderCell: (ticket) => ticket.grandTotal.toFixed(2),
+            //   cellClassName: "text-end",
+            // },
             {
               key: "progress",
               header: "Progress",
@@ -1618,8 +1590,8 @@ setTransferHistoryDisplay(history);
                 const progressPercentage =
                   currentStatusIndex !== -1
                     ? Math.round(
-                        ((currentStatusIndex + 1) / statusStages.length) * 100
-                      )
+                      ((currentStatusIndex + 1) / statusStages.length) * 100
+                    )
                     : 0;
                 return (
                   <>
@@ -1662,8 +1634,8 @@ setTransferHistoryDisplay(history);
               authUser?.role === "super-admin" ||
               (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
 
-            const canTransferThisTicket = 
-              authUser?.role === 'super-admin' || 
+            const canTransferThisTicket =
+              authUser?.role === 'super-admin' ||
               (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
 
             return (
@@ -1674,8 +1646,8 @@ setTransferHistoryDisplay(history);
                   onClick={() => handleEdit(ticket)}
                   disabled={!canModifyTicket || isLoading}
                   title={
-                     !canModifyTicket 
-                      ? "Only admin, super-admin, or current assignee can edit"                      : "Edit Ticket"
+                    !canModifyTicket
+                      ? "Only admin, super-admin, or current assignee can edit" : "Edit Ticket"
                   }
                 >
                   <i className="bi bi-pencil-square"></i>
@@ -1713,536 +1685,483 @@ setTransferHistoryDisplay(history);
           theadClassName="table-dark"
         />
 
-        <Modal
+        <ReusableModal
           show={showEditModal}
           onHide={() => {
             setShowEditModal(false);
             setError(null);
           }}
-           size="xl"
-          dialogClassName="custom-modal"
-          style={{ maxWidth: "95vw", width: "100%", height: "105vh" }}
-          contentClassName="h-100 d-flex flex-column"
-          
-        >
-          <Modal.Header closeButton className="bg-primary text-white">
+          title={
             <div className="d-flex justify-content-between align-items-center w-100">
-              <Modal.Title>
-                <i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
-                {editTicket?.ticketNumber}
-              </Modal.Title>
+              <span><i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
+                {editTicket?.ticketNumber}</span>
               <div className="assignee-info">
                 <Badge bg="light" text="dark" className="p-2">
                   <i className="bi bi-person-fill me-1"></i>
                   {editTicket?.currentAssignee?.firstname}{" "}
                   {editTicket?.currentAssignee?.lastname || "Unassigned"}
                 </Badge>
-                <small className="d-block text-white-50 ms-1">
+                <small className="d-block text-muted ms-1"> {/* Adjusted text color for ReusableModal default header */}
                   Currently Assigned
                 </small>
               </div>
             </div>
-          </Modal.Header>
-          <Modal.Body style={{ overflowY: "auto", padding: "20px" }}>
-            {error && (
-              <Alert
-                variant="danger"
-                onClose={() => setError(null)}
-                dismissible
-              >
-                {error}
-              </Alert>
-            )}
-            <ProgressBarWithStages />
-                        {/* Status Change Comment Section */}
-            {editTicket && ticketData.status !== editTicket.status && (
-              <Form.Group className="my-3">
-                <Form.Label htmlFor="statusChangeCommentInput" className="fw-bold">
-                  Comment for Status Change (Required)
-                </Form.Label>
-                <Form.Control
-                  as="textarea"
-                  id="statusChangeCommentInput"
-                  rows={2}
-                  value={statusChangeComment}
-                  onChange={(e) => setStatusChangeComment(e.target.value)}
-                  placeholder={`Explain why the status is being changed to "${ticketData.status}"...`}
-                  maxLength={200}
-                  required
-                />
-                <Form.Text muted>Max 200 characters.</Form.Text>
-              </Form.Group>
-            )}
+          }
+          footerContent={
+            <>
+              <Button variant="secondary" onClick={() => { setShowEditModal(false); setError(null); }} disabled={isLoading}>Cancel</Button>
+              <Button variant="primary" onClick={handleUpdateTicket} disabled={isLoading}>
+                {isLoading ? "Updating..." : "Update Ticket"}
+              </Button>
+            </>
+          }
+        >
+          {error && (
+            <Alert
+              variant="danger"
+              onClose={() => setError(null)}
+              dismissible
+            >
+              {error}
+            </Alert>
+          )}
+          <ProgressBarWithStages />
+          {/* Status Change Comment Section */}
+          {editTicket && ticketData.status !== editTicket.status && (
+            <Form.Group className="my-3">
+              <Form.Label htmlFor="statusChangeCommentInput" className="fw-bold">
+                Comment for Status Change (Required)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                id="statusChangeCommentInput"
+                rows={2}
+                value={statusChangeComment}
+                onChange={(e) => setStatusChangeComment(e.target.value)}
+                placeholder={`Explain why the status is being changed to "${ticketData.status}"...`}
+                maxLength={200}
+                required
+              />
+              <Form.Text muted>Max 200 characters.</Form.Text>
+            </Form.Group>
+          )}
 
-            {/* Status Change History Table */}
-            {editTicket?.statusHistory && editTicket.statusHistory.length > 0 && (
-              <div className="mt-4">
-                <h5><i className="bi bi-card-list me-1"></i>Status Change History</h5>
-                <Table striped bordered hover size="sm" responsive>
-                  <thead className="table-light">
-                    <tr>
-                      <th title="User who changed the status">Changed By</th>
-                      <th title="Date of status change">Date</th>
-                      <th title="The status it was changed to">Status Changed To</th>
-                      <th title="Comment provided for the status change">Note (Limit 50 chars)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editTicket.statusHistory.slice().reverse().map((historyItem, index) => ( // Show newest first
-                      <tr key={index}>
-                                                <td>
-                          {historyItem.changedBy
-                            ? `${historyItem.changedBy.firstname || ''} ${historyItem.changedBy.lastname || ''}`.trim() || historyItem.changedBy.email || 'Unknown User'
-                            : 'N/A'}
-                        </td>
-                        <td>{new Date(historyItem.changedAt).toLocaleString()}</td>
-                        <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
-                        <td title={historyItem.note || 'No note provided'}>
-                          {(historyItem.note || 'N/A').substring(0, 50) + 
-                           (historyItem.note && historyItem.note.length > 50 ? '...' : '')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            )}
-            <hr />
-            <Row className="mb-3">
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Ticket Date</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={
-                      editTicket?.createdAt
-                        ? new Date(editTicket.createdAt).toLocaleDateString()
-                        : ""
-                    }
-                    readOnly
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Company Name*</Form.Label>
-                  <Form.Control
-                    required
-                    readOnly
-                    type="text"
-                    value={ticketData.companyName}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        companyName: e.target.value,
-                      })
-                    }
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Quotation Number*</Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    value={ticketData.quotationNumber}
-                    readOnly
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <h5>
-                  <i className="bi bi-building me-1"></i>Billing Address
-                </h5>
-                {renderAddressFields("billing")}
-              </Col>
-              <Col md={6}>
-                <h5>
-                  <i className="bi bi-truck me-1"></i>Shipping Address
-                </h5>
-                {renderAddressFields("shipping")}
-              </Col>
-            </Row>
-            <h5 className="mt-4">
-              <i className="bi bi-box-seam me-1"></i>Goods Details*
-            </h5>
-            <div className="table-responsive">
-              <Table bordered className="mb-3">
-                <thead>
-                   <tr className="text-center">
-                    <th title="Serial Number">Sr No.</th>
-                    <th title="Item Description">Description*</th>
-                    <th title="HSN/SAC Code">HSN/SAC*</th>
-                    <th title="Quantity">Qty*</th>
-                    <th title="Price per unit">Price*</th>
-                    <th title="Total amount for this item">Amount</th>                  </tr>
+          {/* Status Change History Table */}
+          {editTicket?.statusHistory && editTicket.statusHistory.length > 0 && (
+            <div className="mt-4">
+              <h5><i className="bi bi-card-list me-1"></i>Status Change History</h5>
+              <Table striped bordered hover size="sm" responsive>
+                <thead className="table-light">
+                  <tr>
+                    <th title="User who changed the status">Changed By</th>
+                    <th title="Date of status change">Date</th>
+                    <th title="The status it was changed to">Status Changed To</th>
+                    <th title="Comment provided for the status change">Note (Limit 50 chars)</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {ticketData.goods.map((item, index) => (
+                  {editTicket.statusHistory.slice().reverse().map((historyItem, index) => ( // Show newest first
                     <tr key={index}>
-                      <td className="align-middle">{item.srNo}</td>
                       <td>
-                        {index === ticketData.goods.length - 1 &&
-                        !item.description ? (
-                          <ItemSearchComponent
-                            onItemSelect={handleItemSelect}
-                            index={index}
-                            placeholder="Search & add item..."
-                            authContext={auth}
-                          />
-                        ) : (
-                          <Form.Control
-                            type="text"
-                            value={item.description}
-                            readOnly
-                            disabled
-                          />
-                        )}
+                        {historyItem.changedBy
+                          ? `${historyItem.changedBy.firstname || ''} ${historyItem.changedBy.lastname || ''}`.trim() || historyItem.changedBy.email || 'Unknown User'
+                          : 'N/A'}
                       </td>
-                      <td>
-                        <Form.Control
-                          type="text"
-                          value={item.hsnSacCode}
-                          readOnly
-                          disabled
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          required
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleGoodsChange(index, "quantity", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.price || 0}
-                          onChange={(e) =>
-                            handleGoodsChange(index, "price", e.target.value)
-                          }
-                          readOnly={
-                            !(Number(item.maxDiscountPercentage || 0) > 0)
-                          }
-                          // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
-                        />
-                      </td>
-                      <td className="align-middle">
-                        ₹{(item.amount || 0).toFixed(2)}
+                      <td>{new Date(historyItem.changedAt).toLocaleString()}</td>
+                      <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
+                      <td title={historyItem.note || 'No note provided'}>
+                        {(historyItem.note || 'N/A').substring(0, 50) +
+                          (historyItem.note && historyItem.note.length > 50 ? '...' : '')}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </div>
-            <Button variant="outline-primary" onClick={addRow} className="mb-3">
-              <i className="bi bi-plus-lg me-1"></i> Add Item
-            </Button>
-            <div className="bg-light p-3 rounded">
-              <Row>
-                <Col md={4}>
-                  <p>
-                    Total Quantity: <strong>{ticketData.totalQuantity}</strong>
-                  </p>
-                </Col>
-                <Col md={4}>
-                  <p>
-                    Total Amount:{" "}
-                    <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                  </p>
-                </Col>
-                <Col md={4}>
-                  <p>
-                    GST (18%):{" "}
-                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={12} className="text-end">
-                  <h4>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h4>
-                </Col>
-              </Row>
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowEditModal(false);
-                setError(null);
-              }}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleUpdateTicket}
-              disabled={isLoading}
-            >
-              {isLoading ? "Updating..." : "Update Ticket"}
-            </Button>
-          </Modal.Footer>
-        </Modal>
+          )}
+          <hr />
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Ticket Date</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={
+                    editTicket?.createdAt
+                      ? new Date(editTicket.createdAt).toLocaleDateString()
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Company Name*</Form.Label>
+                <Form.Control
+                  required
+                  readOnly
+                  type="text"
+                  value={ticketData.companyName}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      companyName: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Quotation Number*</Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  value={ticketData.quotationNumber}
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <h5>
+                <i className="bi bi-building me-1"></i>Billing Address
+              </h5>
+              {renderAddressFields("billing")}
+            </Col>
+            <Col md={6}>
+              <h5>
+                <i className="bi bi-truck me-1"></i>Shipping Address
+              </h5>
+              {renderAddressFields("shipping")}
+            </Col>
+          </Row>
+          <h5 className="mt-4">
+            <i className="bi bi-box-seam me-1"></i>Goods Details*
+          </h5>
+          <div className="table-responsive">
+            <Table bordered className="mb-3">
+              <thead>
+                <tr className="text-center">
+                  <th title="Serial Number">Sr No.</th>
+                  <th title="Item Description">Description*</th>
+                  <th title="HSN/SAC Code">HSN/SAC*</th>
+                  <th title="Quantity">Qty*</th>
+                  <th title="Price per unit">Price*</th>
+                  <th title="Total amount for this item">Amount</th>                  </tr>
+              </thead>
+              <tbody>
+                {ticketData.goods.map((item, index) => (
+                  <tr key={index}>
+                    <td className="align-middle text-center">{item.srNo}</td>
+                    <td>
+                      <Form.Control
+                        type="text"
+                        value={item.description}
+                        readOnly
+                        disabled
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        type="text"
+                        value={item.hsnSacCode}
+                        readOnly
+                        disabled
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        required
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleGoodsChange(index, "quantity", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price || 0}
+                        onChange={(e) =>
+                          handleGoodsChange(index, "price", e.target.value)
+                        }
+                        readOnly={
+                          !(Number(item.maxDiscountPercentage || 0) > 0)
+                        }
+                      // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
+                      />
+                    </td>
+                    <td className="align-middle">
+                      ₹{(item.amount || 0).toFixed(2)}
+                    </td>
+                    <td className="text-center align-middle">
+                      <Button variant="danger" size="sm" onClick={() => handleDeleteItemFromTicket(index)}>
+                        <i className="bi bi-trash"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+          {/* Item Search for adding new items to ticket */}
+          <div className="my-3">
+            <h6>Add New Item to Ticket</h6>
+            <ItemSearchComponent
+              onItemSelect={handleAddItemToTicket} // Use the new handler
+              placeholder="Search and select item to add..."
+            />
+          </div>
+
+          <div className="bg-light p-3 rounded">
+            <Row>
+              <Col md={4}>
+                <p>
+                  Total Quantity: <strong>{ticketData.totalQuantity}</strong>
+                </p>
+              </Col>
+              <Col md={4}>
+                <p>
+                  Total Amount:{" "}
+                  <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                </p>
+              </Col>
+              <Col md={4}>
+                <p>
+                  GST (18%):{" "}
+                  <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                </p>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={12} className="text-end">
+                <h4>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h4>
+              </Col>
+            </Row>
+          </div>
+        </ReusableModal>
 
         <TransferModal />
 
         {/* PDF Preview Modal */}
-        <Modal
+        <ReusableModal
           show={showPdfPreviewModal}
           onHide={() => setShowPdfPreviewModal(false)}
-          fullscreen
-          
+          title={`${pdfPreviewConfig.type?.toUpperCase()} Preview`}
+        // Footer can be part of renderPdfPreview or passed if simple
         >
-          <Modal.Header closeButton className="bg-info text-white">
-            <Modal.Title>
-              {pdfPreviewConfig.type?.toUpperCase()} Preview
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {pdfPreviewConfig.type && pdfPreviewConfig.data &&
-              renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
-          </Modal.Body>
-        </Modal>
+          {pdfPreviewConfig.type && pdfPreviewConfig.data &&
+            renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
+        </ReusableModal>
 
-        <Modal
+        <ReusableModal
           show={showPaymentModal}
           onHide={() => {
             setShowPaymentModal(false);
             setError(null);
           }}
-          size="xl"
-          dialogClassName="custom-modal"
-          style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
-          contentClassName="h-100 d-flex flex-column"
+          title={<><i className="bi bi-credit-card-2-front me-2"></i>Payment Details - {selectedTicket?.ticketNumber}</>}
+          footerContent={
+            <Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>
+          }
         >
-          <Modal.Header
-            closeButton
-            className="modal-header-custom bg-success text-white"
-          >
-            <Modal.Title>
-              <i className="bi bi-credit-card-2-front me-2"></i>Payment Details
-              - {selectedTicket?.ticketNumber}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body
-            className="modal-body-custom"
-            style={{ overflowY: "auto", flexGrow: 1 }}
-          >
-            {error && (
-              <Alert
-                variant="danger"
-                onClose={() => setError(null)}
-                dismissible
-              >
-                {error}
-              </Alert>
-            )}
-            <h5><i className="bi bi-files me-2"></i>Ticket Documents</h5>
-            <Row className="mb-4 text-center">
-              {[
-                {
-                  name: "Quotation",
-                  docType: "quotation",
-                  icon: "bi-file-earmark-text",
-                  generate: true,
-                },
-                { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true },
-                {
-                  name: "PO",
-                  docType: "po",
-                  icon: "bi-file-earmark-check",
-                },
-                {
-                  name: "Dispatch",
-                  docType: "challan",
-                  icon: "bi-truck",
-                },
-                { name: "Packing List", docType: "packingList", icon: "bi-list-ul" },
-                { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" },
-              ].map((docDef) => {
-                const docData = selectedTicket?.documents?.[docDef.docType];
-                return (
-                  <Col key={docDef.docType} md={4} className="mb-3">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Body className="d-flex flex-column">
-                        <Card.Title className="d-flex align-items-center">
-                          <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
-                          {docDef.name}
-                        </Card.Title>
-                        {docData && docData.path ? (
-                          <>
-                            <small className="text-muted">
-                               Uploaded by:{" "}
-                              {docData.uploadedBy && docData.uploadedBy.firstname
-                                ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
-                                : "N/A"}
-                              <br />
-                              On: {new Date(docData.uploadedAt).toLocaleDateString()}
-                            </small>
-                            <Button
-                              variant="outline-info"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
-                            >
-                              <i className="bi bi-eye me-1"></i>View Uploaded
-                            </Button>
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="mt-1"
-                              onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)}
-                              disabled={isLoading}
-                            >
-                              <i className="bi bi-trash me-1"></i>Delete
-                            </Button>
-                          </>
-                        ) : (
-                          <p className="text-muted small mt-1">Not uploaded yet.</p>
-                        )}
-
-                        {docDef.generate && (
-                           <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
-                            onClick={() => {
-                                setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket });
-                                setShowPdfPreviewModal(true);
-                            }}
-                          >
-                            <i className="bi bi-gear me-1"></i>Generate & View
-                          </Button>
-                        )}
-                        
-                        {/* Upload/Replace Button */}
-                        <Button
-                          variant={docData && docData.path ? "outline-warning" : "outline-success"}
-                          size="sm"
-                          className="mt-1"
-                          onClick={() => {
-                            setUploadingDocType(docDef.docType); // Keep track for the file input
-                            document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click();
-                          }}
-                          disabled={isLoading}
-                        >
-                          <i className={`bi ${docData && docData.path ? 'bi-arrow-repeat' : 'bi-upload'} me-1`}></i>
-                          {docData && docData.path ? "Replace" : "Upload"} {docDef.name}
-                        </Button>
-                        <input
-                          type="file"
-                          id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
-                          style={{ display: "none" }}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id);
-                              e.target.value = ""; // Reset file input
-                              setUploadingDocType(null);
-                            }
-                          }}
-                        />
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
-            <hr/>
-            <h5><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
-            {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
-              <Table striped bordered hover size="sm" className="mt-2">
-                <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {selectedTicket.documents.other.map((doc, index) => (
-                    <tr key={doc.path || index}>
-                      <td>{doc.originalName}</td>
-                     <td>
-                        {doc.uploadedBy && doc.uploadedBy.firstname
-                          ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
-                          : "N/A"}
-                      </td>
-                      <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
-                      <td>
-                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDocumentDelete('other', doc.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash"></i></Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            ) : <p className="text-muted">No other documents uploaded.</p>}
-            <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType('other'); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
-             <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{display: 'none'}} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null);}}} />
-            <hr />
-            <Row>
-              <Col md={12}>
-                <h5>
-                  <i className="bi bi-arrow-repeat me-1"></i>Transfer History
-                </h5>
-                {selectedTicket &&
-                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
-                  <Table
-                    bordered
-                    responsive
-                    className="mt-2 transfer-history-table table-sm"
-                  >
-                                        <thead className="table-light">
-                        <tr>
-                            <th title="User involved in the transfer step">Name</th>
-                            <th title="Date of the transfer or creation">Date</th>
-                            <th title="Note or action taken">Note (Limit 50 chars)</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
- {transferHistoryDisplay.map((entry, index) => (
-                        <tr key={index}>
-                          <td>{entry.name}</td>
-                          <td>{new Date(entry.date).toLocaleString()}</td>
-                          <td title={entry.note}>
-                            {entry.note
-                              ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
-                              : "N/A"}
-                          </td>
-                        </tr>
-                      ))}                    </tbody>
-                  </Table>
-                ) : (
-                  <div className="text-muted mt-2">
-                    No transfer history available.
-                  </div>
-                )}
-              </Col>
-              
-            </Row>
-            <hr />
-          </Modal.Body>
-          <Modal.Footer className="modal-footer-custom">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowPaymentModal(false);
-                setError(null);
-              }}
-              disabled={isLoading}
+          {error && (
+            <Alert
+              variant="danger"
+              onClose={() => setError(null)}
+              dismissible
             >
-              Close
-            </Button>
-          </Modal.Footer>
-        </Modal>
+              {error}
+            </Alert>
+          )}
+          <h5><i className="bi bi-files me-2"></i>Ticket Documents</h5>
+          <Row className="mb-4 text-center">
+            {[
+              {
+                name: "Quotation",
+                docType: "quotation",
+                icon: "bi-file-earmark-text",
+                generate: true,
+              },
+              { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true },
+              {
+                name: "PO",
+                docType: "po",
+                icon: "bi-file-earmark-check",
+              },
+              {
+                name: "Dispatch",
+                docType: "challan",
+                icon: "bi-truck",
+              },
+              { name: "Packing List", docType: "packingList", icon: "bi-list-ul" },
+              { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" },
+            ].map((docDef) => {
+              const docData = selectedTicket?.documents?.[docDef.docType];
+              return (
+                <Col key={docDef.docType} md={4} className="mb-3">
+                  <Card className="h-100 shadow-sm">
+                    <Card.Body className="d-flex flex-column">
+                      <Card.Title className="d-flex align-items-center">
+                        <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
+                        {docDef.name}
+                      </Card.Title>
+                      {docData && docData.path ? (
+                        <>
+                          <small className="text-muted">
+                            Uploaded by:{" "}
+                            {docData.uploadedBy && docData.uploadedBy.firstname
+                              ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
+                              : "N/A"}
+                            <br />
+                            On: {new Date(docData.uploadedAt).toLocaleDateString()}
+                          </small>
+                          <Button
+                            variant="outline-info"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
+                          >
+                            <i className="bi bi-eye me-1"></i>View Uploaded
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="mt-1"
+                            onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)}
+                            disabled={isLoading}
+                          >
+                            <i className="bi bi-trash me-1"></i>Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-muted small mt-1">Not uploaded yet.</p>
+                      )}
+
+                      {docDef.generate && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
+                          onClick={() => {
+                            setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket });
+                            setShowPdfPreviewModal(true);
+                          }}
+                        >
+                          <i className="bi bi-gear me-1"></i>Generate & View
+                        </Button>
+                      )}
+
+                      {/* Upload/Replace Button */}
+                      <Button
+                        variant={docData && docData.path ? "outline-warning" : "outline-success"}
+                        size="sm"
+                        className="mt-1"
+                        onClick={() => {
+                          setUploadingDocType(docDef.docType); // Keep track for the file input
+                          document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click();
+                        }}
+                        disabled={isLoading}
+                      >
+                        <i className={`bi ${docData && docData.path ? 'bi-arrow-repeat' : 'bi-upload'} me-1`}></i>
+                        {docData && docData.path ? "Replace" : "Upload"} {docDef.name}
+                      </Button>
+                      <input
+                        type="file"
+                        id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id);
+                            e.target.value = ""; // Reset file input
+                            setUploadingDocType(null);
+                          }
+                        }}
+                      />
+                    </Card.Body>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+          <hr />
+          <h5><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
+          {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
+            <Table striped bordered hover size="sm" className="mt-2">
+              <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody>
+                {selectedTicket.documents.other.map((doc, index) => (
+                  <tr key={doc.path || index}>
+                    <td>{doc.originalName}</td>
+                    <td>
+                      {doc.uploadedBy && doc.uploadedBy.firstname
+                        ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
+                        : "N/A"}
+                    </td>
+                    <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
+                    <td>
+                      <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDocumentDelete('other', doc.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash"></i></Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : <p className="text-muted">No other documents uploaded.</p>}
+          <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType('other'); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
+          <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{ display: 'none' }} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null); } }} />
+          <hr />
+          <Row>
+            <Col md={12}>
+              <h5>
+                <i className="bi bi-arrow-repeat me-1"></i>Transfer History
+              </h5>
+              {selectedTicket &&
+                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
+                <Table
+                  bordered
+                  responsive
+                  className="mt-2 transfer-history-table table-sm"
+                >
+                  <thead className="table-light">
+                    <tr>
+                      <th title="User involved in the transfer step">Name</th>
+                      <th title="Date of the transfer or creation">Date</th>
+                      <th title="Note or action taken">Note (Limit 50 chars)</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {transferHistoryDisplay.map((entry, index) => (
+                      <tr key={index}>
+                        <td>{entry.name}</td>
+                        <td>{new Date(entry.date).toLocaleString()}</td>
+                        <td title={entry.note}>
+                          {entry.note
+                            ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
+                            : "N/A"}
+                        </td>
+                      </tr>
+                    ))}                    </tbody>
+                </Table>
+              ) : (
+                <div className="text-muted mt-2">
+                  No transfer history available.
+                </div>
+              )}
+            </Col>
+
+          </Row>
+        </ReusableModal>
 
         {totalPages > 1 && (
           <Pagination

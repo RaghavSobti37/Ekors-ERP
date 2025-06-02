@@ -7,112 +7,178 @@ const logger = require("../utils/logger"); // Import logger
 const { Item } = require('../models/itemlist'); // Import Item model for inventory
 const fs = require('fs-extra'); // fs-extra for recursive directory removal
 const path = require('path');
+const asyncHandler = require("express-async-handler");
 
-// Then modify the ticket creation endpoint to use the actual counter
-// NOTE: The 'counter' variable used below for ticketNumber generation is not defined in this file. This needs to be addressed for consistent ticket numbering.
-exports.createTicket = async (req, res) => {
+exports.createTicket = asyncHandler(async (req, res) => {
   const user = req.user || null;
-  try {
-    const ticketData = req.body;
-    ticketData.createdBy = req.user.id;
 
-    // Format with proper pattern to ensure consistency
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    // Assuming 'counter' is a global or imported variable. If not, this will fail.
-    // ticketData.ticketNumber = `T-${year}${month}-${String(counter).padStart(4, "0")}`; 
-    // Fallback or placeholder for ticket number if counter is an issue:
-    if (!ticketData.ticketNumber) {
-        const day = String(now.getDate()).padStart(2, "0");
-        const hours = String(now.getHours()).padStart(2, "0");
-        const minutes = String(now.getMinutes()).padStart(2, "0");
-        const seconds = String(now.getSeconds()).padStart(2, "0");
-        ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-        logger.warn('ticket', `Ticket number was not provided or 'counter' is undefined. Generated timestamp-based ticket number: ${ticketData.ticketNumber}`, user);
-    }
+  // Ensure ticketData is a fresh object to avoid modifying req.body directly
+  const ticketData = { ...req.body };
 
-    // --- Inventory Deduction Logic ---
-    if (ticketData.goods && ticketData.goods.length > 0) {
-      for (const good of ticketData.goods) {
-        if (!good.description || !(Number(good.quantity) > 0)) {
-          logger.warn('inventory', `Skipping inventory update for ticket item due to missing description or invalid quantity: ${JSON.stringify(good)}`, user);
-          continue;
-        }
-        try {
-          const itemToUpdate = await Item.findOne({
-            name: good.description,
-            ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) // Ensure hsnSacCode is present in good object
-          });
+  if (!user) {
+    logger.error(
+      "ticket-create",
+      "User not found in request. Auth middleware might not be working correctly."
+    );
+    return res
+      .status(401)
+      .json({ error: "Unauthorized: User not authenticated." });
+  }
 
-          if (itemToUpdate) {
-            const quantityToDecrement = Number(good.quantity);
-            itemToUpdate.quantity -= quantityToDecrement;
+  ticketData.createdBy = user.id;
 
-            if (itemToUpdate.quantity < 0) {
-                logger.warn('inventory', `Item ${itemToUpdate.name} stock is now negative: ${itemToUpdate.quantity}.`, user);
-            }
+  // --- Ticket Number Generation ---
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
 
-            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
-              itemToUpdate.needsRestock = true;
-              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
-            } else if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
-              itemToUpdate.needsRestock = false;
-              itemToUpdate.restockAmount = 0;
-            }
-            await itemToUpdate.save();
-            logger.info('inventory', `Inventory updated for item: ${itemToUpdate.name} via ticket ${ticketData.ticketNumber}. Decremented by: ${quantityToDecrement}, New Qty: ${itemToUpdate.quantity}`, user);
-          } else {
-            logger.warn('inventory', `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found in inventory for ticket ${ticketData.ticketNumber}. Stock not updated.`, user);
-            // Consider if ticket creation should fail if an item is not in inventory.
+  if (!ticketData.ticketNumber) {
+    ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
+    logger.warn(
+      "ticket",
+      `Generated fallback ticket number: ${ticketData.ticketNumber}`,
+      user
+    );
+  }
+
+  // --- Inventory Deduction Logic ---
+  if (ticketData.goods && ticketData.goods.length > 0) {
+    for (const good of ticketData.goods) {
+      if (!good.description || !(Number(good.quantity) > 0)) {
+        logger.warn(
+          "inventory",
+          `Skipping item with missing description or invalid quantity: ${JSON.stringify(
+            good
+          )}`,
+          user
+        );
+        continue;
+      }
+
+      try {
+        const itemToUpdate = await Item.findOne({
+          name: good.description,
+          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
+        });
+
+        if (itemToUpdate) {
+          const quantityToDecrement = Number(good.quantity);
+          itemToUpdate.quantity -= quantityToDecrement;
+
+          if (itemToUpdate.quantity < 0) {
+            logger.warn(
+              "inventory",
+              `Stock for item ${itemToUpdate.name} went negative: ${itemToUpdate.quantity}`,
+              user
+            );
           }
-        } catch (invError) {
-          logger.error('inventory', `Error updating inventory for item "${good.description}" in ticket ${ticketData.ticketNumber}: ${invError.message}`, user, { error: invError });
+
+          if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+            itemToUpdate.needsRestock = true;
+            itemToUpdate.restockAmount = Math.max(
+              0,
+              itemToUpdate.lowStockThreshold - itemToUpdate.quantity
+            );
+          } else if (
+            itemToUpdate.needsRestock &&
+            itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
+          ) {
+            itemToUpdate.needsRestock = false;
+            itemToUpdate.restockAmount = 0;
+          }
+
+          await itemToUpdate.save();
+          logger.info(
+            "inventory",
+            `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrement}, new qty: ${itemToUpdate.quantity}`,
+            user
+          );
+        } else {
+          logger.warn(
+            "inventory",
+            `Item "${good.description}" (HSN: ${
+              good.hsnSacCode || "N/A"
+            }) not found. Skipping stock update.`,
+            user
+          );
         }
+      } catch (invError) {
+        logger.error(
+          "inventory",
+          `Error updating inventory for ${good.description}: ${invError.message}`,
+          user,
+          { error: invError }
+        );
       }
     }
-    // --- End Inventory Deduction Logic ---
+  }
 
+  // --- Ticket Creation ---
+  try {
     const ticket = new Ticket(ticketData);
     await ticket.save();
-    logger.info("ticket", `Ticket ${ticket.ticketNumber} created successfully by controller function.`, user, {
-      ticketId: ticket._id,
-      ticketNumber: ticket.ticketNumber,
-      companyName: ticket.companyName,
-    });
 
-    // Add ticket to user's tickets array
-    await User.findByIdAndUpdate(req.user.id, {
-      $push: { tickets: ticket._id },
-      // logger.debug('ticket', `Added ticket ${ticket._id} to creator's user document ${req.user.id}`, user); // Debug level
-    });
+    logger.info(
+      "ticket",
+      `Ticket ${ticket.ticketNumber} created successfully.`,
+      user,
+      {
+        ticketId: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        companyName: ticket.companyName,
+      }
+    );
 
-    // Update corresponding Quotation status to "running"
+    // --- Add ticket to user's document --- (Removed as User schema doesn't have 'tickets' field)
+    // await User.findByIdAndUpdate(user.id, {
+    //   $push: { tickets: ticket._id },
+    // });
+
+    // --- Update Quotation Status if applicable ---
     if (ticket.quotationNumber) {
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
-          { referenceNumber: ticket.quotationNumber, user: req.user.id }, // Ensure it's the user's quotation
+          {
+            referenceNumber: ticket.quotationNumber,
+            user: user.id,
+          },
           { status: "running" },
           { new: true }
         );
+
         if (updatedQuotation) {
-          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'running' due to ticket creation.`, user, { quotationId: updatedQuotation._id });
+          logger.info(
+            "quotation",
+            `Quotation ${ticket.quotationNumber} set to 'running'.`,
+            user,
+            { quotationId: updatedQuotation._id }
+          );
         }
       } catch (quotationError) {
-        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'running'.`, quotationError, user);
+        logger.error(
+          "quotation",
+          `Failed to update quotation status to 'running' for ${ticket.quotationNumber}`,
+          quotationError,
+          user
+        );
       }
     }
 
-    res.status(201).json(ticket);
+    return res.status(201).json(ticket);
   } catch (error) {
     logger.error("ticket", `Failed to create ticket`, error, user, {
       requestBody: req.body,
     });
-    res
+    return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
   }
-};
+});
+
 
 // Get all tickets for the logged-in user
 exports.getUserTickets = async (req, res) => {
