@@ -284,6 +284,10 @@ export default function Navbar({ showPurchaseModal }) {
               <label>Change Password</label>
               <input type="password" placeholder="Enter new password" />
             </div>
+            <div className="form-group">
+              <label>Confirm Password</label>
+              <input type="password" placeholder="Confirm Password" />
+            </div>
             <div className="modal-buttons">
               <button
                 className="save-btn"
