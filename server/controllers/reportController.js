@@ -720,3 +720,139 @@ exports.generateQuotationsReport = async (req, res) => {
       });
   }
 };
+
+exports.generateTicketsReport = async (req, res) => {
+  const { period = "7days" } = req.query;
+  const { exportToExcel } = req.query;
+  const user = req.user;
+
+  try {
+    const { startDate, endDate } = getDateRange(period);
+
+    let dateQuery = {};
+    if (startDate && endDate) {
+      dateQuery = { createdAt: { $gte: startDate, $lte: endDate } };
+    } else if (startDate) {
+      dateQuery = { createdAt: { $gte: startDate } };
+    } else if (endDate) {
+      dateQuery = { createdAt: { $lte: endDate } };
+    }
+
+    let userAccessQuery = {};
+    // If not super-admin, restrict to tickets created by or assigned to the user.
+    // For a "user's report", 'createdBy' is often the primary focus.
+    // You might adjust this logic based on your exact reporting needs (e.g., include currentAssignee).
+    if (user.role !== "super-admin") {
+      userAccessQuery = { createdBy: user._id };
+    }
+
+    const finalQuery = { ...dateQuery, ...userAccessQuery };
+
+    const tickets = await Ticket.find(finalQuery)
+      .populate("createdBy", "firstname lastname email")
+      .populate("currentAssignee", "firstname lastname email")
+      // .populate("client", "companyName") // If tickets have a direct client ref
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Calculate Summary Statistics
+    const totalTickets = tickets.length;
+    const ticketStatusTypes = [
+      "Quotation Sent", "PO Received", "Payment Pending", "Inspection",
+      "Packing List", "Invoice Sent", "Hold", "Closed"
+    ];
+    const statusCounts = ticketStatusTypes.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, { other: 0 });
+
+    let totalValueClosedTickets = 0;
+    const companyNames = new Set();
+
+    tickets.forEach((t) => {
+      if (t.status && statusCounts.hasOwnProperty(t.status)) {
+        statusCounts[t.status]++;
+      } else if (t.status) {
+        statusCounts.other++; // Count statuses not in the predefined list
+      }
+
+      if (t.companyName) {
+        companyNames.add(t.companyName);
+      }
+      if (t.status === "Closed") {
+        totalValueClosedTickets += t.grandTotal || 0;
+      }
+    });
+
+    const uniqueClientsCount = companyNames.size;
+
+    const summary = {
+      period: period,
+      dateRange:
+        startDate && endDate
+          ? `${formatDateToYYYYMMDD(startDate)} to ${formatDateToYYYYMMDD(endDate)}`
+          : startDate
+          ? `From ${formatDateToYYYYMMDD(startDate)}`
+          : endDate
+          ? `Up to ${formatDateToYYYYMMDD(endDate)}`
+          : "All Time",
+      totalTickets,
+      statusCounts,
+      uniqueClientsCount,
+      totalValueClosedTickets: parseFloat(totalValueClosedTickets.toFixed(2)),
+    };
+
+    if (exportToExcel !== "true") {
+      return res.status(200).json({ success: true, data: summary });
+    } else {
+      if (tickets.length === 0) {
+        return res.status(404).json({ message: "No tickets found for export." });
+      }
+
+      const workbook = new excelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Tickets Report");
+
+      worksheet.columns = [
+        { header: "Ticket Number", key: "ticketNumber", width: 20 },
+        { header: "Date", key: "date", width: 15 },
+        { header: "Company Name", key: "companyName", width: 30 },
+        { header: "Status", key: "status", width: 15 },
+        { header: "Created By", key: "createdBy", width: 25 },
+        { header: "Assigned To", key: "assignedTo", width: 25 },
+        { header: "Item Description", key: "itemDescription", width: 40 },
+        { header: "Item Qty", key: "itemQuantity", width: 10 },
+        { header: "Item Price", key: "itemPrice", width: 15 },
+        { header: "Item Amount", key: "itemAmount", width: 15 },
+        { header: "Ticket Grand Total", key: "grandTotal", width: 15 },
+      ];
+
+      tickets.forEach((t) => {
+        const createdByFullName = t.createdBy ? `${t.createdBy.firstname || ''} ${t.createdBy.lastname || ''}`.trim() : "N/A";
+        const assignedToFullName = t.currentAssignee ? `${t.currentAssignee.firstname || ''} ${t.currentAssignee.lastname || ''}`.trim() : "N/A";
+        if (t.goods && t.goods.length > 0) {
+          t.goods.forEach((good) => {
+            worksheet.addRow({
+              ticketNumber: t.ticketNumber, date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "N/A",
+              companyName: t.companyName || "N/A", status: t.status, createdBy: createdByFullName, assignedTo: assignedToFullName,
+              itemDescription: good.description, itemQuantity: good.quantity, itemPrice: good.price, itemAmount: good.amount,
+              grandTotal: t.grandTotal,
+            });
+          });
+        } else { // Add a row for tickets with no goods, if desired
+          worksheet.addRow({
+            ticketNumber: t.ticketNumber, date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "N/A",
+            companyName: t.companyName || "N/A", status: t.status, createdBy: createdByFullName, assignedTo: assignedToFullName,
+            grandTotal: t.grandTotal,
+          });
+        }
+      });
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename=tickets_report_${period}.xlsx`);
+      return workbook.xlsx.write(res).then(() => res.status(200).end());
+    }
+  } catch (error) {
+    logger.error(`report-tickets: Failed to generate tickets report (period: ${period})`, error, user);
+    res.status(500).json({ success: false, message: "Error generating tickets report", error: error.message });
+  }
+};

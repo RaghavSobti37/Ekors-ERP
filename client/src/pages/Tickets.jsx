@@ -13,6 +13,7 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
+import { FaChartBar } from "react-icons/fa"; // Import icon for report button
 import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 import SortIndicator from "../components/SortIndicator.jsx"; // Component for sort direction indicator
@@ -31,6 +32,7 @@ import apiClient from "../utils/apiClient"; // Utility for making API requests
 import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
+import TicketReportModal from "../components/TicketReportModal.jsx"; // Import the new report modal
 
 const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -187,6 +189,7 @@ export default function Dashboard() {
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [showTicketReportModal, setShowTicketReportModal] = useState(false);
 
   // State for PDF Preview Modal (used in Payment Modal)
   const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
@@ -1471,20 +1474,29 @@ setTransferHistoryDisplay(history);
       <Navbar />
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Open Tickets</h2>
-          <div
-            className="d-flex align-items-center gap-3"
-            style={{ width: "80%" }}
-          >
-            <SearchBar
-              value={searchTerm}
-              setSearchTerm={(value) => {
-                setSearchTerm(value);
-                setCurrentPage(1); // Reset page on new search
-              }}
-              placeholder="Search tickets..."
-              className="flex-grow-1"
-            />
+          <h2 style={{ color: "black" }}>Tickets Overview</h2>
+          <div className="d-flex align-items-center gap-2">
+            <Button
+              variant="info"
+              onClick={() => setShowTicketReportModal(true)}
+              title="View Ticket Reports"
+            >
+              <FaChartBar className="me-1" /> Reports
+            </Button>
+            <div
+              className="d-flex align-items-center gap-3"
+              style={{ minWidth: "500px" }} // Adjust as needed
+            >
+              <SearchBar
+                value={searchTerm}
+                setSearchTerm={(value) => {
+                  setSearchTerm(value);
+                  setCurrentPage(1); // Reset page on new search
+                }}
+                placeholder="Search tickets..."
+                className="flex-grow-1"
+              />
+            </div>
             <div className="filter-radio-group">
               <Form.Check
                 type="radio"
@@ -2167,6 +2179,12 @@ setTransferHistoryDisplay(history);
           />
         )}
       </div>
+      {/* Ticket Report Modal */}
+      <TicketReportModal
+        show={showTicketReportModal}
+        onHide={() => setShowTicketReportModal(false)}
+      />
+
       <ToastContainer
         position="top-right"
         autoClose={5000}

@@ -4,6 +4,7 @@ const {
   getUserReport,
   generateUserReportPDF,
   generateQuotationsReport, // Import the quotations report controller
+  generateTicketsReport, // Import the new tickets report controller
 } = require("../controllers/reportController");
 const auth = require("../middleware/auth");
 
@@ -58,6 +59,14 @@ router.get("/quotations/export", auth, (req, res, next) => {
   console.log(`[reportRoutes.js] Route HIT: GET /api/reports/quotations/export. Query=${JSON.stringify(req.query)}. Forcing exportToExcel=true.`);
   req.query.exportToExcel = "true"; // Ensure the controller knows to export
   generateQuotationsReport(req, res, next);
+});
+
+// @desc    Get tickets report summary or export to Excel
+// @route   GET /api/reports/tickets
+// @access  Private
+router.get("/tickets", auth, (req, res, next) => {
+  console.log(`[reportRoutes.js] Route HIT: GET /api/reports/tickets. Query=${JSON.stringify(req.query)}`);
+  generateTicketsReport(req, res, next); // Controller handles exportToExcel query param internally
 });
 
 module.exports = router;
