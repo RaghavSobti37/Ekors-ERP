@@ -318,39 +318,23 @@ export default function History() {
 
       {/* Modal for adding new entry */}
       {showAddModal && (
-        <div className="popup-overlay" onClick={() => setShowAddModal(false)}>
-            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
-              <div className="popup-header">
-                <h3>Add New Log Entry</h3>
-                <button className="close-btn" onClick={() => setShowAddModal(false)}>✖</button>
-              </div>
-              {/* Assuming LogtimeModal is just the form content, not a full modal itself */}
-              <LogtimeModal
-                date={selectedDate}
-                onClose={() => setShowAddModal(false)}
-                onSave={handleSaveSuccess}
-              />
-            </div>
-        </div>
+        <LogtimeModal
+          initialDate={selectedDate}
+          onClose={() => setShowAddModal(false)}
+          onSave={handleSaveSuccess}
+          initialLogs={[]} // Explicitly pass empty logs for new entry
+        />
       )}
 
       {/* Modal for editing existing entry */}
       {editingEntry && (
-         <div className="popup-overlay" onClick={closeModal}>
-            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
-              <div className="popup-header">
-                <h3>Edit Log Entry for {formatDisplayDate(editingEntry.date)}</h3>
-                <button className="close-btn" onClick={closeModal}>✖</button>
-              </div>
-              <LogtimeModal
-                date={editingEntry.date}
-                entryData={editingEntry}
-                onClose={closeModal}
-                onSave={handleSaveSuccess}
-                isEditMode={true}
-              />
-            </div>
-        </div>
+        <LogtimeModal
+          initialDate={formatDisplayDate(editingEntry.date)}
+          initialLogs={editingEntry.logs || []}
+          onClose={closeModal}
+          onSave={handleSaveSuccess}
+          // isEditMode={true} // LogtimeModal does not use isEditMode, initialLogs handles this
+        />
       )}
     </div>
   );

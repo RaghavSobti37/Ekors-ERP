@@ -1,75 +1,158 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "../css/Logtime.css";
+import apiClient from "../utils/apiClient"; // For consistency
 
-   const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-  
-
-const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) => {
-  const [logData, setLogData] = useState(initialLogs);
+const LogtimeModal = ({
+  initialDate = "",
+  onClose,
+  onSave,
+  initialLogs = [],
+}) => {
+  const [logData, setLogData] = useState([]);
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(initialDate);
+
+  // selectedDate should be in YYYY-MM-DD for the input[type=date]
+  const [selectedDate, setSelectedDate] = useState("");
+  // displayDate should be in DD-Month-YYYY for user display
   const [displayDate, setDisplayDate] = useState("");
   const [isEditingDate, setIsEditingDate] = useState(false);
 
   // Format date for display (DD-Month-YYYY)
-  const formatDisplayDate = (dateString) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    
-    const day = date.getDate();
-    const month = date.toLocaleString("default", { month: "long" });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  // Format date for input (YYYY-MM-DD)
-  const formatInputDate = (dateString) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-    
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Parse date from display format (DD-Month-YYYY)
-  const parseDisplayDate = (displayDate) => {
-    const [day, month, year] = displayDate.split("-");
-    return new Date(`${month} ${day}, ${year}`);
-  };
-
-  // Initialize dates
-  useEffect(() => {
-    if (initialDate) {
-      setSelectedDate(initialDate);
-      setDisplayDate(formatDisplayDate(initialDate));
-    } else {
-      const today = new Date();
-      const todayFormatted = formatInputDate(today);
-      setSelectedDate(todayFormatted);
-      setDisplayDate(formatDisplayDate(todayFormatted));
+  const formatDisplayDate = useCallback((dateInput) => {
+    // dateInput can be YYYY-MM-DD string or Date object
+    // A more robust way to handle YYYY-MM-DD specifically for date objects from input type=date
+    if (
+      typeof dateInput === "string" &&
+      dateInput.match(/^\d{4}-\d{2}-\d{2}$/)
+    ) {
+      const parts = dateInput.split("-");
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+      const day = parseInt(parts[2], 10);
+      const tempDate = new Date(Date.UTC(year, month, day)); // Use UTC to avoid timezone shifts from string
+      if (!isNaN(tempDate.getTime())) {
+        const d = String(tempDate.getUTCDate()).padStart(2, "0");
+        const m = tempDate.toLocaleString("default", {
+          month: "long",
+          timeZone: "UTC",
+        });
+        const y = tempDate.getUTCFullYear();
+        return `${d}-${m}-${y}`;
+      }
+    } else if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+      const day = String(dateInput.getDate()).padStart(2, "0");
+      const monthName = dateInput.toLocaleString("default", { month: "long" });
+      const year = dateInput.getFullYear();
+      return `${day}-${monthName}-${year}`;
     }
-  }, [initialDate]);
+    // Fallback for DD-Month-YYYY string (initialDate from parent)
+    if (typeof dateInput === "string" && dateInput.includes("-")) {
+      // Check if it's already DD-Month-YYYY by trying to parse it as such
+      const parts = dateInput.split("-");
+      if (
+        parts.length === 3 &&
+        isNaN(parseInt(parts[1], 10)) &&
+        !isNaN(parseInt(parts[0], 10)) &&
+        !isNaN(parseInt(parts[2], 10))
+      ) {
+        return dateInput; // Assume it's already DD-Month-YYYY
+      }
+    }
+    // Fallback if parsing fails or format is unexpected
+    console.warn(
+      "formatDisplayDate: Could not format date, falling back to today.",
+      dateInput
+    );
+    const today = new Date();
+    return `${String(today.getDate()).padStart(2, "0")}-${today.toLocaleString(
+      "default",
+      { month: "long" }
+    )}-${today.getFullYear()}`;
+  }, []);
+
+  // Format date for input[type=date] (YYYY-MM-DD)
+  const formatInputDate = useCallback((dateInput) => {
+    // dateInput can be DD-Month-YYYY string or Date object
+    let date;
+    if (typeof dateInput === "string") {
+      // Try parsing DD-Month-YYYY
+      const parts = dateInput.split("-");
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const monthStr = parts[1];
+        const year = parseInt(parts[2], 10);
+        const monthIndex = new Date(
+          Date.parse(monthStr + " 1, 2000")
+        ).getMonth(); // Get month index from name
+        if (!isNaN(day) && monthIndex !== -1 && !isNaN(year)) {
+          date = new Date(year, monthIndex, day);
+        }
+      }
+      if (!date || isNaN(date.getTime())) {
+        date = new Date(dateInput); // Fallback to direct parsing (e.g. if it's YYYY-MM-DD)
+      }
+    } else if (dateInput instanceof Date) {
+      // if it's a Date object
+      date = dateInput;
+    } else {
+      // fallback for other types or undefined
+      date = new Date(); // default to today
+    }
+
+    if (isNaN(date.getTime())) {
+      console.warn(
+        "formatInputDate: Invalid date provided, falling back to today.",
+        dateInput
+      );
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(today.getDate()).padStart(2, "0")}`;
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dayString = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${dayString}`;
+  }, []);
+
+  // Initialize dates and logs
+  useEffect(() => {
+    // initialDate is expected to be DD-Month-YYYY from parent
+    // selectedDate (for input type="date") needs to be YYYY-MM-DD
+    // displayDate (for h3) needs to be DD-Month-YYYY
+    let dateToUseForDisplay;
+    if (initialDate) {
+      dateToUseForDisplay = initialDate; // DD-Month-YYYY
+    } else {
+      // Default to today if no initialDate
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, "0");
+      const monthName = today.toLocaleString("default", { month: "long" });
+      const year = today.getFullYear();
+      dateToUseForDisplay = `${day}-${monthName}-${year}`; // DD-Month-YYYY
+    }
+    setSelectedDate(formatInputDate(dateToUseForDisplay)); // Convert to YYYY-MM-DD
+    setDisplayDate(dateToUseForDisplay); // Already in DD-Month-YYYY
+
+    // Ensure initialLogs is an array and deep copy to avoid mutating parent state
+    setLogData(
+      Array.isArray(initialLogs) ? initialLogs.map((log) => ({ ...log })) : []
+    );
+  }, [initialDate, initialLogs, formatInputDate, formatDisplayDate]);
 
   // Calculate total time
   useEffect(() => {
     let totalMinutes = 0;
     logData.forEach((entry) => {
-      const [hours, minutes] = entry.timeSpent.split(":").map(Number);
-      if (!isNaN(hours) && !isNaN(minutes)) {
-        totalMinutes += hours * 60 + minutes;
+      if (entry.timeSpent && entry.timeSpent.includes(":")) {
+        const [hours, minutes] = entry.timeSpent.split(":").map(Number);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          totalMinutes += hours * 60 + minutes;
+        }
       }
     });
 
@@ -78,16 +161,19 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
     setTotalTime(`${hours} hours, ${minutes} minutes`);
   }, [logData]);
 
-  // Calculate time difference between start and finish
   const calculateTimeDifference = (start, finish) => {
-    if (!start || !finish) return "";
+    if (!start || !finish) return "0:00";
 
     const [startHours, startMinutes] = start.split(":").map(Number);
     const [finishHours, finishMinutes] = finish.split(":").map(Number);
 
-    if (isNaN(startHours) || isNaN(startMinutes) ||
-      isNaN(finishHours) || isNaN(finishMinutes)) {
-      return "";
+    if (
+      isNaN(startHours) ||
+      isNaN(startMinutes) ||
+      isNaN(finishHours) ||
+      isNaN(finishMinutes)
+    ) {
+      return "0:00";
     }
 
     const startTotal = startHours * 60 + startMinutes;
@@ -101,61 +187,88 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
     const hours = Math.floor(diff / 60);
     const minutes = diff % 60;
 
-    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    return `${hours}:${minutes.toString().padStart(2, "0")}`;
   };
 
-  // Handle editing any field in a log entry
   const handleEdit = (index, field, value) => {
-    const updatedLogs = [...logData];
-    updatedLogs[index] = {
-      ...updatedLogs[index],
-      [field]: value
-    };
-
-    // If editing start or finish time, recalculate time spent
-    if (field === "start" || field === "finish") {
-      const timeSpent = calculateTimeDifference(
-        field === "start" ? value : updatedLogs[index].start,
-        field === "finish" ? value : updatedLogs[index].finish
-      );
-      updatedLogs[index].timeSpent = timeSpent;
-    }
-
+    const updatedLogs = logData.map((log, i) => {
+      if (i === index) {
+        const newLog = { ...log, [field]: value };
+        if (field === "start" || field === "finish") {
+          newLog.timeSpent = calculateTimeDifference(
+            field === "start" ? value : newLog.start,
+            field === "finish" ? value : newLog.finish
+          );
+        }
+        return newLog;
+      }
+      return log;
+    });
     setLogData(updatedLogs);
   };
 
-  // Handle date change from date picker
+  // Handle date change from date picker (input type="date")
   const handleDateChange = (e) => {
-    const newDate = e.target.value;
-    setSelectedDate(newDate);
-    setDisplayDate(formatDisplayDate(newDate));
-    setIsEditingDate(false);
+    const newDateYYYYMMDD = e.target.value; // This is YYYY-MM-DD
+    setSelectedDate(newDateYYYYMMDD);
+    setDisplayDate(formatDisplayDate(newDateYYYYMMDD)); // Convert YYYY-MM-DD to DD-Month-YYYY for display
+    setIsEditingDate(false); // If date picker is used, assume manual edit mode is off
   };
 
-  // Handle manual date edit
+  // Handle manual date edit in text input
   const handleManualDateChange = (e) => {
-    setDisplayDate(e.target.value);
+    setDisplayDate(e.target.value); // User types DD-Month-YYYY
   };
 
-  // Save manually edited date
+  // Helper to parse DD-Month-YYYY string to Date object
+  const parseDisplayDateString = (dateString) => {
+    const parts = dateString.split("-");
+    if (parts.length !== 3)
+      throw new Error("Invalid date parts: Expected DD-Month-YYYY");
+    const day = parseInt(parts[0], 10);
+    const monthName = parts[1];
+    const year = parseInt(parts[2], 10);
+
+    const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth(); // Get month index from name
+    if (
+      isNaN(day) ||
+      day < 1 ||
+      day > 31 ||
+      isNaN(monthIndex) ||
+      monthIndex < 0 ||
+      isNaN(year) ||
+      year < 1000 ||
+      year > 9999
+    ) {
+      throw new Error("Invalid date components in DD-Month-YYYY");
+    }
+    return new Date(year, monthIndex, day);
+  };
+
+  // Save manually edited date (from text input)
   const saveManualDate = () => {
     try {
-      const date = parseDisplayDate(displayDate);
-      if (isNaN(date.getTime())) {
-        throw new Error("Invalid date");
+      // displayDate is expected to be DD-Month-YYYY
+      const parsedFromDisplay = parseDisplayDateString(displayDate);
+      if (isNaN(parsedFromDisplay.getTime())) {
+        throw new Error("Invalid date format entered.");
       }
-      const formattedDate = formatInputDate(date);
-      setSelectedDate(formattedDate);
-      setDisplayDate(formatDisplayDate(formattedDate));
+      const newSelectedDate = formatInputDate(parsedFromDisplay); // Convert to YYYY-MM-DD
+      const newDisplayDate = formatDisplayDate(newSelectedDate); // Re-format to canonical DD-Month-YYYY
+
+      setSelectedDate(newSelectedDate);
+      setDisplayDate(newDisplayDate);
       setIsEditingDate(false);
+      setSaveError(null); // Clear previous date errors
     } catch (error) {
       console.error("Invalid date format", error);
-      // Reset to current date if invalid
-      const today = new Date();
-      const todayFormatted = formatInputDate(today);
-      setSelectedDate(todayFormatted);
-      setDisplayDate(formatDisplayDate(todayFormatted));
-      setIsEditingDate(false);
+      setSaveError(
+        error.message ||
+          "Invalid date format: Please use DD-Month-YYYY (e.g., 01-January-2024)."
+      );
+      // Optionally reset to last valid selectedDate's display format
+      // setDisplayDate(formatDisplayDate(selectedDate));
+      // Keep editing open for correction
     }
   };
 
@@ -163,48 +276,70 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
     setIsSaving(true);
     setSaveError(null);
 
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+    const validLogs = logData.filter(
+      (log) =>
+        log.task &&
+        log.start &&
+        log.finish &&
+        log.timeSpent &&
+        log.timeSpent !== "Invalid time"
+    );
 
-      const response = await fetch("http://localhost:3000/api/logtime", {
+    if (validLogs.length === 0 && logData.length > 0) {
+      setSaveError(
+        "No valid log entries to save. Please complete task, start, and finish times for all rows, or remove incomplete rows."
+      );
+      setIsSaving(false);
+      return;
+    }
+    if (validLogs.length === 0 && logData.length === 0) {
+      onClose();
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      // selectedDate is already in YYYY-MM-DD format
+      const response = await apiClient("/logtime", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+        body: {
+          logs: validLogs,
+          date: selectedDate, // Send YYYY-MM-DD
         },
-        body: JSON.stringify({
-          logs: logData,
-          date: selectedDate
-        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error ||
-          `Failed to save logs: ${response.status} ${response.statusText}`
-        );
-      }
-
-      onSave();
-      onClose();
+      onSave(); // Call parent's onSave
+      onClose(); // Call parent's onClose
     } catch (error) {
       console.error("Error saving logs:", error);
-      setSaveError(error.message || "Failed to save logs. Please try again.");
+      setSaveError(
+        error.data?.error ||
+          error.message ||
+          "Failed to save logs. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const addEmptyRow = () => {
+    setLogData([
+      ...logData,
+      { task: "", start: "", finish: "", timeSpent: "0:00" },
+    ]);
+  };
+
+  const removeLogRow = (index) => {
+    const updatedLogs = logData.filter((_, i) => i !== index);
+    setLogData(updatedLogs);
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-content">
         {/* Close button at top right */}
-        <button 
-          className="modal-close-btn" 
+        <button
+          className="modal-close-btn"
           onClick={onClose}
           disabled={isSaving}
           title="Close"
@@ -218,34 +353,34 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
             <div className="date-edit-container">
               <input
                 type="text"
-                value={displayDate}
+                value={displayDate} // DD-Month-YYYY
                 onChange={handleManualDateChange}
                 className="date-edit-input"
                 placeholder="DD-Month-YYYY"
+                disabled={isSaving}
               />
-              <button 
-                className="save-date-btn"
+              <button
+                className="save-date-btn modal-button"
                 onClick={saveManualDate}
                 disabled={isSaving}
               >
                 Save Date
               </button>
-              <button 
-                className="cancel-date-btn"
+              <button
+                className="cancel-date-btn modal-button"
                 onClick={() => {
-                  setDisplayDate(formatDisplayDate(selectedDate));
+                  setDisplayDate(formatDisplayDate(selectedDate)); // Reset to last valid YYYY-MM-DD, formatted
                   setIsEditingDate(false);
                 }}
                 disabled={isSaving}
               >
-                Cancel
               </button>
             </div>
           ) : (
             <div className="date-display-container">
-              <h3>Time Log for {displayDate}</h3>
-              <button 
-                className="edit-date-btn"
+              <h3>Time Log for {displayDate}</h3> {/* DD-Month-YYYY */}
+              <button
+                className="edit-date-btn modal-button-icon"
                 onClick={() => setIsEditingDate(true)}
                 title="Edit date"
                 disabled={isSaving}
@@ -254,37 +389,36 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
               </button>
               <input
                 type="date"
-                value={selectedDate}
+                value={selectedDate} // YYYY-MM-DD
                 onChange={handleDateChange}
                 className="date-picker-input"
-                max="9999-12-31"
+                max="9999-12-31" // Standard max for date inputs
                 disabled={isSaving}
               />
             </div>
           )}
         </div>
-        
+
         <div className="log-info total-hours">
           <strong>Total Hours Worked:</strong> {totalTime}
         </div>
 
         {/* Display save error if any */}
         {saveError && (
-          <div className="error-message" style={{ color: "red", margin: "10px 0" }}>
-            {saveError}
-          </div>
+          <div className="error-message modal-error">{saveError}</div>
         )}
 
         <table className="log-time-table">
           <thead>
             <tr>
-              <th colSpan="4">Log Time Details</th>
+              <th colSpan="5">Log Time Details</th>
             </tr>
             <tr>
               <th>Tasks</th>
               <th>Start Time</th>
               <th>Finish Time</th>
               <th>Total Time Spent</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -296,6 +430,7 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
                     value={entry.task}
                     onChange={(e) => handleEdit(index, "task", e.target.value)}
                     placeholder="Enter task"
+                    className="log-input"
                     disabled={isSaving}
                   />
                 </td>
@@ -304,6 +439,7 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
                     type="time"
                     value={entry.start}
                     onChange={(e) => handleEdit(index, "start", e.target.value)}
+                    className="log-input"
                     disabled={isSaving}
                   />
                 </td>
@@ -311,43 +447,58 @@ const LogtimeModal = ({ initialDate = "", onClose, onSave, initialLogs = [] }) =
                   <input
                     type="time"
                     value={entry.finish}
-                    onChange={(e) => handleEdit(index, "finish", e.target.value)}
+                    onChange={(e) =>
+                      handleEdit(index, "finish", e.target.value)
+                    }
+                    className="log-input"
                     disabled={isSaving}
                   />
                 </td>
-                <td className="centered">{entry.timeSpent}</td>
+                <td className="centered time-spent-cell">{entry.timeSpent}</td>
+                <td className="centered action-cell">
+                  <button
+                    onClick={() => removeLogRow(index)}
+                    className="delete-row-btn modal-button-icon"
+                    disabled={isSaving}
+                    title="Remove this log entry"
+                  >
+                    🗑️
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="log-time-buttons" style={{ display: "flex", justifyContent: "space-between" }}>
+        <div className="log-time-buttons modal-actions">
           <button
-            className="add-btn"
-            onClick={() =>
-              setLogData([
-                ...logData,
-                { task: "", start: "", finish: "", timeSpent: "" },
-              ])
-            }
+            className="add-btn modal-button"
+            onClick={addEmptyRow}
             disabled={isSaving}
           >
-            + Add
+            + Add Row
           </button>
 
           <div>
             <button
-              className="close-btn"
+              className="close-btn modal-button"
               onClick={onClose}
               disabled={isSaving}
-              style={{ marginRight: '10px' }}
+              style={{ marginRight: "10px" }}
             >
-              
+            
             </button>
             <button
-              className="save-btn"
+              className="save-btn modal-button primary"
               onClick={handleSave}
-              disabled={isSaving || !selectedDate}
+              disabled={
+                isSaving ||
+                !selectedDate ||
+                (logData.length > 0 &&
+                  logData.every(
+                    (log) => !log.task && !log.start && !log.finish
+                  ))
+              }
             >
               {isSaving ? "Saving..." : "💾 Save Logs"}
             </button>
