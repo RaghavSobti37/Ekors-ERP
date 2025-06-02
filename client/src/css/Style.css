@@ -3,7 +3,7 @@
 /* ================ */
 :root {
   /* Colors */
-  --primary-color: #4b0082;
+  --primary-color: #4E4B3A;
   --primary-hover: #3a0069;
   --primary-light: #f3e5ff;
   --secondary-color: #6c757d;
@@ -75,7 +75,8 @@ body {
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
   color: #333;
-  background: linear-gradient(to right, #6a11cb, #2575fc);
+  /* background: linear-gradient(to right, #6a11cb, #2575fc); */
+  background: #FFFBEA;
   margin: 0;
   padding: 0;
 }

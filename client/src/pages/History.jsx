@@ -261,10 +261,6 @@ export default function History() {
           noDataMessage="No time log history found."
           tableClassName="mt-3"
           theadClassName="table-dark"
-          // tbodyClassName="text-center" // Actions are already centered by ActionButtons
-          // Forcing sort indicator for date column based on existing sortOrder state
-          // This is a bit of a workaround as ReusableTable expects sortConfig.key to match column.key
-          // To make it perfect, handleSort should update a sortConfig state like in other components.
         />
 
         <Pagination

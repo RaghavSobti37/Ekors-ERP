@@ -1,5 +1,5 @@
 import React from 'react';
-import '../css/Pagination.css'
+import '../css/Pagination.css';
 
 // Helper function to generate a range of numbers
 const range = (start, end) => {
@@ -50,19 +50,24 @@ const getPaginationItems = (currentPage, totalPages, siblingCount = 1) => {
 const Pagination = ({ 
   currentPage, 
   totalPages, 
-  onPageChange
+  onPageChange,
+  rowsPerPage,
+  onRowsPerPageChange,
+  rowsPerPageOptions = [5, 10, 15, 20, 25, 50, 100]
 }) => {
   const pageItems = React.useMemo(() => {
     if (totalPages === 0) return []; // No pages to show if totalPages is 0
     return getPaginationItems(currentPage, totalPages, 1);
   }, [currentPage, totalPages]);
 
-  // Basic styling for the new elements (can be moved to Pagination.css)
-  // .pagination-controls { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 10px; } /* Centered */
+  const handleRowsPerPageChange = (e) => {
+    const newRowsPerPage = Number(e.target.value);
+    onRowsPerPageChange(newRowsPerPage);
+  };
 
   return (
     <div className="pagination-wrapper">
-      <div className="pagination-controls"> {/* Wrapper for layout, now just centers the pagination */}
+      <div className="pagination-controls">
         <div className="pagination-container">
           <button
             className="pagination-arrow"
@@ -95,6 +100,21 @@ const Pagination = ({
           >
             Next →
           </button>
+        </div>
+        
+        <div className="rows-per-page-container">
+          <span className="rows-per-page-label">Rows per page:</span>
+          <select 
+            className="rows-per-page-select"
+            value={rowsPerPage}
+            onChange={handleRowsPerPageChange}
+          >
+            {rowsPerPageOptions.map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
