@@ -1,30 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FaTimes,
-  FaUserShield,
-  FaChartBar,
-} from "react-icons/fa";
-import axios from "axios";
-import Navbar from "../components/Navbar";
+import { FaTimes, FaUserShield } from "react-icons/fa"; // Icons
+import Navbar from "../components/Navbar"; // Navigation bar component
 import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
-import Pagination from "../components/Pagination";
-import ReusableTable from "../components/ReusableTable";
-import SortIndicator from "../components/SortIndicator";
-import UserReportModal from "../components/UserReportModal";
-import "../css/Users.css";
+import Pagination from "../components/Pagination"; // Component for table pagination
+import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
+import UserReportModal from "../components/UserReportModal"; // Modal for user reports
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
+import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { showToast, handleApiError, formatDisplayDate } from "../utils/helpers"; // Utility functions
+import { PlusCircle } from 'react-bootstrap-icons'; // Icon for Add User button
 import "../css/Style.css";
-import ActionButtons from "../components/ActionButtons";
-import { getAuthToken } from "../utils/authUtils";
-import {
-  Eye, // View
-  PencilSquare, // Edit
-  Trash, // Delete
-  BarChart, // Generate Report
-  PlusCircle, // For Add User button icon
-} from 'react-bootstrap-icons';
+import "../css/Users.css"; // Specific styles for Users page
+import ReusableModal from "../components/ReusableModal.jsx"; // Import ReusableModal
+
+
 
 const Users = () => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -48,6 +41,7 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4; // Hardcoded to 4
+  const userFormId = "user-form"; // For ReusableModal footer button
   const navigate = useNavigate();
 
   const handleGenerateReport = (user) => {
@@ -56,17 +50,10 @@ const Users = () => {
     setShowReportModal(true);
   };
 
-  // Axios instance with base URL and auth header
-  const api = axios.create({
-    baseURL: "http://localhost:3000",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  // Fetch users from backend
   const fetchUsers = async () => {
     try {
       console.log("[Users.jsx] fetchUsers: Attempting to fetch users.");      
-      const authTokenString = getAuthToken();
+      const authTokenString = getAuthTokenUtil(); // Use utility
       if (!authTokenString) {
         console.error(
           "[Users.jsx] fetchUsers: No token found. Aborting fetch."
@@ -80,45 +67,33 @@ const Users = () => {
       setError(""); // Clear previous errors
       setIsUnauthorized(false); // Reset unauthorized state
 
-      api.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${authTokenString}`;
-      console.log(
-        "[Users.jsx] fetchUsers: Axios instance headers:",
-        JSON.stringify(api.defaults.headers.common)
-      );
-      const response = await api.get("/api/users");
-      console.log(
-        "[Users.jsx] fetchUsers: Raw response from /api/users:",
-        response.data
-      );
-      if (response.data && Array.isArray(response.data.data)) {
-        setUsers(response.data.data);
+      // Use apiClient
+      const responseData = await apiClient("/users");
+
+      if (responseData && Array.isArray(responseData.data)) {
+        setUsers(responseData.data);
       } else {
         console.warn("[Users.jsx] fetchUsers: response.data.data is not an array or is missing. Setting users to [].", response.data);
         setUsers([]); // Ensure users is an array
         setError("Received unexpected data format from server.");
+        showToast("Received unexpected data format from server.", false);
       }
       setLoading(false);
     } catch (err) {
-      console.error(
-        "[Users.jsx] fetchUsers: Error fetching users:",
-        err.response || err
-      );
-      setError(err.response?.data?.error || "Failed to fetch users");
-      if (err.response?.status === 403) {
+      const errorMessage = handleApiError(err, "Failed to fetch users");
+      setError(errorMessage);
+      showToast(errorMessage, false);
+
+      if (err.status === 403) { // apiClient error structure
         console.error(
           "[Users.jsx] fetchUsers: Received 403 Forbidden. User is not authorized."
         );
         setError("You are not authorized to view this page. Only super-admins can access this.");
         setIsUnauthorized(true);
       } else if (err.response?.status === 401) {
-        console.error(
-          "[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired."
-        );
+        // This case might be handled by apiClient's global error handling or AuthContext
         setError("Authentication failed. Please log in again.");
-        // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
-        // navigate("/login");
+        navigate("/login");
       }
       setUsers([]); // Ensure users is an empty array on error
       setLoading(false);
@@ -161,28 +136,25 @@ const Users = () => {
       return;
     }
 
-    const authTokenString = getAuthToken();
+    const authTokenString = getAuthTokenUtil();
     if (!authTokenString) {
-      alert("Authentication token not found. Please log in again.");
+      showToast("Authentication token not found. Please log in again.", false);
       return;
     }
 
     try {
-      api.defaults.headers.common["Authorization"] = `Bearer ${authTokenString}`;
-      const response = await api.patch(`/api/users/${userToToggle._id}/status`, { isActive: newStatus });
+      // Use apiClient
+      const responseData = await apiClient(`/users/${userToToggle._id}/status`, {
+        method: 'PATCH',
+        body: { isActive: newStatus },
+      });
 
-      setUsers(users.map(u => u._id === userToToggle._id ? response.data.data : u));
-      alert(`User ${userToToggle.firstname} ${newStatus ? 'enabled' : 'disabled'} successfully.`);
+      setUsers(users.map(u => u._id === userToToggle._id ? responseData.data : u));
+      showToast(`User ${userToToggle.firstname} ${newStatus ? 'enabled' : 'disabled'} successfully.`, true);
 
     } catch (err) {
-      console.error("[Users.jsx] handleToggleActiveStatus: Error toggling user status:", err.response || err);
-      alert(err.response?.data?.error || err.response?.data?.message || "Failed to update user status.");
-      // If the API call fails, we might want to revert the UI,
-      // but for now, the user state won't be changed if an error occurs,
-      // and an alert will be shown. The checkbox will remain in its original state
-      // unless the page is reloaded or state is manually reset.
-      // To ensure UI consistency, one might refetch the specific user or the whole list,
-      // or revert the optimistic update if one was made before await.
+      const errorMessage = handleApiError(err, "Failed to update user status.");
+      showToast(errorMessage, false);
     }
   };
 
@@ -191,7 +163,7 @@ const Users = () => {
 
     if (!userIdToDelete) {
       console.error("[Users.jsx] handleDelete: Invalid user ID for deletion. Argument received:", userArg);
-      alert("Cannot delete user: User ID is missing or invalid.");
+      showToast("Cannot delete user: User ID is missing or invalid.", false);
       return;
     }
 
@@ -200,31 +172,25 @@ const Users = () => {
       console.log(
         `[Users.jsx] handleDelete: Attempting to delete user ${userIdToDelete}`
       );
-      const authTokenString = getAuthToken();
+      const authTokenString = getAuthTokenUtil(); // Use utility
       if (!authTokenString) {
         console.error(
           "[Users.jsx] handleDelete: No token found. Aborting delete."
         );
-        alert("Authentication token not found. Please log in again.");
+        showToast("Authentication token not found. Please log in again.", false);
         return;
       }
       try {
-        api.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${authTokenString}`;
-        await api.delete(`/api/users/${userIdToDelete}`);
+        // Use apiClient
+        await apiClient(`/users/${userIdToDelete}`, { method: 'DELETE' });
         console.log(
           `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
         );
         setUsers(users.filter((user) => user._id !== userIdToDelete));
+        showToast(`User ${userArg?.firstname || 'ID: ' + userIdToDelete} deleted successfully.`, true);
       } catch (err) {
-        console.error(
-          "[Users.jsx] handleDelete: Error deleting user. Status:",
-          err.response?.status, "Message:", err.response?.data?.message || err.message
-        );
-        alert(err.response?.data?.message || err.message || "Failed to delete user");
-        if (err.response?.status === 401) {
-        }
+        const errorMessage = handleApiError(err, "Failed to delete user.");
+        showToast(errorMessage, false);
       }
     }
   };
@@ -243,11 +209,11 @@ const Users = () => {
         "FormData:",
         formData
       );
-      const authTokenString = getAuthToken();
+      const authTokenString = getAuthTokenUtil(); // Use utility
 
       if (!authTokenString) {
         console.error("[Users.jsx] handleSave: No token found. Aborting save.");
-        alert("Authentication token not found. Please log in again.");
+        showToast("Authentication token not found. Please log in again.", false);
         return;
       }
 
@@ -259,30 +225,25 @@ const Users = () => {
         throw new Error("Password is required for new users");
       }
 
-      api.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${authTokenString}`;
+      let responseData;
 
       if (selectedUser) {
-        // Update existing user
-        const response = await api.put(
-          `/api/users/${selectedUser._id}`,
-          formData
-        );
+        responseData = await apiClient(`/users/${selectedUser._id}`, { // Use apiClient
+          method: 'PUT',
+          body: formData,
+        });
         setUsers(
           users.map((user) =>
-            user._id === selectedUser._id ? response.data : user
+            user._id === selectedUser._id ? responseData : user // apiClient returns data directly
           )
         );
       } else {
-        // Add new user - ensure password is included
         const userData = {
           ...formData,
           isActive: true, // Ensure new users are active
         };
-
-        const response = await api.post("/api/users", userData);
-        setUsers([...users, response.data]);
+        responseData = await apiClient("/users", { method: 'POST', body: userData }); // Use apiClient
+        setUsers([...users, responseData]);
       }
       console.log(`[Users.jsx] handleSave: Successfully ${action} user.`);
 
@@ -297,20 +258,16 @@ const Users = () => {
       });
       setShowEditModal(false);
       setSelectedUser(null);
-
-      // Refresh the list
+      showToast(`User ${action === 'Updating' ? 'updated' : 'added'} successfully.`, true);
       fetchUsers();
     } catch (err) {
-      console.error("[Users.jsx] handleSave: Error saving user:", err.response || err);
-      alert(err.response?.data?.error || err.message || "Failed to save user");
+      const errorMessage = handleApiError(err, "Failed to save user.");
+      showToast(errorMessage, false);
+      // If error has specific field details (e.g., from validation), handleApiError might return that.
+      // Otherwise, a generic message is shown.
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Never";
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
 
   // console.log("[Users.jsx] Rendering. Current searchTerm:", searchTerm, "currentPage:", currentPage);
   const filteredUsers = users.filter(
@@ -321,14 +278,10 @@ const Users = () => {
       user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // console.log("[Users.jsx] Filtered users count:", filteredUsers.length);
-  // Pagination calculations
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  // if (error && !showViewModal && !showEditModal) return <div className="container mt-4"><Alert variant="danger">{error}</Alert></div>;
-  // console.log("[Users.jsx] Current items for page:", currentItems.length, "Total pages:", totalPages);
 
   return (
     <>
@@ -339,16 +292,13 @@ const Users = () => {
       <Navbar />
 
       <div className="container mt-4">
-        {" "}
-        {/* Changed from users-page to container mt-4 */}
+
         {error && !showViewModal && !showEditModal && (
           <Alert variant="danger" onClose={() => setError("")} dismissible>
             {error}
           </Alert>
         )}
         <div className="d-flex justify-content-between align-items-center mb-4">
-          {" "}
-          {/* Standard header */}
           <h2 style={{ color: "black" }}>User Management</h2>
           <div className="d-flex align-items-center">
             <SearchBar
@@ -363,11 +313,10 @@ const Users = () => {
               onAddNew={() => handleEdit(null)}
               buttonText="Add New User"
               buttonIcon={<PlusCircle size={18}/>}
-              className="me-0" // No margin needed if SearchBar handles its own gap or parent does
+              className="me-0"
             />
           </div>
         </div>
-        {/* users-table-container can be removed or kept if it adds specific styling not covered by Bootstrap */}
         <ReusableTable
           columns={[
             {
@@ -387,7 +336,6 @@ const Users = () => {
               ),
             },
             { key: 'email', header: 'Email' },
-            // { key: 'phone', header: 'Phone', renderCell: (user) => user.phone || "-" },
             {
               key: 'role',
               header: 'Role',
@@ -397,7 +345,6 @@ const Users = () => {
                 </span>
               ),
             },
-            // { key: 'createdAt', header: 'Created At', renderCell: (user) => formatDate(user.createdAt) },
                         {
               key: 'isActive',
               header: 'Status',
@@ -416,9 +363,7 @@ const Users = () => {
           data={currentItems}
           keyField="_id"
           isLoading={loading && currentItems.length === 0}
-          error={error && currentItems.length === 0 ? error : null}
-          // onSort={requestSort} // Add if sorting is needed for Users page
-          // sortConfig={sortConfig} // Add if sorting is needed
+          error={error && currentItems.length === 0 ? error : null} // Show table-level error only if no items
           renderActions={(user) => (
             <ActionButtons
               item={user}
@@ -450,193 +395,81 @@ const Users = () => {
         )}
         {/* View Modal */}
         {showViewModal && selectedUser && (
-          <div
-            className="popup-overlay"
-            onClick={() => setShowViewModal(false)}
+<ReusableModal
+            show={showViewModal && !!selectedUser}
+            onHide={() => {
+              setShowViewModal(false);
+              setSelectedUser(null); // Clear selected user on close
+            }}
+            title="User Details"
+            footerContent={
+              <BsButton
+                variant="secondary"
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedUser(null);
+                }}
+              >
+                Close
+              </BsButton>
+            }
           >
-            <div
-              className="popup-form ninety-five-percent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <h2>User Details</h2>
-                <button
-                  className="close-btn"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  {" "}
-                  {/* Using existing close-btn class for '✖' */}
-                  <FaTimes />
-                </button>
+                        <div className="user-profile">
+              <div className="avatar-large">
+                {selectedUser.firstname?.charAt(0).toUpperCase()}
+                {selectedUser.role === "super-admin" && (
+                  <FaUserShield
+                    className="super-admin-badge"
+                    title="Super Admin"
+                  />
+                )}
               </div>
-              <div className="form-content">
-                {" "}
-                {/* Use form-content for padding */}
-                <div className="user-profile">
-                  <div className="avatar-large">
-                    {selectedUser.firstname?.charAt(0).toUpperCase()}
-                    {selectedUser.role === "super-admin" && (
-                      <FaUserShield
-                        className="super-admin-badge"
-                        title="Super Admin"
-                      />
-                    )}
-                  </div>
-                  <h3>
-                    {selectedUser.firstname} {selectedUser.lastname}
-                  </h3>
-                  <p className="user-email">{selectedUser.email}</p>
-                </div>
-                <div className="user-details-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Phone:</span>
-                    <span className="detail-value">
-                      {selectedUser.phone || "-"}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Role:</span>
-                    <span
-                      className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}
-                    >
-                      {selectedUser.role}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Created At:</span>
-                    <span className="detail-value">
-                      {formatDate(selectedUser.createdAt)}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Last Updated:</span>
-                    <span className="detail-value">
-                      {formatDate(selectedUser.updatedAt)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                {" "}
-                {/* Use form-actions for consistency */}
-                <BsButton
-                  variant="secondary"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </BsButton>
-              </div>
+              <h3>
+                {selectedUser.firstname} {selectedUser.lastname}
+              </h3>
+              <p className="user-email">{selectedUser.email}</p>
             </div>
-          </div>
+            <div className="user-details-grid">
+              <div className="detail-item">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">
+                  {selectedUser.phone || "-"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Role:</span>
+                <span
+                  className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}
+                >
+                  {selectedUser.role}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Created At:</span>
+                <span className="detail-value">
+                  {formatDisplayDate(selectedUser.createdAt)}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Last Updated:</span>
+                <span className="detail-value">
+                  {formatDisplayDate(selectedUser.updatedAt)}
+                </span>
+
+                  </div>
+                </div>
+          </ReusableModal>
         )}
         {/* Edit Modal */}
         {showEditModal && (
-          <div
-            className="popup-overlay"
-            onClick={() => {
-              setShowEditModal(false);
+           <ReusableModal
+            show={showEditModal}
+            onHide={() => {              setShowEditModal(false);
               setSelectedUser(null);
             }}
-          >
-            <div
-              className="popup-form ninety-five-percent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <h2>{selectedUser ? "Edit User" : "Add New User"}</h2>
-                <button
-                  className="close-btn"
-                  onClick={() => {
-                    /* Using existing close-btn class for '✖' */
-                    setShowEditModal(false);
-                    setSelectedUser(null);
-                  }}
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <div className="form-content">
-                {" "}
-                {/* Use form-content for padding */}
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>First Name *</label>
-                    <input
-                      type="text"
-                      name="firstname"
-                      value={formData.firstname}
-                      onChange={handleInputChange}
-                      placeholder="Enter First Name"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Last Name *</label>
-                    <input
-                      type="text"
-                      name="lastname"
-                      value={formData.lastname}
-                      onChange={handleInputChange}
-                      placeholder="Enter Last Name"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Email *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter email"
-                      required
-                      disabled={!!selectedUser}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Phone</label>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Role *</label>
-                    <select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleInputChange}
-                      disabled={selectedUser?.role === "super-admin"}
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                      {!selectedUser && (
-                        <option value="super-admin">Super Admin</option>
-                      )}
-                    </select>
-                  </div>
-                  {!selectedUser && (
-                    <div className="form-group">
-                      <label>Password *</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter password"
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="form-actions">
-                {" "}
-                {/* Use form-actions for consistency */}
+                        title={selectedUser ? "Edit User" : "Add New User"}
+            footerContent={
+              <>
                 <BsButton
                   variant="secondary"
                   onClick={() => {
@@ -646,12 +479,93 @@ const Users = () => {
                 >
                   Cancel
                 </BsButton>
-                <BsButton variant="success" onClick={handleSave}>
+                <BsButton variant="success" type="submit" form={userFormId}>
                   {selectedUser ? "Update User" : "Create User"}
                 </BsButton>
+              </>
+            }
+
+          >
+            <Form id={userFormId} onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+              {error && <Alert variant="danger">{error}</Alert>}
+              <div className="form-grid"> {/* You can keep .form-grid and its styles from Users.css */}
+                <Form.Group className="mb-3">
+                  <Form.Label>First Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="firstname"
+                    value={formData.firstname}
+                    onChange={handleInputChange}
+                    placeholder="Enter First Name"
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Last Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="lastname"
+                    value={formData.lastname}
+                    onChange={handleInputChange}
+                    placeholder="Enter Last Name"
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Email *</Form.Label>
+                  <Form.Control
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter email"
+                    required
+                    disabled={!!selectedUser} // Email usually not editable
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Phone</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Enter phone number"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Role *</Form.Label>
+                  <Form.Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    disabled={selectedUser?.role === "super-admin"} // Super-admin role cannot be changed
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    {/* Allow setting super-admin only if current user is super-admin and it's a new user or not editing self */}
+                    {/* This logic might need to be more sophisticated based on who can create/edit super-admins */}
+                    {(!selectedUser || selectedUser?.role !== "super-admin") && (
+                      <option value="super-admin">Super Admin</option>
+                    )}
+                  </Form.Select>
+                </Form.Group>
+                {!selectedUser && ( // Password field only for new users
+                  <Form.Group className="mb-3">
+                    <Form.Label>Password *</Form.Label>
+                    <Form.Control
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="Enter password"
+                      required
+                    />
+                  </Form.Group>
+                )}
               </div>
-            </div>
-          </div>
+            </Form>
+          </ReusableModal>
         )}
 
         <UserReportModal

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Pagination from "../components/Pagination";
-import axios from "axios";
 import {
   Modal,
   Button,
@@ -14,22 +13,24 @@ import {
   Row,
   Col,
 } from "react-bootstrap";
-import Navbar from "../components/Navbar.jsx";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
-import "../css/Style.css";
-import SortIndicator from "../components/SortIndicator.jsx"; // Import SortIndicator
-import QuotationPDF from "../components/QuotationPDF.jsx";
-import PIPDF from "../components/PIPDF.jsx";
-import { useAuth } from "../context/AuthContext";
+import SortIndicator from "../components/SortIndicator.jsx"; // Component for sort direction indicator
+import QuotationPDF from "../components/QuotationPDF.jsx"; // Component for rendering Quotation PDF
+import PIPDF from "../components/PIPDF.jsx"; // Component for rendering PI PDF
+import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-// Import Toastify and Logger
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
 import "react-toastify/dist/ReactToastify.css";
-import frontendLogger from "../utils/frontendLogger.js";
-import { getAuthToken } from "../utils/authUtils";
-import ReusableTable from "../components/ReusableTable.jsx";
+import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx"; 
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
+import "../css/Style.css"; // General styles
+import ReusableModal from "../components/ReusableModal.jsx";
 
 const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,22 +40,17 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // Local error
 
-  // Use the shared getAuthToken
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const token = getAuthToken();
+      const token = getAuthTokenUtil(); // Use utility
       if (!token) {
         throw new Error("Authentication token not found for fetching users.");
       }
 
-      const response = await axios.get("http://localhost:3000/api/users/transfer-candidates", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setUsers(response.data);
+      const data = await apiClient("/users/transfer-candidates"); // Use apiClient
+      setUsers(data);
     } catch (err) {
       let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
       if (err.response) {
@@ -264,29 +260,20 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to fetch tickets. Please log in.");
         throw new Error("No authentication token found");
       }
-
-      const response = await axios.get("http://localhost:3000/api/tickets", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
+      const data = await apiClient("/tickets", { params: { // Use apiClient
           populate:
 "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
         },
       });
 
-      setTickets(response.data);
-      // frontendLogger.info("ticketActivity", "Tickets fetched successfully", auth.user, { count: response.data.length });
+      setTickets(data);
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to load tickets";
+      const errorMsg = handleApiError(error, "Failed to load tickets", auth.user, "ticketActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -296,11 +283,11 @@ export default function Dashboard() {
         {
           errorMessage: errorMsg,
           stack: error.stack,
-          status: error.response?.status,
+          status: error.status, // apiClient error structure
           action: "FETCH_TICKETS_FAILURE",
         }
       );
-      if (error.response?.status === 401) {
+      if (error.status === 401) { // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/tickets" } });
       }
@@ -309,7 +296,7 @@ export default function Dashboard() {
     }
   }, [authUser, navigate, auth.user]); // Removed getAuthToken from dependencies as it's now a direct import
 
-  useEffect(() => {
+  useEffect(() => { // Effect for authentication check and initial data fetch
     if (!authLoading && !authUser) {
       if (window.location.pathname !== "/login") {
         toast.info("Redirecting to login page.");
@@ -321,9 +308,7 @@ export default function Dashboard() {
   }, [authUser, authLoading, navigate, fetchTickets]);
 
   useEffect(() => {
-    // Removed automatic status update based on document uploads, as PO is removed and logic simplified.
   }, [editTicket, ticketData.status, statusStages]);
-
   useEffect(() => {
     const activeDetailedTicket = showEditModal
       ? editTicket
@@ -337,9 +322,7 @@ const history = [];
       let firstAssignee = activeDetailedTicket.createdBy;
       if (
         activeDetailedTicket.transferHistory &&
-        activeDetailedTicket.transferHistory.length > 0
-      ) {
-                // The 'from' user of the first transfer is the initial point after creation if transfers exist
+        activeDetailedTicket.transferHistory.length > 0) {
         firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
       } else if (activeDetailedTicket.currentAssignee) {
         firstAssignee = activeDetailedTicket.currentAssignee;
@@ -386,20 +369,14 @@ setTransferHistoryDisplay(history);
     ) {
       setIsLoading(true);
       try {
-        const token = getAuthToken(auth.user);
+        const token = getAuthTokenUtil(auth.user); // Use utility
         if (!token) {
           toast.error("Authentication required for delete operation.");
           throw new Error(
             "Authentication token not found for delete operation."
           );
         }
-
-        await axios.delete(
-          `http://localhost:3000/api/tickets/admin/${ticketToDelete._id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await apiClient(`/tickets/admin/${ticketToDelete._id}`, { method: 'DELETE' }); // Use apiClient
 
         fetchTickets();
         setError(null);
@@ -411,8 +388,7 @@ setTransferHistoryDisplay(history);
           action: "DELETE_TICKET_SUCCESS",
         });
       } catch (error) {
-        const errorMsg =
-          "Delete failed: " + (error.response?.data?.message || error.message);
+        const errorMsg = handleApiError(error, "Delete failed", auth.user, "ticketActivity");
         setError(errorMsg);
         toast.error(errorMsg);
         frontendLogger.error(
@@ -422,7 +398,7 @@ setTransferHistoryDisplay(history);
           {
             ticketId: ticketToDelete._id,
             ticketNumber: ticketToDelete.ticketNumber,
-            errorMessage: error.response?.data?.message || error.message,
+            errorMessage: error.data?.message || error.message, // apiClient error structure
             stack: error.stack,
             action: "DELETE_TICKET_FAILURE",
           }
@@ -446,21 +422,20 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to record payment.");
         throw new Error("No authentication token found");
       }
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${selectedTicket?._id}/payments`,
-        {
+      const responseData = await apiClient(`/tickets/${selectedTicket?._id}/payments`, { // Use apiClient
+        method: 'POST',
+        body: {
           amount: paymentAmount,
           date: paymentDate,
           reference: paymentReference,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.status === 200) {
+      });
+      if (responseData) { // apiClient returns data on success
         await fetchTickets();
         setShowPaymentModal(false);
         const successMsg = "Payment recorded successfully!";
@@ -474,9 +449,7 @@ setTransferHistoryDisplay(history);
         setPaymentReference("");
       }
     } catch (error) {
-      const errorMsg = `Failed to record payment: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = handleApiError(error, "Failed to record payment", auth.user, "paymentActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -486,7 +459,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: selectedTicket?._id,
           amount: paymentAmount,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "RECORD_PAYMENT_FAILURE",
         }
@@ -610,7 +583,6 @@ setTransferHistoryDisplay(history);
         validateItemPrice(updatedGoods[index]);
       }
     }
-    updateTotals(updatedGoods);
   };
 
   const updateTotals = (goods) => {
@@ -627,7 +599,7 @@ setTransferHistoryDisplay(history);
     setTicketData((prev) => ({
       ...prev,
       goods,
-      totalQuantity,
+      totalQuantity, // Corrected: updateTotals should set this
       totalAmount,
       gstAmount,
       grandTotal,
@@ -679,6 +651,31 @@ setTransferHistoryDisplay(history);
       }
       return true;
     }
+  };
+
+  const handleAddItemToTicket = (item) => { // New handler for adding item in edit modal
+    const itemExists = ticketData.goods.some(
+      (existingItem) => existingItem.description === item.name
+    );
+    if (itemExists) {
+      toast.warn("This item is already added to the ticket.");
+      return;
+    }
+    const newGoods = [
+      ...ticketData.goods,
+      {
+        srNo: ticketData.goods.length + 1,
+        description: item.name,
+        hsnSacCode: item.hsnCode || "",
+        quantity: 1,
+        unit: item.unit || "Nos",
+        price: item.price,
+        amount: item.price, // Initial amount
+        originalPrice: item.price,
+        maxDiscountPercentage: item.maxDiscountPercentage,
+      },
+    ];
+    updateTotals(newGoods); // This will set ticketData
   };
 
   const handleEdit = (selectedTicketToEdit) => {
@@ -752,6 +749,20 @@ setTransferHistoryDisplay(history);
     setError(null); // Clear any previous errors when opening modal
   };
 
+  const handleDeleteItemFromTicket = (indexToDelete) => {
+    const updatedGoods = ticketData.goods.filter((_, index) => index !== indexToDelete);
+    const renumberedGoods = updatedGoods.map((item, index) => ({
+      ...item,
+      srNo: index + 1,
+    }));
+    // Update totals based on renumberedGoods
+    updateTotals(renumberedGoods); // This will update ticketData with new goods and totals
+    // No need to call setTicketData directly for goods here, updateTotals handles it.
+  };
+
+
+
+
   const handleTransfer = (ticketToTransfer) => {
     setTransferTicket(ticketToTransfer);
     setSelectedUser(null);
@@ -797,7 +808,7 @@ setTransferHistoryDisplay(history);
       }
 
 
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to update ticket.");
         throw new Error("Authentication token not found");
@@ -832,17 +843,11 @@ setTransferHistoryDisplay(history);
         })),
       };
 
-      const response = await axios.put(
-        `http://localhost:3000/api/tickets/${editTicket._id}`,
+      const responseData = await apiClient(`/tickets/${editTicket._id}`, { // Use apiClient
+        method: 'PUT',
         updateData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.status === 200) {
+      });
+      if (responseData) { // apiClient returns data on success
         fetchTickets();
         setShowEditModal(false);
         setError(null);
@@ -857,9 +862,7 @@ setTransferHistoryDisplay(history);
         });
       }
     } catch (error) {
-      const errorMsg = `Failed to update ticket: ${
-        error.response?.data?.message || error.message
-      }`;
+      const errorMsg = handleApiError(error, "Failed to update ticket", auth.user, "ticketActivity");
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -869,7 +872,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: editTicket?._id,
           ticketNumber: editTicket?.ticketNumber,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           submittedData: ticketData, // Be cautious with logging full data
           statusChangeCommentAttempted: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
@@ -891,24 +894,18 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to transfer ticket.");
         throw new Error("Authentication token not found");
       }
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${transferTicket._id}/transfer`,
-        { userId: userToTransferTo._id, note },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const responseData = await apiClient(`/tickets/${transferTicket._id}/transfer`, { // Use apiClient
+        method: 'POST',
+        body: { userId: userToTransferTo._id, note },
+      });
 
-      if (response.status === 200) {
-        const updatedTicketFromServer = response.data.ticket;
+      if (responseData && responseData.ticket) {
+        const updatedTicketFromServer = responseData.ticket;
         setTickets((prevTickets) =>
           prevTickets.map((t) =>
             t._id === updatedTicketFromServer._id ? updatedTicketFromServer : t
@@ -926,12 +923,12 @@ setTransferHistoryDisplay(history);
         });
       }
     } catch (error) {
-       let detailedErrorMessage = error.message; // Default to generic error message
-      if (error.response && error.response.data) {
-        // Prioritize 'details' if available, then 'message' from backend error response
-        detailedErrorMessage = error.response.data.details || error.response.data.message || error.message;
+      let detailedErrorMessage = error.data?.details || error.data?.message || error.message; // apiClient error structure
+      if (!detailedErrorMessage) { // Fallback if error.data is not as expected
+        detailedErrorMessage = "An unexpected error occurred during transfer.";
       }
-      const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;      setError(errorMsg);
+      const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;
+      setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
         "ticketActivity",
@@ -950,7 +947,6 @@ setTransferHistoryDisplay(history);
     }
   };
 
-  // This function will be part of the new PDF Preview Modal, not directly in Edit Modal
   const renderPdfPreview = (previewType, ticketForPdf) => {
     if (!previewType || !ticketForPdf) return null;
 
@@ -1066,27 +1062,20 @@ setTransferHistoryDisplay(history);
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to upload document.");
         throw new Error("Authentication token not found");
       }
       const formData = new FormData();
       formData.append("document", file);
-      formData.append("documentType", docType); // Send the specific document type
+      formData.append("documentType", docType);
 
-      const response = await axios.post(
-        `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
+      const responseData = await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
+        method: 'POST',
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data || !response.data.documents) {
+      });
+      if (!responseData || !responseData.documents) {
         throw new Error("Invalid response from server after document upload");
       }
 
@@ -1096,18 +1085,16 @@ setTransferHistoryDisplay(history);
       
       // If the payment modal is open and showing selectedTicket, update it
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-        const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
              params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicket);
       }
 
 
       const successMsg = `${docType.toUpperCase()} document uploaded successfully.`;
       toast.success(successMsg);
       frontendLogger.info("documentActivity", successMsg, auth.user, {
-        ticketId: targetTicketId,
         action: "UPLOAD_DOCUMENT_SUCCESS",
       });
       return true;
@@ -1123,7 +1110,7 @@ setTransferHistoryDisplay(history);
         auth.user,
         {
           ticketId: targetTicketId,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "UPLOAD_DOCUMENT_FAILURE",
         }
@@ -1141,7 +1128,7 @@ setTransferHistoryDisplay(history);
     const targetTicketId = ticketIdForDelete || editTicket?._id || selectedTicket?._id;
 
     try {
-      const token = getAuthToken(auth.user);
+      const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
         toast.error("Authentication required to delete document.");
         throw new Error("No authentication token found");
@@ -1153,37 +1140,29 @@ setTransferHistoryDisplay(history);
         return;
       }
 
-      const response = await axios.delete(
-        `http://localhost:3000/api/tickets/${targetTicketId}/documents`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          data: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
-        }
-      );
+      await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
+        method: 'DELETE',
+        body: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
+      });
 
       // Re-fetch tickets or specific ticket
       await fetchTickets();
       if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, {
-             headers: { Authorization: `Bearer ${token}` },
+         const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
              params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
         });
-        setSelectedTicket(updatedSingleTicket.data);
+        setSelectedTicket(updatedSingleTicket);
       }
        if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await axios.get(`http://localhost:3000/api/tickets/${targetTicketId}`, { 
-            headers: { Authorization: `Bearer ${token}` },
+         const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, {  // Use apiClient
             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
          });
-         setEditTicket(updatedSingleTicket.data);
-         // Also update ticketData if it's derived from editTicket
-         // This part might be less relevant as document section is removed from edit modal
+         setEditTicket(updatedSingleTicket);
        }
 
       const successMsg = `${docTypeToDelete.toUpperCase()} document deleted successfully.`;
       toast.success(successMsg);
       frontendLogger.info("documentActivity", successMsg, auth.user, {
-        ticketId: targetTicketId,
         deletedPath: documentPathToDelete,
         action: "DELETE_DOCUMENT_SUCCESS",
       });
@@ -1200,7 +1179,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: targetTicketId,
           attemptedDeletePath: documentPathToDelete,
-          errorMessage: error.response?.data?.message || error.message,
+          errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           action: "DELETE_DOCUMENT_FAILURE",
         }
@@ -1334,8 +1313,33 @@ setTransferHistoryDisplay(history);
   const TransferModal = () => {
     const [transferNote, setTransferNote] = useState("");
 
+    const transferModalFooter = (
+      <>
+        <Button
+          variant="outline-secondary"
+          onClick={() => {
+            setShowTransferModal(false);
+            setError(null);
+            setSelectedUser(null);
+            setTransferNote("");
+          }}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => handleTransferTicket(selectedUser, transferNote)}
+          disabled={!selectedUser || isLoading}
+          className="px-4"
+        >
+          {isLoading ? "Transferring..." : "Confirm Transfer"}
+        </Button>
+      </>
+    );
+
     return (
-      <Modal
+      <ReusableModal
         show={showTransferModal}
         onHide={() => {
           setShowTransferModal(false);
@@ -1343,18 +1347,15 @@ setTransferHistoryDisplay(history);
           setSelectedUser(null);
           setTransferNote("");
         }}
-        size="lg"
-        
-                dialogClassName="transfer-modal centered-modal"
-
-      >
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title>
+        title={
+          <>
             <i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket -{" "}
             {transferTicket?.ticketNumber}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4">
+          </>
+        }
+        footerContent={transferModalFooter}
+        isLoading={isLoading}
+      >
           <div className="mb-4">
             <h5 className="mb-3">
               <i className="bi bi-search me-2"></i>Search User to Transfer To
@@ -1461,30 +1462,7 @@ setTransferHistoryDisplay(history);
               </div>
             </div>
           )}
-        </Modal.Body>
-        <Modal.Footer className="justify-content-between">
-          <Button
-            variant="outline-secondary"
-            onClick={() => {
-              setShowTransferModal(false);
-              setError(null);
-              setSelectedUser(null);
-              setTransferNote("");
-            }}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => handleTransferTicket(selectedUser, transferNote)}
-            disabled={!selectedUser || isLoading}
-            className="px-4"
-          >
-            {isLoading ? "Transferring..." : "Confirm Transfer"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      </ReusableModal>
     );
   };
 
@@ -1701,37 +1679,37 @@ setTransferHistoryDisplay(history);
           theadClassName="table-dark"
         />
 
-        <Modal
+        <ReusableModal
           show={showEditModal}
           onHide={() => {
             setShowEditModal(false);
             setError(null);
           }}
-           size="xl"
-          dialogClassName="custom-modal"
-          style={{ maxWidth: "95vw", width: "100%", height: "105vh" }}
-          contentClassName="h-100 d-flex flex-column"
-          
-        >
-          <Modal.Header closeButton className="bg-primary text-white">
+          title={
             <div className="d-flex justify-content-between align-items-center w-100">
-              <Modal.Title>
-                <i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
-                {editTicket?.ticketNumber}
-              </Modal.Title>
+                <span><i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
+                {editTicket?.ticketNumber}</span>
               <div className="assignee-info">
                 <Badge bg="light" text="dark" className="p-2">
                   <i className="bi bi-person-fill me-1"></i>
                   {editTicket?.currentAssignee?.firstname}{" "}
                   {editTicket?.currentAssignee?.lastname || "Unassigned"}
                 </Badge>
-                <small className="d-block text-white-50 ms-1">
+                <small className="d-block text-muted ms-1"> {/* Adjusted text color for ReusableModal default header */}
                   Currently Assigned
                 </small>
               </div>
             </div>
-          </Modal.Header>
-          <Modal.Body style={{ overflowY: "auto", padding: "20px" }}>
+          }
+          footerContent={
+            <>
+              <Button variant="secondary" onClick={() => { setShowEditModal(false); setError(null); }} disabled={isLoading}>Cancel</Button>
+              <Button variant="primary" onClick={handleUpdateTicket} disabled={isLoading}>
+                {isLoading ? "Updating..." : "Update Ticket"}
+              </Button>
+            </>
+          }
+        >
             {error && (
               <Alert
                 variant="danger"
@@ -1873,24 +1851,14 @@ setTransferHistoryDisplay(history);
                 <tbody>
                   {ticketData.goods.map((item, index) => (
                     <tr key={index}>
-                      <td className="align-middle">{item.srNo}</td>
+                      <td className="align-middle text-center">{item.srNo}</td>
                       <td>
-                        {index === ticketData.goods.length - 1 &&
-                        !item.description ? (
-                          <ItemSearchComponent
-                            onItemSelect={handleItemSelect}
-                            index={index}
-                            placeholder="Search & add item..."
-                            authContext={auth}
-                          />
-                        ) : (
                           <Form.Control
                             type="text"
                             value={item.description}
                             readOnly
                             disabled
                           />
-                        )}
                       </td>
                       <td>
                         <Form.Control
@@ -1929,14 +1897,25 @@ setTransferHistoryDisplay(history);
                       <td className="align-middle">
                         ₹{(item.amount || 0).toFixed(2)}
                       </td>
+                      <td className="text-center align-middle">
+                        <Button variant="danger" size="sm" onClick={() => handleDeleteItemFromTicket(index)}>
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </div>
-            <Button variant="outline-primary" onClick={addRow} className="mb-3">
-              <i className="bi bi-plus-lg me-1"></i> Add Item
-            </Button>
+            {/* Item Search for adding new items to ticket */}
+            <div className="my-3">
+              <h6>Add New Item to Ticket</h6>
+              <ItemSearchComponent
+                onItemSelect={handleAddItemToTicket} // Use the new handler
+                placeholder="Search and select item to add..."
+              />
+            </div>
+
             <div className="bg-light p-3 rounded">
               <Row>
                 <Col md={4}>
@@ -1963,72 +1942,32 @@ setTransferHistoryDisplay(history);
                 </Col>
               </Row>
             </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowEditModal(false);
-                setError(null);
-              }}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleUpdateTicket}
-              disabled={isLoading}
-            >
-              {isLoading ? "Updating..." : "Update Ticket"}
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        </ReusableModal>
 
         <TransferModal />
 
         {/* PDF Preview Modal */}
-        <Modal
+        <ReusableModal
           show={showPdfPreviewModal}
           onHide={() => setShowPdfPreviewModal(false)}
-          fullscreen
-          
+          title={`${pdfPreviewConfig.type?.toUpperCase()} Preview`}
+          // Footer can be part of renderPdfPreview or passed if simple
         >
-          <Modal.Header closeButton className="bg-info text-white">
-            <Modal.Title>
-              {pdfPreviewConfig.type?.toUpperCase()} Preview
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
             {pdfPreviewConfig.type && pdfPreviewConfig.data &&
               renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
-          </Modal.Body>
-        </Modal>
+        </ReusableModal>
 
-        <Modal
+        <ReusableModal
           show={showPaymentModal}
           onHide={() => {
             setShowPaymentModal(false);
             setError(null);
           }}
-          size="xl"
-          dialogClassName="custom-modal"
-          style={{ maxWidth: "95vw", width: "95%", height: "95vh" }}
-          contentClassName="h-100 d-flex flex-column"
+          title={<><i className="bi bi-credit-card-2-front me-2"></i>Payment Details - {selectedTicket?.ticketNumber}</>}
+          footerContent={
+            <Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>
+          }
         >
-          <Modal.Header
-            closeButton
-            className="modal-header-custom bg-success text-white"
-          >
-            <Modal.Title>
-              <i className="bi bi-credit-card-2-front me-2"></i>Payment Details
-              - {selectedTicket?.ticketNumber}
-            </Modal.Title>
-          </Modal.Header>
-          <Modal.Body
-            className="modal-body-custom"
-            style={{ overflowY: "auto", flexGrow: 1 }}
-          >
             {error && (
               <Alert
                 variant="danger"
@@ -2216,21 +2155,7 @@ setTransferHistoryDisplay(history);
               </Col>
               
             </Row>
-            <hr />
-          </Modal.Body>
-          <Modal.Footer className="modal-footer-custom">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowPaymentModal(false);
-                setError(null);
-              }}
-              disabled={isLoading}
-            >
-              Close
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        </ReusableModal>
 
         {totalPages > 1 && (
           <Pagination

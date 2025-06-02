@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const LogTime = require('../models/LogTime');
+const LogTimeBackup = require('../models/LogTimeBackup'); // Import the backup model
 const auth = require('../middleware/auth');
+const logger = require('../utils/logger'); // Assuming logger is setup
 
 // Utility function for time overlap
 const hasTimeOverlap = (logs) => {
@@ -166,5 +168,57 @@ router.get('/all', auth, async (req, res) => {
     res.status(500).json({ error: 'Error fetching history' });
   }
 });
+
+// DELETE a specific log time entry by its ID
+router.delete('/:id', auth, async (req, res) => {
+  const logEntryId = req.params.id;
+  const userId = req.user._id; // User performing the delete
+
+  const logDetails = { userId, logEntryId, model: 'LogTime', operation: 'delete' };
+  logger.info('delete-logtime', `[DELETE_INITIATED] LogTime ID: ${logEntryId} by User ID: ${userId}.`, req.user, logDetails);
+
+  try {
+    const logEntryToBackup = await LogTime.findOne({ _id: logEntryId, user: userId });
+
+    if (!logEntryToBackup) {
+      logger.warn('delete-logtime', `[NOT_FOUND] LogTime entry not found or user not authorized. LogTime ID: ${logEntryId}, User ID: ${userId}.`, req.user, logDetails);
+      return res.status(404).json({ error: 'Log entry not found or you are not authorized to delete it.' });
+    }
+
+    logger.debug('delete-logtime', `[FETCH_SUCCESS] Found LogTime ID: ${logEntryId}. Preparing for backup.`, req.user, logDetails);
+
+    const backupData = logEntryToBackup.toObject();
+    const newBackupEntry = new LogTimeBackup({
+      ...backupData,
+      originalId: logEntryToBackup._id,
+      deletedBy: userId,
+      deletedAt: new Date(),
+      originalCreatedAt: logEntryToBackup.createdAt, // Assuming timestamps: true in LogTime schema
+      originalUpdatedAt: logEntryToBackup.updatedAt, // Assuming timestamps: true in LogTime schema
+      backupReason: "User-initiated deletion via API"
+    });
+
+    await newBackupEntry.save();
+    logger.info('delete-logtime', `[BACKUP_SUCCESS] LogTime entry successfully backed up. Backup ID: ${newBackupEntry._id}.`, req.user, { ...logDetails, originalId: logEntryToBackup._id, backupId: newBackupEntry._id });
+
+    await LogTime.findByIdAndDelete(logEntryId);
+    logger.info('delete-logtime', `[ORIGINAL_DELETE_SUCCESS] Original LogTime entry successfully deleted. LogTime ID: ${logEntryId}.`, req.user, { ...logDetails, originalId: logEntryToBackup._id });
+
+    res.status(200).json({
+      message: 'Log entry deleted and backed up successfully.',
+      originalId: logEntryToBackup._id,
+      backupId: newBackupEntry._id
+    });
+
+  } catch (error) {
+    logger.error('delete-logtime', `[DELETE_ERROR] Error during LogTime deletion process for ID: ${logEntryId} by User ID: ${userId}.`, error, req.user, logDetails);
+    // Basic check if backup might have failed before deletion attempt
+    if (error.name === 'ValidationError' || (typeof logEntryToBackup !== 'undefined' && (!newBackupEntry || newBackupEntry.isNew))) {
+        logger.warn('delete-logtime', `[ROLLBACK_DELETE_IMPLIED] Backup failed or error before backup for LogTime ID: ${logEntryId}. Original document might not have been deleted.`, req.user, logDetails);
+    }
+    res.status(500).json({ error: 'Server error during the deletion process. Please check server logs.' });
+  }
+});
+
 
 module.exports = router;

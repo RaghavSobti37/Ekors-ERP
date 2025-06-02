@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import "../css/ItemSearchComponent.css";
-
-const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-  
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
 
 const ItemSearchComponent = ({ 
   onItemSelect, 
@@ -88,18 +78,13 @@ const ItemSearchComponent = ({
     try {
       setLoading(true);
       setError(null);
-      
       const token = getAuthToken();
       if (!token) {
         throw new Error("Authentication token not found");
       }
-      
-      const response = await axios.get("http://localhost:3000/api/items", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setItems(response.data);
+      // Use apiClient for the request
+      const data = await apiClient("/items");
+      setItems(data);
     } catch (err) {
       console.error("Error fetching items:", err);
       setError("Failed to load items. Please try again.");

@@ -11,6 +11,8 @@ const clientSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+
+  // add client name
   gstNumber: { 
     type: String, 
     required: true,

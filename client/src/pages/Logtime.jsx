@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import "../css/Style.css";
-import "../css/Logtime.css"; // Styles for Logtime page and potentially modal
-import Navbar from "../components/Navbar.jsx";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import LogtimeModal from "../components/LogtimeModal";
-import apiClient from "../utils/apiClient"; // For fetching logs
+import { useAuth } from "../context/AuthContext"; // Authentication context
+import LogtimeModal from "../components/LogtimeModal"; // Modal for logging time
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { formatDisplayDate as formatDisplayDateHelper, formatDateForInput as formatDateForInputHelper } from '../utils/helpers'; // Utility functions
+import "../css/Style.css"; // General styles
+import "../css/Logtime.css"; // Specific styles for Logtime page
 
 export default function Logtime() {
   const [todayLogDate, setTodayLogDate] = useState(""); // Stores today's date string for display
@@ -18,16 +19,13 @@ export default function Logtime() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  // Get formatted date for display (DD-Month-YYYY)
   const getFormattedDisplayDate = useCallback((dateObj = new Date()) => {
-    const day = String(dateObj.getDate()).padStart(2, "0");
-    const month = dateObj.toLocaleString("default", { month: "long" });
-    const year = dateObj.getFullYear();
-    return `${day}-${month}-${year}`;
+    return formatDisplayDateHelper(dateObj);
   }, []);
 
-  // To get YYYY-MM-DD for API calls from a DD-Month-YYYY string or Date object
   const getAPIDateFormat = useCallback((dateStringOrObj) => {
+    // This function is more complex than the helper due to specific parsing needs
+    // for DD-Month-YYYY strings. Keeping it local for now.
     let date;
     if (typeof dateStringOrObj === 'string') {
       const parts = dateStringOrObj.split('-');
@@ -62,7 +60,7 @@ export default function Logtime() {
       setIsLoading(true);
       return;
     }
-    const todayFormatted = getFormattedDisplayDate(); // DD-Month-YYYY
+    const todayFormatted = getFormattedDisplayDate();
     setTodayLogDate(todayFormatted);
     setIsLoading(false);
   }, [user, authLoading, getFormattedDisplayDate]);
@@ -70,7 +68,7 @@ export default function Logtime() {
   const fetchLogsForDate = async (dateToFetchDisplayFormat) => { // dateToFetch in DD-Month-YYYY
     setIsFetchingModalData(true);
     try {
-      const apiDate = getAPIDateFormat(dateToFetchDisplayFormat); // Convert to YYYY-MM-DD for API
+      const apiDate = getAPIDateFormat(dateToFetchDisplayFormat);
       const response = await apiClient(`/logtime/by-date?date=${apiDate}`);
       setModalInitialLogs(response.logs || []);
     } catch (error) {
@@ -93,7 +91,7 @@ export default function Logtime() {
   }
 
   const handleOpenModalForToday = async () => {
-    setModalDate(todayLogDate); // DD-Month-YYYY
+    setModalDate(todayLogDate);
     await fetchLogsForDate(todayLogDate);
     setIsModalOpen(true);
   };
@@ -106,7 +104,6 @@ export default function Logtime() {
 
   const handleSaveModal = () => {
     handleCloseModal();
-    // Navigate to history or refresh current view as needed
     navigate("/history");
   };
 
@@ -128,7 +125,7 @@ export default function Logtime() {
 
         {isModalOpen && (
           <LogtimeModal
-            initialDate={modalDate} // Pass DD-Month-YYYY
+            initialDate={modalDate}
             initialLogs={modalInitialLogs}
             onClose={handleCloseModal}
             onSave={handleSaveModal}

@@ -39,8 +39,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Create uploads folder if not exists
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
+const serverUploadsPath = path.join(__dirname, 'uploads');
+if (!fs.existsSync(serverUploadsPath)) {
+  fs.mkdirSync(serverUploadsPath, { recursive: true });
+  console.log(`[SETUP] Created directory: ${serverUploadsPath}`);
 }
 
 // ---------------------------
@@ -63,8 +65,8 @@ mountRoute('/api/reports', reportRoutes);
 mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-console.log(`[ROUTE MOUNTED] /uploads (static)`);
+app.use('/api/uploads', express.static(serverUploadsPath));
+console.log(`[ROUTE MOUNTED] /api/uploads (static) -> ${serverUploadsPath}`);
 
 // // ---------------------------
 // // Static Serving for Frontend (React)

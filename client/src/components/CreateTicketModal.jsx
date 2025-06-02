@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form, Table } from "react-bootstrap";
-import axios from "axios";
+import apiClient from "../utils/apiClient"; 
+import axios from "axios"; // Import axios for the external API call
 
 const CreateTicketModal = ({
   show,
@@ -99,10 +100,13 @@ const CreateTicketModal = ({
     setIsFetchingAddress(true);
     try {
       console.log("Fetching address for pincode:", pincode);
+      // Revert to using axios directly for this external, non-authenticated API
       const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
-      console.log("API Response:", response.data);
+      console.log("API Response (axios):", response.data); // axios nests data under 'data'
 
-      const data = response.data[0];
+      // The response from this API is an array, and we usually care about the first element.
+      // Also, axios wraps the response data in a `data` property.
+      const data = response.data[0]; 
 
       if (data.Status === "Success") {
         const postOffice = data.PostOffice[0];
@@ -197,22 +201,22 @@ const CreateTicketModal = ({
                 <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   required
+                  readOnly ={true}
                   type="text"
                   value={ticketData.companyName}
                   onChange={(e) =>
-                    setTicketData({
+                    setTicketData(prev => ({ // Ensure using functional update for safety
                       ...ticketData,
                       companyName: e.target.value,
-                    })
-                  } // This onChange will not be triggered if readOnly is true
-                  readOnly // Make Company Name read-only
+                    }))
+                  }
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Ticket Number</Form.Label>
                 <Form.Control
                   type="text"
-                  value={ticketData.ticketNumber}
+                  value={ticketData.ticketNumber || ""} // Ensure controlled input
                   readOnly={true}
                   disabled={true}
                 />
@@ -222,7 +226,7 @@ const CreateTicketModal = ({
                 <Form.Control
                   required
                   type="text"
-                  value={ticketData.quotationNumber}
+                  value={ticketData.quotationNumber || ""} // Ensure controlled input
                   readOnly
                   disabled
                 />

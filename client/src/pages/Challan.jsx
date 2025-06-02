@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from "react";
-import Navbar from "../components/Navbar";
-import "../css/Style.css";
-import ActionButtons from "../components/ActionButtons";
-import {
-  Eye, // View
-  PencilSquare, // Edit
-  Trash, // Delete
-  BarChart, // Generate Report
-} from "react-bootstrap-icons";
-import "../css/Challan.css";
-import Pagination from "../components/Pagination";
-import ReusableTable from "../components/ReusableTable"; // No SortIndicator needed as no sorting is implemented
+import Navbar from "../components/Navbar"; // Navigation bar component
+import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
+import Pagination from "../components/Pagination"; // Component for table pagination
+import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Table, Button, Form, Alert } from "react-bootstrap";
 import { showToast, handleApiError } from "../utils/helpers"; // Import helpers
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // Authentication context
 import apiClient from "../utils/apiClient"; // Import apiClient
 import ClientSearchComponent from "../components/ClientSearchComponent"; // Import ClientSearchComponent
+import ReusableModal from "../components/ReusableModal.jsx"; // Import ReusableModal
+import "../css/Style.css"; // General styles
+import "../css/Challan.css"; // Specific styles for Challan page
 
 const CHALLANS_API_PATH = "/challans"; // Use a relative path for apiClient
 
@@ -44,6 +39,7 @@ export default function Challan() {
     url: null,
     type: null,
   });
+  const challanFormId = "challan-form";
 
   // Show notification
   const showNotification = (message, isSuccess) => {
@@ -284,7 +280,7 @@ export default function Challan() {
 
   const renderForm = () => {
     return (
-      <form onSubmit={handleSubmit} className="fullscreen-form">
+      <Form id={challanFormId} onSubmit={handleSubmit}> {/* Changed form to Form and added id */}
         <div className="form-content">
           {!viewMode && ( // Only show client search in create/edit mode
             <div className="form-group">
@@ -296,8 +292,8 @@ export default function Challan() {
             </div>
           )}
           <div className="form-group">
-            <label htmlFor="companyName">Company Name</label>
-            <input
+            <Form.Label htmlFor="companyName">Company Name</Form.Label> {/* Changed to Form.Label */}
+            <Form.Control // Changed to Form.Control
               id="companyName"
               type="text"
               name="companyName"
@@ -310,8 +306,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="phone">Phone</label>
-            <input
+            <Form.Label htmlFor="phone">Phone</Form.Label>
+            <Form.Control
               id="phone"
               type="text"
               name="phone"
@@ -324,8 +320,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
+            <Form.Label htmlFor="email">Email</Form.Label>
+            <Form.Control
               id="email"
               type="email"
               name="email"
@@ -338,8 +334,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="totalBilling">Total Billing</label>
-            <input
+            <Form.Label htmlFor="totalBilling">Total Billing</Form.Label>
+            <Form.Control
               id="totalBilling"
               type="text"
               name="totalBilling"
@@ -352,8 +348,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="billNumber">Bill Number</label>
-            <input
+            <Form.Label htmlFor="billNumber">Bill Number</Form.Label>
+            <Form.Control
               id="billNumber"
               type="text"
               name="billNumber"
@@ -366,7 +362,7 @@ export default function Challan() {
 
           {viewMode ? (
             <div className="form-group">
-              <label>Document</label>
+              <Form.Label>Document</Form.Label>
               <div className="document-list">
                 {viewData.document ? (
                   <div className="document-item">
@@ -389,10 +385,10 @@ export default function Challan() {
             </div>
           ) : (
             <div className="form-group file-input-container">
-              <label htmlFor="mediaUpload">
+              <Form.Label htmlFor="mediaUpload">
                 Upload Documents {!editMode && "*"}
-              </label>
-              <input
+              </Form.Label>
+              <Form.Control
                 id="mediaUpload"
                 type="file"
                 name="media"
@@ -421,8 +417,8 @@ export default function Challan() {
            {viewMode && (
           <>
             <div className="form-group">
-              <label>Created By</label>
-              <input
+              <Form.Label>Created By</Form.Label>
+              <Form.Control
                 type="text"
                 readOnly
                 value={`${viewData.createdBy?.firstname || ''} ${viewData.createdBy?.lastname || ''} (System if blank) on ${new Date(viewData.createdAt).toLocaleString()}`}
@@ -432,8 +428,8 @@ export default function Challan() {
             {/* Removed UpdatedBy display as per request */}
             {/* {viewData.updatedBy && (
               <div className="form-group">
-                <label>Last Updated By</label>
-                <input
+                <Form.Label>Last Updated By</Form.Label>
+                <Form.Control
                   type="text"
                   readOnly
                   value={`${viewData.updatedBy.firstname} ${viewData.updatedBy.lastname} on ${new Date(viewData.updatedAt).toLocaleString()}`}
@@ -443,25 +439,13 @@ export default function Challan() {
           </>
         )}
 
-          <div className="form-actions">
-            {!viewMode && (
-              <Button type="submit" variant="success" disabled={loading}>
-                {loading ? "Processing..." : editMode ? "UPDATE" : "SUBMIT"}
-              </Button>
-            )}
-
-            <Button type="button" variant="secondary" onClick={resetForm}>
-              CANCEL
-            </Button>
-          </div>
-
           {error && (
             <Alert variant="danger" className="mt-3">
               {error}
             </Alert>
           )}
         </div>
-      </form>
+      </Form>
     );
   };
 
@@ -543,58 +527,56 @@ export default function Challan() {
         />
 
         {showPopup && (
-          <div className="popup-overlay" onClick={resetForm}>
-            <div
-              className="popup-form ninety-five-percent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <h3>
-                  {viewMode
-                    ? "View Challan"
-                    : editMode
-                    ? "Edit Challan"
-                    : "Create New Challan"}
-                </h3>
-                <button className="close-btn" onClick={resetForm}>
-                  ✖
-                </button>
-              </div>
-              {renderForm()}
-            </div>
-          </div>
+          <ReusableModal
+            show={showPopup}
+            onHide={resetForm}
+            title={
+              viewMode
+                ? "View Challan"
+                : editMode
+                ? "Edit Challan"
+                : "Create New Challan"
+            }
+            footerContent={
+              <>
+                {!viewMode && (
+                  <Button type="submit" form={challanFormId} variant="success" disabled={loading}>
+                    {loading ? "Processing..." : editMode ? "UPDATE" : "SUBMIT"}
+                  </Button>
+                )}
+                <Button type="button" variant="secondary" onClick={resetForm}>
+                  CANCEL
+                </Button>
+              </>
+            }
+          >
+            {renderForm()}
+          </ReusableModal>
         )}
 
         {/* This modal shows when documentPreview.url is set */}
         {documentPreview && documentPreview.url && (
-          <div className="document-preview-overlay" onClick={closePreview}>
-            <div
-              className="document-preview-container"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button className="close-preview-btn" onClick={closePreview}>
-                ✖
-              </button>
-              {/* Check if type is PDF to use iframe, otherwise use img */}
-              {documentPreview.type &&
-              documentPreview.type.includes("application/pdf") ? (
-                <iframe
-                  src={documentPreview.url}
-                  title="Document Preview"
-                  className="document-preview"
-                  // Add sandbox attribute for security if needed, depending on source
-                  // sandbox="allow-scripts allow-same-origin"
-                />
-              ) : (
-                // Assume other types are images
-                <img
-                  src={documentPreview.url}
-                  alt="Document Preview"
-                  className="document-preview"
-                />
-              )}
-            </div>
-          </div>
+          <ReusableModal
+            show={!!documentPreview.url}
+            onHide={closePreview}
+            title="Document Preview"
+            // Default ReusableModal close button in footer is fine here
+          >
+            {documentPreview.type &&
+            documentPreview.type.includes("application/pdf") ? (
+              <iframe
+                src={documentPreview.url}
+                title="Document Preview"
+                style={{ width: "100%", height: "75vh", border: "none" }}
+              />
+            ) : (
+              <img
+                src={documentPreview.url}
+                alt="Document Preview"
+                style={{ maxWidth: "100%", maxHeight: "75vh", display: "block", margin: "auto" }}
+              />
+            )}
+          </ReusableModal>
         )}
 
         <Pagination

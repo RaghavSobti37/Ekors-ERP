@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../css/Logtime.css";
+import { showToast } from "../utils/helpers"; // For showing validation messages
 import apiClient from "../utils/apiClient"; // For consistency
 
 const LogtimeModal = ({
@@ -276,6 +277,22 @@ const LogtimeModal = ({
     setIsSaving(true);
     setSaveError(null);
 
+    // Date validation: Cannot be in the future
+    const now = new Date();
+    const inputDate = new Date(selectedDate + "T00:00:00"); // Ensure comparison is at start of day
+
+    // Normalize 'now' to the start of today for date-only comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (inputDate > today) {
+      const futureDateError = "Cannot log time for a future date.";
+      setSaveError(futureDateError);
+      showToast(futureDateError, false);
+      setIsSaving(false);
+      return;
+    }
+
+
     const validLogs = logData.filter(
       (log) =>
         log.task &&
@@ -284,6 +301,25 @@ const LogtimeModal = ({
         log.timeSpent &&
         log.timeSpent !== "Invalid time"
     );
+
+    // Time validation: Finish time cannot be in the future for the selected date
+    for (const log of validLogs) {
+      if (log.finish) {
+        const logFinishDateTime = new Date(`${selectedDate}T${log.finish}`);
+        if (logFinishDateTime > now) {
+          const futureTimeError = `Finish time for task "${log.task}" cannot be in the future.`;
+          setSaveError(futureTimeError);
+          showToast(futureTimeError, false);
+          setIsSaving(false);
+          return;
+        }
+        if (log.start && new Date(`${selectedDate}T${log.start}`) > logFinishDateTime) {
+            setSaveError(`Start time cannot be after finish time for task "${log.task}".`);
+            setIsSaving(false);
+            return;
+        }
+      }
+    }
 
     if (validLogs.length === 0 && logData.length > 0) {
       setSaveError(

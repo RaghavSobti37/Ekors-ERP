@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
-import "../css/Style.css";
-import Navbar from "../components/Navbar.jsx";
-import Pagination from "../components/Pagination";
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
+import Pagination from "../components/Pagination"; // Component for table pagination
 import { saveAs } from "file-saver"; // For downloading files
-import { getAuthToken } from "../utils/authUtils";
-import { showToast, handleApiError } from "../utils/helpers";
+import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import * as XLSX from "xlsx";
-import ActionButtons from "../components/ActionButtons";
+import * as XLSX from "xlsx"; // Library for Excel file operations
+// ActionButtons is not directly used in the main table here, but could be if edit functionality was present
 import {
   Eye, // View
-  PencilSquare, // Edit
   Trash, // Delete
-  BarChart, // Generate Report
   FileEarmarkArrowDown, // For Excel Export
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
 } from "react-bootstrap-icons";
+import "../css/Style.css"; // General styles
 
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
@@ -31,6 +29,7 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
 export default function Items() {
+  const totalPages = 4; //hardocoded
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +39,7 @@ export default function Items() {
     key: "name",
     direction: "asc",
   });
-  // const [editingItem, setEditingItem] = useState(null); // Removed: Editing functionality is being removed
+  const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     quantity: "",
@@ -52,6 +51,7 @@ export default function Items() {
     subcategory: "General",
     maxDiscountPercentage: "",
   });
+  const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
   const [purchaseHistory, setPurchaseHistory] = useState({});
@@ -78,8 +78,7 @@ export default function Items() {
   const [itemSearchTerm, setItemSearchTerm] = useState("");
   const [filteredItemsList, setFilteredItemsList] = useState([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [isUpdatingFromExcel, setIsUpdatingFromExcel] = useState(false); // Old state for server-side excel
+  const [isSubmitting, setIsSubmitting] = useState(false); // General submission state (add item, add purchase)
   const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
@@ -87,6 +86,7 @@ export default function Items() {
     success: null,
     details: [],
   });
+  const [showViewItemModal, setShowViewItemModal] = useState(false);
 
   const location = useLocation();
   const queryParams = useMemo(
@@ -145,7 +145,6 @@ export default function Items() {
       setError(null);
       showSuccess("Items Fetched Successfully");
     } catch (err) {
-      debug("Error fetching items", err);
       const errorMessage = handleApiError(
         err,
         "Failed to load items. Please try again."
@@ -153,7 +152,6 @@ export default function Items() {
       setError(errorMessage);
     } finally {
       debug("Finished items fetch attempt");
-      setLoading(false);
     }
   }, []);
 
@@ -161,13 +159,10 @@ export default function Items() {
     try {
       setLoading(true);
       setError(null);
-
       debug("Attempting to fetch categories");
-      // Categories endpoint is public, but using apiClient for consistency is fine
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
       });
-      debug("Categories data received", categoriesData);
 
       if (Array.isArray(categoriesData)) {
         setCategories(categoriesData);
@@ -179,7 +174,6 @@ export default function Items() {
         );
         setCategories([]);
       } else {
-        // This case implies apiClient returned something unexpected that wasn't an array or null/undefined
         throw new Error(
           `Expected an array of categories, but received type: ${typeof categoriesData}`
         );
@@ -192,20 +186,15 @@ export default function Items() {
         config: err.config,
       };
 
-      debug("Categories fetch failed", errorDetails);
-
       let errorMessage = handleApiError(err, "Failed to load categories.");
       if (err.response) {
-        // Server responded with error status
         errorMessage += ` (${err.response.status})`;
         if (err.response.data?.message) {
           errorMessage += `: ${err.response.data.message}`;
         }
       } else if (err.request) {
-        // Request was made but no response received
         errorMessage += ": No response from server";
       } else {
-        // Something else happened
         errorMessage += `: ${err.message}`;
       }
 
@@ -227,7 +216,6 @@ export default function Items() {
 
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
-      // Ensure items is an array and iterable before filtering
       if (Array.isArray(items) && items.length > 0) {
         const filtered = items.filter(
           (item) =>
@@ -237,7 +225,7 @@ export default function Items() {
         );
         setFilteredItemsList(filtered);
       } else {
-        setFilteredItemsList([]); // Set to empty if items is not ready or empty
+        setFilteredItemsList([]);
       }
     } else {
       setFilteredItemsList([]);
@@ -246,18 +234,16 @@ export default function Items() {
 
   const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
-      // Set loading state for this specific item
       setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
-      // Clear any previous errors
       setError(null);
 
       const response = await apiClient(`/items/${itemId}/purchases`, {
         timeout: 5000,
       });
 
-      setPurchaseHistory(prev => ({
+      setPurchaseHistory((prev) => ({
         ...prev,
-        [itemId]: response || [], // apiClient likely returns response.data directly
+        [itemId]: response || [],
       }));
       setError(null);
     } catch (err) {
@@ -270,23 +256,13 @@ export default function Items() {
         [itemId]: [],
       }));
     } finally {
-      // Clear loading state for this specific item
       setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
     }
   }, []);
 
-  // Removed handleEdit and handleCancel as editing functionality is being removed.
-  // The `formData` state will now primarily be used for the "Add New Item" modal.
-
-
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value.toLowerCase());
     setCurrentPage(1);
-  };
-
-  const handleSave = async () => {
-    // This function was for saving edited items. Since editing is removed, this is no longer needed.
-    // The "Add New Item" modal will use `handleAddItem`.
   };
 
   const requestSort = (key) => {
@@ -297,7 +273,6 @@ export default function Items() {
     setSortConfig({ key, direction });
   };
 
-  // Combined filtering and sorting logic
   const itemsToDisplay = useMemo(() => {
     if (!Array.isArray(items)) {
       debug("itemsToDisplay: items is not an array, returning []");
@@ -305,11 +280,7 @@ export default function Items() {
     }
 
     let processedItems = [...items];
-    debug("itemsToDisplay: Initial items count", {
-      count: processedItems.length,
-    });
 
-    // Determine the threshold to use for filtering/badging low stock items
     const currentLowThreshold =
       stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
         ? lowStockWarningQueryThreshold
@@ -319,12 +290,7 @@ export default function Items() {
       processedItems = processedItems.filter(
         (item) => item.needsRestock || item.quantity < currentLowThreshold
       );
-      debug("itemsToDisplay: After stock alert filter", {
-        count: processedItems.length,
-        currentLowThreshold,
-      });
     } else {
-      // Apply regular search and category filters
       processedItems = processedItems.filter((item) => {
         const matchesCategory =
           selectedCategory === "All" || item.category === selectedCategory;
@@ -337,12 +303,6 @@ export default function Items() {
             item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesCategory && matchesSubcategory && matchesSearch;
       });
-      debug("itemsToDisplay: After regular text/category filters", {
-        count: processedItems.length,
-        selectedCategory,
-        selectedSubcategory,
-        searchTerm,
-      });
 
       if (
         quantityFilterThreshold !== null &&
@@ -351,32 +311,24 @@ export default function Items() {
         processedItems = processedItems.filter(
           (item) => item.quantity <= quantityFilterThreshold
         );
-        debug("itemsToDisplay: After quantity filter", {
-          count: processedItems.length,
-          quantityFilterThreshold,
-        });
       }
     }
 
-    // Apply sorting
     processedItems.sort((a, b) => {
-      const aIsLowStock = a.quantity < currentLowThreshold;
-      const bIsLowStock = b.quantity < currentLowThreshold;
+      // const aIsLowStock = a.quantity < currentLowThreshold; // Removed
+      // const bIsLowStock = b.quantity < currentLowThreshold; // Removed
 
       // Priority 1: Needs Restock
-      if (a.needsRestock && !b.needsRestock) return -1;
-      if (!a.needsRestock && b.needsRestock) return 1;
-
-      // Priority 2: Is Low Stock (below global/effective threshold)
-      if (aIsLowStock && !bIsLowStock) return -1;
-      if (!aIsLowStock && bIsLowStock) return 1;
+      // if (a.needsRestock && !b.needsRestock) return -1; // Removed
+      // if (!a.needsRestock && b.needsRestock) return 1; // Removed
+      // Priority 2: Is Low Stock
+      // if (aIsLowStock && !bIsLowStock) return -1; // Removed
+      // if (!aIsLowStock && bIsLowStock) return 1; // Removed
 
       if (stockAlertFilterActive) {
-        // Within alerts, sort by quantity ascending then name
         if (a.quantity < b.quantity) return -1;
         if (a.quantity > b.quantity) return 1;
       } else {
-        // Regular view: apply user-defined sort key after restock/low stock priority
         if (a[sortConfig.key] < b[sortConfig.key]) {
           return sortConfig.direction === "asc" ? -1 : 1;
         }
@@ -384,13 +336,7 @@ export default function Items() {
           return sortConfig.direction === "asc" ? 1 : -1;
         }
       }
-      // Final tie-breaker: name ascending
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    });
-    debug("itemsToDisplay: After sorting", {
-      count: processedItems.length,
-      sortConfig,
-      stockAlertFilterActive,
     });
     return processedItems;
   }, [
@@ -411,26 +357,6 @@ export default function Items() {
     return itemsToDisplay.slice(indexOfFirst, indexOfLast);
   }, [itemsToDisplay, currentPage, itemsPerPage]);
 
-  const totalPages = useMemo(
-    () => Math.ceil(itemsToDisplay.length / itemsPerPage),
-    [itemsToDisplay, itemsPerPage]
-  );
-
-  const addNewPurchaseItem = () => {
-    setPurchaseData({
-      ...purchaseData,
-      items: [
-        ...(purchaseData.items || []),
-        {
-          description: "",
-          quantity: "1",
-          price: "",
-          gstRate: "0",
-        },
-      ],
-    });
-  };
-
   const addExistingItemToPurchase = (item) => {
     setPurchaseData({
       ...purchaseData,
@@ -447,6 +373,55 @@ export default function Items() {
     });
     setItemSearchTerm("");
     setShowItemSearch(false);
+  };
+
+  const handleEditItem = (item) => {
+    setEditingItem(item);
+    setFormData({
+      // Pre-fill form data for editing
+      name: item.name,
+      quantity: item.quantity.toString(),
+      price: item.price.toString(),
+      gstRate: item.gstRate?.toString() || "0",
+      hsnCode: item.hsnCode || "",
+      unit: item.unit || "Nos",
+      category: item.category || "",
+      subcategory: item.subcategory || "General",
+      maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
+    });
+    setShowEditItemModal(true);
+  };
+
+  const handleSaveEditedItem = async () => {
+    if (!editingItem || !formData.name) {
+      setError("Item name is required for editing.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const updatedItemPayload = { ...formData }; // formData should already be in correct format
+      // Convert numeric fields
+      updatedItemPayload.quantity =
+        parseFloat(updatedItemPayload.quantity) || 0;
+      updatedItemPayload.price = parseFloat(updatedItemPayload.price) || 0;
+      updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
+      updatedItemPayload.maxDiscountPercentage =
+        parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
+
+      await apiClient(`/items/${editingItem._id}`, {
+        method: "PUT",
+        body: updatedItemPayload,
+      });
+      await fetchItems();
+      setShowEditItemModal(false);
+      setEditingItem(null);
+      showSuccess("Item updated successfully!");
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to update item.");
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleItemChange = (index, field, value) => {
@@ -557,7 +532,7 @@ export default function Items() {
 
     try {
       setIsSubmitting(true);
-      const newItem = {
+      const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
         price: parseFloat(formData.price) || 0,
@@ -569,7 +544,7 @@ export default function Items() {
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
       };
 
-      await apiClient("/items", { method: "POST", body: newItem });
+      await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
       setShowModal(false);
       setFormData({
@@ -604,6 +579,13 @@ export default function Items() {
     if (expandedRow !== id) {
       await fetchPurchaseHistory(id);
     }
+    // For modal view, we set the item to view and show the modal
+    const itemToView = items.find((item) => item._id === id);
+    if (itemToView) {
+      setEditingItem(itemToView); // Using editingItem to store the item to view for simplicity
+      setShowViewItemModal(true);
+    }
+
     setExpandedRow(expandedRow === id ? null : id);
   };
 
@@ -627,7 +609,7 @@ export default function Items() {
   const addPurchaseEntry = async () => {
     try {
       setIsSubmitting(true);
-      setError(null); // Clear previous errors
+      setError(null);
 
       if (!isPurchaseDataValid()) {
         setError(
@@ -644,7 +626,7 @@ export default function Items() {
         invoiceNumber: purchaseData.invoiceNumber,
         date: purchaseData.date,
         items: purchaseData.items.map((item) => ({
-          itemId: item.itemId || null, // Allow null for generic items
+          itemId: item.itemId || null,
           description: item.description,
           quantity: parseFloat(item.quantity),
           price: parseFloat(item.price),
@@ -668,9 +650,8 @@ export default function Items() {
       if (err.response && err.response.data) {
         detailedErrorMessage += ` ${err.response.data.message || ""}`;
         if (err.response.data.errors) {
-          // Mongoose validation errors
           const validationErrors = Object.values(err.response.data.errors)
-            .map((e) => e.message) // e.g., "Path `name` is required."
+            .map((e) => e.message)
             .join("; ");
           detailedErrorMessage += ` Details: ${validationErrors}`;
         } else if (
@@ -678,7 +659,6 @@ export default function Items() {
           err.response.data.length < 200
         ) {
           // Avoid overly long string responses
-          detailedErrorMessage += ` Server response: ${err.response.data}`;
         }
       } else if (err.message) {
         detailedErrorMessage += ` ${err.message}`;
@@ -692,7 +672,7 @@ export default function Items() {
 
   const handleExportToExcel = async () => {
     setIsExportingExcel(true);
-    setExcelUpdateStatus({ error: null, success: null, details: [] }); // Clear previous status
+    setExcelUpdateStatus({ error: null, success: null, details: [] });
     if (
       !window.confirm(
         "This will download an Excel file of the current item list. Continue?"
@@ -702,10 +682,8 @@ export default function Items() {
       return;
     }
     try {
-      // Using fetch directly for blob handling simplicity here:
       const token = localStorage.getItem("erp-user");
       const fetchResponse = await fetch("/api/items/export-excel", {
-        // Adjust API_URL if your proxy isn't set up
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -733,19 +711,17 @@ export default function Items() {
       console.error("Error exporting to Excel:", err);
       const message = err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); // Show error in the main error display
+      setError(message);
     } finally {
       setIsExportingExcel(false);
     }
   };
 
-  // This function will now handle file selection AND initiate processing
   const handleFileSelectedForUploadAndProcess = async (event) => {
     const file = event.target.files[0];
-    setExcelUpdateStatus({ error: null, success: null, details: [] }); // Clear status on new file select
+    setExcelUpdateStatus({ error: null, success: null, details: [] });
 
     if (!file) {
-      event.target.value = null; // Reset file input if no file selected
       return;
     }
 
@@ -753,9 +729,9 @@ export default function Items() {
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-        "Are you absolutely sure you want to proceed?"
+          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+          "Are you absolutely sure you want to proceed?"
       )
     ) {
       return;
@@ -766,13 +742,11 @@ export default function Items() {
     formData.append("excelFile", file);
 
     try {
-      const token = getAuthToken(); // Use authUtils
+      const token = getAuthToken();
       const fetchResponse = await fetch("/api/items/import-uploaded-excel", {
-        // Adjust API_URL if needed
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          // 'Content-Type': 'multipart/form-data' // Fetch sets this automatically for FormData
         },
         body: formData,
       });
@@ -782,15 +756,17 @@ export default function Items() {
       if (!fetchResponse.ok) {
         throw new Error(
           responseData.message ||
-          `Failed to process Excel: ${fetchResponse.status}`
+            `Failed to process Excel: ${fetchResponse.status}`
         );
       }
 
       const response = responseData;
 
-      let successMessage = `Excel sync complete: ${response.itemsCreated || 0
-        } created, ${response.itemsUpdated || 0} updated, ${response.itemsDeleted || 0
-        } deleted.`;
+      let successMessage = `Excel sync complete: ${
+        response.itemsCreated || 0
+      } created, ${response.itemsUpdated || 0} updated, ${
+        response.itemsDeleted || 0
+      } deleted.`;
 
       if (response.parsingErrors && response.parsingErrors.length > 0) {
         successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
@@ -812,8 +788,7 @@ export default function Items() {
         details: response.databaseProcessingDetails || [],
       });
       showSuccess(successMessage);
-      fetchItems(); // Refresh the list
-      // Reset file input visually
+      fetchItems();
       const fileInput = document.getElementById("excel-upload-input");
       if (fileInput) {
         fileInput.value = null;
@@ -825,15 +800,12 @@ export default function Items() {
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); // Show error in the main error display
+      setError(message);
     } finally {
       setIsProcessingExcel(false);
-      event.target.value = null; // Reset file input after processing attempt
+      event.target.value = null;
     }
   };
-
-  // Comment out or remove the old handleUpdateFromExcel if it's no longer used
-  // const handleUpdateFromExcel = async () => { ... };
 
   const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
 
@@ -841,8 +813,6 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {/* <h2 style={{ color: "black" }}>Items List</h2> */}
-
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}
@@ -860,34 +830,32 @@ export default function Items() {
         )}
 
         <div className="top-controls-container">
-          {/* Row 1: Title, Search, Main Action Buttons */}
+          {" "}
+          {/* Container for all top controls */}
           <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive
-                ? `Stock Alerts`
-                : "All Items List"}
+              {stockAlertFilterActive ? `Stock Alerts` : "All Items List"}
             </h2>
 
-            <div className="d-flex align-items-center gap-2"> {/* Removed flex-wrap */}
+            <div className="d-flex align-items-center gap-2">
               <SearchBar
                 searchTerm={searchTerm}
                 setSearchTerm={(value) => {
                   setSearchTerm(value.toLowerCase());
-                  setCurrentPage(1); // Reset page on new search
+                  setCurrentPage(1);
                 }}
                 placeholder="Search items or HSN codes..."
-                showButton={false} // Disable internal button for SearchBar
-                className="flex-grow-1" // Allow search bar to take space
+                showButton={false}
+                className="flex-grow-1"
                 disabled={anyLoading || stockAlertFilterActive}
               />
-              {/* Export to Excel Button */}
               <button
                 onClick={handleExportToExcel}
                 className="btn btn-info"
                 disabled={anyLoading}
                 title="Export to Excel"
               >
-              Export Excel
+                Export Excel
                 {isExportingExcel ? (
                   <span
                     className="spinner-border spinner-border-sm"
@@ -898,7 +866,6 @@ export default function Items() {
                   <FileEarmarkArrowDown />
                 )}
               </button>
-              {/* Upload & Update Button */}
               <button
                 onClick={() =>
                   document.getElementById("excel-upload-input")?.click()
@@ -906,8 +873,8 @@ export default function Items() {
                 className="btn btn-info"
                 disabled={anyLoading}
                 title="Upload & Update from Excel"
-              > 
-              Upload Excel
+              >
+                Upload Excel
                 {isProcessingExcel ? (
                   <span
                     className="spinner-border spinner-border-sm"
@@ -918,13 +885,12 @@ export default function Items() {
                   <FileEarmarkArrowUp />
                 )}
               </button>
-              {/* Add New Item Button (Now separate) */}
               <button
                 onClick={() => setShowModal(true)}
                 className="btn btn-success d-flex align-items-center"
                 disabled={anyLoading}
                 title="Add New Item"
-                style={{gap: '0.35rem'}}
+                style={{ gap: "0.35rem" }}
               >
                 {isSubmitting ? (
                   "Processing..."
@@ -937,10 +903,8 @@ export default function Items() {
               </button>
             </div>
           </div>
-          {/* Row 2: Filters */}
           <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
-            {/* Categories Select */}
-            <div className="flex-fill" style={{ minWidth: '150px' }}>
+            <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
                 onChange={(e) => {
@@ -960,8 +924,7 @@ export default function Items() {
               </select>
             </div>
 
-            {/* Subcategories Select */}
-            <div className="flex-fill" style={{ minWidth: '150px' }}>
+            <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
                 value={selectedSubcategory}
@@ -988,8 +951,7 @@ export default function Items() {
               </select>
             </div>
 
-            {/* Quantities Select */}
-            <div className="flex-fill" style={{ minWidth: '150px' }}>
+            <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
                 value={
@@ -1019,7 +981,6 @@ export default function Items() {
           </div>
         </div>
 
-        {/* Hidden file input, triggered by the "Upload & Update" button */}
         <input
           type="file"
           id="excel-upload-input"
@@ -1033,16 +994,7 @@ export default function Items() {
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
               <tr>
-                {[
-                  "name",
-                  // "category",
-                  // "subcategory",
-                  "quantity",
-                  "price",
-                  "unit",
-                  "gstRate",
-                  // "image", // Added image column
-                ].map((key) => (
+                {["name", "quantity", "price", "unit", "gstRate"].map((key) => (
                   <th
                     key={key}
                     onClick={() => !anyLoading && requestSort(key)}
@@ -1076,9 +1028,7 @@ export default function Items() {
                 currentItems.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
-                      <td>
-                        {item.name}
-                      </td>
+                      <td>{item.name}</td>
                       <td>
                         <>
                           {item.quantity}
@@ -1092,47 +1042,29 @@ export default function Items() {
                           )}
                           {!item.needsRestock &&
                             item.quantity <
-                            (stockAlertFilterActive
-                              ? lowStockWarningQueryThreshold
-                              : effectiveLowStockThreshold) && (
+                              (stockAlertFilterActive
+                                ? lowStockWarningQueryThreshold
+                                : effectiveLowStockThreshold) && (
                               <span
                                 className="badge bg-warning text-dark ms-2"
-                                title={`Global threshold: < ${stockAlertFilterActive
+                                title={`Global threshold: < ${
+                                  stockAlertFilterActive
                                     ? lowStockWarningQueryThreshold
                                     : effectiveLowStockThreshold
-                                  }`}
+                                }`}
                               >
                                 🔥 Low Stock
                               </span>
                             )}
                         </>
                       </td>
-                      {/* <td>{item.category || "-"}</td>
-                      <td>{item.subcategory || "-"}</td> */}
                       <td>{`₹${parseFloat(item.price).toFixed(2)}`}</td>
                       <td>{item.unit || "Nos"}</td>
+                      <td>{`${item.gstRate || 0}%`}</td>
                       <td>
-                        {`${item.gstRate || 0}%`}
-                      </td>
-
-                      {/* <td>
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="item-image"
-                            onClick={() => window.open(item.image, "_blank")}
-                          />
-                        ) : (
-                          "-"
-                        )}
-                      </td> */}
-                      <td>
-                        {item.maxDiscountPercentage > 0 ? (
-                          `${item.maxDiscountPercentage}%`
-                        ) : (
-                          "-"
-                        )}
+                        {item.maxDiscountPercentage > 0
+                          ? `${item.maxDiscountPercentage}%`
+                          : "-"}
                       </td>
                       <td>
                         <div className="d-flex gap-1">
@@ -1151,6 +1083,15 @@ export default function Items() {
                             title="Delete Item"
                           >
                             <Trash size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleEditItem(item)}
+                            className="btn btn-warning btn-sm"
+                            disabled={anyLoading}
+                            title="Edit Item"
+                          >
+                            <Eye size={16} />{" "}
+                            {/* Placeholder for PencilSquare if not imported */}
                           </button>
                         </div>
                       </td>
@@ -1173,53 +1114,73 @@ export default function Items() {
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td><strong>Name</strong></td>
+                                  <td>
+                                    <strong>Name</strong>
+                                  </td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Category</strong></td>
+                                  <td>
+                                    <strong>Category</strong>
+                                  </td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Subcategory</strong></td>
+                                  <td>
+                                    <strong>Subcategory</strong>
+                                  </td>
                                   <td>{item.subcategory || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Quantity</strong></td>
+                                  <td>
+                                    <strong>Quantity</strong>
+                                  </td>
                                   <td>
                                     {item.quantity}
                                     {item.needsRestock &&
                                       ` (Item specific restock threshold: ${item.lowStockThreshold})`}
                                     {!item.needsRestock &&
                                       item.quantity <
-                                      (stockAlertFilterActive
-                                        ? lowStockWarningQueryThreshold
-                                        : effectiveLowStockThreshold) &&
-                                      ` (Global low stock threshold: < ${stockAlertFilterActive
-                                        ? lowStockWarningQueryThreshold
-                                        : effectiveLowStockThreshold
+                                        (stockAlertFilterActive
+                                          ? lowStockWarningQueryThreshold
+                                          : effectiveLowStockThreshold) &&
+                                      ` (Global low stock threshold: < ${
+                                        stockAlertFilterActive
+                                          ? lowStockWarningQueryThreshold
+                                          : effectiveLowStockThreshold
                                       })`}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Price</strong></td>
+                                  <td>
+                                    <strong>Price</strong>
+                                  </td>
                                   <td>₹{item.price.toFixed(2)}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Unit</strong></td>
+                                  <td>
+                                    <strong>Unit</strong>
+                                  </td>
                                   <td>{item.unit || "Nos"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>GST Rate</strong></td>
+                                  <td>
+                                    <strong>GST Rate</strong>
+                                  </td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>HSN Code</strong></td>
+                                  <td>
+                                    <strong>HSN Code</strong>
+                                  </td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Max Discount</strong></td>
-                                  <td>{item.maxDiscountPercentage > 0
+                                  <td>
+                                    <strong>Max Discount</strong>
+                                  </td>
+                                  <td>
+                                    {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
                                       : "N/A"}
                                   </td>
@@ -1253,7 +1214,9 @@ export default function Items() {
                                             ).toLocaleDateString()}
                                           </td>
                                           <td>{purchase.companyName}</td>
-                                          <td>{purchase.createdByName || "N/A"}</td>
+                                          <td>
+                                            {purchase.createdByName || "N/A"}
+                                          </td>
                                           <td>{purchase.invoiceNumber}</td>
                                           <td>{purchase.quantity}</td>
                                           <td>₹{purchase.price.toFixed(2)}</td>
@@ -1294,7 +1257,6 @@ export default function Items() {
           />
         </div>
 
-        {/* Add/Edit Item Modal */}
         {showModal && (
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">
@@ -1521,6 +1483,139 @@ export default function Items() {
             </div>
           </div>
         )}
+
+                {/* View Item Modal */}
+        {showViewItemModal && editingItem && (
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">View Item: {editingItem.name}</h5>
+                <button type="button" className="close" onClick={() => { setShowViewItemModal(false); setEditingItem(null); }}>
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                {error && <div className="alert alert-danger">{error}</div>}
+                <div className="expanded-container">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Item Details</h6>
+                    {editingItem.image && (
+                      <img src={editingItem.image} alt={editingItem.name} className="image-preview" />
+                    )}
+                  </div>
+                  <table className="table table-sm table-bordered item-details-table">
+                    <tbody>
+                      <tr><td><strong>Name</strong></td><td>{editingItem.name}</td></tr>
+                      <tr><td><strong>Category</strong></td><td>{editingItem.category || "-"}</td></tr>
+                      <tr><td><strong>Subcategory</strong></td><td>{editingItem.subcategory || "-"}</td></tr>
+                      <tr><td><strong>Quantity</strong></td><td>{editingItem.quantity}</td></tr>
+                      <tr><td><strong>Price</strong></td><td>₹{editingItem.price.toFixed(2)}</td></tr>
+                      <tr><td><strong>Unit</strong></td><td>{editingItem.unit || "Nos"}</td></tr>
+                      <tr><td><strong>GST Rate</strong></td><td>{editingItem.gstRate}%</td></tr>
+                      <tr><td><strong>HSN Code</strong></td><td>{editingItem.hsnCode || "-"}</td></tr>
+                      <tr><td><strong>Max Discount</strong></td><td>{editingItem.maxDiscountPercentage > 0 ? `${editingItem.maxDiscountPercentage}%` : "N/A"}</td></tr>
+                    </tbody>
+                  </table>
+
+                  <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
+                    <h6>Purchase History</h6>
+                  </div>
+                  {purchaseHistoryLoading[editingItem._id] ? <p>Loading history...</p> :
+                    purchaseHistory[editingItem._id]?.length > 0 ? (
+                      <table className="table table-sm table-striped table-bordered">
+                        <thead className="table-secondary">
+                          <tr>
+                            <th>Date</th>
+                            <th>Supplier</th>
+                            <th>Added By</th>
+                            <th>Invoice No</th>
+                            <th>Qty</th>
+                            <th>Price (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchaseHistory[editingItem._id].map((purchase, idx) => (
+                            <tr key={purchase._id || idx}>
+                              <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                              <td>{purchase.companyName}</td>
+                              <td>{purchase.createdByName || "N/A"}</td>
+                              <td>{purchase.invoiceNumber}</td>
+                              <td>{purchase.quantity}</td>
+                              <td>₹{purchase.price.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="alert alert-info">No purchase history found.</div>
+                    )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => { setShowViewItemModal(false); setEditingItem(null); }} className="btn btn-secondary">Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Item Modal */}
+        {showEditItemModal && editingItem && (
+          <div className="modal-backdrop full-screen-modal">
+            <div className="modal-content full-screen-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Edit Item: {editingItem.name}</h5>
+                <button type="button" className="close" onClick={() => { setShowEditItemModal(false); setEditingItem(null); }}>
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                {error && <div className="alert alert-danger">{error}</div>}
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="form-group"><label>Name*</label><input className="form-control mb-2" name="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required /></div>
+                    <div className="form-group"><label>Quantity</label><input type="number" className="form-control mb-2" name="quantity" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} /></div>
+                    <div className="form-group"><label>Price*</label><input type="number" step="0.01" className="form-control mb-2" name="price" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} required /></div>
+                    <div className="form-group"><label>GST Rate (%)</label><input type="number" step="0.01" className="form-control mb-2" name="gstRate" value={formData.gstRate} onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })} /></div>
+                    <div className="form-group"><label>HSN Code</label><input className="form-control mb-2" name="hsnCode" value={formData.hsnCode} onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })} /></div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="form-group">
+                      <label>Unit</label>
+                      <select className="form-control mb-2" name="unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
+                        <option value="Nos">Nos</option><option value="Mtr">Meter</option><option value="PKT">Packet</option><option value="Pair">Pair</option><option value="Set">Set</option><option value="Bottle">Bottle</option><option value="KG">Kilogram</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select className="form-control mb-2" name="category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                        <option value="">Select Category</option>
+                        {Array.isArray(categories) && categories.map((cat) => (<option key={cat.category} value={cat.category}>{cat.category}</option>))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Subcategory</label>
+                      <select className="form-control mb-2" name="subcategory" value={formData.subcategory} onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} disabled={!formData.category}>
+                        <option value="General">General</option>
+                        {formData.category && Array.isArray(categories) && categories.find((c) => c.category === formData.category)?.subcategories.map((subcat) => (<option key={subcat} value={subcat}>{subcat}</option>))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Max Discount (%)</label>
+                      <input type="number" className="form-control mb-2" placeholder="Max Discount % (0-100)" name="maxDiscountPercentage" value={formData.maxDiscountPercentage} onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })} min="0" max="100" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => { setShowEditItemModal(false); setEditingItem(null); setError(null); }} className="btn btn-secondary" disabled={isSubmitting}>Cancel</button>
+                <button onClick={handleSaveEditedItem} className="btn btn-success" disabled={!formData.name || !formData.price || !formData.category || isSubmitting}>
+                  {isSubmitting ? "Updating..." : "Update Item"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {showPurchaseModal && (
           <div className="modal-backdrop full-screen-modal">

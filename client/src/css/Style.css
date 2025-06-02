@@ -968,10 +968,6 @@ p {
   cursor: pointer;
   color: white; /* For visibility on dark header */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
   border-radius: 50%;
   transition: all var(--transition-fast);
 }
@@ -979,16 +975,6 @@ p {
 .modal-close-btn:hover {
   background-color: rgba(255, 255, 255, 0.2);
   /* color: var(--dark-color); */
-}
-
-/* Full Screen Modal */
-.modal-fullscreen {
-  width: 95%;
-  height: 95%;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  border-radius: 0;
 }
 
 /* Form in Modal */
@@ -1661,4 +1647,146 @@ p {
 
 .pr-3 {
   padding-right: var(--spacing-md) !important;
+}
+
+.pb-3 {
+  padding-bottom: var(--spacing-md) !important;
+}
+
+.pl-3 {
+  padding-left: var(--spacing-md) !important;
+}
+
+.px-3 {
+  padding-right: var(--spacing-md) !important;
+  padding-left: var(--spacing-md) !important;
+}
+
+.py-3 {
+  padding-top: var(--spacing-md) !important;
+  padding-bottom: var(--spacing-md) !important;
+}
+
+.p-4 {
+  padding: var(--spacing-lg) !important;
+}
+
+.pt-4 {
+  padding-top: var(--spacing-lg) !important;
+}
+
+.pr-4 {
+  padding-right: var(--spacing-lg) !important;
+}
+
+.pb-4 {
+  padding-bottom: var(--spacing-lg) !important;
+}
+
+.pl-4 {
+  padding-left: var(--spacing-lg) !important;
+}
+
+.px-4 {
+  padding-right: var(--spacing-lg) !important;
+  padding-left: var(--spacing-lg) !important;
+}
+
+.py-4 {
+  padding-top: var(--spacing-lg) !important;
+  padding-bottom: var(--spacing-lg) !important;
+}
+
+.p-5 {
+  padding: var(--spacing-xl) !important;
+}
+
+.pt-5 {
+  padding-top: var(--spacing-xl) !important;
+}
+
+.pr-5 {
+  padding-right: var(--spacing-xl) !important;
+}
+
+.pb-5 {
+  padding-bottom: var(--spacing-xl) !important;
+}
+
+.pl-5 {
+  padding-left: var(--spacing-xl) !important;
+}
+
+.px-5 {
+  padding-right: var(--spacing-xl) !important;
+  padding-left: var(--spacing-xl) !important;
+}
+
+.py-5 {
+  padding-top: var(--spacing-xl) !important;
+  padding-bottom: var(--spacing-xl) !important;
+}
+
+/* Ensure PDF viewer fits and scrolls inside modal-body */
+.pdf-fullscreen-viewer {
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Footer with download button */
+.custom-modal .modal-body > .border-top {
+  flex-shrink: 0;
+  background: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .custom-modal {
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  .custom-modal .modal-header,
+  .custom-modal .modal-body > .border-top {
+    padding: 1rem;
+  }
+}
+
+/* For small avatar icons, e.g., in lists, headers, or tables */
+.profile-avatar-small {
+  width: 40px; /* Desired width */
+  height: 40px; /* Desired height */
+  border-radius: 50%; /* Makes it circular */
+  object-fit: cover; /* Crucial: scales image to cover, crops if aspect ratio differs */
+  border: 1px solid #eee; /* Optional: subtle border */
+  vertical-align: middle; /* Good for inline display with text */
+}
+
+/* For medium avatar displays, e.g., in user profile cards */
+.profile-avatar-medium {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ddd;
+}
+
+/* For large avatar displays, e.g., on a main profile page */
+.profile-avatar-large {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%; /* Or square, as you prefer */
+  object-fit: cover;
+  border: 3px solid #ccc;
+  display: block; /* Or inline-block */
+  margin: 0 auto 15px auto; /* Example: center and add bottom margin */
+}
+
+/* If you want to ensure an image doesn't exceed its container's width */
+.responsive-avatar {
+  max-width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  border-radius: 8px; /* Example for a slightly rounded square avatar */
 }
