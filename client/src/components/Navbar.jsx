@@ -238,9 +238,9 @@ export default function Navbar({ showPurchaseModal }) {
                 <p>
                   <strong>Phone:</strong> {user?.phone || "N/A"}
                 </p>
-                <p>
+                {/* <p>
                   <strong>Role:</strong> {user?.role || "N/A"}
-                </p>
+                </p> */}
               </div>
               <button
                 className="edit-btn"
@@ -276,10 +276,10 @@ export default function Navbar({ showPurchaseModal }) {
               <label>Mobile Number</label>
               <input type="text" defaultValue={user?.phone || ""} />
             </div>
-            <div className="form-group">
+            {/* <div className="form-group">
               <label>Role</label>
               <input type="text" defaultValue={user?.role || ""} />
-            </div>
+            </div> */}
             <div className="form-group">
               <label>Change Password</label>
               <input type="password" placeholder="Enter new password" />
