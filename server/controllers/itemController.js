@@ -41,6 +41,63 @@ const upload = multer({
 });
 exports.uploadMiddleware = upload.single('excelFile'); // 'excelFile' is the field name in FormData
 
+// Helper function to manage price calculations and validations
+function calculatePricesAndMargin(payload, existingBuyingPrice = null, existingSellingPrice = null, existingMarginPercentage = null) {
+  let { buyingPrice, sellingPrice, marginPercentage } = payload;
+  let error = null;
+
+  // Convert to numbers, providing defaults if undefined or using existing values
+  buyingPrice = buyingPrice !== undefined ? parseFloat(buyingPrice) : (existingBuyingPrice !== null ? existingBuyingPrice : 0);
+  // For sellingPrice and marginPercentage, if not in payload, use existing or treat as undefined for calculation
+  sellingPrice = sellingPrice !== undefined ? parseFloat(sellingPrice) : (existingSellingPrice !== null ? existingSellingPrice : undefined);
+  marginPercentage = marginPercentage !== undefined ? parseFloat(marginPercentage) : (existingMarginPercentage !== null ? existingMarginPercentage : undefined);
+
+  if (isNaN(buyingPrice) || buyingPrice < 0) {
+    error = "Buying price must be a non-negative number.";
+    // Return defaults that won't cause further NaN issues if error is ignored by caller
+    return { buyingPrice: 0, sellingPrice: 0, marginPercentage: 0, error };
+  }
+
+  if (sellingPrice !== undefined && (isNaN(sellingPrice) || sellingPrice < 0)) {
+    error = "Selling price must be a non-negative number if provided.";
+    return { buyingPrice, sellingPrice: 0, marginPercentage: (marginPercentage !== undefined ? marginPercentage : 0), error };
+  }
+
+  if (marginPercentage !== undefined && isNaN(marginPercentage)) {
+    error = "Margin percentage must be a number if provided.";
+    return { buyingPrice, sellingPrice: (sellingPrice !== undefined ? sellingPrice : 0), marginPercentage: 0, error };
+  }
+
+  if (sellingPrice !== undefined) { // sellingPrice is explicitly provided
+    if (marginPercentage !== undefined) { // Both sellingPrice and marginPercentage are provided
+      const calculatedSellingPrice = buyingPrice * (1 + marginPercentage / 100);
+      if (Math.abs(sellingPrice - calculatedSellingPrice) > 0.01) { // Allow small tolerance
+        error = `Selling price ${sellingPrice.toFixed(2)} does not match calculated selling price ${calculatedSellingPrice.toFixed(2)} based on buying price and ${marginPercentage}% margin. Please adjust or remove one.`;
+        // Return provided values despite error for caller to decide
+        return { buyingPrice, sellingPrice, marginPercentage, error };
+      }
+    } else { // sellingPrice is provided, marginPercentage is NOT
+      if (buyingPrice > 0) {
+        marginPercentage = ((sellingPrice - buyingPrice) / buyingPrice) * 100;
+      } else { // buyingPrice is 0 or negative
+        marginPercentage = (sellingPrice > 0) ? Infinity : 0; // Or handle as 100% if sellingPrice > 0 and buyingPrice is 0
+      }
+    }
+  } else if (marginPercentage !== undefined) { // sellingPrice is NOT provided, but marginPercentage IS
+    sellingPrice = buyingPrice * (1 + marginPercentage / 100);
+  } else { // Neither sellingPrice nor marginPercentage is provided
+    sellingPrice = buyingPrice; // Default sellingPrice to buyingPrice
+    marginPercentage = 0;       // Default margin to 0%
+  }
+
+  return {
+    buyingPrice: parseFloat(buyingPrice.toFixed(2)),
+    sellingPrice: parseFloat(sellingPrice.toFixed(2)),
+    marginPercentage: parseFloat(marginPercentage.toFixed(2)),
+    error
+  };
+}
+
 exports.exportItemsToExcel = async (req, res) => {
   const user = req.user || null;
   logger.info('excel_export', 'API: Starting Excel export process', { userId: user?._id });
@@ -55,8 +112,9 @@ exports.exportItemsToExcel = async (req, res) => {
     const dataForSheet = items.map(item => ({
       'Name': item.name,
       'Quantity': item.quantity,
-      'Selling Price': item.sellingPrice, // Changed from Price
-      'Buying Price': item.buyingPrice,   // Added Buying Price
+      'Buying Price': item.buyingPrice,
+      'Selling Price': item.sellingPrice,
+      'Margin Percentage': item.marginPercentage,
       'Unit': item.unit,
       'Category': item.category,
       'Subcategory': item.subcategory,
@@ -64,7 +122,6 @@ exports.exportItemsToExcel = async (req, res) => {
       'GST Rate': item.gstRate,
       'Max Discount Percentage': item.maxDiscountPercentage,
       'Low Stock Threshold': item.lowStockThreshold,
-      // 'Image': item.image, // Not including image in this export
     }));
 
     const worksheet = xlsx.utils.json_to_sheet(dataForSheet);
@@ -160,12 +217,23 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
       const normalizedExcelItemName = excelItemData.name.toLowerCase();
       const existingItem = dbItemsMap.get(normalizedExcelItemName);
 
+      const priceCalculation = calculatePricesAndMargin({
+        buyingPrice: excelItemData.buyingPrice,
+        sellingPrice: excelItemData.sellingPrice,
+        marginPercentage: excelItemData.marginPercentage
+      }, existingItem?.buyingPrice, existingItem?.sellingPrice, existingItem?.marginPercentage);
+
+      if (priceCalculation.error) {
+        logger.warn(logContextPrefix, `Price calculation/validation error for Excel item "${excelItemData.name}": ${priceCalculation.error}. Skipping price update for this item or using defaults.`, user);
+        databaseProcessingErrors.push({ name: `Price for ${excelItemData.name}`, status: 'price_calc_error', message: priceCalculation.error });
+        // Decide how to handle: skip item, or use default/existing prices. For now, let's use calculated/defaulted ones from helper.
+      }
+
       // Construct payload, ensuring all relevant fields from Item schema are considered
       const payload = {
         name: excelItemData.name, // Preserve original casing from Excel for name
         quantity: excelItemData.quantity || 0,
-        sellingPrice: excelItemData.sellingPrice || excelItemData.price || 0, // Use sellingPrice, fallback to price for backward compatibility
-        buyingPrice: excelItemData.buyingPrice || 0, // Add buyingPrice
+        ...priceCalculation, // Includes buyingPrice, sellingPrice, marginPercentage (error field is not part of schema)
         unit: excelItemData.unit || 'Nos',
         category: excelItemData.category || 'Other',
         subcategory: excelItemData.subcategory || 'General',
@@ -180,6 +248,7 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
         lastPurchaseDate: excelItemData.lastPurchaseDate || existingItem?.lastPurchaseDate || null,
         lastPurchasePrice: excelItemData.lastPurchasePrice || existingItem?.lastPurchasePrice || null,
       };
+      delete payload.error; // Remove error field from payload if it exists
 
       if (existingItem) {
         // Item exists in DB, so update it
@@ -452,10 +521,21 @@ exports.getItemById = async (req, res) => {
 exports.createItem = async (req, res) => {
   try {
     const user = req.user || null;
+    const { name, quantity, buyingPrice, sellingPrice, marginPercentage, gstRate, hsnCode, unit, category, subcategory, maxDiscountPercentage, lowStockThreshold } = req.body;
+
+    const priceCalculation = calculatePricesAndMargin({ buyingPrice, sellingPrice, marginPercentage });
+
+    if (priceCalculation.error) {
+      logger.warn('item-create', `Validation error during item creation for "${name}": ${priceCalculation.error}`, user, { requestBody: req.body });
+      return res.status(400).json({ message: priceCalculation.error });
+    }
+
     const newItem = new Item({
-      name: req.body.name,
-      quantity: req.body.quantity || 0,
-      sellingPrice: req.body.sellingPrice || req.body.price || 0, // Prioritize sellingPrice, fallback to price for compatibility if needed
+      name,
+      quantity: quantity || 0,
+      buyingPrice: priceCalculation.buyingPrice,
+      sellingPrice: priceCalculation.sellingPrice,
+      marginPercentage: priceCalculation.marginPercentage,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || '',
       unit: req.body.unit || 'Nos',
@@ -482,14 +562,36 @@ exports.createItem = async (req, res) => {
 exports.updateItem = async (req, res) => {
   try {
     const user = req.user || null;
+    const itemId = req.params.id;
+    const { name, quantity, buyingPrice, sellingPrice, marginPercentage, gstRate, hsnCode, unit, category, subcategory, maxDiscountPercentage, lowStockThreshold } = req.body;
+
+    const existingItem = await Item.findById(itemId);
+    if (!existingItem) {
+      logger.warn('item-update', `Item not found for update: ${itemId}`, user, { itemId, requestBody: req.body });
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    const priceCalculation = calculatePricesAndMargin(
+      { buyingPrice, sellingPrice, marginPercentage },
+      existingItem.buyingPrice, // Pass existing values for context
+      existingItem.sellingPrice,
+      existingItem.marginPercentage
+    );
+
+    if (priceCalculation.error) {
+      logger.warn('item-update', `Validation error during item update for "${name || existingItem.name}": ${priceCalculation.error}`, user, { itemId, requestBody: req.body });
+      return res.status(400).json({ message: priceCalculation.error });
+    }
+
     const updatedItem = await Item.findByIdAndUpdate(
-      req.params.id,
+      itemId,
       {
         $set: {
-          name: req.body.name,
-          quantity: req.body.quantity || 0,
-          sellingPrice: req.body.sellingPrice || 0, // Changed from price
-          buyingPrice: req.body.buyingPrice || 0,   // Added buyingPrice
+          name: name || existingItem.name, // Use existing if not provided
+          quantity: quantity !== undefined ? quantity : existingItem.quantity,
+          buyingPrice: priceCalculation.buyingPrice,
+          sellingPrice: priceCalculation.sellingPrice,
+          marginPercentage: priceCalculation.marginPercentage,
           gstRate: req.body.gstRate || 0,
           hsnCode: req.body.hsnCode || '',
           unit: req.body.unit || 'Nos',
@@ -503,14 +605,15 @@ exports.updateItem = async (req, res) => {
     );
     
     if (!updatedItem) {
-      logger.warn('item', `Item not found for update: ${req.params.id}`, user, { itemId: req.params.id, requestBody: req.body });
+      // This case should be caught by existingItem check, but as a safeguard:
+      logger.error('item-update', `Item not found after attempting update (should not happen if pre-check passed): ${itemId}`, user, { itemId, requestBody: req.body });
       return res.status(404).json({ message: 'Item not found' });
     }
     
     logger.info('item', `Item updated successfully`, user, { itemId: updatedItem._id, itemName: updatedItem.name });
     res.json(updatedItem);
   } catch (error) {
-    logger.error('item', `Error updating item ID: ${req.params.id}`, error, user, { requestBody: req.body });
+    logger.error('item-update', `Error updating item ID: ${req.params.id}`, error, user, { requestBody: req.body });
     res.status(400).json({ 
       message: error.message.includes('validation') ? 
         'Validation failed: ' + error.message : 

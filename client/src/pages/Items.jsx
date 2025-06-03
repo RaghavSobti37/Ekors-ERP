@@ -473,6 +473,22 @@ export default function Items() {
     setShowPurchaseModal(true);
   };
 
+  // Define the missing function to add a new item row to the purchase form
+  const addNewPurchaseItem = () => {
+    setPurchaseData(prev => ({
+      ...prev,
+      items: [
+        ...(prev.items || []), // Ensure items is an array
+        {
+          description: "",
+          quantity: "1", // Default quantity to 1
+          price: "",
+          gstRate: "0",
+        },
+      ],
+    }));
+  };
+
   const removeItem = (index) => {
     const updatedItems = [...purchaseData.items];
     updatedItems.splice(index, 1);
