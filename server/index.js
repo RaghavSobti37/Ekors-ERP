@@ -33,7 +33,9 @@ app.use(morgan('dev'));
 // Define allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://ekors-erp-dyix.vercel.app' // Removed trailing slash for consistency
+  'https://ekors-erp-dyix.vercel.app',
+  'https://ekors-erp-dyix-5f954a0so-raghavsobti37s-projects.vercel.app'
+  // Removed trailing slash for consistency
 ];
 
 const corsOptions = {
