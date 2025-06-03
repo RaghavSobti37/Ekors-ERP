@@ -183,8 +183,8 @@ export default function Dashboard() {
   const [transferTicket, setTransferTicket] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null); // For transfer modal
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(4);
+  const [currentPage, setCurrentPage] = useState(1); 
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -531,10 +531,14 @@ export default function Dashboard() {
     return filtered;
   }, [sortedTickets, searchTerm, statusFilter]);
 
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page when items per page changes
+  };
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredTickets.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
 
   const requestSort = (key) => {
     let direction = "ascending";
@@ -2177,13 +2181,19 @@ export default function Dashboard() {
           </Row>
         </ReusableModal>
 
-        {totalPages > 1 && (
+        {filteredTickets.length > 0 && (
           <Pagination
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalItems={filteredTickets.length}
+            itemsPerPage={itemsPerPage}
             onPageChange={(page) => {
-              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+              // Calculate totalPages locally for this boundary check
+              const currentTotalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+              if (page >= 1 && page <= currentTotalPages) setCurrentPage(page);
             }}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            // Optionally pass itemsPerPageOptions if you want to customize them from here
+            // itemsPerPageOptions={[5, 10, 25, 50]}
           />
         )}
       </div>
