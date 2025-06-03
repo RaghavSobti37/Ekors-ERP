@@ -20,66 +20,6 @@ import frontendLogger from './utils/frontendLogger.js';
 import apiClient from "./utils/apiClient.js";
 
 function App() {
-  // const [items, setItems] = useState([]);
-  //  useEffect(() => {
-  //   const originalOnError = window.onerror;
-  //   window.onerror = (msg, url, lineNo, columnNo, error) => {
-  //     frontendLogger.error(
-  //       'global-error', // type
-  //       String(msg),    // message
-  //       null,           // user (global errors are not typically user-specific at this point)
-  //       {               // details
-  //         url,
-  //         lineNo,
-  //         columnNo,
-  //         errorMessage: error ? String(error.message) : String(msg), // more specific error message
-  //         stack: error ? error.stack : undefined
-  //       }
-  //     );
-  //     if (originalOnError) {
-  //       // Call previous handler if it exists
-  //       return originalOnError(msg, url, lineNo, columnNo, error);
-  //     }
-  //     // Return true to prevent default browser error handling for caught errors
-  //     // return true; // Or false depending on desired behavior
-  //   };
-
-  //   // Optional: Capture unhandled promise rejections
-  //   const originalOnUnhandledRejection = window.onunhandledrejection;
-  //   window.onunhandledrejection = (event) => {
-  //     const reason = event.reason;
-  //     let messageText = 'Unhandled promise rejection';
-  //     let stackTrace;
-
-  //     if (reason instanceof Error) {
-  //       messageText = reason.message;
-  //       stackTrace = reason.stack;
-  //     } else if (typeof reason === 'string') {
-  //       messageText = reason;
-  //     } else {
-  //       try {
-  //         messageText = `Unhandled promise rejection: ${JSON.stringify(reason)}`;
-  //       } catch (e) {
-  //         messageText = 'Unhandled promise rejection with non-serializable reason.';
-  //       }
-  //     }
-      
-  //     frontendLogger.error('unhandled-rejection', messageText, null, {
-  //       errorMessage: (reason instanceof Error) ? reason.message : messageText,
-  //       stack: stackTrace,
-  //       rejectionDetails: typeof reason === 'object' ? { ...reason } : String(reason) // Avoid circular refs
-  //     });
-  //     if (originalOnUnhandledRejection) {
-  //       return originalOnUnhandledRejection.call(window, event);
-  //     }
-  //   };
-
-  //   return () => {
-  //     window.onerror = originalOnError;
-  //     window.onunhandledrejection = originalOnUnhandledRejection;
-  //   };
-  // }, []);
-
   return (
     <AuthProvider>
       <BrowserRouter>

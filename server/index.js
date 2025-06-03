@@ -33,14 +33,18 @@ app.use(morgan('dev'));
 // Define allowed origins for CORS
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://ekors-erp-dyix.vercel.app/' 
+  'https://ekors-erp-dyix.vercel.app' // Removed trailing slash for consistency
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
+
+    // Normalize the origin by removing a trailing slash if it exists
+    const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+
+    if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
       const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
       return callback(new Error(msg), false);
     }
