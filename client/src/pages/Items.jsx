@@ -29,7 +29,6 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
 export default function Items() {
-  const totalPages = 4; //hardocoded
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +56,7 @@ export default function Items() {
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [currentItemIndex, setCurrentItemIndex] = useState(-1);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSubcategory, setSelectedSubcategory] = useState("All");
@@ -114,6 +113,11 @@ export default function Items() {
         : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
     );
   }, []); // Runs once on mount to get the threshold
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page
+  };
 
   const handleGlobalThresholdChange = (e) => {
     const newThreshold =
@@ -1248,13 +1252,18 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => {
-              if (page >= 1 && page <= totalPages) setCurrentPage(page);
-            }}
-          />
+          {itemsToDisplay.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={itemsToDisplay.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={(page) => {
+                const totalPages = Math.ceil(itemsToDisplay.length / itemsPerPage);
+                if (page >= 1 && page <= totalPages) setCurrentPage(page);
+              }}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </div>
 
         {showModal && (
@@ -1484,13 +1493,20 @@ export default function Items() {
           </div>
         )}
 
-                {/* View Item Modal */}
+        {/* View Item Modal */}
         {showViewItemModal && editingItem && (
           <div className="modal-backdrop full-screen-modal">
             <div className="modal-content full-screen-content">
               <div className="modal-header">
                 <h5 className="modal-title">View Item: {editingItem.name}</h5>
-                <button type="button" className="close" onClick={() => { setShowViewItemModal(false); setEditingItem(null); }}>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowViewItemModal(false);
+                    setEditingItem(null);
+                  }}
+                >
                   <span>&times;</span>
                 </button>
               </div>
@@ -1500,59 +1516,127 @@ export default function Items() {
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <h6>Item Details</h6>
                     {editingItem.image && (
-                      <img src={editingItem.image} alt={editingItem.name} className="image-preview" />
+                      <img
+                        src={editingItem.image}
+                        alt={editingItem.name}
+                        className="image-preview"
+                      />
                     )}
                   </div>
                   <table className="table table-sm table-bordered item-details-table">
                     <tbody>
-                      <tr><td><strong>Name</strong></td><td>{editingItem.name}</td></tr>
-                      <tr><td><strong>Category</strong></td><td>{editingItem.category || "-"}</td></tr>
-                      <tr><td><strong>Subcategory</strong></td><td>{editingItem.subcategory || "-"}</td></tr>
-                      <tr><td><strong>Quantity</strong></td><td>{editingItem.quantity}</td></tr>
-                      <tr><td><strong>Price</strong></td><td>₹{editingItem.price.toFixed(2)}</td></tr>
-                      <tr><td><strong>Unit</strong></td><td>{editingItem.unit || "Nos"}</td></tr>
-                      <tr><td><strong>GST Rate</strong></td><td>{editingItem.gstRate}%</td></tr>
-                      <tr><td><strong>HSN Code</strong></td><td>{editingItem.hsnCode || "-"}</td></tr>
-                      <tr><td><strong>Max Discount</strong></td><td>{editingItem.maxDiscountPercentage > 0 ? `${editingItem.maxDiscountPercentage}%` : "N/A"}</td></tr>
+                      <tr>
+                        <td>
+                          <strong>Name</strong>
+                        </td>
+                        <td>{editingItem.name}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Category</strong>
+                        </td>
+                        <td>{editingItem.category || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Subcategory</strong>
+                        </td>
+                        <td>{editingItem.subcategory || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Quantity</strong>
+                        </td>
+                        <td>{editingItem.quantity}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Price</strong>
+                        </td>
+                        <td>₹{editingItem.price.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Unit</strong>
+                        </td>
+                        <td>{editingItem.unit || "Nos"}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>GST Rate</strong>
+                        </td>
+                        <td>{editingItem.gstRate}%</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>HSN Code</strong>
+                        </td>
+                        <td>{editingItem.hsnCode || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Max Discount</strong>
+                        </td>
+                        <td>
+                          {editingItem.maxDiscountPercentage > 0
+                            ? `${editingItem.maxDiscountPercentage}%`
+                            : "N/A"}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
 
                   <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
                     <h6>Purchase History</h6>
                   </div>
-                  {purchaseHistoryLoading[editingItem._id] ? <p>Loading history...</p> :
-                    purchaseHistory[editingItem._id]?.length > 0 ? (
-                      <table className="table table-sm table-striped table-bordered">
-                        <thead className="table-secondary">
-                          <tr>
-                            <th>Date</th>
-                            <th>Supplier</th>
-                            <th>Added By</th>
-                            <th>Invoice No</th>
-                            <th>Qty</th>
-                            <th>Price (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {purchaseHistory[editingItem._id].map((purchase, idx) => (
+                  {purchaseHistoryLoading[editingItem._id] ? (
+                    <p>Loading history...</p>
+                  ) : purchaseHistory[editingItem._id]?.length > 0 ? (
+                    <table className="table table-sm table-striped table-bordered">
+                      <thead className="table-secondary">
+                        <tr>
+                          <th>Date</th>
+                          <th>Supplier</th>
+                          <th>Added By</th>
+                          <th>Invoice No</th>
+                          <th>Qty</th>
+                          <th>Price (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {purchaseHistory[editingItem._id].map(
+                          (purchase, idx) => (
                             <tr key={purchase._id || idx}>
-                              <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                              <td>
+                                {new Date(purchase.date).toLocaleDateString()}
+                              </td>
                               <td>{purchase.companyName}</td>
                               <td>{purchase.createdByName || "N/A"}</td>
                               <td>{purchase.invoiceNumber}</td>
                               <td>{purchase.quantity}</td>
                               <td>₹{purchase.price.toFixed(2)}</td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="alert alert-info">No purchase history found.</div>
-                    )}
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="alert alert-info">
+                      No purchase history found.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
-                <button onClick={() => { setShowViewItemModal(false); setEditingItem(null); }} className="btn btn-secondary">Close</button>
+                <button
+                  onClick={() => {
+                    setShowViewItemModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -1564,7 +1648,14 @@ export default function Items() {
             <div className="modal-content full-screen-content">
               <div className="modal-header">
                 <h5 className="modal-title">Edit Item: {editingItem.name}</h5>
-                <button type="button" className="close" onClick={() => { setShowEditItemModal(false); setEditingItem(null); }}>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => {
+                    setShowEditItemModal(false);
+                    setEditingItem(null);
+                  }}
+                >
                   <span>&times;</span>
                 </button>
               </div>
@@ -1572,50 +1663,183 @@ export default function Items() {
                 {error && <div className="alert alert-danger">{error}</div>}
                 <div className="row">
                   <div className="col-md-6">
-                    <div className="form-group"><label>Name*</label><input className="form-control mb-2" name="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required /></div>
-                    <div className="form-group"><label>Quantity</label><input type="number" className="form-control mb-2" name="quantity" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} /></div>
-                    <div className="form-group"><label>Price*</label><input type="number" step="0.01" className="form-control mb-2" name="price" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} required /></div>
-                    <div className="form-group"><label>GST Rate (%)</label><input type="number" step="0.01" className="form-control mb-2" name="gstRate" value={formData.gstRate} onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })} /></div>
-                    <div className="form-group"><label>HSN Code</label><input className="form-control mb-2" name="hsnCode" value={formData.hsnCode} onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })} /></div>
+                    <div className="form-group">
+                      <label>Name*</label>
+                      <input
+                        className="form-control mb-2"
+                        name="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Quantity</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        name="quantity"
+                        value={formData.quantity}
+                        onChange={(e) =>
+                          setFormData({ ...formData, quantity: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Price*</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        name="price"
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, price: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>GST Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        name="gstRate"
+                        value={formData.gstRate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, gstRate: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>HSN Code</label>
+                      <input
+                        className="form-control mb-2"
+                        name="hsnCode"
+                        value={formData.hsnCode}
+                        onChange={(e) =>
+                          setFormData({ ...formData, hsnCode: e.target.value })
+                        }
+                      />
+                    </div>
                   </div>
                   <div className="col-md-6">
                     <div className="form-group">
                       <label>Unit</label>
-                      <select className="form-control mb-2" name="unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
-                        <option value="Nos">Nos</option><option value="Mtr">Meter</option><option value="PKT">Packet</option><option value="Pair">Pair</option><option value="Set">Set</option><option value="Bottle">Bottle</option><option value="KG">Kilogram</option>
+                      <select
+                        className="form-control mb-2"
+                        name="unit"
+                        value={formData.unit}
+                        onChange={(e) =>
+                          setFormData({ ...formData, unit: e.target.value })
+                        }
+                      >
+                        <option value="Nos">Nos</option>
+                        <option value="Mtr">Meter</option>
+                        <option value="PKT">Packet</option>
+                        <option value="Pair">Pair</option>
+                        <option value="Set">Set</option>
+                        <option value="Bottle">Bottle</option>
+                        <option value="KG">Kilogram</option>
                       </select>
                     </div>
                     <div className="form-group">
                       <label>Category</label>
-                      <select className="form-control mb-2" name="category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                      <select
+                        className="form-control mb-2"
+                        name="category"
+                        value={formData.category}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category: e.target.value })
+                        }
+                      >
                         <option value="">Select Category</option>
-                        {Array.isArray(categories) && categories.map((cat) => (<option key={cat.category} value={cat.category}>{cat.category}</option>))}
+                        {Array.isArray(categories) &&
+                          categories.map((cat) => (
+                            <option key={cat.category} value={cat.category}>
+                              {cat.category}
+                            </option>
+                          ))}
                       </select>
                     </div>
                     <div className="form-group">
                       <label>Subcategory</label>
-                      <select className="form-control mb-2" name="subcategory" value={formData.subcategory} onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })} disabled={!formData.category}>
+                      <select
+                        className="form-control mb-2"
+                        name="subcategory"
+                        value={formData.subcategory}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            subcategory: e.target.value,
+                          })
+                        }
+                        disabled={!formData.category}
+                      >
                         <option value="General">General</option>
-                        {formData.category && Array.isArray(categories) && categories.find((c) => c.category === formData.category)?.subcategories.map((subcat) => (<option key={subcat} value={subcat}>{subcat}</option>))}
+                        {formData.category &&
+                          Array.isArray(categories) &&
+                          categories
+                            .find((c) => c.category === formData.category)
+                            ?.subcategories.map((subcat) => (
+                              <option key={subcat} value={subcat}>
+                                {subcat}
+                              </option>
+                            ))}
                       </select>
                     </div>
                     <div className="form-group">
                       <label>Max Discount (%)</label>
-                      <input type="number" className="form-control mb-2" placeholder="Max Discount % (0-100)" name="maxDiscountPercentage" value={formData.maxDiscountPercentage} onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })} min="0" max="100" />
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        placeholder="Max Discount % (0-100)"
+                        name="maxDiscountPercentage"
+                        value={formData.maxDiscountPercentage}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxDiscountPercentage: e.target.value,
+                          })
+                        }
+                        min="0"
+                        max="100"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button onClick={() => { setShowEditItemModal(false); setEditingItem(null); setError(null); }} className="btn btn-secondary" disabled={isSubmitting}>Cancel</button>
-                <button onClick={handleSaveEditedItem} className="btn btn-success" disabled={!formData.name || !formData.price || !formData.category || isSubmitting}>
+                <button
+                  onClick={() => {
+                    setShowEditItemModal(false);
+                    setEditingItem(null);
+                    setError(null);
+                  }}
+                  className="btn btn-secondary"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEditedItem}
+                  className="btn btn-success"
+                  disabled={
+                    !formData.name ||
+                    !formData.price ||
+                    !formData.category ||
+                    isSubmitting
+                  }
+                >
                   {isSubmitting ? "Updating..." : "Update Item"}
                 </button>
               </div>
             </div>
           </div>
         )}
-
 
         {showPurchaseModal && (
           <div className="modal-backdrop full-screen-modal">

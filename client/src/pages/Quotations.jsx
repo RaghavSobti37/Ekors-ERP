@@ -174,7 +174,7 @@ export default function Quotations() {
   const [formValidated, setFormValidated] = useState(false);
   const [quotationsCount, setQuotationsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(4);
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "date",
@@ -187,7 +187,8 @@ export default function Quotations() {
   const auth = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
-  const [showQuotationReportModal, setShowQuotationReportModal] = useState(false);
+  const [showQuotationReportModal, setShowQuotationReportModal] =
+    useState(false);
   // reportPeriod, quotationReportSummary, reportLoading, exportLoading states are removed
   // as QuotationReportModal will manage these internally.
   const quotationFormId = "quotation-form";
@@ -488,7 +489,6 @@ export default function Quotations() {
     indexOfFirstItem,
     indexOfLastItem
   );
-  const totalPages = Math.ceil(filteredQuotations.length / itemsPerPage);
 
   const requestSort = (key) => {
     let direction = "descending";
@@ -496,6 +496,11 @@ export default function Quotations() {
       direction = "ascending";
     }
     setSortConfig({ key, direction });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page
   };
 
   const addGoodsRow = () => {
@@ -1809,15 +1814,21 @@ export default function Quotations() {
           pauseOnHover
         />
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            if (page >= 1 && page <= totalPages) setCurrentPage(page);
-          }}
-        />
+        {filteredQuotations.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredQuotations.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(page) => {
+              const currentTotalPages = Math.ceil(
+                filteredQuotations.length / itemsPerPage
+              );
+              if (page >= 1 && page <= currentTotalPages) setCurrentPage(page);
+            }}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
-      {/* Replaced BsModal with QuotationReportModal */}
       <QuotationReportModal
         show={showQuotationReportModal}
         onHide={() => setShowQuotationReportModal(false)}

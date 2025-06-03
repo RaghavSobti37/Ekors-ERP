@@ -40,7 +40,7 @@ const Users = () => {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Hardcoded to 4
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const userFormId = "user-form"; // For ReusableModal footer button
   const navigate = useNavigate();
 
@@ -281,8 +281,12 @@ const Users = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page
+  };
+  
   return (
     <>
       {isUnauthorized ? (
@@ -383,14 +387,14 @@ const Users = () => {
         {filteredUsers.length > 0 && (
           <Pagination
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalItems={filteredUsers.length}
+            itemsPerPage={itemsPerPage}
             onPageChange={(page) => {
+              const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
               if (page >= 1 && page <= totalPages) setCurrentPage(page);
               console.log("[Users.jsx] Page changed to:", page);
             }}
-            onGoToFirst={() => {setCurrentPage(1); console.log("[Users.jsx] Go to first page.");}}
-            onGoToLast={() => {setCurrentPage(totalPages); console.log("[Users.jsx] Go to last page.");
-            }}
+            onItemsPerPageChange={handleItemsPerPageChange}
           />
         )}
         {/* View Modal */}

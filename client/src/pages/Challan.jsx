@@ -25,7 +25,7 @@ export default function Challan() {
     billNumber: "",
     media: null,
   });
-  const itemsPerPage = 4; // Hardcoded to 4
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [allChallans, setAllChallans] = useState([]);
   const [viewMode, setViewMode] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -276,8 +276,12 @@ export default function Challan() {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = allChallans.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(allChallans.length / itemsPerPage);
 
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page
+  };
+  
   const renderForm = () => {
     return (
       <Form id={challanFormId} onSubmit={handleSubmit}> {/* Changed form to Form and added id */}
@@ -579,13 +583,18 @@ export default function Challan() {
           </ReusableModal>
         )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            if (page >= 1 && page <= totalPages) setCurrentPage(page);
-          }}
-        />
+        {allChallans.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={allChallans.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(page) => {
+              const totalPages = Math.ceil(allChallans.length / itemsPerPage);
+              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+            }}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
     </div>
   );
