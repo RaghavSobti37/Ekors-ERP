@@ -232,7 +232,9 @@ export default function Challan() {
       setError(null);
 
       // Assuming apiClient is fetch-like and returns a Response object for document requests
-      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`);
+      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`, {
+        rawResponse: true, // Indicate that we want the raw response object
+      });
 
       if (!response.ok) {
         let errorResponseMessage = `Failed to retrieve document. Status: ${response.status}`;

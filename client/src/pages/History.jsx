@@ -38,10 +38,7 @@ export default function History() {
     try {
       const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
-
       const data = await apiClient("/logtime/all");
-
-      showToast("History fetched successfully", true);
 
       const withTotal = data.map((entry) => {
         let totalMinutes = 0;

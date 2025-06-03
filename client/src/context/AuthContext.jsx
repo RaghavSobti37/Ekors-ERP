@@ -28,51 +28,30 @@ export const AuthProvider = ({ children }) => {
           data.user || data
         );
       } catch (error) {
-        console.error(
-          "[DEBUG Client AuthContext] Failed to fetch current user or token invalid:",
-          error.message
-        );
+       
         localStorage.removeItem("erp-user"); // Token is invalid or expired
         setUser(null);
       }
     } else {
-      console.log(
-        "[DEBUG Client AuthContext] No token found in localStorage for auto-login."
-      );
     }
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    console.log(
-      "[DEBUG Client AuthContext] AuthProvider mounted. Fetching current user..."
-    );
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
   const logEventToServer = async (logData) => {
     const payload = { level: "info", ...logData };
-    console.log(
-      "[DEBUG Client AuthContext] logEventToServer: Attempting to send log:",
-      JSON.stringify(payload, null, 2)
-    );
     try {
       // apiClient handles token and base URL
       const responseData = await apiClient("/audit/log", {
         method: "POST",
         body: payload,
       });
-      console.log(
-        "[DEBUG Client AuthContext] logEventToServer: Log successfully sent. Server Response:",
-        responseData
-      );
+   
     } catch (error) {
       // apiClient already logs details, but you can add more specific handling here
-      console.error(
-        "[DEBUG Client AuthContext] logEventToServer: Error sending log:",
-        error.message,
-        error.data || error
-      );
     }
   };
 
@@ -80,10 +59,6 @@ export const AuthProvider = ({ children }) => {
   // It should call your server's login endpoint (e.g., POST /api/auth/login)
   // The server should respond with { token: "your_jwt_token", user: { id, firstname, ... } }
   const login = async (credentials) => {
-    console.log(
-      "[DEBUG Client AuthContext] login: Attempting login for:",
-      credentials.email
-    );
     try {
       const authResponseData = await apiClient("/auth/login", {
         method: "POST",
@@ -92,10 +67,6 @@ export const AuthProvider = ({ children }) => {
       if (authResponseData.token && authResponseData.user) {
         localStorage.setItem("erp-user", authResponseData.token);
         setUser(authResponseData.user);
-        console.log(
-          "[DEBUG Client AuthContext] login: Successful. User set, token stored.",
-          authResponseData.user
-        );
 
         const { firstname, lastname, id, email } = authResponseData.user;
         logEventToServer({

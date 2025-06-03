@@ -698,24 +698,15 @@ export default function Items() {
       return;
     }
     try {
-      const token = localStorage.getItem("erp-user");
-      const fetchResponse = await fetch("/api/items/export-excel", {
+      const response = await apiClient("/items/export-excel", { // Use apiClient
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        rawResponse: true, // We need the raw response to get the blob
       });
 
-      if (!fetchResponse.ok) {
-        const errorData = await fetchResponse
-          .json()
-          .catch(() => ({ message: fetchResponse.statusText }));
-        throw new Error(
-          errorData.message || `Failed to export Excel: ${fetchResponse.status}`
-        );
-      }
+      // response is already checked for .ok inside apiClient if rawResponse is true
+      // and an error would have been thrown if not ok.
 
-      const blob = await fetchResponse.blob();
+      const blob = await response.blob();
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({
         error: null,
@@ -724,10 +715,14 @@ export default function Items() {
       });
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
-      console.error("Error exporting to Excel:", err);
-      const message = err.message || "Failed to export items to Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
+      console.error("Error exporting to Excel:", err); // Log the full error from apiClient
+      // Prioritize err.data.message, then err.message, then a fallback
+      const specificMessage = err.data?.message || err.message;
+      const displayMessage = `Failed to export items. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please try again.'}`;
+      
+      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
+      setError(displayMessage); // Sets page-level error
+      showToast(displayMessage, false); // Show toast for immediate feedback
     } finally {
       setIsExportingExcel(false);
     }
@@ -758,23 +753,12 @@ export default function Items() {
     formData.append("excelFile", file);
 
     try {
-      const token = getAuthToken();
-      const fetchResponse = await fetch("/api/items/import-uploaded-excel", {
+      // Use apiClient for the upload. It handles token and FormData.
+      const responseData = await apiClient("/items/import-uploaded-excel", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
+        isFormData: true, // Explicitly tell apiClient this is FormData
       });
-
-      const responseData = await fetchResponse.json();
-
-      if (!fetchResponse.ok) {
-        throw new Error(
-          responseData.message ||
-            `Failed to process Excel: ${fetchResponse.status}`
-        );
-      }
 
       const response = responseData;
 
@@ -810,13 +794,15 @@ export default function Items() {
         fileInput.value = null;
       }
     } catch (err) {
-      console.error("Error updating from Excel:", err);
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to update items from Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
+      console.error("Error updating from Excel:", err); // Log the full error from apiClient
+      // Prioritize err.data.message, then err.message, then a fallback
+      const specificMessage = err.data?.message || err.message;
+      // If specificMessage is the SyntaxError itself, it will be included here.
+      const displayMessage = `Failed to update from Excel. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please check the file and try again.'}`;
+
+      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
+      setError(displayMessage); // Sets page-level error
+      showToast(displayMessage, false); // Show toast for immediate feedback
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;

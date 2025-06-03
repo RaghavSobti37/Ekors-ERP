@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaTimes, FaUserShield } from "react-icons/fa"; // Icons
-import Navbar from "../components/Navbar"; // Navigation bar component
-import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
-import Pagination from "../components/Pagination"; // Component for table pagination
-import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
-import UserReportModal from "../components/UserReportModal"; // Modal for user reports
-import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
-import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
-import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
-import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { showToast, handleApiError, formatDisplayDate } from "../utils/helpers"; // Utility functions
+import { FaTimes, FaUserShield } from "react-icons/fa";
+import Navbar from "../components/Navbar";
+import { Table, Button as BsButton, Alert, Form } from "react-bootstrap";
+import Pagination from "../components/Pagination"; 
+import ReusableTable from "../components/ReusableTable"; 
+import UserReportModal from "../components/UserReportModal"; 
+import SearchBar from "../components/Searchbar.jsx"; 
+import Unauthorized from "../components/Unauthorized";
+import ActionButtons from "../components/ActionButtons"; 
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; 
+import apiClient from "../utils/apiClient";
+import { showToast, handleApiError, formatDisplayDate } from "../utils/helpers"; 
 import { PlusCircle } from 'react-bootstrap-icons'; // Icon for Add User button
 import "../css/Style.css";
 import "../css/Users.css"; // Specific styles for Users page

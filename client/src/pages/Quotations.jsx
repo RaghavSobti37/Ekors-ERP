@@ -11,7 +11,7 @@ import Pagination from "../components/Pagination"; // Component for table pagina
 import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
-import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import "react-toastify/dist/ReactToastify.css";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"; // Components for PDF viewing and downloading
@@ -258,9 +258,9 @@ export default function Quotations() {
       if (responseData && responseData._id) {
         setQuotationData((prev) => ({
           ...prev,
-          client: { ...response.data },
+          client: { ...responseData }, // Changed response.data to responseData
         }));
-        setSelectedClientIdForForm(response.data._id);
+        setSelectedClientIdForForm(responseData._id); // Changed response.data._id to responseData._id
         setError(null);
         toast.success("Client saved successfully!");
         if (auth.user) {
@@ -856,7 +856,7 @@ export default function Quotations() {
             }`,
             auth.user,
             {
-              quotationId: response.data._id,
+              quotationId: responseData._id, // Changed response.data._id to responseData._id
               action: currentQuotation // Corrected: use responseData
                 ? "UPDATE_QUOTATION_SUCCESS"
                 : "CREATE_QUOTATION_SUCCESS",
@@ -1799,19 +1799,6 @@ export default function Quotations() {
             </div>
           )}
         </ReusableModal>
-
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-
         {filteredQuotations.length > 0 && (
           <Pagination
             currentPage={currentPage}

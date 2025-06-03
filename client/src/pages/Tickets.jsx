@@ -21,7 +21,7 @@ import QuotationPDF from "../components/QuotationPDF.jsx"; // Component for rend
 import PIPDF from "../components/PIPDF.jsx"; // Component for rendering PI PDF
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import "react-toastify/dist/ReactToastify.css";
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
@@ -2039,7 +2039,7 @@ setTransferHistoryDisplay(history);
                               variant="outline-info"
                               size="sm"
                               className="mt-2"
-                              onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
+                              onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
                             >
                               <i className="bi bi-eye me-1"></i>View Uploaded
                             </Button>
@@ -2120,7 +2120,7 @@ setTransferHistoryDisplay(history);
                       <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
                       <td>
                         <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDocumentDelete('other', doc.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash"></i></Button>
+                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
                       </td>
                     </tr>
                   ))}
@@ -2193,18 +2193,6 @@ setTransferHistoryDisplay(history);
       <TicketReportModal
         show={showTicketReportModal}
         onHide={() => setShowTicketReportModal(false)}
-      />
-
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
       />
     </div>
   );
