@@ -24,7 +24,7 @@
 
   --light-color: grey;            /* Clean Light */
   --light-hover: #e9ecef;           /* Slightly darker light for hover */
-  --dark-color: #1e1e1e;             /* Almost Black for depth */
+  --dark-color: rgba(0, 0, 0, 0.452);             /* Almost Black for depth */
 
   /* Semantic Backgrounds & Text (often derived from alerts or for custom components) */
   --success-bg: #d4edda;

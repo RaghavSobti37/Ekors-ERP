@@ -145,8 +145,7 @@ const ItemSearchComponent = ({
                 onClick={() => handleItemClick(item)}
                 onMouseDown={(e) => e.preventDefault()} // Prevent blur event
               >
-                <strong>{item.name}</strong>
-                <span className="text-muted"> - ₹{item.price.toFixed(2)}</span>
+                <strong>{item.name}</strong> - SP: <span className="text-muted">₹{(item.sellingPrice || 0).toFixed(2)}</span>, BP: <span className="text-muted">₹{(item.buyingPrice || 0).toFixed(2)}</span>
                 <br />
                 <small>
                   HSN: {item.hsnCode || "N/A"}, GST: {item.gstRate || 0}%

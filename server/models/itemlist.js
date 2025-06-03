@@ -16,9 +16,15 @@ const purchaseItemSchema = new mongoose.Schema({
     min: 0.01
   },
   price: {
-    type: Number,
+       type: Number, // Price at which this item was purchased in this transaction
     required: true,
     min: 0
+  },
+  sellingPriceAtPurchase: { // Optional: if you want to record what the item's selling price was at time of this purchase
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
   },
   gstRate: {
     type: Number,
@@ -94,9 +100,14 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  price: {
+   sellingPrice: { // Renamed from price
     type: Number,
     required: true,
+    min: 0
+  },
+  buyingPrice: { // New field for buying price
+    type: Number,
+    default: 0, // Default to 0, can be updated
     min: 0
   },
   unit: {

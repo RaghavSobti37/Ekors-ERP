@@ -55,14 +55,16 @@ exports.exportItemsToExcel = async (req, res) => {
     const dataForSheet = items.map(item => ({
       'Name': item.name,
       'Quantity': item.quantity,
-      'Price': item.price,
+      'Selling Price': item.sellingPrice, // Changed from Price
+      'Buying Price': item.buyingPrice,   // Added Buying Price
       'Unit': item.unit,
       'Category': item.category,
       'Subcategory': item.subcategory,
       'HSN Code': item.hsnCode,
       'GST Rate': item.gstRate,
       'Max Discount Percentage': item.maxDiscountPercentage,
-      // 'Image': item.image, // Not including image in this export as per simplified flow
+      'Low Stock Threshold': item.lowStockThreshold,
+      // 'Image': item.image, // Not including image in this export
     }));
 
     const worksheet = xlsx.utils.json_to_sheet(dataForSheet);
@@ -162,16 +164,19 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
       const payload = {
         name: excelItemData.name, // Preserve original casing from Excel for name
         quantity: excelItemData.quantity || 0,
-        price: excelItemData.price || 0,
+        sellingPrice: excelItemData.sellingPrice || excelItemData.price || 0, // Use sellingPrice, fallback to price for backward compatibility
+        buyingPrice: excelItemData.buyingPrice || 0, // Add buyingPrice
         unit: excelItemData.unit || 'Nos',
         category: excelItemData.category || 'Other',
         subcategory: excelItemData.subcategory || 'General',
         gstRate: excelItemData.gstRate || 0,
         hsnCode: excelItemData.hsnCode || '',
         maxDiscountPercentage: excelItemData.maxDiscountPercentage || 0,
+        lowStockThreshold: excelItemData.lowStockThreshold || 5, // Default if not in Excel
         image: excelItemData.image || '', // Will be '' from parser
         // Preserve fields not typically in a simple Excel import, or set defaults
         discountAvailable: excelItemData.discountAvailable !== undefined ? excelItemData.discountAvailable : (existingItem?.discountAvailable || false),
+        needsRestock: excelItemData.needsRestock !== undefined ? excelItemData.needsRestock : (existingItem?.needsRestock || false),
         lastPurchaseDate: excelItemData.lastPurchaseDate || existingItem?.lastPurchaseDate || null,
         lastPurchasePrice: excelItemData.lastPurchasePrice || existingItem?.lastPurchasePrice || null,
       };
@@ -456,7 +461,8 @@ exports.createItem = async (req, res) => {
       unit: req.body.unit || 'Nos',
       category: req.body.category || 'Other',
       subcategory: req.body.subcategory || 'General',
-      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0
+      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
+      lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 // Default 5
     });
 
     const savedItem = await newItem.save();
@@ -482,13 +488,15 @@ exports.updateItem = async (req, res) => {
         $set: {
           name: req.body.name,
           quantity: req.body.quantity || 0,
-          price: req.body.price || 0,
+          sellingPrice: req.body.sellingPrice || 0, // Changed from price
+          buyingPrice: req.body.buyingPrice || 0,   // Added buyingPrice
           gstRate: req.body.gstRate || 0,
           hsnCode: req.body.hsnCode || '',
           unit: req.body.unit || 'Nos',
           category: req.body.category || 'Other',
           subcategory: req.body.subcategory || 'General',
-          maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0
+          maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
+          lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 // Default 5
         }
       },
       { new: true, runValidators: true }
@@ -648,8 +656,14 @@ exports.getRestockSummary = async (req, res) => {
 
   try {
     logger.debug('item', "Fetching restock summary", user);
-    const itemsToRestock = await Item.find({ needsRestock: true }).select('name lowStockThreshold quantity');
-    const restockNeededCount = itemsToRestock.length;
+    // Items are considered needing restock if explicitly flagged OR if their quantity is zero or less.
+    const itemsActuallyNeedingRestock = await Item.find({
+      $or: [
+        { needsRestock: true },
+        { quantity: { $lte: 0 } }
+      ]
+    }).select('name lowStockThreshold quantity needsRestock'); // Include needsRestock for clarity
+    const restockNeededCount = itemsActuallyNeedingRestock.length;
 
     const lowStockWarningCount = await Item.countDocuments({
       quantity: { $lt: lowGlobalThreshold }
@@ -659,7 +673,7 @@ exports.getRestockSummary = async (req, res) => {
     res.json({
       restockNeededCount: restockNeededCount, // Renamed from 'count' for clarity
       lowStockWarningCount: lowStockWarningCount,
-      items: itemsToRestock // Sending items might be useful for a detailed view later
+      items: itemsActuallyNeedingRestock // Send the more inclusive list of items
     });
   } catch (error) {
     logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold });

@@ -27,8 +27,6 @@ import "../css/Items.css"; // Assuming this is still needed for other parts of Q
 import ReusableModal from "../components/ReusableModal.jsx";
 import QuotationReportModal from "../components/QuotationReportModal.jsx";
 import { FaChartBar } from "react-icons/fa"; // Import icon for report button
-import { Modal as BsModal, Spinner } from "react-bootstrap";
-import { saveAs } from "file-saver"; // Import saveAs statically
 
 const GoodsTable = ({
   goods,
@@ -541,9 +539,9 @@ export default function Quotations() {
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
         unit: item.unit || "Nos",
-        price: item.price,
-        amount: item.price,
-        originalPrice: item.price,
+        price: item.sellingPrice, // Use sellingPrice from item
+        amount: item.sellingPrice,  // Initial amount is sellingPrice * 1
+        originalPrice: item.sellingPrice, // Store original selling price
         maxDiscountPercentage: item.maxDiscountPercentage,
       },
     ];
