@@ -455,7 +455,7 @@ exports.createItem = async (req, res) => {
     const newItem = new Item({
       name: req.body.name,
       quantity: req.body.quantity || 0,
-      price: req.body.price || 0,
+      sellingPrice: req.body.sellingPrice || req.body.price || 0, // Prioritize sellingPrice, fallback to price for compatibility if needed
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || '',
       unit: req.body.unit || 'Nos',

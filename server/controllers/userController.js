@@ -600,6 +600,7 @@ exports.handleAvatarUploadError = (error, req, res, next) => {
  * @access  Private (Authenticated users)
  */
 exports.getTransferCandidates = asyncHandler(async (req, res) => {
+      logger.info('ROUTE_HIT_DEBUG', 'getTransferCandidates controller invoked'); // Add this line
   const initiator = req.user; // User making the request
   const logContext = { initiatorId: initiator.id, initiatorEmail: initiator.email, action: "FETCH_TRANSFER_CANDIDATES" };
 
