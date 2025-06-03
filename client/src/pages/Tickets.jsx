@@ -46,9 +46,27 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
     try {
       setLoading(true);
       setError(null);
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil(authContext?.user); // Pass user from context
       if (!token) {
-        throw new Error("Authentication token not found for fetching users.");
+        const noTokenMsg = "Authentication token not found for fetching users. Please ensure you are logged in.";
+        setError(noTokenMsg);
+        if (authContext?.user) {
+          frontendLogger.error(
+            "userSearch",
+            "Auth token missing in fetchUsers",
+            authContext.user,
+            { customMessage: noTokenMsg, action: "FETCH_USERS_NO_TOKEN" }
+          );
+        } else {
+          frontendLogger.error(
+            "userSearch",
+            "Auth token missing in fetchUsers (user context unavailable)",
+            null,
+            { customMessage: noTokenMsg, action: "FETCH_USERS_NO_TOKEN" }
+          );
+        }
+        setLoading(false); // Ensure loading is stopped
+        return; // Stop further execution
       }
 
       const data = await apiClient("/users/transfer-candidates"); // Use apiClient
@@ -67,6 +85,8 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
           // Fallback to generic error message from the error object if no backend message
           specificMessage = `Failed to load users: ${err.message}`;
         }
+      } else if (err.message.includes("Authentication token not found")) { // Catch specific error if token was missing
+        specificMessage = err.message;
       } else if (err.message) {
         specificMessage = `Failed to load users: ${err.message}`; // Network error or other non-response error
       }
