@@ -183,7 +183,7 @@ export default function Dashboard() {
   const [transferTicket, setTransferTicket] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null); // For transfer modal
-  const [currentPage, setCurrentPage] = useState(1); 
+  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentDate, setPaymentDate] = useState(
@@ -1473,93 +1473,97 @@ export default function Dashboard() {
     <div>
       <Navbar />
       <div className="container mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Tickets Overview</h2>
-         
-            <div
-              className="d-flex align-items-center gap-3"
-              style={{ width: "35%" }}
-            >
-              <SearchBar
-                value={searchTerm}
-                setSearchTerm={(value) => {
-                  setSearchTerm(value);
-                  setCurrentPage(1); // Reset page on new search
-                }}
-                placeholder="Search tickets..."
-                className="flex-grow-1"
-              />
-            </div>
-            <div className="filter-radio-group d-flex flex-wrap align-items-center">
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-all"
-                label="All"
-                name="statusFilter"
-                checked={statusFilter === "all"}
-                onChange={() => {
-                  setStatusFilter("all");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-open"
-                label="Open"
-                name="statusFilter"
-                checked={statusFilter === "open"}
-                onChange={() => {
-                  setStatusFilter("open");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-running"
-                label="Running"
-                name="statusFilter"
-                checked={statusFilter === "Running"}
-                onChange={() => {
-                  setStatusFilter("Running");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-closed"
-                label="Closed"
-                name="statusFilter"
-                checked={statusFilter === "closed"}
-                onChange={() => {
-                  setStatusFilter("closed");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-hold"
-                label="Hold"
-                name="statusFilter"
-                checked={statusFilter === "hold"}
-                onChange={() => {
-                  setStatusFilter("hold");
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <Button
-              variant="info"
-              onClick={() => setShowTicketReportModal(true)}
-              title="View Ticket Reports"
-            >
-              <FaChartBar className="me-1" /> Report
-            </Button>
-          
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
+          <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Tickets Overview</h2>
+
+          <div className="d-flex align-items-center" style={{ minWidth: "200px", flexGrow: 1, maxWidth: "350px" }}>
+            <SearchBar
+              value={searchTerm}
+              setSearchTerm={(value) => {
+                setSearchTerm(value);
+                setCurrentPage(1); // Reset page on new search
+              }}
+              placeholder="Search tickets..."
+              className="w-100"
+            />
+          </div>
+
+          <div className="filter-radio-group d-flex align-items-center flex-wrap" style={{ gap: "0.5rem" }}>
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-all"
+              label="All"
+              name="statusFilter"
+              checked={statusFilter === "all"}
+              onChange={() => {
+                setStatusFilter("all");
+                setCurrentPage(1);
+              }}
+              className="radio-option"
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-open"
+              label="Open"
+              name="statusFilter"
+              checked={statusFilter === "open"}
+              onChange={() => {
+                setStatusFilter("open");
+                setCurrentPage(1);
+              }}
+              className="radio-option"
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-running"
+              label="Running"
+              name="statusFilter"
+              checked={statusFilter === "Running"}
+              onChange={() => {
+                setStatusFilter("Running");
+                setCurrentPage(1);
+              }}
+              className="radio-option"
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-closed"
+              label="Closed"
+              name="statusFilter"
+              checked={statusFilter === "closed"}
+              onChange={() => {
+                setStatusFilter("closed");
+                setCurrentPage(1);
+              }}
+              className="radio-option"
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-hold"
+              label="Hold"
+              name="statusFilter"
+              checked={statusFilter === "hold"}
+              onChange={() => {
+                setStatusFilter("hold");
+                setCurrentPage(1);
+              }}
+              className="radio-option"
+            />
+          </div>
+
+          <Button
+            variant="info"
+            onClick={() => setShowTicketReportModal(true)}
+            title="View Ticket Reports"
+            style={{ whiteSpace: "nowrap" }}
+          >
+            <FaChartBar className="me-1" /> Report
+          </Button>
         </div>
 
         {error && (
@@ -2192,8 +2196,8 @@ export default function Dashboard() {
               if (page >= 1 && page <= currentTotalPages) setCurrentPage(page);
             }}
             onItemsPerPageChange={handleItemsPerPageChange}
-            // Optionally pass itemsPerPageOptions if you want to customize them from here
-            // itemsPerPageOptions={[5, 10, 25, 50]}
+          // Optionally pass itemsPerPageOptions if you want to customize them from here
+          // itemsPerPageOptions={[5, 10, 25, 50]}
           />
         )}
       </div>

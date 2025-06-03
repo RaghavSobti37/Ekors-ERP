@@ -1,5 +1,5 @@
 import React from 'react';
-import '../css/Pagination.css';
+import '../css/Pagination.css'
 
 // Helper function to generate a range of numbers
 const range = (start, end) => {
@@ -131,21 +131,6 @@ const Pagination = ({
               </button>
             </div>
           )}
-        </div>
-        
-        <div className="rows-per-page-container">
-          <span className="rows-per-page-label">Rows per page:</span>
-          <select 
-            className="rows-per-page-select"
-            value={rowsPerPage}
-            onChange={handleRowsPerPageChange}
-          >
-            {rowsPerPageOptions.map(option => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
     </div>
