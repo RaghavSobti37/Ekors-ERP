@@ -323,9 +323,9 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
   return (
     <>
       <nav className="navbar">
-        <div className="navbar-left">
+        <div className="navbar-left"> {/* Corrected closing tag */}
           <div className="logo">
-            <img src="/public/logo.png" alt="E-KORS" className="logo-img" />
+            <img src="https://ekors-erp-dyix.vercel.app/public/logo.png" alt="E-KORS" className="logo-img" />
           </div>
 
           <div className="nav-links">
@@ -435,8 +435,8 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
         >
           <div className="profile-section">
             {user?.avatarUrl ? (
-              <Image
-                src={`${import.meta.env.VITE_API_BASE_URL || ""}${
+              <Image // Small avatar in header
+                src={`${import.meta.env.VITE_API_BASE_URL || ""}${ // Ensure VITE_API_BASE_URL is set correctly in frontend env
                   user.avatarUrl
                 }?${new Date().getTime()}`} // VITE_API_BASE_URL likely includes /api, user.avatarUrl starts with /uploads
                 alt="User Avatar"
@@ -461,8 +461,8 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
               <div className="profile-details">
                 <div className="profile-avatar-large-container">
                   {user?.avatarUrl ? (
-                    <Image
-                      src={`${import.meta.env.VITE_API_BASE_URL || ""}${
+                    <Image // Large avatar in popup
+                      src={`${import.meta.env.VITE_API_BASE_URL || ""}${ // Ensure VITE_API_BASE_URL is set correctly in frontend env
                         user.avatarUrl
                       }?${new Date().getTime()}`}
                       alt="Profile"

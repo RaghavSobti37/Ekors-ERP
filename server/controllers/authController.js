@@ -48,6 +48,7 @@ exports.loginUser = async (req, res) => {
         lastname: user.lastname,
         email: user.email,
         phone: user.phone,
+        avatarUrl: user.avatarUrl, // Include avatarUrl in the login response
         role: user.role,
       },
     });

@@ -1,19 +1,67 @@
 const User = require("../models/users");
 const UserBackup = require("../models/userBackup"); // Import backup model
+const mongoose = require('mongoose'); // Import mongoose for ObjectId validation
 const asyncHandler = require("express-async-handler");
+const { check, validationResult } = require("express-validator");
 const logger = require("../utils/logger"); // Import logger
 const fs = require('fs'); // For file system operations, e.g., deleting old avatar
 const path = require('path');
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  // Ensure logger is available or use console for this critical setup error
-  if (logger && typeof logger.info === 'function') {
-    logger.info('SETUP', `Creating uploads directory: ${UPLOADS_DIR}`);
-  } else {
-    console.log(`[SETUP] Creating uploads directory: ${UPLOADS_DIR}`);
-  }
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+const multer = require("multer");
+
+// --- Validation Arrays ---
+exports.createUserValidations = [
+  check("firstname", "First name is required").not().isEmpty(),
+  check("lastname", "Last name is required").not().isEmpty(),
+  check("email", "Please include a valid email").isEmail(),
+  check(
+    "password",
+    "Password is required and must be at least 5 characters"
+  ).isLength({ min: 5 }),
+  check("role", "Role is required").isIn(["user", "admin", "super-admin"]),
+  check("phone")
+    .optional({ checkFalsy: true })
+    .isString()
+    .withMessage("Phone number must be a string")
+    .isLength({ min: 7, max: 15 })
+    .withMessage("Phone number must be between 7 and 15 digits")
+    .matches(/^[+]?[0-9\s\-()]*$/)
+    .withMessage("Phone number contains invalid characters"),
+];
+
+exports.updateUserValidations = [
+  check("firstname")
+    .optional()
+    .not().isEmpty().withMessage("First name cannot be empty if provided"),
+  check("lastname")
+    .optional()
+    .not().isEmpty().withMessage("Last name cannot be empty if provided"),
+  check("email")
+    .optional()
+    .isEmail().withMessage("Please include a valid email if provided"),
+  check("role")
+    .optional()
+    .isIn(["user", "admin", "super-admin"]).withMessage("Invalid role specified"),
+  check("phone")
+    .optional({ checkFalsy: true })
+    .isString().withMessage("Phone number must be a string")
+    .isLength({ max: 15 })
+    .withMessage("Phone number is too long (max 15 chars)")
+    .matches(/^[+]?[0-9\s\-()]*$/)
+    .withMessage("Phone number contains invalid characters if provided"),
+];
+
+exports.updateUserProfileValidations = [
+  check("phone")
+    .optional({ checkFalsy: true })
+    .isString().withMessage("Phone number must be a string")
+    .isLength({ max: 15 }).withMessage("Phone number is too long (max 15 chars)")
+    .matches(/^[+]?[0-9\s\-()]*$/).withMessage("Phone number contains invalid characters if provided"),
+  check("password")
+    .optional()
+    .isLength({ min: 5 }).withMessage("New password must be at least 5 characters if provided")
+];
+
+// --- End Validation Arrays ---
 
 // @desc    Create a new user
 // @route   POST /api/users
@@ -455,6 +503,96 @@ exports.uploadUserAvatar = asyncHandler(async (req, res) => {
     res.status(500).json({ message: "Server error while uploading avatar", error: error.message });
   }
 });
+
+// @desc    Get current user's profile
+// @route   GET /api/users/profile
+// @access  Private (Authenticated users)
+exports.getUserProfile = asyncHandler(async (req, res) => {
+  const userId = req.user.id; // Get ID from authenticated user
+  const performingUser = req.user;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      logger.warn('user-profile-get', `User not found for profile get. User ID from token: ${userId}.`, performingUser);
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    logger.info('user-profile-get', `User ${userId} fetched their profile successfully.`, performingUser);
+    
+    // Use getSafeUser if available, otherwise manually select fields
+    // Ensure getSafeUser is defined in your User model or select fields manually
+    const userResponse = user.getSafeUser ? user.getSafeUser() : {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatarUrl: user.avatarUrl, // Crucial for profile picture
+        isActive: user.isActive,
+        // Add other non-sensitive fields as necessary
+    };
+
+    res.status(200).json({
+      success: true,
+      data: userResponse
+    });
+  } catch (error) {
+    logger.error('user-profile-get-error', `Error fetching profile for user ${userId}: ${error.message}`, error, performingUser);
+    // Check if the error is due to an invalid ObjectId format for the userId from the token
+    if (error.kind === 'ObjectId' && userId && !mongoose.Types.ObjectId.isValid(userId)) {
+        logger.warn('user-profile-get-error', `Invalid ObjectId format for userId: ${userId} in token.`, performingUser);
+        return res.status(400).json({ success: false, message: 'Invalid user identifier in token.' });
+    }
+    // General server error
+    res.status(500).json({ success: false, message: "Server error while fetching profile.", details: error.message });
+  }
+});
+
+// Define UPLOADS_DIR for avatar logic, assuming server/index.js creates it.
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+
+// --- Multer Setup for Avatars ---
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // UPLOADS_DIR is already defined at the top of this file
+    // Ensure directory exists (it's created at the top level if not)
+    cb(null, UPLOADS_DIR);
+  },
+  filename: function (req, file, cb) {
+    const filename = req.user && req.user.id
+                   ? req.user.id + '-' + Date.now() + path.extname(file.originalname)
+                   : Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+    cb(null, filename);
+  },
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "Not an image! Please upload an image file."), false);
+    }
+  },
+});
+
+exports.avatarUploadMiddleware = avatarUpload.single("avatar");
+
+exports.handleAvatarUploadError = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    logger.warn('upload-error', `Multer error during avatar upload for ${req.user?.email}: ${error.message}`, req.user, { errorCode: error.code });
+    return res.status(400).json({ message: error.message, code: error.code });
+  } else if (error) {
+    logger.error('upload-error', `Unknown error during avatar upload for ${req.user?.email}: ${error.message}`, req.user, { error });
+    return res.status(500).json({ message: "Error uploading avatar: " + error.message });
+  }
+  next(); // Should not be reached if error occurred, but good practice
+};
+// --- End Multer Setup ---
 
 /**
  * @desc    Get a list of users suitable for ticket transfer

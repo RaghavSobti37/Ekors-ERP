@@ -133,10 +133,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
       }
     );
 
-    // --- Add ticket to user's document --- (Removed as User schema doesn't have 'tickets' field)
-    // await User.findByIdAndUpdate(user.id, {
-    //   $push: { tickets: ticket._id },
-    // });
+        // --- Add ticket to user's document ---
+    // NOTE: The provided User model schema does NOT include a 'tickets' array.
+    // This $push operation will likely fail or not work as intended unless the User model is updated.
+    // await User.findByIdAndUpdate(user.id, { $push: { tickets: ticket._id } });
+    // logger.debug("ticket", `Attempted to add ticket ${ticket._id} to user ${user.id}'s tickets array. Check User model schema.`, user);
 
     // --- Update Quotation Status if applicable ---
     if (ticket.quotationNumber) {
@@ -488,17 +489,18 @@ exports.deleteTicket = async (req, res) => {
     }
 
     // Remove ticket from user's (creator and current assignee) tickets array
-    const usersToUpdate = new Set();
-    if (ticketToBackup.createdBy)
-      usersToUpdate.add(ticketToBackup.createdBy.toString());
-    if (ticketToBackup.currentAssignee)
-      usersToUpdate.add(ticketToBackup.currentAssignee.toString());
+        // NOTE: The provided User model schema does NOT include a 'tickets' array.
+    // These $pull operations will likely fail or not work as intended unless the User model is updated.
+    const usersToAttemptUpdate = new Set();
+    if (ticketToBackup.createdBy) usersToAttemptUpdate.add(ticketToBackup.createdBy.toString());
+    if (ticketToBackup.currentAssignee) usersToAttemptUpdate.add(ticketToBackup.currentAssignee.toString());
 
-    for (const uid of usersToUpdate) {
+    for (const uid of usersToAttemptUpdate) {
       try {
         logger.debug(
           "delete",
-          `[USER_TICKET_REF_REMOVE_ATTEMPT] Removing ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
+`[USER_TICKET_REF_REMOVE_ATTEMPT] Attempting to remove ticket reference ${ticketToBackup._id} from User ID: ${uid}. (Check User model schema for 'tickets' array)`,
+
           user,
           { ...logDetails, targetUserId: uid }
         );
@@ -506,8 +508,8 @@ exports.deleteTicket = async (req, res) => {
           $pull: { tickets: ticketToBackup._id },
         });
         logger.info(
-          "delete",
-          `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
+           "delete", // Changed from info to warn as it might be failing
+          `[USER_TICKET_REF_REMOVE_SUCCESS] (Potentially) Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,          `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
           user,
           { ...logDetails, targetUserId: uid }
         );

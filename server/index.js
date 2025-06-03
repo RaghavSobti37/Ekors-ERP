@@ -90,6 +90,16 @@ mountRoute('/api', frontendLogRoute);
 app.use('/api/uploads', express.static(serverUploadsPath));
 console.log(`[ROUTE MOUNTED] /api/uploads (static) -> ${serverUploadsPath}`);
 
+// Add a static route to serve files from ticket-specific upload directories
+// This allows accessing files like /api/uploads/:ticketId/filename.pdf
+app.use('/api/uploads/:ticketId', (req, res, next) => {
+    const ticketId = req.params.ticketId;
+    // Construct the base path for this ticket's uploads
+    const ticketUploadsPath = path.join(__dirname, 'uploads', ticketId);
+    // Use express.static to serve files from this directory
+    express.static(ticketUploadsPath)(req, res, next);
+});
+
 // ---------------------------
 // Static Serving for Frontend (React) - This section is NOT needed when frontend is on Vercel.
 // Vercel handles serving your frontend.

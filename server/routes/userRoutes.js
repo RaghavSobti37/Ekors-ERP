@@ -4,44 +4,27 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const { check, validationResult } = require("express-validator");
 const userController = require("../controllers/userController"); // Import userController
-const logger = require("../utils/logger"); // Import logger
+const logger = require("../utils/logger");
+// Import the avatar upload middleware and error handler from userController
+const { 
+  avatarUploadMiddleware, 
+  handleAvatarUploadError } = require("../controllers/userController");
 const multer = require("multer");
 const path = require("path");
 const fs = require('fs'); // For mkdirSync if enabling avatar path creation
 const router = express.Router();
+const {
+    getUserProfile // Assuming getUserProfile is exported from userController
+} = require('../controllers/userController'); 
 
-// Multer storage configuration for avatars
-const avatarStorage = multer.diskStorage({
-  destination: function (req, file, cb) {const uploadPath = path.join(__dirname, "../uploads"); 
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-      logger.info('multer-setup', `Created directory: ${uploadPath}`);
-    }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    // Use user ID and original extension to prevent filename conflicts and keep original type
-    // req.user should be populated by 'auth' middleware
-const filename = req.user && req.user.id
-                   ? req.user.id + '-' + Date.now() + path.extname(file.originalname) // Added timestamp for uniqueness
-                   : Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname); // Fallback if user.id not available
-    cb(null, filename);
-  },
-});
+// Ensure this route is defined BEFORE any routes with dynamic IDs like /:id
+router.get(
+  "/transfer-candidates",
+  auth, // Ensures the user is authenticated
+  userController.getTransferCandidates // Uses the new controller function
+);
 
-const avatarUpload = multer({
-  storage: avatarStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      // Pass an error to multer's error handler
-      cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "Not an image! Please upload an image file."), false);
-    }
-  },
-});
+router.get('/profile', auth, getUserProfile);
 
 // Middleware to check for super-admin role
 const requireSuperAdmin = (req, res, next) => {
@@ -133,6 +116,7 @@ router.put(
 // DELETE /api/users/:id - Delete a user (Super-admin only)
 router.delete("/:id", auth, requireSuperAdmin, userController.deleteUser);
 
+// Ensure this route is defined AFTER specific routes like /transfer-candidates or /profile
 // GET /api/users/:id - Get a single user's details
 router.get("/:id", auth, requireSuperAdmin, userController.getUser);
 
@@ -176,35 +160,9 @@ router.patch(
 router.post(
   "/profile/avatar", // Note: No /:id
   auth,
-  avatarUpload.single("avatar"), // Multer middleware for single file upload
+  avatarUploadMiddleware, // Use middleware from userController
   userController.uploadUserAvatar,
-  // Global error handler in Express (or a more specific multer error handler)
-  // will catch errors from avatarUpload if not handled by controller.
-  (error, req, res, next) => { // Basic Multer error handler
-    if (error instanceof multer.MulterError) {
-      logger.warn('upload-error', `Multer error during avatar upload for ${req.user?.email}: ${error.message}`, req.user, { errorCode: error.code });
-      return res.status(400).json({ message: error.message });
-    } else if (error) {
-      logger.error('upload-error', `Unknown error during avatar upload for ${req.user?.email}: ${error.message}`, req.user, { error });
-      return res.status(500).json({ message: "Error uploading avatar: " + error.message });
-    }
-    next();
-  }
+  handleAvatarUploadError // Use error handler from userController
 );
-
-
-// --- Other User-Related Routes ---
-
-// GET /api/users/transfer-candidates - Fetch users suitable for ticket transfer (Authenticated users)
-router.get(
-  "/transfer-candidates",
-  auth, // Ensures the user is authenticated
-  userController.getTransferCandidates // Uses the new controller function
-);
-
-
-// The login route POST /api/auth/login was removed from here.
-// It is correctly handled by authRoutes.js and authController.js,
-// typically mounted at /api/auth/login.
 
 module.exports = router;
