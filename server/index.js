@@ -30,8 +30,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+// Define allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://ekors-erp-dyix.vercel.app',
+  'https://ekors-erp-dyix-5f954a0so-raghavsobti37s-projects.vercel.app',
+  'https://ekors-erp-dyix-git-raghav-raghavsobti37s-projects.vercel.app',
+  'ekors-erp-dyix-go5ebgnnz-raghavsobti37s-projects.vercel.app'
+  // Removed trailing slash for consistency
+];
+
 const corsOptions = {
-  origin: 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Normalize the origin by removing a trailing slash if it exists
+    const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+
+    if (allowedOrigins.indexOf(normalizedOrigin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -68,15 +90,19 @@ mountRoute('/api', frontendLogRoute);
 app.use('/api/uploads', express.static(serverUploadsPath));
 console.log(`[ROUTE MOUNTED] /api/uploads (static) -> ${serverUploadsPath}`);
 
-// // ---------------------------
-// // Static Serving for Frontend (React)
+// ---------------------------
+// Static Serving for Frontend (React) - This section is NOT needed when frontend is on Vercel.
+// Vercel handles serving your frontend.
 // app.use(express.static(path.join(__dirname, '../client/dist')));
-// console.log('[STATIC] Serving React frontend');
+// console.log('[STATIC] Serving React frontend from ../client/dist');
 
 // app.get('*', (req, res) => {
 //   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 // });
-// console.log('[CATCH-ALL] React Router fallback enabled');
+// console.log('[CATCH-ALL] React Router fallback enabled for ../client/dist/index.html');
+
+// Optional: Add a root route for the API to confirm it's running
+app.get('/', (req, res) => res.json({ message: 'Ekors ERP API is live and running!' }));
 
 // ---------------------------
 // Global Error Handler

@@ -4,7 +4,9 @@ import ActionButtons from "../components/ActionButtons"; // Component for table 
 import Pagination from "../components/Pagination"; // Component for table pagination
 import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Table, Button, Form, Alert } from "react-bootstrap";
-import { showToast, handleApiError } from "../utils/helpers"; // Import helpers
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import apiClient from "../utils/apiClient"; // Import apiClient
 import ClientSearchComponent from "../components/ClientSearchComponent"; // Import ClientSearchComponent
@@ -232,7 +234,9 @@ export default function Challan() {
       setError(null);
 
       // Assuming apiClient is fetch-like and returns a Response object for document requests
-      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`);
+      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`, {
+        rawResponse: true, // Indicate that we want the raw response object
+      });
 
       if (!response.ok) {
         let errorResponseMessage = `Failed to retrieve document. Status: ${response.status}`;

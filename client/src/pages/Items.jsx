@@ -42,13 +42,15 @@ export default function Items() {
   const [formData, setFormData] = useState({
     name: "",
     quantity: "",
-    price: "",
+    sellingPrice: "", // Changed from price
+    buyingPrice: "",  // Added buyingPrice
     gstRate: "0",
     hsnCode: "",
     unit: "Nos",
     category: "",
     subcategory: "General",
     maxDiscountPercentage: "",
+    lowStockThreshold: "5", // Added for consistency with item schema
   });
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -370,7 +372,8 @@ export default function Items() {
           itemId: item._id,
           description: item.name,
           quantity: "1",
-          price: item.price.toString(),
+          // Pre-fill purchase price with item's buyingPrice or lastPurchasePrice as a suggestion
+          price: item.buyingPrice ? item.buyingPrice.toString() : (item.lastPurchasePrice ? item.lastPurchasePrice.toString() : "0"),
           gstRate: item.gstRate.toString(),
         },
       ],
@@ -384,13 +387,15 @@ export default function Items() {
     setFormData({
       // Pre-fill form data for editing
       name: item.name,
-      quantity: item.quantity.toString(),
-      price: item.price.toString(),
+      quantity: item.quantity?.toString() || "0",
+      sellingPrice: item.sellingPrice?.toString() || "0", // Changed from price
+      buyingPrice: item.buyingPrice?.toString() || "0",   // Added buyingPrice
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
       category: item.category || "",
       subcategory: item.subcategory || "General",
+      lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
     });
     setShowEditItemModal(true);
@@ -407,8 +412,11 @@ export default function Items() {
       // Convert numeric fields
       updatedItemPayload.quantity =
         parseFloat(updatedItemPayload.quantity) || 0;
-      updatedItemPayload.price = parseFloat(updatedItemPayload.price) || 0;
+      updatedItemPayload.sellingPrice = parseFloat(updatedItemPayload.sellingPrice) || 0; // Changed from price
+      updatedItemPayload.buyingPrice = parseFloat(updatedItemPayload.buyingPrice) || 0;   // Added buyingPrice
       updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
+      updatedItemPayload.lowStockThreshold = parseFloat(updatedItemPayload.lowStockThreshold) || 0;
+
       updatedItemPayload.maxDiscountPercentage =
         parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
 
@@ -539,13 +547,15 @@ export default function Items() {
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        price: parseFloat(formData.price) || 0,
+        sellingPrice: parseFloat(formData.sellingPrice) || 0, // Changed from price
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,   // Added buyingPrice
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
         category: formData.category,
         subcategory: formData.subcategory,
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
+        lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
       };
 
       await apiClient("/items", { method: "POST", body: newItemPayload });
@@ -554,13 +564,15 @@ export default function Items() {
       setFormData({
         name: "",
         quantity: "",
-        price: "",
+        sellingPrice: "", // Changed from price
+        buyingPrice: "",  // Added buyingPrice
         gstRate: "0",
         hsnCode: "",
         unit: "Nos",
         category: "",
         subcategory: "General",
         maxDiscountPercentage: "",
+        lowStockThreshold: "5",
       });
       setError(null);
     } catch (err) {
@@ -686,24 +698,15 @@ export default function Items() {
       return;
     }
     try {
-      const token = localStorage.getItem("erp-user");
-      const fetchResponse = await fetch("/api/items/export-excel", {
+      const response = await apiClient("/items/export-excel", { // Use apiClient
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        rawResponse: true, // We need the raw response to get the blob
       });
 
-      if (!fetchResponse.ok) {
-        const errorData = await fetchResponse
-          .json()
-          .catch(() => ({ message: fetchResponse.statusText }));
-        throw new Error(
-          errorData.message || `Failed to export Excel: ${fetchResponse.status}`
-        );
-      }
+      // response is already checked for .ok inside apiClient if rawResponse is true
+      // and an error would have been thrown if not ok.
 
-      const blob = await fetchResponse.blob();
+      const blob = await response.blob();
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({
         error: null,
@@ -712,10 +715,14 @@ export default function Items() {
       });
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
-      console.error("Error exporting to Excel:", err);
-      const message = err.message || "Failed to export items to Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
+      console.error("Error exporting to Excel:", err); // Log the full error from apiClient
+      // Prioritize err.data.message, then err.message, then a fallback
+      const specificMessage = err.data?.message || err.message;
+      const displayMessage = `Failed to export items. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please try again.'}`;
+      
+      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
+      setError(displayMessage); // Sets page-level error
+      showToast(displayMessage, false); // Show toast for immediate feedback
     } finally {
       setIsExportingExcel(false);
     }
@@ -746,23 +753,12 @@ export default function Items() {
     formData.append("excelFile", file);
 
     try {
-      const token = getAuthToken();
-      const fetchResponse = await fetch("/api/items/import-uploaded-excel", {
+      // Use apiClient for the upload. It handles token and FormData.
+      const responseData = await apiClient("/items/import-uploaded-excel", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
+        isFormData: true, // Explicitly tell apiClient this is FormData
       });
-
-      const responseData = await fetchResponse.json();
-
-      if (!fetchResponse.ok) {
-        throw new Error(
-          responseData.message ||
-            `Failed to process Excel: ${fetchResponse.status}`
-        );
-      }
 
       const response = responseData;
 
@@ -798,13 +794,15 @@ export default function Items() {
         fileInput.value = null;
       }
     } catch (err) {
-      console.error("Error updating from Excel:", err);
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to update items from Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
+      console.error("Error updating from Excel:", err); // Log the full error from apiClient
+      // Prioritize err.data.message, then err.message, then a fallback
+      const specificMessage = err.data?.message || err.message;
+      // If specificMessage is the SyntaxError itself, it will be included here.
+      const displayMessage = `Failed to update from Excel. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please check the file and try again.'}`;
+
+      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
+      setError(displayMessage); // Sets page-level error
+      showToast(displayMessage, false); // Show toast for immediate feedback
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -998,7 +996,7 @@ export default function Items() {
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
               <tr>
-                {["name", "quantity", "price", "unit", "gstRate"].map((key) => (
+                {["name", "quantity", "sellingPrice", "buyingPrice", "unit", "gstRate"].map((key) => (
                   <th
                     key={key}
                     onClick={() => !anyLoading && requestSort(key)}
@@ -1035,23 +1033,24 @@ export default function Items() {
                       <td>{item.name}</td>
                       <td>
                         <>
-                          {item.quantity}
-                          {item.needsRestock && (
-                            <span
+                          {item.quantity}                          {(item.quantity <= 0 || item.needsRestock) ? (                             <span
                               className="badge bg-danger ms-2"
-                              title={`Item specific threshold: ${item.lowStockThreshold}`}
+title={
+                                item.quantity <= 0
+                                  ? "Out of stock! Needs immediate restock."
+                                  : `Below item specific threshold (${item.lowStockThreshold || 'Not Set'}). Needs restock.`
+                              }
                             >
                               ⚠️ Restock
                             </span>
-                          )}
-                          {!item.needsRestock &&
+                         ) : (
                             item.quantity <
                               (stockAlertFilterActive
                                 ? lowStockWarningQueryThreshold
                                 : effectiveLowStockThreshold) && (
                               <span
                                 className="badge bg-warning text-dark ms-2"
-                                title={`Global threshold: < ${
+                                title={`Below page display threshold (< ${
                                   stockAlertFilterActive
                                     ? lowStockWarningQueryThreshold
                                     : effectiveLowStockThreshold
@@ -1059,10 +1058,11 @@ export default function Items() {
                               >
                                 🔥 Low Stock
                               </span>
-                            )}
+                           ))}
                         </>
                       </td>
-                      <td>{`₹${parseFloat(item.price).toFixed(2)}`}</td>
+                      <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td> {/* Changed from item.price */}
+                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td> {/* Added buyingPrice display */}
                       <td>{item.unit || "Nos"}</td>
                       <td>{`${item.gstRate || 0}%`}</td>
                       <td>
@@ -1141,25 +1141,34 @@ export default function Items() {
                                   </td>
                                   <td>
                                     {item.quantity}
-                                    {item.needsRestock &&
-                                      ` (Item specific restock threshold: ${item.lowStockThreshold})`}
-                                    {!item.needsRestock &&
+                                                                      {(item.quantity <= 0 || item.needsRestock) ? (
+                                      item.quantity <= 0
+                                        ? " (Out of stock! Needs immediate restock.)"
+                                        : ` (Item specific restock threshold: ${item.lowStockThreshold || 'Not Set'})`
+                                    ) : (
+
                                       item.quantity <
                                         (stockAlertFilterActive
                                           ? lowStockWarningQueryThreshold
                                           : effectiveLowStockThreshold) &&
-                                      ` (Global low stock threshold: < ${
-                                        stockAlertFilterActive
+  ` (Page display low stock threshold: < ${                                        stockAlertFilterActive
                                           ? lowStockWarningQueryThreshold
                                           : effectiveLowStockThreshold
-                                      })`}
+                                      })`
+                                  )}
                                   </td>
                                 </tr>
                                 <tr>
                                   <td>
-                                    <strong>Price</strong>
+                                    <strong>Selling Price</strong>
                                   </td>
-                                  <td>₹{item.price.toFixed(2)}</td>
+                                  <td>₹{parseFloat(item.sellingPrice).toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td>
+                                    <strong>Buying Price</strong>
+                                  </td>
+                                  <td>₹{parseFloat(item.buyingPrice || 0).toFixed(2)}</td>
                                 </tr>
                                 <tr>
                                   <td>
@@ -1279,13 +1288,15 @@ export default function Items() {
                     setFormData({
                       name: "",
                       quantity: "",
-                      price: "",
+                      sellingPrice: "", // Changed
+                      buyingPrice: "",  // Added
                       gstRate: "0",
                       hsnCode: "",
                       unit: "Nos",
                       category: "",
                       subcategory: "General",
                       maxDiscountPercentage: "",
+                      lowStockThreshold: "5",
                     });
                   }}
                 >
@@ -1322,16 +1333,31 @@ export default function Items() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Price*</label>
+                      <label>Selling Price*</label>
                       <input
                         type="number"
                         step="0.01"
                         className="form-control mb-2"
-                        placeholder="Price"
-                        name="price"
-                        value={formData.price}
+                        placeholder="Selling Price"
+                        name="sellingPrice"
+                        value={formData.sellingPrice}
                         onChange={(e) =>
-                          setFormData({ ...formData, price: e.target.value })
+                          setFormData({ ...formData, sellingPrice: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Buying Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Buying Price"
+                        name="buyingPrice"
+                        value={formData.buyingPrice}
+                        onChange={(e) =>
+                          setFormData({ ...formData, buyingPrice: e.target.value })
                         }
                         required
                       />
@@ -1451,6 +1477,21 @@ export default function Items() {
                         max="100"
                       />
                     </div>
+                    <div className="form-group">
+                      <label htmlFor="lowStockThresholdModalItemForm">Low Stock Threshold</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        id="lowStockThresholdModalItemForm"
+                        placeholder="Default: 5"
+                        name="lowStockThreshold"
+                        value={formData.lowStockThreshold}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lowStockThreshold: e.target.value })
+                        }
+                        min="0"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1461,13 +1502,15 @@ export default function Items() {
                     setFormData({
                       name: "",
                       quantity: "",
-                      price: "",
+                      sellingPrice: "", // Changed
+                      buyingPrice: "",  // Added
                       gstRate: "0",
                       hsnCode: "",
                       unit: "Nos",
                       category: "",
                       subcategory: "General",
                       maxDiscountPercentage: "",
+                      lowStockThreshold: "5",
                     });
                     setError(null);
                   }}
@@ -1481,7 +1524,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.price ||
+                    !formData.sellingPrice || // Changed from price
                     !formData.category ||
                     isSubmitting
                   }
@@ -1547,13 +1590,35 @@ export default function Items() {
                         <td>
                           <strong>Quantity</strong>
                         </td>
-                        <td>{editingItem.quantity}</td>
+                                                <td>
+                          {editingItem.quantity}
+                          {(editingItem.quantity <= 0 || editingItem.needsRestock) ? (
+                            <span className="ms-2 badge bg-danger">
+                              {editingItem.quantity <= 0 ? "Out of Stock!" : "Needs Restock"}
+                            </span>
+                          ) : (
+                            editingItem.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) && (
+                              <span className="ms-2 badge bg-warning text-dark">
+                                Low Stock
+                              </span>
+                            )
+                          )}
+                          <small className="d-block text-muted mt-1">
+                            (Item Threshold: {editingItem.lowStockThreshold || 'N/A'}, Page Display Threshold: {effectiveLowStockThreshold})
+                          </small>
+                        </td>
                       </tr>
                       <tr>
                         <td>
-                          <strong>Price</strong>
+                          <strong>Selling Price</strong>
                         </td>
-                        <td>₹{editingItem.price.toFixed(2)}</td>
+                        <td>₹{parseFloat(editingItem.sellingPrice).toFixed(2)}</td>
+                      </tr>
+                       <tr>
+                        <td>
+                          <strong>Buying Price</strong>
+                        </td>
+                        <td>₹{parseFloat(editingItem.buyingPrice || 0).toFixed(2)}</td>
                       </tr>
                       <tr>
                         <td>
@@ -1688,17 +1753,30 @@ export default function Items() {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Price*</label>
+                      <label>Selling Price*</label>
                       <input
                         type="number"
                         step="0.01"
                         className="form-control mb-2"
-                        name="price"
-                        value={formData.price}
+                        name="sellingPrice"
+                        value={formData.sellingPrice}
                         onChange={(e) =>
-                          setFormData({ ...formData, price: e.target.value })
+                          setFormData({ ...formData, sellingPrice: e.target.value })
                         }
                         required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Buying Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        name="buyingPrice"
+                        value={formData.buyingPrice}
+                        onChange={(e) =>
+                          setFormData({ ...formData, buyingPrice: e.target.value })
+                        }
                       />
                     </div>
                     <div className="form-group">
@@ -1809,6 +1887,19 @@ export default function Items() {
                         max="100"
                       />
                     </div>
+                     <div className="form-group">
+                      <label>Low Stock Threshold</label>
+                      <input
+                        type="number"
+                        className="form-control mb-2"
+                        name="lowStockThreshold"
+                        value={formData.lowStockThreshold}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lowStockThreshold: e.target.value })
+                        }
+                        min="0"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1829,7 +1920,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.price ||
+                    !formData.sellingPrice || // Changed from price
                     !formData.category ||
                     isSubmitting
                   }
@@ -1985,7 +2076,7 @@ export default function Items() {
                                   handleItemChange(
                                     idx,
                                     "price",
-                                    suggestion.price.toString()
+                                    suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0") // Use buyingPrice or lastPurchasePrice as default for purchase
                                   );
                                   handleItemChange(
                                     idx,
@@ -1999,7 +2090,7 @@ export default function Items() {
                                 <strong>{suggestion.name}</strong>
                                 <span className="text-muted">
                                   {" "}
-                                  - ₹{suggestion.price.toFixed(2)}
+                                  - SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP: ₹{(suggestion.buyingPrice || 0).toFixed(2)}
                                 </span>
                                 <br />
                                 <small>

@@ -1,9 +1,20 @@
 // client/src/utils/frontendLogger.js
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 const logToServer = async ({ level = 'info', type = 'frontend', message = '', user = null, details = {} }) => {
   try {
-    await axios.post('/api/frontend-log', {
+    let requestUrl;
+    // If API_BASE_URL is defined (typically in production), use it.
+    // Otherwise (typically in local dev), use a relative path for the Vite proxy.
+    if (API_BASE_URL) {
+      // API_BASE_URL is expected to be the full base path, e.g., "https://host.com/api" or just "/api" for local proxy.
+      requestUrl = `${API_BASE_URL}/frontend-log`;
+    } else {
+      requestUrl = '/api/frontend-log'; // Relies on Vite proxy in dev
+    }
+    await axios.post(requestUrl, {
       level,
       type,
       message,

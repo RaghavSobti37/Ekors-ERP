@@ -21,15 +21,15 @@ import QuotationPDF from "../components/QuotationPDF.jsx"; // Component for rend
 import PIPDF from "../components/PIPDF.jsx"; // Component for rendering PI PDF
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify"; // Library for toast notifications
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
 import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx";
 import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
 import TicketReportModal from "../components/TicketReportModal.jsx"; // Import the new report modal
@@ -1996,193 +1996,193 @@ export default function Dashboard() {
             <Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>
           }
         >
-          {error && (
-            <Alert
-              variant="danger"
-              onClose={() => setError(null)}
-              dismissible
-            >
-              {error}
-            </Alert>
-          )}
-          <h5><i className="bi bi-files me-2"></i>Ticket Documents</h5>
-          <Row className="mb-4 text-center">
-            {[
-              {
-                name: "Quotation",
-                docType: "quotation",
-                icon: "bi-file-earmark-text",
-                generate: true,
-              },
-              { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true },
-              {
-                name: "PO",
-                docType: "po",
-                icon: "bi-file-earmark-check",
-              },
-              {
-                name: "Dispatch",
-                docType: "challan",
-                icon: "bi-truck",
-              },
-              { name: "Packing List", docType: "packingList", icon: "bi-list-ul" },
-              { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" },
-            ].map((docDef) => {
-              const docData = selectedTicket?.documents?.[docDef.docType];
-              return (
-                <Col key={docDef.docType} md={4} className="mb-3">
-                  <Card className="h-100 shadow-sm">
-                    <Card.Body className="d-flex flex-column">
-                      <Card.Title className="d-flex align-items-center">
-                        <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
-                        {docDef.name}
-                      </Card.Title>
-                      {docData && docData.path ? (
-                        <>
-                          <small className="text-muted">
-                            Uploaded by:{" "}
-                            {docData.uploadedBy && docData.uploadedBy.firstname
-                              ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
-                              : "N/A"}
-                            <br />
-                            On: {new Date(docData.uploadedAt).toLocaleDateString()}
-                          </small>
-                          <Button
-                            variant="outline-info"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
-                          >
-                            <i className="bi bi-eye me-1"></i>View Uploaded
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            className="mt-1"
-                            onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)}
-                            disabled={isLoading}
-                          >
-                            <i className="bi bi-trash me-1"></i>Delete
-                          </Button>
-                        </>
-                      ) : (
-                        <p className="text-muted small mt-1">Not uploaded yet.</p>
-                      )}
+            {error && (
+              <Alert
+                variant="danger"
+                onClose={() => setError(null)}
+                dismissible
+              >
+                {error}
+              </Alert>
+            )}
+            <h5><i className="bi bi-files me-2"></i>Ticket Documents</h5>
+            <Row className="mb-4 text-center">
+              {[
+                {
+                  name: "Quotation",
+                  docType: "quotation",
+                  icon: "bi-file-earmark-text",
+                  generate: true,
+                },
+                { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true },
+                {
+                  name: "PO",
+                  docType: "po",
+                  icon: "bi-file-earmark-check",
+                },
+                {
+                  name: "Dispatch",
+                  docType: "challan",
+                  icon: "bi-truck",
+                },
+                { name: "Packing List", docType: "packingList", icon: "bi-list-ul" },
+                { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" },
+              ].map((docDef) => {
+                const docData = selectedTicket?.documents?.[docDef.docType];
+                return (
+                  <Col key={docDef.docType} md={4} className="mb-3">
+                    <Card className="h-100 shadow-sm">
+                      <Card.Body className="d-flex flex-column">
+                        <Card.Title className="d-flex align-items-center">
+                          <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
+                          {docDef.name}
+                        </Card.Title>
+                        {docData && docData.path ? (
+                          <>
+                            <small className="text-muted">
+                               Uploaded by:{" "}
+                              {docData.uploadedBy && docData.uploadedBy.firstname
+                                ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
+                                : "N/A"}
+                              <br />
+                              On: {new Date(docData.uploadedAt).toLocaleDateString()}
+                            </small>
+                            <Button
+                              variant="outline-info"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
+                            >
+                              <i className="bi bi-eye me-1"></i>View Uploaded
+                            </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="mt-1"
+                              onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)}
+                              disabled={isLoading}
+                            >
+                              <i className="bi bi-trash me-1"></i>Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <p className="text-muted small mt-1">Not uploaded yet.</p>
+                        )}
 
-                      {docDef.generate && (
+                        {docDef.generate && (
+                           <Button
+                            variant="primary"
+                            size="sm"
+                            className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
+                            onClick={() => {
+                                setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket });
+                                setShowPdfPreviewModal(true);
+                            }}
+                          >
+                            <i className="bi bi-gear me-1"></i>Generate & View
+                          </Button>
+                        )}
+                        
+                        {/* Upload/Replace Button */}
                         <Button
-                          variant="primary"
+                          variant={docData && docData.path ? "outline-warning" : "outline-success"}
                           size="sm"
-                          className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
+                          className="mt-1"
                           onClick={() => {
-                            setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket });
-                            setShowPdfPreviewModal(true);
+                            setUploadingDocType(docDef.docType); // Keep track for the file input
+                            document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click();
                           }}
+                          disabled={isLoading}
                         >
-                          <i className="bi bi-gear me-1"></i>Generate & View
+                          <i className={`bi ${docData && docData.path ? 'bi-arrow-repeat' : 'bi-upload'} me-1`}></i>
+                          {docData && docData.path ? "Replace" : "Upload"} {docDef.name}
                         </Button>
-                      )}
-
-                      {/* Upload/Replace Button */}
-                      <Button
-                        variant={docData && docData.path ? "outline-warning" : "outline-success"}
-                        size="sm"
-                        className="mt-1"
-                        onClick={() => {
-                          setUploadingDocType(docDef.docType); // Keep track for the file input
-                          document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click();
-                        }}
-                        disabled={isLoading}
-                      >
-                        <i className={`bi ${docData && docData.path ? 'bi-arrow-repeat' : 'bi-upload'} me-1`}></i>
-                        {docData && docData.path ? "Replace" : "Upload"} {docDef.name}
-                      </Button>
-                      <input
-                        type="file"
-                        id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files.length > 0) {
-                            handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id);
-                            e.target.value = ""; // Reset file input
-                            setUploadingDocType(null);
-                          }
-                        }}
-                      />
-                    </Card.Body>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-          <hr />
-          <h5><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
-          {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
-            <Table striped bordered hover size="sm" className="mt-2">
-              <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-              <tbody>
-                {selectedTicket.documents.other.map((doc, index) => (
-                  <tr key={doc.path || index}>
-                    <td>{doc.originalName}</td>
-                    <td>
-                      {doc.uploadedBy && doc.uploadedBy.firstname
-                        ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
-                        : "N/A"}
-                    </td>
-                    <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
-                    <td>
-                      <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDocumentDelete('other', doc.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash"></i></Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          ) : <p className="text-muted">No other documents uploaded.</p>}
-          <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType('other'); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
-          <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{ display: 'none' }} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null); } }} />
-          <hr />
-          <Row>
-            <Col md={12}>
-              <h5>
-                <i className="bi bi-arrow-repeat me-1"></i>Transfer History
-              </h5>
-              {selectedTicket &&
-                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
-                <Table
-                  bordered
-                  responsive
-                  className="mt-2 transfer-history-table table-sm"
-                >
-                  <thead className="table-light">
-                    <tr>
-                      <th title="User involved in the transfer step">Name</th>
-                      <th title="Date of the transfer or creation">Date</th>
-                      <th title="Note or action taken">Note (Limit 50 chars)</th>
+                        <input
+                          type="file"
+                          id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id);
+                              e.target.value = ""; // Reset file input
+                              setUploadingDocType(null);
+                            }
+                          }}
+                        />
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                );
+              })}
+            </Row>
+            <hr/>
+            <h5><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
+            {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
+              <Table striped bordered hover size="sm" className="mt-2">
+                <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {selectedTicket.documents.other.map((doc, index) => (
+                    <tr key={doc.path || index}>
+                      <td>{doc.originalName}</td>
+                     <td>
+                        {doc.uploadedBy && doc.uploadedBy.firstname
+                          ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
+                          : "N/A"}
+                      </td>
+                      <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
+                      <td>
+                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
+                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
+                      </td>
                     </tr>
-                  </thead>
+                  ))}
+                </tbody>
+              </Table>
+            ) : <p className="text-muted">No other documents uploaded.</p>}
+            <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType('other'); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
+             <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{display: 'none'}} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null);}}} />
+            <hr />
+            <Row>
+              <Col md={12}>
+                <h5>
+                  <i className="bi bi-arrow-repeat me-1"></i>Transfer History
+                </h5>
+                {selectedTicket &&
+                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
+                  <Table
+                    bordered
+                    responsive
+                    className="mt-2 transfer-history-table table-sm"
+                  >
+                                        <thead className="table-light">
+                        <tr>
+                            <th title="User involved in the transfer step">Name</th>
+                            <th title="Date of the transfer or creation">Date</th>
+                            <th title="Note or action taken">Note (Limit 50 chars)</th>
+                        </tr>
+                    </thead>
 
-                  <tbody>
-                    {transferHistoryDisplay.map((entry, index) => (
-                      <tr key={index}>
-                        <td>{entry.name}</td>
-                        <td>{new Date(entry.date).toLocaleString()}</td>
-                        <td title={entry.note}>
-                          {entry.note
-                            ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
-                            : "N/A"}
-                        </td>
-                      </tr>
-                    ))}                    </tbody>
-                </Table>
-              ) : (
-                <div className="text-muted mt-2">
-                  No transfer history available.
-                </div>
-              )}
-            </Col>
-
-          </Row>
+                    <tbody>
+ {transferHistoryDisplay.map((entry, index) => (
+                        <tr key={index}>
+                          <td>{entry.name}</td>
+                          <td>{new Date(entry.date).toLocaleString()}</td>
+                          <td title={entry.note}>
+                            {entry.note
+                              ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
+                              : "N/A"}
+                          </td>
+                        </tr>
+                      ))}                    </tbody>
+                  </Table>
+                ) : (
+                  <div className="text-muted mt-2">
+                    No transfer history available.
+                  </div>
+                )}
+              </Col>
+              
+            </Row>
         </ReusableModal>
 
         {filteredTickets.length > 0 && (
@@ -2205,18 +2205,6 @@ export default function Dashboard() {
       <TicketReportModal
         show={showTicketReportModal}
         onHide={() => setShowTicketReportModal(false)}
-      />
-
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
       />
     </div>
   );

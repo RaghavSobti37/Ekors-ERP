@@ -276,9 +276,6 @@ export default function Navbar({ showPurchaseModal }) {
 const apiResponse = await apiClient("/users/profile/avatar", {           method: "POST",
           body: formData,
         });
-
- // API call was successful if we've reached here.
-        // Now, attempt to update context, but don't let it block modal closing.
         let contextUpdateSuccessful = false;
         try {
           if (typeof updateUserContext === 'function') {
@@ -305,10 +302,6 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
         } else {
           showToast("Profile picture uploaded. UI may need a refresh to reflect changes due to a context update issue.", true);
         }
-        
-        // This logic now runs if the API call was successful, regardless of context update issues.        }
-
-        // Crucially, close modal and reset state if API call was successful (no throw)
         setShowCropModal(false);
         setImgSrc("");
         setCrop(undefined);
@@ -332,8 +325,7 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo">
-            <img src="/src/assets/logo.png" alt="E-KORS" className="logo-img" />
-            {/* <span>E-KORS</span> */}
+            <img src="/public/logo.png" alt="E-KORS" className="logo-img" />
           </div>
 
           <div className="nav-links">
