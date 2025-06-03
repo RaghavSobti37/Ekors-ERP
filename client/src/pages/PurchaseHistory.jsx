@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import Navbar from "../components/Navbar.jsx"; // Navigation bar component
+import Navbar from "../components/Navbar.jsx"; 
 import Pagination from '../components/Pagination'; // Component for table pagination
 import apiClient from "../utils/apiClient"; // Utility for making API requests
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
@@ -11,15 +11,16 @@ export default function PurchaseHistory() {
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState({
-    startDate: "",
-    endDate: "",
-  });
+  const [searchTerm, setSearchTerm] = useState(""); 
+  // Date and Vendor filters are removed from UI, so their state can be removed or ignored
+  // const [dateFilter, setDateFilter] = useState({
+  //   startDate: "",
+  //   endDate: "",
+  // });
   const [currentPage, setCurrentPage] = useState(1);
-  const [vendorFilter, setVendorFilter] = useState("");
-  const [expandedPurchase, setExpandedPurchase] = useState(null);
-  const purchasesPerPage = 10;
+  // const [vendorFilter, setVendorFilter] = useState("");
+  const [expandedPurchase, setExpandedPurchase] = useState(null); 
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const fetchPurchases = useCallback(async () => {
     try {
@@ -66,11 +67,16 @@ export default function PurchaseHistory() {
     setCurrentPage(1);
   };
 
-  const handleDateFilterChange = (e) => {
-    setDateFilter({ ...dateFilter, [e.target.name]: e.target.value });
-    setCurrentPage(1);
-  };
+  // const handleDateFilterChange = (e) => {
+  //   setDateFilter({ ...dateFilter, [e.target.name]: e.target.value });
+  //   setCurrentPage(1);
+  // };
 
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when items per page changes
+  };
+/*
   const clearFilters = () => {
     setSearchTerm("");
     setDateFilter({ startDate: "", endDate: "" });
@@ -78,7 +84,7 @@ export default function PurchaseHistory() {
     setCurrentPage(1);
   };
 
-  const toggleDetails = (purchaseId) => {
+*/  const toggleDetails = (purchaseId) => {
     setExpandedPurchase(expandedPurchase === purchaseId ? null : purchaseId);
   };
 
@@ -93,28 +99,40 @@ export default function PurchaseHistory() {
       purchase.invoiceNumber.toString().toLowerCase().includes(searchTerm) ||
       (purchase.gstNumber && purchase.gstNumber.toLowerCase().includes(searchTerm));
 
-    const purchaseDate = new Date(purchase.date);
-    const matchesStartDate = dateFilter.startDate
-      ? purchaseDate >= new Date(dateFilter.startDate)
-      : true;
-    const matchesEndDate = dateFilter.endDate
-      ? purchaseDate <= new Date(dateFilter.endDate)
-      : true;
+    // Date and Vendor filters are no longer applied from UI
+    // If you need to keep them for some programmatic reason, adjust accordingly
+    // Otherwise, they can be removed from the filtering logic.
 
-    const matchesVendor = vendorFilter
-      ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase())
-      : true;
+    // Normalize purchase.date to the start of its day in the local timezone.
+    // This ensures consistent comparison with filter dates, which are also effectively at the start of their day.
+    // const pDateRaw = new Date(purchase.date); // Parse the stored date string
+    // const purchaseDayStart = new Date(pDateRaw.getFullYear(), pDateRaw.getMonth(), pDateRaw.getDate());
 
-    return matchesSearch && matchesStartDate && matchesEndDate && matchesVendor;
+    // Start Date Filter: Compare date part only.
+    // dateFilter.startDate is a 'YYYY-MM-DD' string. new Date() creates a Date object at 00:00:00 local time.
+    // const matchesStartDate = dateFilter.startDate
+    //   ? purchaseDayStart >= new Date(dateFilter.startDate)
+    //   : true;
+
+    // End Date Filter: Ensure the entire end day is included.
+    // dateFilter.endDate is a 'YYYY-MM-DD' string. new Date() creates a Date object at 00:00:00 local time.
+    // We compare the start of the purchase day with the start of the filter's end day.
+    // For an inclusive end date, purchaseDayStart must be less than or equal to the filter's end day.
+    // const matchesEndDate = dateFilter.endDate
+    //   ? purchaseDayStart <= new Date(dateFilter.endDate)
+    //   : true;
+    // const matchesVendor = vendorFilter
+    //   ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase())
+    //   : true;
+    return matchesSearch; // && matchesStartDate && matchesEndDate && matchesVendor;
   });
 
-  const indexOfLastPurchase = currentPage * purchasesPerPage;
-  const indexOfFirstPurchase = indexOfLastPurchase - purchasesPerPage;
+  const indexOfLastPurchase = currentPage * itemsPerPage;
+  const indexOfFirstPurchase = indexOfLastPurchase - itemsPerPage;
   const currentPurchases = filteredPurchases.slice(indexOfFirstPurchase, indexOfLastPurchase);
-  const totalPages = Math.ceil(filteredPurchases.length / purchasesPerPage);
 
   // Get unique vendors for filter dropdown
-  const uniqueVendors = [...new Set(purchases.map(p => p.companyName))];
+  // const uniqueVendors = [...new Set(purchases.map(p => p.companyName))];
 
   const calculatePurchaseTotal = (purchase) => {
     return purchase.items.reduce((total, item) => {
@@ -128,7 +146,16 @@ export default function PurchaseHistory() {
       <Navbar />
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2>Purchase History</h2>
+          <h2 style={{color: "black", margin: 0}}>Purchase History</h2>
+          <div style={{ width: "50%" }}> {/* Adjust width as needed */}
+            <input
+              type="text"
+              className="form-control"
+              placeholder="🔍 Search by company, invoice, GST..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
         </div>
 
         {error && (
@@ -143,62 +170,7 @@ export default function PurchaseHistory() {
           </div>
         )}
 
-        <div className="filters-container mb-4">
-          <div className="row">
-            <div className="col-md-3 mb-2">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="🔍 Search by company, invoice..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
-            </div>
-            <div className="col-md-3 mb-2">
-              <select
-                className="form-control"
-                value={vendorFilter}
-                onChange={(e) => setVendorFilter(e.target.value)}
-              >
-                <option value="">All Vendors</option>
-                {uniqueVendors.map((vendor) => (
-                  <option key={vendor} value={vendor}>
-                    {vendor}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2 mb-2">
-              <input
-                type="date"
-                className="form-control"
-                placeholder="Start Date"
-                name="startDate"
-                value={dateFilter.startDate}
-                onChange={handleDateFilterChange}
-              />
-            </div>
-            <div className="col-md-2 mb-2">
-              <input
-                type="date"
-                className="form-control"
-                placeholder="End Date"
-                name="endDate"
-                value={dateFilter.endDate}
-                onChange={handleDateFilterChange}
-              />
-            </div>
-            <div className="col-md-2 mb-2">
-              <button
-                className="btn btn-secondary w-100"
-                onClick={clearFilters}
-              >
-                Clear Filters
-              </button>
-            </div>
-          </div>
-        </div>
-
+        {/* Filters container removed */}
         {loading ? (
           <div className="text-center">
             <div className="spinner-border" role="status">
@@ -328,14 +300,18 @@ export default function PurchaseHistory() {
               </table>
             </div>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(page) => {
-                if (page >= 1 && page <= totalPages) setCurrentPage(page);
-              }}
-            />
-
+            {filteredPurchases.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filteredPurchases.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={(page) => {
+                  const totalPages = Math.ceil(filteredPurchases.length / itemsPerPage);
+                  if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                }}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            )}
 
           </>
         )}
