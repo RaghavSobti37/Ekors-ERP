@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const LogTime = require('../models/LogTime');
-const LogTimeBackup = require('../models/LogTimeBackup.js'); // Import the backup model
+const LogTimeBackup = require('../models/LogtimeBackup.js'); // Import the backup model
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger'); // Assuming logger is setup
 
