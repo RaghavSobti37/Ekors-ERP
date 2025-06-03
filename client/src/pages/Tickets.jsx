@@ -23,13 +23,13 @@ import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
 import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx"; 
 import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
 import TicketReportModal from "../components/TicketReportModal.jsx"; // Import the new report modal

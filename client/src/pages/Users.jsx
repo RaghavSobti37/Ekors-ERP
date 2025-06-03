@@ -11,7 +11,9 @@ import Unauthorized from "../components/Unauthorized";
 import ActionButtons from "../components/ActionButtons"; 
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; 
 import apiClient from "../utils/apiClient";
-import { showToast, handleApiError, formatDisplayDate } from "../utils/helpers"; 
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 import { PlusCircle } from 'react-bootstrap-icons'; // Icon for Add User button
 import "../css/Style.css";
 import "../css/Users.css"; // Specific styles for Users page

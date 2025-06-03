@@ -17,18 +17,10 @@ export const AuthProvider = ({ children }) => {
   const fetchCurrentUser = useCallback(async () => {
     const token = localStorage.getItem("erp-user");
     if (token) {
-      console.log(
-        "[DEBUG Client AuthContext] Token found. Attempting to fetch current user."
-      );
       try {
         const data = await apiClient("/auth/verify"); // Changed to /auth/verify to match server route
         setUser(data.user || data); // Adjust based on your /me endpoint response
-        console.log(
-          "[DEBUG Client AuthContext] Current user fetched successfully:",
-          data.user || data
-        );
       } catch (error) {
-       
         localStorage.removeItem("erp-user"); // Token is invalid or expired
         setUser(null);
       }
@@ -49,15 +41,16 @@ export const AuthProvider = ({ children }) => {
         method: "POST",
         body: payload,
       });
-   
+      // console.log("[DEBUG Client AuthContext] logEventToServer: Success.", responseData); // Optional: log success
     } catch (error) {
-      // apiClient already logs details, but you can add more specific handling here
+      console.error(
+        "[DEBUG Client AuthContext] logEventToServer: Failed.",
+        error.message,
+        error.data || error
+      );
     }
   };
 
-  // Login function expects credentials (e.g., { email, password })
-  // It should call your server's login endpoint (e.g., POST /api/auth/login)
-  // The server should respond with { token: "your_jwt_token", user: { id, firstname, ... } }
   const login = async (credentials) => {
     try {
       const authResponseData = await apiClient("/auth/login", {
@@ -136,17 +129,7 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
-  useEffect(() => {
-    console.log(
-      "[DEBUG Client AuthContext] Auth state changed. Current user:",
-      user ? user.email : null
-    );
-  }, [user]);
-
   if (isLoading) {
-    console.log("[DEBUG Client AuthContext] Initial auth check in progress...");
-    // Render a loading indicator or null while checking auth status
-    // This prevents rendering parts of your app that depend on auth state prematurely
     return <div>Loading authentication...</div>; // Or your custom loading component
   }
 

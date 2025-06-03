@@ -7,6 +7,9 @@ import apiClient from "../utils/apiClient"; // Utility for making API requests
 import { formatDisplayDate as formatDisplayDateHelper, formatDateForInput as formatDateForInputHelper } from '../utils/helpers'; // Utility functions
 import "../css/Style.css"; // General styles
 import "../css/Logtime.css"; // Specific styles for Logtime page
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
 
 export default function Logtime() {
   const [todayLogDate, setTodayLogDate] = useState(""); // Stores today's date string for display

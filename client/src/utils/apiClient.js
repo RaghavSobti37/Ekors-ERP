@@ -16,14 +16,8 @@ const apiClient = async (endpoint, options = {}) => {
     config.headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Construct the full URL
-  // Assuming backend routes are like /api/users, /api/auth/login
-  // and endpoints passed to apiClient are like "/users", "/auth/login"
-  let fullEndpointPath = endpoint;
-  if (!endpoint.startsWith('/api')) { // Ensure /api prefix if not already there
-    fullEndpointPath = `/api${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-  }
-  const requestUrl = `${BASE_URL}${fullEndpointPath}`;
+  // BASE_URL already contains /api, and endpoint is the path relative to that.
+  const requestUrl = `${BASE_URL}${endpoint}`;
 
   // Handle body content: JSON or FormData
   if (options.formData) { // If formData is explicitly passed in options (e.g. for file uploads in Tickets.jsx)

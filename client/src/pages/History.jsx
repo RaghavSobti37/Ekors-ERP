@@ -6,6 +6,8 @@ import {
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
@@ -149,31 +151,6 @@ export default function History() {
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
-
-  if (isLoading) {
-    return (
-      <div>
-        <Navbar />
-        <div className="log-time-container">
-          <div className="loading">Loading history...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div>
-        <Navbar />
-        <div className="log-time-container">
-          <div className="error-message" style={{ color: "red" }}>
-            {error}
-          </div>
-          <button onClick={fetchHistory}>Retry</button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>

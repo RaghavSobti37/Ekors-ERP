@@ -9,7 +9,8 @@ const logToServer = async ({ level = 'info', type = 'frontend', message = '', us
     // If API_BASE_URL is defined (typically in production), use it.
     // Otherwise (typically in local dev), use a relative path for the Vite proxy.
     if (API_BASE_URL) {
-      requestUrl = `${API_BASE_URL}/api/frontend-log`;
+      // API_BASE_URL is expected to be the full base path, e.g., "https://host.com/api" or just "/api" for local proxy.
+      requestUrl = `${API_BASE_URL}/frontend-log`;
     } else {
       requestUrl = '/api/frontend-log'; // Relies on Vite proxy in dev
     }

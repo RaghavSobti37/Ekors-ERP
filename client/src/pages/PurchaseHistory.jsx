@@ -6,6 +6,8 @@ import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utilit
 import { handleApiError } from '../utils/helpers'; // Utility for consistent API error handling
 import { Table, Button, Alert, Form } from "react-bootstrap"; // Bootstrap components
 import "../css/Style.css";
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
 
 export default function PurchaseHistory() {
   const [purchases, setPurchases] = useState([]);
@@ -98,41 +100,12 @@ export default function PurchaseHistory() {
       purchase.companyName.toLowerCase().includes(searchTerm) ||
       purchase.invoiceNumber.toString().toLowerCase().includes(searchTerm) ||
       (purchase.gstNumber && purchase.gstNumber.toLowerCase().includes(searchTerm));
-
-    // Date and Vendor filters are no longer applied from UI
-    // If you need to keep them for some programmatic reason, adjust accordingly
-    // Otherwise, they can be removed from the filtering logic.
-
-    // Normalize purchase.date to the start of its day in the local timezone.
-    // This ensures consistent comparison with filter dates, which are also effectively at the start of their day.
-    // const pDateRaw = new Date(purchase.date); // Parse the stored date string
-    // const purchaseDayStart = new Date(pDateRaw.getFullYear(), pDateRaw.getMonth(), pDateRaw.getDate());
-
-    // Start Date Filter: Compare date part only.
-    // dateFilter.startDate is a 'YYYY-MM-DD' string. new Date() creates a Date object at 00:00:00 local time.
-    // const matchesStartDate = dateFilter.startDate
-    //   ? purchaseDayStart >= new Date(dateFilter.startDate)
-    //   : true;
-
-    // End Date Filter: Ensure the entire end day is included.
-    // dateFilter.endDate is a 'YYYY-MM-DD' string. new Date() creates a Date object at 00:00:00 local time.
-    // We compare the start of the purchase day with the start of the filter's end day.
-    // For an inclusive end date, purchaseDayStart must be less than or equal to the filter's end day.
-    // const matchesEndDate = dateFilter.endDate
-    //   ? purchaseDayStart <= new Date(dateFilter.endDate)
-    //   : true;
-    // const matchesVendor = vendorFilter
-    //   ? purchase.companyName.toLowerCase().includes(vendorFilter.toLowerCase())
-    //   : true;
     return matchesSearch; // && matchesStartDate && matchesEndDate && matchesVendor;
   });
 
   const indexOfLastPurchase = currentPage * itemsPerPage;
   const indexOfFirstPurchase = indexOfLastPurchase - itemsPerPage;
   const currentPurchases = filteredPurchases.slice(indexOfFirstPurchase, indexOfLastPurchase);
-
-  // Get unique vendors for filter dropdown
-  // const uniqueVendors = [...new Set(purchases.map(p => p.companyName))];
 
   const calculatePurchaseTotal = (purchase) => {
     return purchase.items.reduce((total, item) => {
