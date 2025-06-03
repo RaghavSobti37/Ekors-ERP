@@ -5,6 +5,8 @@ const Client = require("../models/client");
 const QuotationBackup = require("../models/quotationBackup");
 const auth = require("../middleware/auth");
 const logger = require("../utils/logger");
+const { generateQuotationsReport } = require("../controllers/reportController"); // Import the report generator
+const excelJS = require("exceljs");
 
 const handleQuotationUpsert = async (req, res) => {
   let operation;
@@ -338,4 +340,14 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// @desc    Get Quotations Report Summary or Excel
+// @route   GET /api/quotations/report/summary
+// @route   GET /api/quotations/report/excel
+// @access  Private
+// The controller will differentiate based on `exportToExcel` query param
+router.get("/report/summary", auth, generateQuotationsReport); // For JSON summary
+router.get("/report/excel", auth, (req, res, next) => { // For Excel download
+    req.query.exportToExcel = 'true'; // Ensure controller knows to export
+    generateQuotationsReport(req, res, next);
+});
 module.exports = router;
