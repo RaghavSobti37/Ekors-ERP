@@ -34,7 +34,9 @@ app.use(morgan('dev'));
 const allowedOrigins = [
   'http://localhost:5173',
   'https://ekors-erp-dyix.vercel.app',
-  'https://ekors-erp-dyix-5f954a0so-raghavsobti37s-projects.vercel.app'
+  'https://ekors-erp-dyix-5f954a0so-raghavsobti37s-projects.vercel.app',
+  'https://ekors-erp-dyix-git-raghav-raghavsobti37s-projects.vercel.app',
+  'ekors-erp-dyix-go5ebgnnz-raghavsobti37s-projects.vercel.app'
   // Removed trailing slash for consistency
 ];
 
