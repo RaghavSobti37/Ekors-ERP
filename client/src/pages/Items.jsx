@@ -1,86 +1,85 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import apiClient from "../utils/apiClient"; // Import apiClient
-import Navbar from "../components/Navbar.jsx"; // Navigation bar component
-import Pagination from "../components/Pagination"; // Component for table pagination
-import { saveAs } from "file-saver"; // For downloading files
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
-import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
-import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import * as XLSX from "xlsx"; // Library for Excel file operations
-// ActionButtons is not directly used in the main table here, but could be if edit functionality was present
+import apiClient from "../utils/apiClient";
+import Navbar from "../components/Navbar.jsx";
+import Pagination from "../components/Pagination";
+import { saveAs } from "file-saver";
+import { getAuthToken } from "../utils/authUtils";
+import { showToast, handleApiError } from "../utils/helpers";
+import SearchBar from "../components/Searchbar.jsx";
+import * as XLSX from "xlsx";
 import {
-  Eye, // View
-  Trash, // Delete
-  FileEarmarkArrowDown, // For Excel Export
-  FileEarmarkArrowUp, // For Excel Upload
-  PlusCircle, // For Add Item button icon
+  Eye,
+  Trash,
+  FileEarmarkArrowDown,
+  FileEarmarkArrowUp,
+  PlusCircle,
 } from "react-bootstrap-icons";
-import "../css/Style.css"; // General styles
+import "../css/Style.css";
 
+// Constants
+const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
+const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE = "globalLowStockThresholdSetting";
+
+// Debug utility
 const debug = (message, data = null) => {
   if (process.env.NODE_ENV === "development") {
     console.log(`[DEBUG] ${message}`, data);
   }
 };
 
-const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
-  "globalLowStockThresholdSetting";
+// Initial form states
+const initialFormData = {
+  name: "",
+  quantity: "",
+  sellingPrice: "",
+  buyingPrice: "",
+  gstRate: "0",
+  hsnCode: "",
+  unit: "Nos",
+  category: "",
+  subcategory: "General",
+  maxDiscountPercentage: "",
+  lowStockThreshold: "5",
+};
+
+const initialPurchaseData = {
+  companyName: "",
+  gstNumber: "",
+  address: "",
+  stateName: "",
+  invoiceNumber: "",
+  date: new Date().toISOString().split("T")[0],
+  items: [],
+};
 
 export default function Items() {
+  // State hooks
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({
-    key: "name",
-    direction: "asc",
-  });
+  const [sortConfig, setSortConfig] = useState({ key: "name", direction: "asc" });
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    quantity: "",
-    sellingPrice: "", // Changed from price
-    buyingPrice: "",  // Added buyingPrice
-    gstRate: "0",
-    hsnCode: "",
-    unit: "Nos",
-    category: "",
-    subcategory: "General",
-    maxDiscountPercentage: "",
-    lowStockThreshold: "5", // Added for consistency with item schema
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
+  const [expandedRow, setExpandedRow] = useState(null);
   const [purchaseHistory, setPurchaseHistory] = useState({});
-  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
+  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [currentItemIndex, setCurrentItemIndex] = useState(-1);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSubcategory, setSelectedSubcategory] = useState("All");
-  const [purchaseData, setPurchaseData] = useState({
-    companyName: "",
-    gstNumber: "",
-    address: "",
-    stateName: "",
-    invoiceNumber: "",
-    date: new Date().toISOString().split("T")[0],
-    quantity: "",
-    price: "",
-    gstRate: "0",
-    description: "",
-    items: [],
-  });
+  const [purchaseData, setPurchaseData] = useState(initialPurchaseData);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [itemSearchTerm, setItemSearchTerm] = useState("");
   const [filteredItemsList, setFilteredItemsList] = useState([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // General submission state (add item, add purchase)
-  const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingExcel, setIsProcessingExcel] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
     error: null,
@@ -88,6 +87,10 @@ export default function Items() {
     details: [],
   });
   const [showViewItemModal, setShowViewItemModal] = useState(false);
+  const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null);
+  const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
+    DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+  );
 
   const location = useLocation();
   const queryParams = useMemo(
@@ -95,69 +98,23 @@ export default function Items() {
     [location.search]
   );
   const stockAlertFilterActive = queryParams.get("filter") === "stock_alerts";
-  const lowStockWarningQueryThreshold = parseInt(
-    queryParams.get("lowThreshold"),
-    10
-  );
-  const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // null means 'All'
+  const lowStockWarningQueryThreshold = parseInt(queryParams.get("lowThreshold"), 10);
 
-  const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
-    DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
-  );
+  // Helper functions
+  const showSuccess = (message) => showToast(message, true);
 
-  useEffect(() => {
-    const storedThreshold = localStorage.getItem(
-      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE
-    );
-    setEffectiveLowStockThreshold(
-      storedThreshold
-        ? parseInt(storedThreshold, 10)
-        : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
-    );
-  }, []); // Runs once on mount to get the threshold
-
-  const handleItemsPerPageChange = (newItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to the first page
-  };
-
-  const handleGlobalThresholdChange = (e) => {
-    const newThreshold =
-      parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
-    setEffectiveLowStockThreshold(newThreshold);
-    localStorage.setItem(
-      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
-      newThreshold.toString()
-    );
-    // Optionally, you could trigger a re-fetch of navbar summary if it's critical for it to update immediately
-  };
-
-  const showSuccess = (message) => {
-    showToast(message, true);
-  };
-
-  useEffect(() => {
-    debug("Component mounted or dependencies changed", { items, categories });
-  }, [items, categories]);
-
+  // Data fetching
   const fetchItems = useCallback(async () => {
     try {
-      debug("Starting to fetch items");
       setLoading(true);
       setError(null);
-      const response = await apiClient("/items"); // Use apiClient
-      debug("Items fetched successfully", response);
+      const response = await apiClient("/items");
       setItems(response);
-      setError(null);
       showSuccess("Items Fetched Successfully");
     } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to load items. Please try again."
-      );
-      setError(errorMessage);
+      setError(handleApiError(err, "Failed to load items. Please try again."));
     } finally {
-      debug("Finished items fetch attempt");
+      setLoading(false);
     }
   }, []);
 
@@ -165,55 +122,40 @@ export default function Items() {
     try {
       setLoading(true);
       setError(null);
-      debug("Attempting to fetch categories");
-      const categoriesData = await apiClient("/items/categories", {
-        timeout: 5000,
-      });
-
-      if (Array.isArray(categoriesData)) {
-        setCategories(categoriesData);
-      } else if (categoriesData === null || categoriesData === undefined) {
-        // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
-        debug(
-          "Received null or undefined for categories, setting to empty array.",
-          categoriesData
-        );
-        setCategories([]);
-      } else {
-        throw new Error(
-          `Expected an array of categories, but received type: ${typeof categoriesData}`
-        );
-      }
+      const categoriesData = await apiClient("/items/categories", { timeout: 5000 });
+      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
     } catch (err) {
-      const errorDetails = {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        config: err.config,
-      };
-
-      let errorMessage = handleApiError(err, "Failed to load categories.");
-      if (err.response) {
-        errorMessage += ` (${err.response.status})`;
-        if (err.response.data?.message) {
-          errorMessage += `: ${err.response.data.message}`;
-        }
-      } else if (err.request) {
-        errorMessage += ": No response from server";
-      } else {
-        errorMessage += `: ${err.message}`;
-      }
-
-      setError(errorMessage);
+      setError(handleApiError(err, "Failed to load categories."));
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const fetchPurchaseHistory = useCallback(async (itemId) => {
+    try {
+      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
+      setError(null);
+      const response = await apiClient(`/items/${itemId}/purchases`, { timeout: 5000 });
+      setPurchaseHistory((prev) => ({ ...prev, [itemId]: response || [] }));
+    } catch (err) {
+      setError(handleApiError(err, "Failed to load history."));
+      setPurchaseHistory((prev) => ({ ...prev, [itemId]: [] }));
+    } finally {
+      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
+    }
+  }, []);
+
+  // Effects
+  useEffect(() => {
+    const storedThreshold = localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE);
+    setEffectiveLowStockThreshold(
+      storedThreshold ? parseInt(storedThreshold, 10) : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
+    );
+  }, []);
+
   useEffect(() => {
     fetchItems();
     fetchCategories();
-
     return () => {
       setItems([]);
       setCategories([]);
@@ -221,51 +163,19 @@ export default function Items() {
   }, [fetchItems, fetchCategories]);
 
   useEffect(() => {
-    if (itemSearchTerm.trim() !== "") {
-      if (Array.isArray(items) && items.length > 0) {
-        const filtered = items.filter(
-          (item) =>
-            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
-            (item.hsnCode &&
-              item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
-        );
-        setFilteredItemsList(filtered);
-      } else {
-        setFilteredItemsList([]);
-      }
+    if (itemSearchTerm.trim() !== "" && Array.isArray(items) && items.length > 0) {
+      const filtered = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
+          (item.hsnCode && item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
+      );
+      setFilteredItemsList(filtered);
     } else {
       setFilteredItemsList([]);
     }
   }, [itemSearchTerm, items]);
 
-  const fetchPurchaseHistory = useCallback(async (itemId) => {
-    try {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
-      setError(null);
-
-      const response = await apiClient(`/items/${itemId}/purchases`, {
-        timeout: 5000,
-      });
-
-      setPurchaseHistory((prev) => ({
-        ...prev,
-        [itemId]: response || [],
-      }));
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load history.");
-      setError(errorMessage);
-      console.error("Fetch purchase history error:", err);
-      setError(errorMessage);
-      setPurchaseHistory((prev) => ({
-        ...prev,
-        [itemId]: [],
-      }));
-    } finally {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
-    }
-  }, []);
-
+  // Handlers
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value.toLowerCase());
     setCurrentPage(1);
@@ -279,89 +189,16 @@ export default function Items() {
     setSortConfig({ key, direction });
   };
 
-  const itemsToDisplay = useMemo(() => {
-    if (!Array.isArray(items)) {
-      debug("itemsToDisplay: items is not an array, returning []");
-      return [];
-    }
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
-    let processedItems = [...items];
-
-    const currentLowThreshold =
-      stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
-        ? lowStockWarningQueryThreshold
-        : effectiveLowStockThreshold;
-
-    if (stockAlertFilterActive) {
-      processedItems = processedItems.filter(
-        (item) => item.needsRestock || item.quantity < currentLowThreshold
-      );
-    } else {
-      processedItems = processedItems.filter((item) => {
-        const matchesCategory =
-          selectedCategory === "All" || item.category === selectedCategory;
-        const matchesSubcategory =
-          selectedSubcategory === "All" ||
-          item.subcategory === selectedSubcategory;
-        const matchesSearch =
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.hsnCode &&
-            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
-        return matchesCategory && matchesSubcategory && matchesSearch;
-      });
-
-      if (
-        quantityFilterThreshold !== null &&
-        Number.isFinite(quantityFilterThreshold)
-      ) {
-        processedItems = processedItems.filter(
-          (item) => item.quantity <= quantityFilterThreshold
-        );
-      }
-    }
-
-    processedItems.sort((a, b) => {
-      // const aIsLowStock = a.quantity < currentLowThreshold; // Removed
-      // const bIsLowStock = b.quantity < currentLowThreshold; // Removed
-
-      // Priority 1: Needs Restock
-      // if (a.needsRestock && !b.needsRestock) return -1; // Removed
-      // if (!a.needsRestock && b.needsRestock) return 1; // Removed
-      // Priority 2: Is Low Stock
-      // if (aIsLowStock && !bIsLowStock) return -1; // Removed
-      // if (!aIsLowStock && bIsLowStock) return 1; // Removed
-
-      if (stockAlertFilterActive) {
-        if (a.quantity < b.quantity) return -1;
-        if (a.quantity > b.quantity) return 1;
-      } else {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-      }
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    });
-    return processedItems;
-  }, [
-    items,
-    stockAlertFilterActive,
-    lowStockWarningQueryThreshold,
-    effectiveLowStockThreshold,
-    selectedCategory,
-    selectedSubcategory,
-    searchTerm,
-    quantityFilterThreshold,
-    sortConfig,
-  ]);
-
-  const currentItems = useMemo(() => {
-    const indexOfLast = currentPage * itemsPerPage;
-    const indexOfFirst = indexOfLast - itemsPerPage;
-    return itemsToDisplay.slice(indexOfFirst, indexOfLast);
-  }, [itemsToDisplay, currentPage, itemsPerPage]);
+  const handleGlobalThresholdChange = (e) => {
+    const newThreshold = parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
+    setEffectiveLowStockThreshold(newThreshold);
+    localStorage.setItem(LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE, newThreshold.toString());
+  };
 
   const addExistingItemToPurchase = (item) => {
     setPurchaseData({
@@ -372,7 +209,6 @@ export default function Items() {
           itemId: item._id,
           description: item.name,
           quantity: "1",
-          // Pre-fill purchase price with item's buyingPrice or lastPurchasePrice as a suggestion
           price: item.buyingPrice ? item.buyingPrice.toString() : (item.lastPurchasePrice ? item.lastPurchasePrice.toString() : "0"),
           gstRate: item.gstRate.toString(),
         },
@@ -385,11 +221,10 @@ export default function Items() {
   const handleEditItem = (item) => {
     setEditingItem(item);
     setFormData({
-      // Pre-fill form data for editing
       name: item.name,
       quantity: item.quantity?.toString() || "0",
-      sellingPrice: item.sellingPrice?.toString() || "0", // Changed from price
-      buyingPrice: item.buyingPrice?.toString() || "0",   // Added buyingPrice
+      sellingPrice: item.sellingPrice?.toString() || "0",
+      buyingPrice: item.buyingPrice?.toString() || "0",
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
@@ -408,17 +243,15 @@ export default function Items() {
     }
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { ...formData }; // formData should already be in correct format
-      // Convert numeric fields
-      updatedItemPayload.quantity =
-        parseFloat(updatedItemPayload.quantity) || 0;
-      updatedItemPayload.sellingPrice = parseFloat(updatedItemPayload.sellingPrice) || 0; // Changed from price
-      updatedItemPayload.buyingPrice = parseFloat(updatedItemPayload.buyingPrice) || 0;   // Added buyingPrice
-      updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
-      updatedItemPayload.lowStockThreshold = parseFloat(updatedItemPayload.lowStockThreshold) || 0;
-
-      updatedItemPayload.maxDiscountPercentage =
-        parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
+      const updatedItemPayload = { 
+        ...formData,
+        quantity: parseFloat(formData.quantity) || 0,
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,
+        gstRate: parseFloat(formData.gstRate) || 0,
+        lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
+      };
 
       await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
@@ -429,8 +262,7 @@ export default function Items() {
       setEditingItem(null);
       showSuccess("Item updated successfully!");
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to update item.");
-      setError(errorMessage);
+      setError(handleApiError(err, "Failed to update item."));
     } finally {
       setIsSubmitting(false);
     }
@@ -438,53 +270,32 @@ export default function Items() {
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...(purchaseData.items || [])];
-    if (!updatedItems[index]) {
-      updatedItems[index] = {
+    updatedItems[index] = {
+      ...(updatedItems[index] || {
         description: "",
         quantity: "1",
         price: "",
         gstRate: "0",
-      };
-    }
-    updatedItems[index][field] = value;
-    setPurchaseData({
-      ...purchaseData,
-      items: updatedItems,
-    });
+      }),
+      [field]: value
+    };
+    setPurchaseData({ ...purchaseData, items: updatedItems });
   };
 
   const openPurchaseModal = () => {
     setPurchaseData({
-      companyName: "",
-      gstNumber: "",
-      address: "",
-      stateName: "",
-      invoiceNumber: "",
-      date: new Date().toISOString().split("T")[0],
-      items: [
-        {
-          description: "",
-          quantity: "1",
-          price: "",
-          gstRate: "0",
-        },
-      ],
+      ...initialPurchaseData,
+      items: [{ description: "", quantity: "1", price: "", gstRate: "0" }]
     });
     setShowPurchaseModal(true);
   };
 
-  // Define the missing function to add a new item row to the purchase form
   const addNewPurchaseItem = () => {
     setPurchaseData(prev => ({
       ...prev,
       items: [
-        ...(prev.items || []), // Ensure items is an array
-        {
-          description: "",
-          quantity: "1", // Default quantity to 1
-          price: "",
-          gstRate: "0",
-        },
+        ...(prev.items || []),
+        { description: "", quantity: "1", price: "", gstRate: "0" }
       ],
     }));
   };
@@ -492,62 +303,32 @@ export default function Items() {
   const removeItem = (index) => {
     const updatedItems = [...purchaseData.items];
     updatedItems.splice(index, 1);
-    setPurchaseData({
-      ...purchaseData,
-      items: updatedItems,
-    });
+    setPurchaseData({ ...purchaseData, items: updatedItems });
   };
 
   const calculateItemAmount = (item) => {
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const gstRate = parseFloat(item.gstRate) || 0;
-
     return quantity * price * (1 + gstRate / 100);
   };
 
   const calculateTotalAmount = () => {
     if (!purchaseData.items || purchaseData.items.length === 0) return 0;
-    return purchaseData.items.reduce(
-      (sum, item) => sum + calculateItemAmount(item),
-      0
-    );
+    return purchaseData.items.reduce((sum, item) => sum + calculateItemAmount(item), 0);
   };
 
   const isPurchaseDataValid = useCallback(() => {
-    if (
-      !purchaseData.companyName ||
-      !purchaseData.invoiceNumber ||
-      !purchaseData.date
-    ) {
+    if (!purchaseData.companyName || !purchaseData.invoiceNumber || !purchaseData.date) {
       return false;
     }
-
-    if (!purchaseData.items || purchaseData.items.length === 0) {
-      return false;
-    }
-
-    return purchaseData.items.every(
-      (item) =>
-        item.description &&
-        parseFloat(item.quantity) > 0 &&
-        parseFloat(item.price) >= 0
+    return purchaseData.items?.every(item => 
+      item.description && parseFloat(item.quantity) > 0 && parseFloat(item.price) >= 0
     );
   }, [purchaseData]);
 
   const resetPurchaseForm = () => {
-    setPurchaseData({
-      companyName: "",
-      gstNumber: "",
-      address: "",
-      stateName: "",
-      invoiceNumber: "",
-      date: new Date().toISOString().split("T")[0],
-      quantity: "",
-      price: "",
-      gstRate: "0",
-      items: [],
-    });
+    setPurchaseData(initialPurchaseData);
     setItemSearchTerm("");
     setShowItemSearch(false);
   };
@@ -563,8 +344,8 @@ export default function Items() {
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        sellingPrice: parseFloat(formData.sellingPrice) || 0, // Changed from price
-        buyingPrice: parseFloat(formData.buyingPrice) || 0,   // Added buyingPrice
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
@@ -577,27 +358,10 @@ export default function Items() {
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
       setShowModal(false);
-      setFormData({
-        name: "",
-        quantity: "",
-        sellingPrice: "", // Changed from price
-        buyingPrice: "",  // Added buyingPrice
-        gstRate: "0",
-        hsnCode: "",
-        unit: "Nos",
-        category: "",
-        subcategory: "General",
-        maxDiscountPercentage: "",
-        lowStockThreshold: "5",
-      });
-      setError(null);
+      setFormData(initialFormData);
+      showSuccess("Item added successfully!");
     } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to add item. Please try again."
-      );
-      setError(errorMessage);
-      console.error("Error adding item:", err);
+      setError(handleApiError(err, "Failed to add item. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -611,13 +375,11 @@ export default function Items() {
     if (expandedRow !== id) {
       await fetchPurchaseHistory(id);
     }
-    // For modal view, we set the item to view and show the modal
     const itemToView = items.find((item) => item._id === id);
     if (itemToView) {
-      setEditingItem(itemToView); // Using editingItem to store the item to view for simplicity
+      setEditingItem(itemToView);
       setShowViewItemModal(true);
     }
-
     setExpandedRow(expandedRow === id ? null : id);
   };
 
@@ -629,9 +391,7 @@ export default function Items() {
         await fetchItems();
         showSuccess("Item Deleted Successfully");
       } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to delete item.");
-        setError(errorMessage);
-        console.error("Error deleting item:", err);
+        setError(handleApiError(err, "Failed to delete item."));
       } finally {
         setIsSubmitting(false);
       }
@@ -644,9 +404,7 @@ export default function Items() {
       setError(null);
 
       if (!isPurchaseDataValid()) {
-        setError(
-          "Please fill all required fields and ensure each item has a description, quantity, and price"
-        );
+        setError("Please fill all required fields and ensure each item has a description, quantity, and price");
         return false;
       }
 
@@ -677,24 +435,7 @@ export default function Items() {
       showSuccess("Purchase added successfully!");
       return true;
     } catch (err) {
-      console.error("Error adding purchase entry:", err);
-      let detailedErrorMessage = "Failed to add purchase entry.";
-      if (err.response && err.response.data) {
-        detailedErrorMessage += ` ${err.response.data.message || ""}`;
-        if (err.response.data.errors) {
-          const validationErrors = Object.values(err.response.data.errors)
-            .map((e) => e.message)
-            .join("; ");
-          detailedErrorMessage += ` Details: ${validationErrors}`;
-        } else if (
-          typeof err.response.data === "string" &&
-          err.response.data.length < 200
-        ) {
-          // Avoid overly long string responses
-        }
-      } else if (err.message) {
-        detailedErrorMessage += ` ${err.message}`;
-      }
+      const detailedErrorMessage = `Failed to add purchase entry. ${err.response?.data?.message || err.message}`;
       setError(detailedErrorMessage);
       return false;
     } finally {
@@ -705,22 +446,17 @@ export default function Items() {
   const handleExportToExcel = async () => {
     setIsExportingExcel(true);
     setExcelUpdateStatus({ error: null, success: null, details: [] });
-    if (
-      !window.confirm(
-        "This will download an Excel file of the current item list. Continue?"
-      )
-    ) {
+    
+    if (!window.confirm("This will download an Excel file of the current item list. Continue?")) {
       setIsExportingExcel(false);
       return;
     }
+    
     try {
-      const response = await apiClient("/items/export-excel", { // Use apiClient
+      const response = await apiClient("/items/export-excel", {
         method: "GET",
-        rawResponse: true, // We need the raw response to get the blob
+        rawResponse: true,
       });
-
-      // response is already checked for .ok inside apiClient if rawResponse is true
-      // and an error would have been thrown if not ok.
 
       const blob = await response.blob();
       saveAs(blob, "items_export.xlsx");
@@ -731,14 +467,9 @@ export default function Items() {
       });
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
-      console.error("Error exporting to Excel:", err); // Log the full error from apiClient
-      // Prioritize err.data.message, then err.message, then a fallback
-      const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to export items. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please try again.'}`;
-      
+      const displayMessage = `Failed to export items. ${err.status ? `Status: ${err.status}.` : ''} ${err.data?.message || err.message || 'Please try again.'}`;
       setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
-      setError(displayMessage); // Sets page-level error
-      showToast(displayMessage, false); // Show toast for immediate feedback
+      setError(displayMessage);
     } finally {
       setIsExportingExcel(false);
     }
@@ -748,35 +479,27 @@ export default function Items() {
     const file = event.target.files[0];
     setExcelUpdateStatus({ error: null, success: null, details: [] });
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
-    // Confirmation before processing
-    if (
-      !window.confirm(
-        "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-          "Are you absolutely sure you want to proceed?"
-      )
-    ) {
+    if (!window.confirm(
+      "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
+      "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+      "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+      "Are you absolutely sure you want to proceed?"
+    )) {
       return;
     }
+    
     setIsProcessingExcel(true);
-
     const formData = new FormData();
     formData.append("excelFile", file);
 
     try {
-      // Use apiClient for the upload. It handles token and FormData.
-      const responseData = await apiClient("/items/import-uploaded-excel", {
+      const response = await apiClient("/items/import-uploaded-excel", {
         method: "POST",
         body: formData,
-        isFormData: true, // Explicitly tell apiClient this is FormData
+        isFormData: true,
       });
-
-      const response = responseData;
 
       let successMessage = `Excel sync complete: ${
         response.itemsCreated || 0
@@ -784,20 +507,13 @@ export default function Items() {
         response.itemsDeleted || 0
       } deleted.`;
 
-      if (response.parsingErrors && response.parsingErrors.length > 0) {
-        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
-        console.warn("Excel Parsing Issues:", response.parsingErrors);
+      if (response.parsingErrors?.length > 0) {
+        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues.`;
       }
-      if (
-        response.databaseProcessingErrors &&
-        response.databaseProcessingErrors.length > 0
-      ) {
-        successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
-        console.warn(
-          "Database Processing Errors:",
-          response.databaseProcessingErrors
-        );
+      if (response.databaseProcessingErrors?.length > 0) {
+        successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors.`;
       }
+      
       setExcelUpdateStatus({
         error: null,
         success: successMessage,
@@ -805,37 +521,87 @@ export default function Items() {
       });
       showSuccess(successMessage);
       fetchItems();
-      const fileInput = document.getElementById("excel-upload-input");
-      if (fileInput) {
-        fileInput.value = null;
-      }
     } catch (err) {
-      console.error("Error updating from Excel:", err); // Log the full error from apiClient
-      // Prioritize err.data.message, then err.message, then a fallback
-      const specificMessage = err.data?.message || err.message;
-      // If specificMessage is the SyntaxError itself, it will be included here.
-      const displayMessage = `Failed to update from Excel. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please check the file and try again.'}`;
-
+      const displayMessage = `Failed to update from Excel. ${err.status ? `Status: ${err.status}.` : ''} ${err.data?.message || err.message || 'Please check the file and try again.'}`;
       setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
-      setError(displayMessage); // Sets page-level error
-      showToast(displayMessage, false); // Show toast for immediate feedback
+      setError(displayMessage);
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
     }
   };
 
+  // Computed values
+  const itemsToDisplay = useMemo(() => {
+    if (!Array.isArray(items)) return [];
+
+    let processedItems = [...items];
+    const currentLowThreshold = stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
+      ? lowStockWarningQueryThreshold
+      : effectiveLowStockThreshold;
+
+    if (stockAlertFilterActive) {
+      processedItems = processedItems.filter(
+        (item) => item.needsRestock || item.quantity < currentLowThreshold
+      );
+    } else {
+      processedItems = processedItems.filter((item) => {
+        const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+        const matchesSubcategory = selectedSubcategory === "All" || item.subcategory === selectedSubcategory;
+        const matchesSearch = 
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.hsnCode && item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        const matchesQuantity = quantityFilterThreshold === null || 
+          (Number.isFinite(quantityFilterThreshold) && item.quantity <= quantityFilterThreshold);
+        
+        return matchesCategory && matchesSubcategory && matchesSearch && matchesQuantity;
+      });
+    }
+
+    processedItems.sort((a, b) => {
+      if (stockAlertFilterActive) {
+        if (a.quantity < b.quantity) return -1;
+        if (a.quantity > b.quantity) return 1;
+      } else {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+      }
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
+    
+    return processedItems;
+  }, [
+    items,
+    stockAlertFilterActive,
+    lowStockWarningQueryThreshold,
+    effectiveLowStockThreshold,
+    selectedCategory,
+    selectedSubcategory,
+    searchTerm,
+    quantityFilterThreshold,
+    sortConfig,
+  ]);
+
+  const currentItems = useMemo(() => {
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    return itemsToDisplay.slice(indexOfFirst, indexOfLast);
+  }, [itemsToDisplay, currentPage, itemsPerPage]);
+
   const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
 
+  // Render
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
+        {/* Error and success messages */}
+        {error && <div className="alert alert-danger" role="alert">{error}</div>}
         {excelUpdateStatus.error && (
           <div className="alert alert-danger" role="alert">
             Excel Update Error: {excelUpdateStatus.error}
@@ -847,9 +613,8 @@ export default function Items() {
           </div>
         )}
 
+        {/* Top controls */}
         <div className="top-controls-container">
-          {" "}
-          {/* Container for all top controls */}
           <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
               {stockAlertFilterActive ? `Stock Alerts` : "All Items List"}
@@ -875,30 +640,20 @@ export default function Items() {
               >
                 Export Excel
                 {isExportingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 ) : (
                   <FileEarmarkArrowDown />
                 )}
               </button>
               <button
-                onClick={() =>
-                  document.getElementById("excel-upload-input")?.click()
-                }
+                onClick={() => document.getElementById("excel-upload-input")?.click()}
                 className="btn btn-info"
                 disabled={anyLoading}
                 title="Upload & Update from Excel"
               >
                 Upload Excel
                 {isProcessingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 ) : (
                   <FileEarmarkArrowUp />
                 )}
@@ -910,17 +665,12 @@ export default function Items() {
                 title="Add New Item"
                 style={{ gap: "0.35rem" }}
               >
-                {isSubmitting ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <PlusCircle size={18} />
-                    Add New Item
-                  </>
-                )}
+                <PlusCircle size={18} />
+                Add New Item
               </button>
             </div>
           </div>
+
           <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
             <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
@@ -950,11 +700,7 @@ export default function Items() {
                   setSelectedSubcategory(e.target.value);
                   setCurrentPage(1);
                 }}
-                disabled={
-                  selectedCategory === "All" ||
-                  anyLoading ||
-                  stockAlertFilterActive
-                }
+                disabled={selectedCategory === "All" || anyLoading || stockAlertFilterActive}
               >
                 <option value="All">All Subcategories</option>
                 {selectedCategory !== "All" &&
@@ -972,16 +718,10 @@ export default function Items() {
             <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
-                value={
-                  quantityFilterThreshold === null
-                    ? "All"
-                    : quantityFilterThreshold
-                }
+                value={quantityFilterThreshold === null ? "All" : quantityFilterThreshold}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setQuantityFilterThreshold(
-                    value === "All" ? null : parseInt(value, 10)
-                  );
+                  setQuantityFilterThreshold(value === "All" ? null : parseInt(value, 10));
                   setCurrentPage(1);
                 }}
                 disabled={anyLoading || stockAlertFilterActive}
@@ -999,6 +739,7 @@ export default function Items() {
           </div>
         </div>
 
+        {/* Excel upload input (hidden) */}
         <input
           type="file"
           id="excel-upload-input"
@@ -1008,6 +749,7 @@ export default function Items() {
           disabled={anyLoading}
         />
 
+        {/* Main table */}
         <div className="table-responsive">
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
@@ -1016,27 +758,18 @@ export default function Items() {
                   <th
                     key={key}
                     onClick={() => !anyLoading && requestSort(key)}
-                    style={{
-                      cursor: anyLoading ? "not-allowed" : "pointer",
-                    }}
+                    style={{ cursor: anyLoading ? "not-allowed" : "pointer" }}
                   >
-                    {key.charAt(0).toUpperCase() +
-                      key.slice(1).replace(/([A-Z])/g, " $1")}
-                    {sortConfig.key === key &&
-                      (sortConfig.direction === "asc" ? " ↑" : " ↓")}
+                    {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
+                    {sortConfig.key === key && (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                   </th>
                 ))}
                 <th
-                  onClick={() =>
-                    !anyLoading && requestSort("maxDiscountPercentage")
-                  }
-                  style={{
-                    cursor: anyLoading ? "not-allowed" : "pointer",
-                  }}
+                  onClick={() => !anyLoading && requestSort("maxDiscountPercentage")}
+                  style={{ cursor: anyLoading ? "not-allowed" : "pointer" }}
                 >
                   Max Disc. %
-                  {sortConfig.key === "maxDiscountPercentage" &&
-                    (sortConfig.direction === "asc" ? " ↑" : " ↓")}
+                  {sortConfig.key === "maxDiscountPercentage" && (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
                 <th>Actions</th>
               </tr>
@@ -1048,43 +781,27 @@ export default function Items() {
                     <tr>
                       <td>{item.name}</td>
                       <td>
-                        <>
-                          {item.quantity}                          {(item.quantity <= 0 || item.needsRestock) ? (                             <span
-                              className="badge bg-danger ms-2"
-title={
-                                item.quantity <= 0
-                                  ? "Out of stock! Needs immediate restock."
-                                  : `Below item specific threshold (${item.lowStockThreshold || 'Not Set'}). Needs restock.`
-                              }
-                            >
-                              ⚠️ Restock
-                            </span>
-                         ) : (
-                            item.quantity <
-                              (stockAlertFilterActive
-                                ? lowStockWarningQueryThreshold
-                                : effectiveLowStockThreshold) && (
-                              <span
-                                className="badge bg-warning text-dark ms-2"
-                                title={`Below page display threshold (< ${
-                                  stockAlertFilterActive
-                                    ? lowStockWarningQueryThreshold
-                                    : effectiveLowStockThreshold
-                                }`}
-                              >
-                                🔥 Low Stock
-                              </span>
-                           ))}
-                        </>
+                        {item.quantity}
+                        {item.quantity <= (item.lowStockThreshold || 0) ? (
+                          <span className="badge bg-danger ms-2"
+                            title={item.quantity <= 0 ? "Out of stock! Needs immediate restock." : `Below item specific threshold (${item.lowStockThreshold}). Needs restock.`}
+                          >
+                            ⚠️ Restock
+                          </span>
+                        ) : item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? (
+                          <span className="badge bg-warning text-dark ms-2"
+                            title={`Below page display threshold (< ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold})`}
+                          >
+                            🔥 Low Stock
+                          </span>
+                        ) : null}
                       </td>
-                      <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td> {/* Changed from item.price */}
-                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td> {/* Added buyingPrice display */}
+                      <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
+                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td>
                       <td>{item.unit || "Nos"}</td>
                       <td>{`${item.gstRate || 0}%`}</td>
                       <td>
-                        {item.maxDiscountPercentage > 0
-                          ? `${item.maxDiscountPercentage}%`
-                          : "-"}
+                        {item.maxDiscountPercentage > 0 ? `${item.maxDiscountPercentage}%` : "-"}
                       </td>
                       <td>
                         <div className="d-flex gap-1">
@@ -1110,8 +827,7 @@ title={
                             disabled={anyLoading}
                             title="Edit Item"
                           >
-                            <Eye size={16} />{" "}
-                            {/* Placeholder for PencilSquare if not imported */}
+                            <Eye size={16} />
                           </button>
                         </div>
                       </td>
@@ -1124,96 +840,31 @@ title={
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
                               {item.image && (
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="image-preview"
-                                />
+                                <img src={item.image} alt={item.name} className="image-preview" />
                               )}
                             </div>
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
-                                <tr>
-                                  <td>
-                                    <strong>Name</strong>
-                                  </td>
-                                  <td>{item.name}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Category</strong>
-                                  </td>
-                                  <td>{item.category || "-"}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Subcategory</strong>
-                                  </td>
-                                  <td>{item.subcategory || "-"}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Quantity</strong>
-                                  </td>
-                                  <td>
-                                    {item.quantity}
-                                                                      {(item.quantity <= 0 || item.needsRestock) ? (
-                                      item.quantity <= 0
-                                        ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Item specific restock threshold: ${item.lowStockThreshold || 'Not Set'})`
-                                    ) : (
-
-                                      item.quantity <
-                                        (stockAlertFilterActive
-                                          ? lowStockWarningQueryThreshold
-                                          : effectiveLowStockThreshold) &&
-  ` (Page display low stock threshold: < ${                                        stockAlertFilterActive
-                                          ? lowStockWarningQueryThreshold
-                                          : effectiveLowStockThreshold
-                                      })`
-                                  )}
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Selling Price</strong>
-                                  </td>
-                                  <td>₹{parseFloat(item.sellingPrice).toFixed(2)}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Buying Price</strong>
-                                  </td>
-                                  <td>₹{parseFloat(item.buyingPrice || 0).toFixed(2)}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Unit</strong>
-                                  </td>
-                                  <td>{item.unit || "Nos"}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>GST Rate</strong>
-                                  </td>
-                                  <td>{item.gstRate}%</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>HSN Code</strong>
-                                  </td>
-                                  <td>{item.hsnCode || "-"}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Max Discount</strong>
-                                  </td>
-                                  <td>
-                                    {item.maxDiscountPercentage > 0
-                                      ? `${item.maxDiscountPercentage}%`
-                                      : "N/A"}
-                                  </td>
-                                </tr>
+                                {[
+                                  ["Name", item.name],
+                                  ["Category", item.category || "-"],
+                                  ["Subcategory", item.subcategory || "-"],
+                                  ["Quantity", `${item.quantity}${item.quantity <= (item.lowStockThreshold || 0) ? 
+                                    ` (${item.quantity <= 0 ? "Out of stock! Needs immediate restock." : `Item specific restock threshold: ${item.lowStockThreshold || 'Not Set'}`})` : 
+                                    item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? 
+                                    ` (Page display low stock threshold: < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold})` : ''}`],
+                                  ["Selling Price", `₹${parseFloat(item.sellingPrice).toFixed(2)}`],
+                                  ["Buying Price", `₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`],
+                                  ["Unit", item.unit || "Nos"],
+                                  ["GST Rate", `${item.gstRate}%`],
+                                  ["HSN Code", item.hsnCode || "-"],
+                                  ["Max Discount", item.maxDiscountPercentage > 0 ? `${item.maxDiscountPercentage}%` : "N/A"],
+                                ].map(([label, value], idx) => (
+                                  <tr key={idx}>
+                                    <td><strong>{label}</strong></td>
+                                    <td>{value}</td>
+                                  </tr>
+                                ))}
                               </tbody>
                             </table>
 
@@ -1233,33 +884,21 @@ title={
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {purchaseHistory[item._id].map(
-                                    (purchase, idx) => {
-                                      return (
-                                        <tr key={purchase._id || idx}>
-                                          <td>
-                                            {new Date(
-                                              purchase.date
-                                            ).toLocaleDateString()}
-                                          </td>
-                                          <td>{purchase.companyName}</td>
-                                          <td>
-                                            {purchase.createdByName || "N/A"}
-                                          </td>
-                                          <td>{purchase.invoiceNumber}</td>
-                                          <td>{purchase.quantity}</td>
-                                          <td>₹{purchase.price.toFixed(2)}</td>
-                                        </tr>
-                                      );
-                                    }
-                                  )}
+                                  {purchaseHistory[item._id].map((purchase, idx) => (
+                                    <tr key={purchase._id || idx}>
+                                      <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                                      <td>{purchase.companyName}</td>
+                                      <td>{purchase.createdByName || "N/A"}</td>
+                                      <td>{purchase.invoiceNumber}</td>
+                                      <td>{purchase.quantity}</td>
+                                      <td>₹{purchase.price.toFixed(2)}</td>
+                                    </tr>
+                                  ))}
                                 </tbody>
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error
-                                  ? `Error loading history: ${error}`
-                                  : "No purchase history found"}
+                                {error ? `Error loading history: ${error}` : "No purchase history found"}
                               </div>
                             )}
                           </div>
@@ -1277,6 +916,7 @@ title={
               )}
             </tbody>
           </table>
+          
           {itemsToDisplay.length > 0 && (
             <Pagination
               currentPage={currentPage}
@@ -1291,456 +931,60 @@ title={
           )}
         </div>
 
+        {/* Modals */}
         {showModal && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Add New Item</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: "",
-                      quantity: "",
-                      sellingPrice: "", // Changed
-                      buyingPrice: "",  // Added
-                      gstRate: "0",
-                      hsnCode: "",
-                      unit: "Nos",
-                      category: "",
-                      subcategory: "General",
-                      maxDiscountPercentage: "",
-                      lowStockThreshold: "5",
-                    });
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Name*</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="Name"
-                        name="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        placeholder="Quantity"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={(e) =>
-                          setFormData({ ...formData, quantity: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Selling Price*</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Selling Price"
-                        name="sellingPrice"
-                        value={formData.sellingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, sellingPrice: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Buying Price</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Buying Price"
-                        name="buyingPrice"
-                        value={formData.buyingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, buyingPrice: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>GST Rate (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="GST Rate"
-                        name="gstRate"
-                        value={formData.gstRate}
-                        onChange={(e) =>
-                          setFormData({ ...formData, gstRate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>HSN Code</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="HSN Code"
-                        name="hsnCode"
-                        value={formData.hsnCode}
-                        onChange={(e) =>
-                          setFormData({ ...formData, hsnCode: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Unit</label>
-                      <select
-                        className="form-control mb-2"
-                        name="unit"
-                        value={formData.unit}
-                        onChange={(e) =>
-                          setFormData({ ...formData, unit: e.target.value })
-                        }
-                      >
-                        <option value="Nos">Nos</option>
-                        <option value="Mtr">Meter</option>
-                        <option value="PKT">Packet</option>
-                        <option value="Pair">Pair</option>
-                        <option value="Set">Set</option>
-                        <option value="Bottle">Bottle</option>
-                        <option value="KG">Kilogram</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Category</label>
-                      <select
-                        className="form-control mb-2"
-                        name="category"
-                        value={formData.category}
-                        onChange={(e) =>
-                          setFormData({ ...formData, category: e.target.value })
-                        }
-                      >
-                        <option value="">Select Category</option>
-                        {Array.isArray(categories) &&
-                          categories.map((cat) => (
-                            <option key={cat.category} value={cat.category}>
-                              {cat.category}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Subcategory</label>
-                      <select
-                        className="form-control mb-2"
-                        name="subcategory"
-                        value={formData.subcategory}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            subcategory: e.target.value,
-                          })
-                        }
-                        disabled={!formData.category}
-                      >
-                        <option value="General">General</option>
-                        {formData.category &&
-                          Array.isArray(categories) &&
-                          categories
-                            .find((c) => c.category === formData.category)
-                            ?.subcategories.map((subcat) => (
-                              <option key={subcat} value={subcat}>
-                                {subcat}
-                              </option>
-                            ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="maxDiscountPercentageModalItemForm">
-                        Max Discount (%)
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        id="maxDiscountPercentageModalItemForm"
-                        placeholder="Max Discount % (0-100)"
-                        name="maxDiscountPercentage"
-                        value={formData.maxDiscountPercentage}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maxDiscountPercentage: e.target.value,
-                          })
-                        }
-                        min="0"
-                        max="100"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="lowStockThresholdModalItemForm">Low Stock Threshold</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        id="lowStockThresholdModalItemForm"
-                        placeholder="Default: 5"
-                        name="lowStockThreshold"
-                        value={formData.lowStockThreshold}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lowStockThreshold: e.target.value })
-                        }
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: "",
-                      quantity: "",
-                      sellingPrice: "", // Changed
-                      buyingPrice: "",  // Added
-                      gstRate: "0",
-                      hsnCode: "",
-                      unit: "Nos",
-                      category: "",
-                      subcategory: "General",
-                      maxDiscountPercentage: "",
-                      lowStockThreshold: "5",
-                    });
-                    setError(null);
-                  }}
-                  className="btn btn-secondary"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddItem}
-                  className="btn btn-success"
-                  disabled={
-                    !formData.name ||
-                    !formData.sellingPrice || // Changed from price
-                    !formData.category ||
-                    isSubmitting
-                  }
-                >
-                  {isSubmitting ? "Adding..." : "Add New Item"}
-                </button>
-              </div>
-            </div>
-          </div>
+          <Modal
+            title="Add New Item"
+            onClose={() => {
+              setShowModal(false);
+              setFormData(initialFormData);
+            }}
+            onSubmit={handleAddItem}
+            submitText={isSubmitting ? "Adding..." : "Add New Item"}
+            submitDisabled={
+              !formData.name || !formData.sellingPrice || !formData.category || isSubmitting
+            }
+          >
+            <ItemForm 
+              formData={formData} 
+              setFormData={setFormData} 
+              categories={categories} 
+            />
+          </Modal>
         )}
 
-        {/* View Item Modal */}
         {showViewItemModal && editingItem && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">View Item: {editingItem.name}</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowViewItemModal(false);
-                    setEditingItem(null);
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                {error && <div className="alert alert-danger">{error}</div>}
-                <div className="expanded-container">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6>Item Details</h6>
-                    {editingItem.image && (
-                      <img
-                        src={editingItem.image}
-                        alt={editingItem.name}
-                        className="image-preview"
-                      />
-                    )}
-                  </div>
-                  <table className="table table-sm table-bordered item-details-table">
-                    <tbody>
-                      <tr>
-                        <td>
-                          <strong>Name</strong>
-                        </td>
-                        <td>{editingItem.name}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Category</strong>
-                        </td>
-                        <td>{editingItem.category || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Subcategory</strong>
-                        </td>
-                        <td>{editingItem.subcategory || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Quantity</strong>
-                        </td>
-                                                <td>
-                          {editingItem.quantity}
-                          {(editingItem.quantity <= 0 || editingItem.needsRestock) ? (
-                            <span className="ms-2 badge bg-danger">
-                              {editingItem.quantity <= 0 ? "Out of Stock!" : "Needs Restock"}
-                            </span>
-                          ) : (
-                            editingItem.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) && (
-                              <span className="ms-2 badge bg-warning text-dark">
-                                Low Stock
-                              </span>
-                            )
-                          )}
-                          <small className="d-block text-muted mt-1">
-                            (Item Threshold: {editingItem.lowStockThreshold || 'N/A'}, Page Display Threshold: {effectiveLowStockThreshold})
-                          </small>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Selling Price</strong>
-                        </td>
-                        <td>₹{parseFloat(editingItem.sellingPrice).toFixed(2)}</td>
-                      </tr>
-                       <tr>
-                        <td>
-                          <strong>Buying Price</strong>
-                        </td>
-                        <td>₹{parseFloat(editingItem.buyingPrice || 0).toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Unit</strong>
-                        </td>
-                        <td>{editingItem.unit || "Nos"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>GST Rate</strong>
-                        </td>
-                        <td>{editingItem.gstRate}%</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>HSN Code</strong>
-                        </td>
-                        <td>{editingItem.hsnCode || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Max Discount</strong>
-                        </td>
-                        <td>
-                          {editingItem.maxDiscountPercentage > 0
-                            ? `${editingItem.maxDiscountPercentage}%`
-                            : "N/A"}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
-                    <h6>Purchase History</h6>
-                  </div>
-                  {purchaseHistoryLoading[editingItem._id] ? (
-                    <p>Loading history...</p>
-                  ) : purchaseHistory[editingItem._id]?.length > 0 ? (
-                    <table className="table table-sm table-striped table-bordered">
-                      <thead className="table-secondary">
-                        <tr>
-                          <th>Date</th>
-                          <th>Supplier</th>
-                          <th>Added By</th>
-                          <th>Invoice No</th>
-                          <th>Qty</th>
-                          <th>Price (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {purchaseHistory[editingItem._id].map(
-                          (purchase, idx) => (
-                            <tr key={purchase._id || idx}>
-                              <td>
-                                {new Date(purchase.date).toLocaleDateString()}
-                              </td>
-                              <td>{purchase.companyName}</td>
-                              <td>{purchase.createdByName || "N/A"}</td>
-                              <td>{purchase.invoiceNumber}</td>
-                              <td>{purchase.quantity}</td>
-                              <td>₹{purchase.price.toFixed(2)}</td>
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="alert alert-info">
-                      No purchase history found.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  onClick={() => {
-                    setShowViewItemModal(false);
-                    setEditingItem(null);
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+          <Modal
+            title={`View Item: ${editingItem.name}`}
+            onClose={() => {
+              setShowViewItemModal(false);
+              setEditingItem(null);
+            }}
+            submitText="Close"
+            submitOnly
+          >
+            <ItemViewDetails 
+              item={editingItem} 
+              purchaseHistory={purchaseHistory} 
+              purchaseHistoryLoading={purchaseHistoryLoading}
+              error={error}
+              stockAlertFilterActive={stockAlertFilterActive}
+              lowStockWarningQueryThreshold={lowStockWarningQueryThreshold}
+              effectiveLowStockThreshold={effectiveLowStockThreshold}
+            />
+          </Modal>
         )}
 
-        {/* Edit Item Modal */}
         {showEditItemModal && editingItem && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Item: {editingItem.name}</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowEditItemModal(false);
-                    setEditingItem(null);
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
+          <Modal
+            title={`Edit Item: ${editingItem.name}`}
+            onClose={() => {
+              setShowEditItemModal(false); // Close the modal
+              setEditingItem(null); // Clear the editing item state
+              setError(null); // Clear any previous errors
+            }}
+            // The content below this line becomes the modal body
+          >
                 {error && <div className="alert alert-danger">{error}</div>}
                 <div className="row">
                   <div className="col-md-6">
@@ -1918,34 +1162,7 @@ title={
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  onClick={() => {
-                    setShowEditItemModal(false);
-                    setEditingItem(null);
-                    setError(null);
-                  }}
-                  className="btn btn-secondary"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEditedItem}
-                  className="btn btn-success"
-                  disabled={
-                    !formData.name ||
-                    !formData.sellingPrice || // Changed from price
-                    !formData.category ||
-                    isSubmitting
-                  }
-                >
-                  {isSubmitting ? "Updating..." : "Update Item"}
-                </button>
-              </div>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {showPurchaseModal && (
