@@ -462,20 +462,26 @@ exports.uploadUserAvatar = asyncHandler(async (req, res) => {
  * @access  Private (Authenticated users)
  */
 exports.getTransferCandidates = asyncHandler(async (req, res) => {
-  const initiator = req.user; // User making the request
-  const logContext = { initiatorId: initiator.id, initiatorEmail: initiator.email, action: "FETCH_TRANSFER_CANDIDATES" };
+const requestingUser = req.user; // User making the request
+  const logContext = { initiatorId: requestingUser.id, initiatorEmail: requestingUser.email, action: "FETCH_TRANSFER_CANDIDATES" };
+
+  if (!requestingUser || !requestingUser.id) {
+    // This check is more for robustness; auth middleware should handle unauthenticated requests.
+    logger.error("user-transfer-candidates", "Authentication error: User or User ID not found in request.", null, { path: req.path, ip: req.ip });
+    return res.status(401).json({ message: "Authentication required or user session invalid." });
+  }
 
   try {
-    // Authorization:
-    // For now, allow any authenticated user. Add role checks if needed.
+    const users = await User.find({
+      _id: { $ne: requestingUser.id }, // Exclude the current user
+      role: { $nin: ["client"] },      // Exclude users with 'client' role (adjust as needed)
+      isActive: true                   // Only active users
+    }).select('firstname lastname email role _id department').lean(); // .lean() for plain JS objects
 
-    const users = await User.find({ isActive: true }) // Optionally filter by active users
-      .select('firstname lastname email role _id department'); // Select only necessary fields
-
-    logger.info('user-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${initiator.email}.`, initiator, logContext);
-    res.status(200).json(users); // Send back the array of users directly
+    // User.find() returns an empty array if no documents match, which is a valid response.
+    logger.info('user-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`, requestingUser, logContext);    res.status(200).json(users); // Send back the array of users directly
   } catch (error) {
-    logger.error('user-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${initiator.email}.`, error, initiator, logContext);
+logger.error('user-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`, error, requestingUser, { ...logContext, errorMessage: error.message, stack: error.stack });
     res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
   }
 });

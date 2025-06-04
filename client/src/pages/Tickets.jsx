@@ -852,7 +852,7 @@ export default function Dashboard() {
 
       const responseData = await apiClient(`/tickets/${editTicket._id}`, { // Use apiClient
         method: 'PUT',
-        updateData,
+        body: updateData, // Ensure updateData is passed as the body
       });
       if (responseData) { // apiClient returns data on success
         fetchTickets();
