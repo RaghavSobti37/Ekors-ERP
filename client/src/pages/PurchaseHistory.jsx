@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar.jsx"; 
 import Pagination from '../components/Pagination'; // Component for table pagination
+import Footer from "../components/Footer";
 import apiClient from "../utils/apiClient"; // Utility for making API requests
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
 import { handleApiError } from '../utils/helpers'; // Utility for consistent API error handling
@@ -289,6 +290,7 @@ export default function PurchaseHistory() {
           </>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

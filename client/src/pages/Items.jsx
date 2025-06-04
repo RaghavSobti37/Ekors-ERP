@@ -1095,7 +1095,8 @@ title={
                             disabled={anyLoading}
                             title="Edit Item"
                           >
-                            <Eye size={16} />{" "}
+                            <i className="bi bi-pencil-square"></i>
+                            {/* <Pencil size={16} />{" "} */}
                             {/* Placeholder for PencilSquare if not imported */}
                           </button>
                         </div>
