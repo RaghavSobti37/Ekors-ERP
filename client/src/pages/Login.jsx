@@ -59,8 +59,8 @@ export default function Login() {
                 filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0,0,0,0.2))' 
               }} 
             />
-            <h1 className="mb-3 display-5 fw-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Welcome to Our Platform</h1>
-            <p className="lead mb-4" style={{ fontSize: '1.1rem' }}>
+            <h1 className="mb-3 display-5 fw-bold" style={{ textShadow: '0 2px 4px #7B1E1E' }}>E-KORS Platform</h1>
+            <p className="lead mb-4" style={{ fontSize: '1.1rem', color: 'white' }}>
               Streamline your workflow, manage your data efficiently, and collaborate
               seamlessly with our comprehensive suite of tools. Log in to unlock
               your productivity.
