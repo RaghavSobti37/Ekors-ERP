@@ -1,170 +1,73 @@
-const fs = require('fs');
-const path = require('path');
+const winston = require('winston');
+const { combine, timestamp, printf, errors, json, colorize } = winston.format;
 
-// Variables to hold the current log stream and its date marker
-let currentLogStream = null;
-let currentLogFileDateMarker = null; // Stores YYYY-MM-DD of the current stream's file
+// Determine log level based on environment
+const logLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
 
-// Helper function to get date parts and construct log paths
-const getDailyLogInfo = () => {
-  const now = new Date();
-  const year = now.getFullYear().toString();
-  const month = (now.getMonth() + 1).toString().padStart(2, '0'); // MM format
-  const day = now.getDate().toString().padStart(2, '0'); // DD format
-  const monthName = now.toLocaleString('default', { month: 'long' }); // Full month name, e.g., "December"
+// Custom format for development (human-readable)
+const devFormat = printf(({ level, message, timestamp: ts, logType, user, details, stack }) => {
+  const userString = user ? `[User: ${user.name || user.email || user.id || 'N/A'}]` : '[User: System]';
+  const detailsString = details && Object.keys(details).length > 0 ? ` Details: ${JSON.stringify(details)}` : '';
+  const stackString = stack ? `\nStack: ${stack}` : '';
+  return `${ts} [${level}] [${logType || 'general'}] ${userString} ${message}${detailsString}${stackString}`;
+});
 
-  const dateStringForFile = `${year}-${month}-${day}`; // YYYY-MM-DD for filename
-  // Directory structure: logs/YYYY/MonthName/
-  const logDirectoryForToday = path.join(__dirname, '..', 'logs', year, monthName);
-  const logFilePath = path.join(logDirectoryForToday, `${dateStringForFile}.log`);
+// Configure transports
+const transports = [];
 
-  return {
-    logDirectoryForToday,
-    logFilePath,
-    currentDateString: dateStringForFile // Used to detect when the day changes
-  };
-};
+if (process.env.NODE_ENV === 'production') {
+  // In production (Vercel), log JSON to console. Vercel will pick this up.
+  transports.push(new winston.transports.Console({
+    format: combine(
+      timestamp(),
+      errors({ stack: true }), // Log stack trace for errors
+      json() // Log in JSON format
+    ),
+  }));
+} else {
+  // In development, log pretty, colored output to console.
+  transports.push(new winston.transports.Console({
+    format: combine(
+      colorize(),
+      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      errors({ stack: true }),
+      devFormat
+    ),
+  }));
+}
 
-// Function to ensure the daily log stream is active and correct
-const ensureDailyLogStream = () => {
-  const { logDirectoryForToday, logFilePath, currentDateString } = getDailyLogInfo();
+const winstonLogger = winston.createLogger({
+  level: logLevel,
+  levels: winston.config.npm.levels,
+  transports: transports,
+  exitOnError: false,
+});
 
-  if (currentDateString !== currentLogFileDateMarker || !currentLogStream || !currentLogStream.writable) {
-    if (currentLogStream) {
-      currentLogStream.end(); // Close the old stream if it exists
-    }
-    fs.mkdirSync(logDirectoryForToday, { recursive: true }); // Ensure directory exists
-    currentLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
-    currentLogStream.on('error', (err) => {
-      console.error(`[LOGGER_CRITICAL_ERROR] Failed to create or write to daily log file ${logFilePath}. Error: ${err.message}. Subsequent logs may be lost or only go to console.`);
-      currentLogStream = null; // Mark stream as unusable on error
-    });
-    currentLogFileDateMarker = currentDateString;
-  }
-  return currentLogStream;
-};
-
+// Main log function that adapts to Winston
 const log = (level, type, message, user = null, details = {}) => {
-  const isoTimestamp = new Date().toISOString();
-  // 'type' is now for categorization within the log entry, not for file selection.
-  // Default to 'general' if type is not provided.
   const logType = type || 'general';
-  const stream = ensureDailyLogStream(); // Get the single, daily-rotated stream
 
-  // Prepare user details for logEntry, prioritizing email
   const userPayload = {};
   if (user && typeof user === 'object') {
-    if (user.email) {
-      userPayload.email = user.email;
-    }
-    if (user.firstname && user.lastname) {
-      userPayload.name = `${user.firstname} ${user.lastname}`;
-    }
-    // Fallback to user.id if no email or name is present
-    if (Object.keys(userPayload).length === 0 && user.id) {
-      userPayload.id = user.id;
-    }
+    if (user.email) userPayload.email = user.email;
+    if (user.firstname && user.lastname) userPayload.name = `${user.firstname} ${user.lastname}`;
+    if (Object.keys(userPayload).length === 0 && (user.id || user._id)) userPayload.id = user.id || user._id;
   }
 
-  const logEntry = {
-    timestamp: isoTimestamp,
-    level: level.toUpperCase(),
-    logType, // The actual type being logged to (e.g., 'general' if original 'type' was invalid)
+  const meta = {
+    logType,
     message,
-    ...(Object.keys(userPayload).length > 0 && { user: userPayload }),
-    ...details,
+    user: Object.keys(userPayload).length > 0 ? userPayload : undefined,
+    details, // This will include errorMessage and stack for errors from the logger.error wrapper
   };
 
-  // --- New File Log Formatting ---
-  const formatDateForFile = (isoDateString) => {
-    const d = new Date(isoDateString);
-    // YYYY-MM-DD HH:MM:SS format
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-  };
-
-  const fileTimestamp = formatDateForFile(logEntry.timestamp);
-  const userIdentifier = logEntry.user ? (logEntry.user.name || 'UnknownUser') : 'System';
-
-  let fileLogLine = `[${fileTimestamp}] [${userIdentifier}] [${logEntry.level}] [${logEntry.logType}] - ${logEntry.message}`;
-
-  // Append error-specific details for ERROR level logs
-  if (logEntry.level === 'ERROR') {
-    if (logEntry.errorMessage && logEntry.errorMessage !== logEntry.message) {
-      fileLogLine += ` | Error: ${logEntry.errorMessage}`;
-    }
-    if (logEntry.stack) {
-      const indentedStack = String(logEntry.stack).split('\n').map(line => `  ${line}`).join('\n'); // Indent stack for readability
-      fileLogLine += `\n  Stack Trace:\n${indentedStack}`;
-    }
+  // If an actual Error object is in details.error (e.g. from logger.error),
+  // Winston's `errors({ stack: true })` will handle it.
+  if (details.error instanceof Error) {
+    meta.error = details.error; // Pass the actual error object for Winston to process
   }
 
-  // Append any other details that were part of the logEntry (excluding already used fields)
-  const otherDetailsForFile = {};
-  const standardKeys = ['timestamp', 'level', 'logType', 'message', 'user', 'errorMessage', 'stack'];
-  for (const key in logEntry) {
-    if (Object.prototype.hasOwnProperty.call(logEntry, key) && !standardKeys.includes(key)) {
-      otherDetailsForFile[key] = logEntry[key];
-    }
-  }
-  if (Object.keys(otherDetailsForFile).length > 0) {
-    fileLogLine += ` | Details: ${JSON.stringify(otherDetailsForFile)}`;
-  }
-
-  const logStringToFile = fileLogLine + '\n';
-  // --- End New File Log Formatting ---
-
-  // Console logging (more human-readable)
-  const consoleTimestamp = new Date().toLocaleString();
-  let baseConsoleOutput = `[${consoleTimestamp}] [${level.toUpperCase()}] [${logType}]`;
-
-  if (user && typeof user === 'object' && user.firstname && user.lastname) {
-    baseConsoleOutput += ` [User: ${user.firstname} ${user.lastname}]`;
-  }
-  baseConsoleOutput += ` - ${message}`;
-
-  // Use console.error for 'error' level, console.warn for 'warn', etc.
-  const consoleLogFunction = console[level.toLowerCase()] || console.log;
-
-  // For errors, the primary message is the custom one.
-  // details.errorMessage comes from the error object itself. Append if different and useful.
-  if (level.toLowerCase() === 'error' && details.errorMessage && details.errorMessage !== message) {
-    baseConsoleOutput += ` | Caused by: ${details.errorMessage}`;
-  }
-
-  consoleLogFunction(baseConsoleOutput); // Log the main, formatted line
-
-  // If it's an error and a stack trace is available in details, print it separately.
-  // console.error() (or .log() etc.) handles stack trace string formatting well.
-  if (level.toLowerCase() === 'error' && details.stack) {
-    consoleLogFunction(details.stack);
-  }
-
-  // Log any remaining original details (details passed to logger.error, not the error's own message/stack)
-  // or general details for other log levels.
-  const additionalDetails = { ...details };
-  if (level.toLowerCase() === 'error') {
-    delete additionalDetails.errorMessage; // Already handled or part of the main message
-    delete additionalDetails.stack;     // Printed separately
-  }
-
-  if (Object.keys(additionalDetails).length > 0) {
-    consoleLogFunction('Additional Details:', additionalDetails); // Logs the object for inspection
-  }
-
-  // File logging
-  if (stream && stream.writable) { // Check if stream is writable and exists
-    stream.write(logStringToFile, (err) => {
-      if (err) {
-        console.error(`[LOGGER_WRITE_ERROR] Failed to write to daily log stream. Message: "${message}". Error: ${err.message}.`);
-        // Log the original entry to console as a fallback if file write fails
-        console.error('[LOGGER_FALLBACK_CONSOLE]', logEntry);
-      }
-    });
-  } else {
-    console.error(`[LOGGER_ERROR] Daily log stream is not available or not writable. Log message not written to file: "${message}".`);
-    // Log the original entry to console as a fallback
-    console.error('[LOGGER_FALLBACK_CONSOLE]', logEntry);
-  }
+  winstonLogger.log(level, message, meta);
 };
 
 const logger = {
@@ -192,9 +95,12 @@ const logger = {
         ...(stackFromErrorObj && { stack: stackFromErrorObj }),
         ...details
     };
+    // Pass the original error object to Winston if it exists, for better stack trace handling
+    if (error instanceof Error) combinedDetails.error = error;
+
     log('error', type, message, user, combinedDetails);
   },
-  debug: (type, message, user = null, details = {}) => process.env.NODE_ENV === 'development' ? log('debug', type, message, user, details) : null,
+  debug: (type, message, user = null, details = {}) => log('debug', type, message, user, details), // Winston level handles if it's logged
 };
 
 module.exports = logger;
