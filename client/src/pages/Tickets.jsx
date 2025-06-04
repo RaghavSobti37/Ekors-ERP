@@ -28,7 +28,7 @@ import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
 import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import ItemSearchComponent from "../components/ItemSearch.jsx"; 
+import ItemSearchComponent from "../components/ItemSearch.jsx";
 import apiClient from "../utils/apiClient"; // Utility for making API requests
 import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
@@ -48,7 +48,8 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
       setError(null);
       const token = getAuthTokenUtil(authContext?.user); // Pass user from context
       if (!token) {
-        const noTokenMsg = "Authentication token not found for fetching users. Please ensure you are logged in.";
+        const noTokenMsg =
+          "Authentication token not found for fetching users. Please ensure you are logged in.";
         setError(noTokenMsg);
         if (authContext?.user) {
           frontendLogger.error(
@@ -72,12 +73,15 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
       const data = await apiClient("/users/transfer-candidates"); // Use apiClient
       setUsers(data);
     } catch (err) {
-      let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
+      let specificMessage =
+        "An unexpected error occurred while trying to load users for search."; // Default generic message
       if (err.response) {
         // Check for 403 Forbidden specifically when fetching users
         if (err.response.status === 403) {
           // Provide a more informative message for 403 on user list fetching
-          specificMessage = err.response.data?.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
+          specificMessage =
+            err.response.data?.message ||
+            "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
         } else if (err.response.data && err.response.data.message) {
           // Use message from backend response if available and not a 403, or if 403 had a specific message
           specificMessage = err.response.data.message;
@@ -85,26 +89,35 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
           // Fallback to generic error message from the error object if no backend message
           specificMessage = `Failed to load users: ${err.message}`;
         }
-      } else if (err.message.includes("Authentication token not found")) { // Catch specific error if token was missing
+      } else if (err.message.includes("Authentication token not found")) {
+        // Catch specific error if token was missing
         specificMessage = err.message;
       } else if (err.message) {
         specificMessage = `Failed to load users: ${err.message}`; // Network error or other non-response error
       }
       setError(specificMessage); // Set the more specific message
-      
+
       if (authContext?.user) {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users",
           authContext.user,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
+          {
+            errorMessage: err.message,
+            specificMessageDisplayed: specificMessage,
+            stack: err.stack,
+          }
         );
       } else {
         frontendLogger.error(
           "userSearch",
           "Failed to fetch users (user context unavailable)",
           null,
-{ errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack }
+          {
+            errorMessage: err.message,
+            specificMessageDisplayed: specificMessage,
+            stack: err.stack,
+          }
         );
       }
     } finally {
@@ -203,7 +216,7 @@ export default function Dashboard() {
   const [transferTicket, setTransferTicket] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null); // For transfer modal
-  const [currentPage, setCurrentPage] = useState(1); 
+  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentDate, setPaymentDate] = useState(
@@ -213,7 +226,10 @@ export default function Dashboard() {
 
   // State for PDF Preview Modal (used in Payment Modal)
   const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
-  const [pdfPreviewConfig, setPdfPreviewConfig] = useState({ type: null, data: null });
+  const [pdfPreviewConfig, setPdfPreviewConfig] = useState({
+    type: null,
+    data: null,
+  });
   const [uploadingDocType, setUploadingDocType] = useState(null); // To track which doc type is being uploaded
   const [statusChangeComment, setStatusChangeComment] = useState("");
 
@@ -253,7 +269,6 @@ export default function Dashboard() {
       packingList: null,
       feedback: null,
       other: [], // 'other' is an array of subdocuments
-
     },
     dispatchDays: "7-10 working",
     validityDate: new Date(
@@ -288,15 +303,22 @@ export default function Dashboard() {
         toast.error("Authentication required to fetch tickets. Please log in.");
         throw new Error("No authentication token found");
       }
-      const data = await apiClient("/tickets", { params: { // Use apiClient
+      const data = await apiClient("/tickets", {
+        params: {
+          // Use apiClient
           populate:
-"currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+            "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
         },
       });
 
       setTickets(data);
     } catch (error) {
-      const errorMsg = handleApiError(error, "Failed to load tickets", auth.user, "ticketActivity");
+      const errorMsg = handleApiError(
+        error,
+        "Failed to load tickets",
+        auth.user,
+        "ticketActivity"
+      );
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -310,7 +332,8 @@ export default function Dashboard() {
           action: "FETCH_TICKETS_FAILURE",
         }
       );
-      if (error.status === 401) { // apiClient error structure
+      if (error.status === 401) {
+        // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/tickets" } });
       }
@@ -319,7 +342,8 @@ export default function Dashboard() {
     }
   }, [authUser, navigate, auth.user]); // Removed getAuthToken from dependencies as it's now a direct import
 
-  useEffect(() => { // Effect for authentication check and initial data fetch
+  useEffect(() => {
+    // Effect for authentication check and initial data fetch
     if (!authLoading && !authUser) {
       if (window.location.pathname !== "/login") {
         toast.info("Redirecting to login page.");
@@ -330,8 +354,7 @@ export default function Dashboard() {
     }
   }, [authUser, authLoading, navigate, fetchTickets]);
 
-  useEffect(() => {
-  }, [editTicket, ticketData.status, statusStages]);
+  useEffect(() => {}, [editTicket, ticketData.status, statusStages]);
   useEffect(() => {
     const activeDetailedTicket = showEditModal
       ? editTicket
@@ -340,31 +363,38 @@ export default function Dashboard() {
       : null;
 
     if (activeDetailedTicket) {
-const history = [];
+      const history = [];
 
       let firstAssignee = activeDetailedTicket.createdBy;
       if (
         activeDetailedTicket.transferHistory &&
-        activeDetailedTicket.transferHistory.length > 0) {
-        firstAssignee = activeDetailedTicket.transferHistory[0].from || activeDetailedTicket.createdBy;
+        activeDetailedTicket.transferHistory.length > 0
+      ) {
+        firstAssignee =
+          activeDetailedTicket.transferHistory[0].from ||
+          activeDetailedTicket.createdBy;
       } else if (activeDetailedTicket.currentAssignee) {
         firstAssignee = activeDetailedTicket.currentAssignee;
       }
 
       history.push({
-        name: firstAssignee ? `${firstAssignee.firstname} ${firstAssignee.lastname}` : "System/N/A",
+        name: firstAssignee
+          ? `${firstAssignee.firstname} ${firstAssignee.lastname}`
+          : "System/N/A",
         date: activeDetailedTicket.createdAt,
         note: "Ticket Created",
       });
 
       activeDetailedTicket.transferHistory?.forEach((transfer) => {
         history.push({
-          name: transfer.to ? `${transfer.to.firstname} ${transfer.to.lastname}` : "N/A",
+          name: transfer.to
+            ? `${transfer.to.firstname} ${transfer.to.lastname}`
+            : "N/A",
           date: transfer.transferredAt || new Date(),
           note: transfer.note || "N/A",
         });
       });
-setTransferHistoryDisplay(history);
+      setTransferHistoryDisplay(history);
     }
   }, [editTicket, selectedTicket, showEditModal, showPaymentModal]);
 
@@ -399,7 +429,9 @@ setTransferHistoryDisplay(history);
             "Authentication token not found for delete operation."
           );
         }
-        await apiClient(`/tickets/admin/${ticketToDelete._id}`, { method: 'DELETE' }); // Use apiClient
+        await apiClient(`/tickets/admin/${ticketToDelete._id}`, {
+          method: "DELETE",
+        }); // Use apiClient
 
         fetchTickets();
         setError(null);
@@ -411,7 +443,12 @@ setTransferHistoryDisplay(history);
           action: "DELETE_TICKET_SUCCESS",
         });
       } catch (error) {
-        const errorMsg = handleApiError(error, "Delete failed", auth.user, "ticketActivity");
+        const errorMsg = handleApiError(
+          error,
+          "Delete failed",
+          auth.user,
+          "ticketActivity"
+        );
         setError(errorMsg);
         toast.error(errorMsg);
         frontendLogger.error(
@@ -450,15 +487,20 @@ setTransferHistoryDisplay(history);
         toast.error("Authentication required to record payment.");
         throw new Error("No authentication token found");
       }
-      const responseData = await apiClient(`/tickets/${selectedTicket?._id}/payments`, { // Use apiClient
-        method: 'POST',
-        body: {
-          amount: paymentAmount,
-          date: paymentDate,
-          reference: paymentReference,
-        },
-      });
-      if (responseData) { // apiClient returns data on success
+      const responseData = await apiClient(
+        `/tickets/${selectedTicket?._id}/payments`,
+        {
+          // Use apiClient
+          method: "POST",
+          body: {
+            amount: paymentAmount,
+            date: paymentDate,
+            reference: paymentReference,
+          },
+        }
+      );
+      if (responseData) {
+        // apiClient returns data on success
         await fetchTickets();
         setShowPaymentModal(false);
         const successMsg = "Payment recorded successfully!";
@@ -472,7 +514,12 @@ setTransferHistoryDisplay(history);
         setPaymentReference("");
       }
     } catch (error) {
-      const errorMsg = handleApiError(error, "Failed to record payment", auth.user, "paymentActivity");
+      const errorMsg = handleApiError(
+        error,
+        "Failed to record payment",
+        auth.user,
+        "paymentActivity"
+      );
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -680,7 +727,8 @@ setTransferHistoryDisplay(history);
     }
   };
 
-  const handleAddItemToTicket = (item) => { // New handler for adding item in edit modal
+  const handleAddItemToTicket = (item) => {
+    // New handler for adding item in edit modal
     const itemExists = ticketData.goods.some(
       (existingItem) => existingItem.description === item.name
     );
@@ -709,7 +757,7 @@ setTransferHistoryDisplay(history);
     setEditTicket(selectedTicketToEdit);
     const documentsFromServer = selectedTicketToEdit.documents || {};
     const ensureObjectOrNull = (docField) => {
-      if (docField && typeof docField === 'object' && docField.path) {
+      if (docField && typeof docField === "object" && docField.path) {
         return docField; // It's a valid-like document object
       }
       return null; // Otherwise, treat as not present or invalid
@@ -777,7 +825,9 @@ setTransferHistoryDisplay(history);
   };
 
   const handleDeleteItemFromTicket = (indexToDelete) => {
-    const updatedGoods = ticketData.goods.filter((_, index) => index !== indexToDelete);
+    const updatedGoods = ticketData.goods.filter(
+      (_, index) => index !== indexToDelete
+    );
     const renumberedGoods = updatedGoods.map((item, index) => ({
       ...item,
       srNo: index + 1,
@@ -786,9 +836,6 @@ setTransferHistoryDisplay(history);
     updateTotals(renumberedGoods); // This will update ticketData with new goods and totals
     // No need to call setTicketData directly for goods here, updateTotals handles it.
   };
-
-
-
 
   const handleTransfer = (ticketToTransfer) => {
     setTransferTicket(ticketToTransfer);
@@ -804,12 +851,11 @@ setTransferHistoryDisplay(history);
 
   const handleStatusChange = (status) => {
     setTicketData({ ...ticketData, status });
-        // Reset comment when status changes, forcing user to enter a new one
+    // Reset comment when status changes, forcing user to enter a new one
     // if the new status is different from the original status in editTicket
     if (editTicket && status !== editTicket.status) {
       setStatusChangeComment("");
     }
-
   };
 
   const handleUpdateTicket = async () => {
@@ -828,12 +874,15 @@ setTransferHistoryDisplay(history);
       }
 
       // Check for mandatory status change comment if status has changed
-      if (editTicket && ticketData.status !== editTicket.status && !statusChangeComment.trim()) {
+      if (
+        editTicket &&
+        ticketData.status !== editTicket.status &&
+        !statusChangeComment.trim()
+      ) {
         toast.warn("Please provide a comment for the status change.");
         setIsLoading(false);
         return;
       }
-
 
       const token = getAuthTokenUtil(auth.user); // Use utility
       if (!token) {
@@ -844,7 +893,10 @@ setTransferHistoryDisplay(history);
       const updateData = {
         ...ticketData,
         _id: undefined, // Ensure these are not sent
-                statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined, 
+        statusChangeComment:
+          ticketData.status !== editTicket?.status
+            ? statusChangeComment
+            : undefined,
         __v: undefined,
         createdAt: undefined,
         updatedAt: undefined,
@@ -870,11 +922,13 @@ setTransferHistoryDisplay(history);
         })),
       };
 
-      const responseData = await apiClient(`/tickets/${editTicket._id}`, { // Use apiClient
-        method: 'PUT',
+      const responseData = await apiClient(`/tickets/${editTicket._id}`, {
+        // Use apiClient
+        method: "PUT",
         updateData,
       });
-      if (responseData) { // apiClient returns data on success
+      if (responseData) {
+        // apiClient returns data on success
         fetchTickets();
         setShowEditModal(false);
         setError(null);
@@ -884,12 +938,19 @@ setTransferHistoryDisplay(history);
           ticketId: editTicket._id,
           ticketNumber: editTicket.ticketNumber,
           action: "UPDATE_TICKET_SUCCESS",
-          statusChangeCommentProvided: ticketData.status !== editTicket?.status ? !!statusChangeComment : undefined,
-
+          statusChangeCommentProvided:
+            ticketData.status !== editTicket?.status
+              ? !!statusChangeComment
+              : undefined,
         });
       }
     } catch (error) {
-      const errorMsg = handleApiError(error, "Failed to update ticket", auth.user, "ticketActivity");
+      const errorMsg = handleApiError(
+        error,
+        "Failed to update ticket",
+        auth.user,
+        "ticketActivity"
+      );
       setError(errorMsg);
       toast.error(errorMsg);
       frontendLogger.error(
@@ -902,7 +963,10 @@ setTransferHistoryDisplay(history);
           errorMessage: error.data?.message || error.message, // apiClient error structure
           stack: error.stack,
           submittedData: ticketData, // Be cautious with logging full data
-          statusChangeCommentAttempted: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
+          statusChangeCommentAttempted:
+            ticketData.status !== editTicket?.status
+              ? statusChangeComment
+              : undefined,
           action: "UPDATE_TICKET_FAILURE",
         }
       );
@@ -926,10 +990,14 @@ setTransferHistoryDisplay(history);
         toast.error("Authentication required to transfer ticket.");
         throw new Error("Authentication token not found");
       }
-      const responseData = await apiClient(`/tickets/${transferTicket._id}/transfer`, { // Use apiClient
-        method: 'POST',
-        body: { userId: userToTransferTo._id, note },
-      });
+      const responseData = await apiClient(
+        `/tickets/${transferTicket._id}/transfer`,
+        {
+          // Use apiClient
+          method: "POST",
+          body: { userId: userToTransferTo._id, note },
+        }
+      );
 
       if (responseData && responseData.ticket) {
         const updatedTicketFromServer = responseData.ticket;
@@ -950,8 +1018,10 @@ setTransferHistoryDisplay(history);
         });
       }
     } catch (error) {
-      let detailedErrorMessage = error.data?.details || error.data?.message || error.message; // apiClient error structure
-      if (!detailedErrorMessage) { // Fallback if error.data is not as expected
+      let detailedErrorMessage =
+        error.data?.details || error.data?.message || error.message; // apiClient error structure
+      if (!detailedErrorMessage) {
+        // Fallback if error.data is not as expected
         detailedErrorMessage = "An unexpected error occurred during transfer.";
       }
       const errorMsg = `Failed to transfer ticket: ${detailedErrorMessage}`;
@@ -964,7 +1034,7 @@ setTransferHistoryDisplay(history);
         {
           ticketId: transferTicket?._id,
           attemptedTransferTo: userToTransferTo?._id,
-          errorMessage: detailedErrorMessage, 
+          errorMessage: detailedErrorMessage,
           stack: error.stack,
           action: "TRANSFER_TICKET_FAILURE",
         }
@@ -977,8 +1047,11 @@ setTransferHistoryDisplay(history);
   const renderPdfPreview = (previewType, ticketForPdf) => {
     if (!previewType || !ticketForPdf) return null;
 
-    const currentTicketForPdf = { ...ticketForPdf, documents: ticketForPdf.documents || {} };
-
+    const currentTicketForPdf = {
+      ...ticketForPdf,
+      documents: ticketForPdf.documents || {},
+      client: ticketForPdf.client || { companyName: ticketForPdf.companyName }, // Ensure client object exists
+    };
     const getAddressString = (addressObj) => {
       if (!addressObj) return "N/A";
       if (Array.isArray(addressObj)) {
@@ -993,87 +1066,113 @@ setTransferHistoryDisplay(history);
       return parts.join(", ").replace(/ ,/g, ",");
     };
 
-    const pdfData = currentTicketForPdf
-      ? {
-          // Common fields
-          ...currentTicketForPdf,
-          // Fields specific to QuotationPDF
-          referenceNumber: currentTicketForPdf.quotationNumber,
-          date: currentTicketForPdf.createdAt,
-          client: {
-            companyName: currentTicketForPdf.companyName,
-            siteLocation: getAddressString(
-              currentTicketForPdf.shippingAddress || currentTicketForPdf.billingAddress
-            ),
-          },
-          goods: currentTicketForPdf.goods.map((item) => ({
-            ...item,
-            unit: item.unit || "Nos",
-          })),
-          dispatchDays: currentTicketForPdf.dispatchDays || "7-10 working",
-          validityDate: currentTicketForPdf.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-        }
-      : null;
+    let documentComponent;
+    let downloadFileName;
+    let pdfDocumentProps;
 
-    if (!pdfData) return <Alert variant="warning">Could not load data for PDF preview.</Alert>;
+    if (previewType === "quotation") {
+      const quotationDataForPdf = {
+        date: currentTicketForPdf.createdAt, // Or a more specific quotation date if available from ticket
+        referenceNumber: currentTicketForPdf.quotationNumber,
+        client: {
+          companyName: currentTicketForPdf.companyName,
+          siteLocation: getAddressString(
+            currentTicketForPdf.shippingAddress ||
+              currentTicketForPdf.billingAddress
+          ),
+          // Spread other client fields if QuotationPDF might use them
+          ...(currentTicketForPdf.client || {}),
+        },
+        goods: currentTicketForPdf.goods.map((item) => ({
+          ...item,
+          unit: item.unit || "Nos",
+        })),
+        totalAmount: currentTicketForPdf.totalAmount,
+        gstAmount: currentTicketForPdf.gstAmount,
+        grandTotal: currentTicketForPdf.grandTotal,
+        dispatchDays: currentTicketForPdf.dispatchDays || "7-10 working",
+        validityDate:
+          currentTicketForPdf.validityDate ||
+          new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+      };
+      documentComponent = <QuotationPDF quotation={quotationDataForPdf} />;
+      pdfDocumentProps = { quotation: quotationDataForPdf };
+      downloadFileName = `quotation_${
+        quotationDataForPdf.referenceNumber || currentTicketForPdf.ticketNumber
+      }.pdf`;
+    } else if (previewType === "pi") {
+      // For PIPDF, pass the ticket data, ensuring client object is robust
+      const piDataForPdf = {
+        ...currentTicketForPdf,
+        client: currentTicketForPdf.client || {
+          companyName: currentTicketForPdf.companyName,
+        },
+      };
+      documentComponent = <PIPDF ticket={piDataForPdf} />;
+      pdfDocumentProps = { ticket: piDataForPdf };
+      downloadFileName = `pi_${
+        currentTicketForPdf.quotationNumber || currentTicketForPdf.ticketNumber
+      }.pdf`;
+    } else {
+      return (
+        <Alert variant="warning">Unsupported document type for preview.</Alert>
+      );
+    }
+
+    if (!documentComponent)
+      return (
+        <Alert variant="warning">Could not load data for PDF preview.</Alert>
+      );
 
     return (
-      <div className="mt-4 p-3 border rounded bg-light">
-        <h5 className="mb-3">
-          <i className={`bi ${previewType === 'quotation' ? 'bi-file-earmark-text' : 'bi-file-earmark-medical'}`}></i>{" "}
-          {previewType.toUpperCase()} Preview
+      <div
+        className="mt-0 p-0 border-0 bg-light"
+        style={{ height: "80vh", display: "flex", flexDirection: "column" }}
+      >
+        <h5 className="mb-3 text-center pt-3">
+          
         </h5>
-        {previewType === "quotation" && (
-          <div className="document-preview-container">
-            <PDFViewer width="100%" height="500px" className="mb-3">
-              <QuotationPDF quotation={pdfData} />
-            </PDFViewer>
-            <div className="d-flex justify-content-center gap-2 mt-3">
-              <PDFDownloadLink
-                document={<QuotationPDF quotation={pdfData} />}
-                fileName={`quotation_${pdfData.referenceNumber}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="primary" disabled={loading}>
-                    <i className="bi bi-download me-2"></i>
-                    {loading ? "Generating..." : `Download ${previewType.toUpperCase()}`}
-                  </Button>
-                )}
-              </PDFDownloadLink>
-              <Button variant="secondary" onClick={() => setShowPdfPreviewModal(false)}>
-                <i className="bi bi-x-circle me-2"></i>Close Preview
+        <div className="flex-grow-1 d-flex flex-column overflow-hidden px-3">
+          <PDFViewer width="100%" height="100%" className="mb-3 flex-grow-1">
+            {documentComponent}
+          </PDFViewer>
+        </div>
+        <div className="d-flex justify-content-center gap-2 mt-3 pb-3">
+          <PDFDownloadLink
+            document={
+              previewType === "quotation" ? (
+                <QuotationPDF {...pdfDocumentProps} />
+              ) : (
+                <PIPDF {...pdfDocumentProps} />
+              )
+            }
+            fileName={downloadFileName}
+          >
+            {({ loading: downloadLoading }) => (
+              <Button variant="primary" disabled={downloadLoading}>
+                <i className="bi bi-download me-2"></i>
+                {downloadLoading
+                  ? "Generating..."
+                  : `Download ${previewType.toUpperCase()}`}
               </Button>
-            </div>
-          </div>
-        )}
-        {previewType === "pi" && (
-          <div className="document-preview-container">
-            <PDFViewer width="100%" height="500px" className="mb-3">
-              <PIPDF ticket={pdfData} />
-            </PDFViewer>
-            <div className="d-flex justify-content-center gap-2 mt-3">
-              <PDFDownloadLink
-                document={<PIPDF ticket={pdfData} />}
-                fileName={`pi_${pdfData.quotationNumber}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="primary" disabled={loading}>
-                    <i className="bi bi-download me-2"></i>
-                    {loading ? "Generating..." : `Download ${previewType.toUpperCase()}`}
-                  </Button>
-                )}
-              </PDFDownloadLink>
-              <Button variant="secondary" onClick={() => setShowPdfPreviewModal(false)}>
-                <i className="bi bi-x-circle me-2"></i>Close Preview
-              </Button>
-            </div>
-          </div>
-        )}
+            )}
+          </PDFDownloadLink>
+          <Button
+            variant="secondary"
+            onClick={() => setShowPdfPreviewModal(false)}
+          >
+            <i className="bi bi-x-circle me-2"></i>Close Preview
+          </Button>
+        </div>{" "}
       </div>
     );
   };
-  
-  const handleSpecificDocumentUpload = async (file, docType, ticketIdForUpload = null) => {
+
+  const handleSpecificDocumentUpload = async (
+    file,
+    docType,
+    ticketIdForUpload = null
+  ) => {
     if (!file) {
       toast.warn("Please select a file to upload");
       return false;
@@ -1084,7 +1183,8 @@ setTransferHistoryDisplay(history);
       return false;
     }
 
-    const targetTicketId = ticketIdForUpload || editTicket?._id || selectedTicket?._id;
+    const targetTicketId =
+      ticketIdForUpload || editTicket?._id || selectedTicket?._id;
 
     setIsLoading(true);
     setError(null);
@@ -1098,10 +1198,14 @@ setTransferHistoryDisplay(history);
       formData.append("document", file);
       formData.append("documentType", docType);
 
-      const responseData = await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
-        method: 'POST',
-        formData,
-      });
+      const responseData = await apiClient(
+        `/tickets/${targetTicketId}/documents`,
+        {
+          // Use apiClient
+          method: "POST",
+          formData,
+        }
+      );
       if (!responseData || !responseData.documents) {
         throw new Error("Invalid response from server after document upload");
       }
@@ -1109,15 +1213,25 @@ setTransferHistoryDisplay(history);
       // Instead of updating local state directly, fetch all tickets or the specific ticket
       // to ensure data consistency, especially if the payment modal is open.
       await fetchTickets(); // Re-fetch all tickets to update the list and selectedTicket
-      
+
       // If the payment modal is open and showing selectedTicket, update it
-      if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-        });
+      if (
+        showPaymentModal &&
+        selectedTicket &&
+        selectedTicket?._id === targetTicketId
+      ) {
+        const updatedSingleTicket = await apiClient(
+          `/tickets/${targetTicketId}`,
+          {
+            // Use apiClient
+            params: {
+              populate:
+                "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+            },
+          }
+        );
         setSelectedTicket(updatedSingleTicket);
       }
-
 
       const successMsg = `${docType.toUpperCase()} document uploaded successfully.`;
       toast.success(successMsg);
@@ -1148,11 +1262,16 @@ setTransferHistoryDisplay(history);
     }
   };
 
-  const handleDocumentDelete = async (docTypeToDelete, documentPathToDelete, ticketIdForDelete = null) => {
+  const handleDocumentDelete = async (
+    docTypeToDelete,
+    documentPathToDelete,
+    ticketIdForDelete = null
+  ) => {
     setIsLoading(true);
     setError(null);
 
-    const targetTicketId = ticketIdForDelete || editTicket?._id || selectedTicket?._id;
+    const targetTicketId =
+      ticketIdForDelete || editTicket?._id || selectedTicket?._id;
 
     try {
       const token = getAuthTokenUtil(auth.user); // Use utility
@@ -1167,25 +1286,47 @@ setTransferHistoryDisplay(history);
         return;
       }
 
-      await apiClient(`/tickets/${targetTicketId}/documents`, { // Use apiClient
-        method: 'DELETE',
-        body: { documentType: docTypeToDelete, documentPath: documentPathToDelete },
+      await apiClient(`/tickets/${targetTicketId}/documents`, {
+        // Use apiClient
+        method: "DELETE",
+        body: {
+          documentType: docTypeToDelete,
+          documentPath: documentPathToDelete,
+        },
       });
 
       // Re-fetch tickets or specific ticket
       await fetchTickets();
-      if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { // Use apiClient
-             params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-        });
+      if (
+        showPaymentModal &&
+        selectedTicket &&
+        selectedTicket?._id === targetTicketId
+      ) {
+        const updatedSingleTicket = await apiClient(
+          `/tickets/${targetTicketId}`,
+          {
+            // Use apiClient
+            params: {
+              populate:
+                "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+            },
+          }
+        );
         setSelectedTicket(updatedSingleTicket);
       }
-       if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
-         const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, {  // Use apiClient
-            params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-         });
-         setEditTicket(updatedSingleTicket);
-       }
+      if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(
+          `/tickets/${targetTicketId}`,
+          {
+            // Use apiClient
+            params: {
+              populate:
+                "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy",
+            },
+          }
+        );
+        setEditTicket(updatedSingleTicket);
+      }
 
       const successMsg = `${docTypeToDelete.toUpperCase()} document deleted successfully.`;
       toast.success(successMsg);
@@ -1306,7 +1447,10 @@ setTransferHistoryDisplay(history);
               label={isCurrent ? stage : ""}
               animated={isCurrent}
               onClick={() => handleStatusChange(stage)}
-              style={{ cursor: "pointer", transition: "background-color 0.3s ease" }}
+              style={{
+                cursor: "pointer",
+                transition: "background-color 0.3s ease",
+              }}
               title={`Set status to: ${stage}`}
             />
           );
@@ -1324,8 +1468,7 @@ setTransferHistoryDisplay(history);
             style={{
               width: `${100 / statusStages.length}%`,
               cursor: "pointer",
-                            transition: "color 0.3s ease, font-weight 0.3s ease",
-
+              transition: "color 0.3s ease, font-weight 0.3s ease",
             }}
             onClick={() => handleStatusChange(stage)}
             title={`Set status to: ${stage}`}
@@ -1383,112 +1526,110 @@ setTransferHistoryDisplay(history);
         footerContent={transferModalFooter}
         isLoading={isLoading}
       >
-          <div className="mb-4">
-            <h5 className="mb-3">
-              <i className="bi bi-search me-2"></i>Search User to Transfer To
-            </h5>
-            <UserSearchComponent
-              onUserSelect={handleUserSelect}
-              authContext={auth}
-              
-            />
+        <div className="mb-4">
+          <h5 className="mb-3">
+            <i className="bi bi-search me-2"></i>Search User to Transfer To
+          </h5>
+          <UserSearchComponent
+            onUserSelect={handleUserSelect}
+            authContext={auth}
+          />
 
-                        {/* This div will ensure suggestions are contained if UserSearchComponent's dropdown has position:absolute */}
-            <div style={{ position: 'relative', zIndex: 1050 }}> 
-              {/* UserSearchComponent's dropdown will render here if it's a child or uses a portal properly */}
-            </div>
-
+          {/* This div will ensure suggestions are contained if UserSearchComponent's dropdown has position:absolute */}
+          <div style={{ position: "relative", zIndex: 1050 }}>
+            {/* UserSearchComponent's dropdown will render here if it's a child or uses a portal properly */}
           </div>
+        </div>
 
-          {selectedUser && (
-            <>
-              <div className="selected-user-info p-4 border rounded bg-light">
-                <h6 className="mb-3">
-                  <i className="bi bi-person-circle me-2"></i>Selected User
-                  Details:
-                </h6>
-                <div className="row">
-                  <div className="col-md-6">
-                    <p>
-                      <i className="bi bi-person me-2"></i>
-                      <strong>Name:</strong> {selectedUser.firstname}{" "}
-                      {selectedUser.lastname}
-                    </p>
-                    <p>
-                      <i className="bi bi-envelope me-2"></i>
-                      <strong>Email:</strong> {selectedUser.email}
-                    </p>
-                  </div>
-                  <div className="col-md-6">
-                    <p>
-                      <i className="bi bi-person-badge me-2"></i>
-                      <strong>Role:</strong>{" "}
-                      <Badge bg="info">{selectedUser.role}</Badge>
-                    </p>
-                    <p>
-                      <strong>Department:</strong>{" "}
-                      {selectedUser.department || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Form.Group className="mt-3">
-                <Form.Label>Transfer Note (Optional)</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                  placeholder="Add any notes about this transfer..."
-                />
-              </Form.Group>
-            </>
-          )}
-
-          {error && ( // Display error if any, regardless of selectedUser
-            <Alert variant="danger" className="mt-3">
-              {error}
-            </Alert>
-          )}
-
-          {transferTicket && (
-            <div className="ticket-summary mt-4 p-3 border rounded">
-              <h6 className="mb-3">Ticket Summary</h6>
+        {selectedUser && (
+          <>
+            <div className="selected-user-info p-4 border rounded bg-light">
+              <h6 className="mb-3">
+                <i className="bi bi-person-circle me-2"></i>Selected User
+                Details:
+              </h6>
               <div className="row">
                 <div className="col-md-6">
                   <p>
-                    <strong>Company:</strong> {transferTicket.companyName}
+                    <i className="bi bi-person me-2"></i>
+                    <strong>Name:</strong> {selectedUser.firstname}{" "}
+                    {selectedUser.lastname}
                   </p>
                   <p>
-                    <strong>Quotation:</strong> {transferTicket.quotationNumber}
-                  </p>
-                  <p>
-                    <strong>Current Assignee:</strong>{" "}
-                    {transferTicket.currentAssignee?.firstname}{" "}
-                    {transferTicket.currentAssignee?.lastname || "N/A"}
+                    <i className="bi bi-envelope me-2"></i>
+                    <strong>Email:</strong> {selectedUser.email}
                   </p>
                 </div>
                 <div className="col-md-6">
                   <p>
-                    <strong>Status:</strong>{" "}
-                    <Badge bg={getStatusBadgeColor(transferTicket.status)}>
-                      {transferTicket.status}
-                    </Badge>
+                    <i className="bi bi-person-badge me-2"></i>
+                    <strong>Role:</strong>{" "}
+                    <Badge bg="info">{selectedUser.role}</Badge>
                   </p>
                   <p>
-                    <strong>Amount:</strong> ₹
-                    {transferTicket.grandTotal?.toFixed(2)}
-                  </p>
-                  <p>
-                    <strong>Created By:</strong>{" "}
-                    {transferTicket.createdBy?.firstname}{" "}
-                    {transferTicket.createdBy?.lastname || "N/A"}
+                    <strong>Department:</strong>{" "}
+                    {selectedUser.department || "N/A"}
                   </p>
                 </div>
               </div>
             </div>
-          )}
+
+            <Form.Group className="mt-3">
+              <Form.Label>Transfer Note (Optional)</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={transferNote}
+                onChange={(e) => setTransferNote(e.target.value)}
+                placeholder="Add any notes about this transfer..."
+              />
+            </Form.Group>
+          </>
+        )}
+
+        {error && ( // Display error if any, regardless of selectedUser
+          <Alert variant="danger" className="mt-3">
+            {error}
+          </Alert>
+        )}
+
+        {transferTicket && (
+          <div className="ticket-summary mt-4 p-3 border rounded">
+            <h6 className="mb-3">Ticket Summary</h6>
+            <div className="row">
+              <div className="col-md-6">
+                <p>
+                  <strong>Company:</strong> {transferTicket.companyName}
+                </p>
+                <p>
+                  <strong>Quotation:</strong> {transferTicket.quotationNumber}
+                </p>
+                <p>
+                  <strong>Current Assignee:</strong>{" "}
+                  {transferTicket.currentAssignee?.firstname}{" "}
+                  {transferTicket.currentAssignee?.lastname || "N/A"}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p>
+                  <strong>Status:</strong>{" "}
+                  <Badge bg={getStatusBadgeColor(transferTicket.status)}>
+                    {transferTicket.status}
+                  </Badge>
+                </p>
+                <p>
+                  <strong>Amount:</strong> ₹
+                  {transferTicket.grandTotal?.toFixed(2)}
+                </p>
+                <p>
+                  <strong>Created By:</strong>{" "}
+                  {transferTicket.createdBy?.firstname}{" "}
+                  {transferTicket.createdBy?.lastname || "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </ReusableModal>
     );
   };
@@ -1499,79 +1640,78 @@ setTransferHistoryDisplay(history);
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Tickets Overview</h2>
-         
-            <div
-              className="d-flex align-items-center gap-3"
-              style={{ width: "35%" }}
-            >
-              <SearchBar
-                value={searchTerm}
-                setSearchTerm={(value) => {
-                  setSearchTerm(value);
-                  setCurrentPage(1); // Reset page on new search
-                }}
-                placeholder="Search tickets..."
-                className="flex-grow-1"
-              />
-            </div>
-            <div className="filter-radio-group d-flex flex-wrap align-items-center">
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-all"
-                label="All"
-                name="statusFilter"
-                checked={statusFilter === "all"}
-                onChange={() => {
-                  setStatusFilter("all");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-open"
-                label="Open"
-                name="statusFilter"
-                checked={statusFilter === "open"}
-                onChange={() => {
-                  setStatusFilter("open");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-closed"
-                label="Closed"
-                name="statusFilter"
-                checked={statusFilter === "closed"}
-                onChange={() => {
-                  setStatusFilter("closed");
-                  setCurrentPage(1);
-                }}
-              />
-              <Form.Check
-                type="radio"
-                inline
-                id="filter-hold"
-                label="Hold"
-                name="statusFilter"
-                checked={statusFilter === "hold"}
-                onChange={() => {
-                  setStatusFilter("hold");
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <Button
-              variant="info"
-              onClick={() => setShowTicketReportModal(true)}
-              title="View Ticket Reports"
-            >
-              <FaChartBar className="me-1" /> Report
-            </Button>
-          
+
+          <div
+            className="d-flex align-items-center gap-3"
+            style={{ width: "35%" }}
+          >
+            <SearchBar
+              value={searchTerm}
+              setSearchTerm={(value) => {
+                setSearchTerm(value);
+                setCurrentPage(1); // Reset page on new search
+              }}
+              placeholder="Search tickets..."
+              className="flex-grow-1"
+            />
+          </div>
+          <div className="filter-radio-group d-flex flex-wrap align-items-center">
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-all"
+              label="All"
+              name="statusFilter"
+              checked={statusFilter === "all"}
+              onChange={() => {
+                setStatusFilter("all");
+                setCurrentPage(1);
+              }}
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-open"
+              label="Open"
+              name="statusFilter"
+              checked={statusFilter === "open"}
+              onChange={() => {
+                setStatusFilter("open");
+                setCurrentPage(1);
+              }}
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-closed"
+              label="Closed"
+              name="statusFilter"
+              checked={statusFilter === "closed"}
+              onChange={() => {
+                setStatusFilter("closed");
+                setCurrentPage(1);
+              }}
+            />
+            <Form.Check
+              type="radio"
+              inline
+              id="filter-hold"
+              label="Hold"
+              name="statusFilter"
+              checked={statusFilter === "hold"}
+              onChange={() => {
+                setStatusFilter("hold");
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+          <Button
+            variant="info"
+            onClick={() => setShowTicketReportModal(true)}
+            title="View Ticket Reports"
+          >
+            <FaChartBar className="me-1" /> Report
+          </Button>
         </div>
 
         {error && (
@@ -1662,11 +1802,13 @@ setTransferHistoryDisplay(history);
             const canModifyTicket =
               authUser?.role === "admin" ||
               authUser?.role === "super-admin" ||
-              (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+              (ticket.currentAssignee &&
+                ticket.currentAssignee._id === authUser?.id);
 
-            const canTransferThisTicket = 
-              authUser?.role === 'super-admin' || 
-              (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+            const canTransferThisTicket =
+              authUser?.role === "super-admin" ||
+              (ticket.currentAssignee &&
+                ticket.currentAssignee._id === authUser?.id);
 
             return (
               <div className="d-flex gap-2">
@@ -1676,8 +1818,9 @@ setTransferHistoryDisplay(history);
                   onClick={() => handleEdit(ticket)}
                   disabled={!canModifyTicket || isLoading}
                   title={
-                     !canModifyTicket 
-                      ? "Only admin, super-admin, or current assignee can edit"                      : "Edit Ticket"
+                    !canModifyTicket
+                      ? "Only admin, super-admin, or current assignee can edit"
+                      : "Edit Ticket"
                   }
                 >
                   <i className="bi bi-pencil-square"></i>
@@ -1698,7 +1841,6 @@ setTransferHistoryDisplay(history);
                   size="sm"
                   onClick={() => handleTransfer(ticket)}
                   disabled={!canTransferThisTicket || isLoading}
-
                   title={
                     !canTransferThisTicket
                       ? "Only super-admin or current assignee can transfer"
@@ -1723,15 +1865,19 @@ setTransferHistoryDisplay(history);
           }}
           title={
             <div className="d-flex justify-content-between align-items-center w-100">
-                <span><i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
-                {editTicket?.ticketNumber}</span>
+              <span>
+                <i className="bi bi-pencil-square me-2"></i>Edit Ticket -{" "}
+                {editTicket?.ticketNumber}
+              </span>
               <div className="assignee-info">
                 <Badge bg="light" text="dark" className="p-2">
                   <i className="bi bi-person-fill me-1"></i>
                   {editTicket?.currentAssignee?.firstname}{" "}
                   {editTicket?.currentAssignee?.lastname || "Unassigned"}
                 </Badge>
-                <small className="d-block text-muted ms-1"> {/* Adjusted text color for ReusableModal default header */}
+                <small className="d-block text-muted ms-1">
+                  {" "}
+                  {/* Adjusted text color for ReusableModal default header */}
                   Currently Assigned
                 </small>
               </div>
@@ -1739,245 +1885,287 @@ setTransferHistoryDisplay(history);
           }
           footerContent={
             <>
-              <Button variant="secondary" onClick={() => { setShowEditModal(false); setError(null); }} disabled={isLoading}>Cancel</Button>
-              <Button variant="primary" onClick={handleUpdateTicket} disabled={isLoading}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setError(null);
+                }}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdateTicket}
+                disabled={isLoading}
+              >
                 {isLoading ? "Updating..." : "Update Ticket"}
               </Button>
             </>
           }
         >
-            {error && (
-              <Alert
-                variant="danger"
-                onClose={() => setError(null)}
-                dismissible
+          {error && (
+            <Alert variant="danger" onClose={() => setError(null)} dismissible>
+              {error}
+            </Alert>
+          )}
+          <ProgressBarWithStages />
+          {/* Status Change Comment Section */}
+          {editTicket && ticketData.status !== editTicket.status && (
+            <Form.Group className="my-3">
+              <Form.Label
+                htmlFor="statusChangeCommentInput"
+                className="fw-bold"
               >
-                {error}
-              </Alert>
-            )}
-            <ProgressBarWithStages />
-                        {/* Status Change Comment Section */}
-            {editTicket && ticketData.status !== editTicket.status && (
-              <Form.Group className="my-3">
-                <Form.Label htmlFor="statusChangeCommentInput" className="fw-bold">
-                  Comment for Status Change (Required)
-                </Form.Label>
-                <Form.Control
-                  as="textarea"
-                  id="statusChangeCommentInput"
-                  rows={2}
-                  value={statusChangeComment}
-                  onChange={(e) => setStatusChangeComment(e.target.value)}
-                  placeholder={`Explain why the status is being changed to "${ticketData.status}"...`}
-                  maxLength={200}
-                  required
-                />
-                <Form.Text muted>Max 200 characters.</Form.Text>
-              </Form.Group>
-            )}
+                Comment for Status Change (Required)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                id="statusChangeCommentInput"
+                rows={2}
+                value={statusChangeComment}
+                onChange={(e) => setStatusChangeComment(e.target.value)}
+                placeholder={`Explain why the status is being changed to "${ticketData.status}"...`}
+                maxLength={200}
+                required
+              />
+              <Form.Text muted>Max 200 characters.</Form.Text>
+            </Form.Group>
+          )}
 
-            {/* Status Change History Table */}
-            {editTicket?.statusHistory && editTicket.statusHistory.length > 0 && (
-              <div className="mt-4">
-                <h5><i className="bi bi-card-list me-1"></i>Status Change History</h5>
-                <Table striped bordered hover size="sm" responsive>
-                  <thead className="table-light">
-                    <tr>
-                      <th title="User who changed the status">Changed By</th>
-                      <th title="Date of status change">Date</th>
-                      <th title="The status it was changed to">Status Changed To</th>
-                      <th title="Comment provided for the status change">Note (Limit 50 chars)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editTicket.statusHistory.slice().reverse().map((historyItem, index) => ( // Show newest first
-                      <tr key={index}>
-                                                <td>
-                          {historyItem.changedBy
-                            ? `${historyItem.changedBy.firstname || ''} ${historyItem.changedBy.lastname || ''}`.trim() || historyItem.changedBy.email || 'Unknown User'
-                            : 'N/A'}
-                        </td>
-                        <td>{new Date(historyItem.changedAt).toLocaleString()}</td>
-                        <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
-                        <td title={historyItem.note || 'No note provided'}>
-                          {(historyItem.note || 'N/A').substring(0, 50) + 
-                           (historyItem.note && historyItem.note.length > 50 ? '...' : '')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            )}
-            <hr />
-            <Row className="mb-3">
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Ticket Date</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={
-                      editTicket?.createdAt
-                        ? new Date(editTicket.createdAt).toLocaleDateString()
-                        : ""
-                    }
-                    readOnly
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Company Name*</Form.Label>
-                  <Form.Control
-                    required
-                    readOnly
-                    type="text"
-                    value={ticketData.companyName}
-                    onChange={(e) =>
-                      setTicketData({
-                        ...ticketData,
-                        companyName: e.target.value,
-                      })
-                    }
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label>Quotation Number*</Form.Label>
-                  <Form.Control
-                    required
-                    type="text"
-                    value={ticketData.quotationNumber}
-                    readOnly
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <h5>
-                  <i className="bi bi-building me-1"></i>Billing Address
-                </h5>
-                {renderAddressFields("billing")}
-              </Col>
-              <Col md={6}>
-                <h5>
-                  <i className="bi bi-truck me-1"></i>Shipping Address
-                </h5>
-                {renderAddressFields("shipping")}
-              </Col>
-            </Row>
-            <h5 className="mt-4">
-              <i className="bi bi-box-seam me-1"></i>Goods Details*
-            </h5>
-            <div className="table-responsive">
-              <Table bordered className="mb-3">
-                <thead>
-                   <tr className="text-center">
-                    <th title="Serial Number">Sr No.</th>
-                    <th title="Item Description">Description*</th>
-                    <th title="HSN/SAC Code">HSN/SAC*</th>
-                    <th title="Quantity">Qty*</th>
-                    <th title="Price per unit">Price*</th>
-                    <th title="Total amount for this item">Amount</th>                  </tr>
+          {/* Status Change History Table */}
+          {editTicket?.statusHistory && editTicket.statusHistory.length > 0 && (
+            <div className="mt-4">
+              <h5>
+                <i className="bi bi-card-list me-1"></i>Status Change History
+              </h5>
+              <Table striped bordered hover size="sm" responsive>
+                <thead className="table-light">
+                  <tr>
+                    <th title="User who changed the status">Changed By</th>
+                    <th title="Date of status change">Date</th>
+                    <th title="The status it was changed to">
+                      Status Changed To
+                    </th>
+                    <th title="Comment provided for the status change">
+                      Note (Limit 50 chars)
+                    </th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {ticketData.goods.map((item, index) => (
-                    <tr key={index}>
-                      <td className="align-middle text-center">{item.srNo}</td>
-                      <td>
-                          <Form.Control
-                            type="text"
-                            value={item.description}
-                            readOnly
-                            disabled
-                          />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="text"
-                          value={item.hsnSacCode}
-                          readOnly
-                          disabled
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          required
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleGoodsChange(index, "quantity", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.price || 0}
-                          onChange={(e) =>
-                            handleGoodsChange(index, "price", e.target.value)
-                          }
-                          readOnly={
-                            !(Number(item.maxDiscountPercentage || 0) > 0)
-                          }
-                          // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
-                        />
-                      </td>
-                      <td className="align-middle">
-                        ₹{(item.amount || 0).toFixed(2)}
-                      </td>
-                      <td className="text-center align-middle">
-                        <Button variant="danger" size="sm" onClick={() => handleDeleteItemFromTicket(index)}>
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {editTicket.statusHistory
+                    .slice()
+                    .reverse()
+                    .map(
+                      (
+                        historyItem,
+                        index // Show newest first
+                      ) => (
+                        <tr key={index}>
+                          <td>
+                            {historyItem.changedBy
+                              ? `${historyItem.changedBy.firstname || ""} ${
+                                  historyItem.changedBy.lastname || ""
+                                }`.trim() ||
+                                historyItem.changedBy.email ||
+                                "Unknown User"
+                              : "N/A"}
+                          </td>
+                          <td>
+                            {new Date(historyItem.changedAt).toLocaleString()}
+                          </td>
+                          <td>
+                            <Badge bg={getStatusBadgeColor(historyItem.status)}>
+                              {historyItem.status}
+                            </Badge>
+                          </td>
+                          <td title={historyItem.note || "No note provided"}>
+                            {(historyItem.note || "N/A").substring(0, 50) +
+                              (historyItem.note && historyItem.note.length > 50
+                                ? "..."
+                                : "")}
+                          </td>
+                        </tr>
+                      )
+                    )}
                 </tbody>
               </Table>
             </div>
-            {/* Item Search for adding new items to ticket */}
-            <div className="my-3">
-              <h6>Add New Item to Ticket</h6>
-              <ItemSearchComponent
-                onItemSelect={handleAddItemToTicket} // Use the new handler
-                placeholder="Search and select item to add..."
-              />
-            </div>
+          )}
+          <hr />
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Ticket Date</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={
+                    editTicket?.createdAt
+                      ? new Date(editTicket.createdAt).toLocaleDateString()
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Company Name*</Form.Label>
+                <Form.Control
+                  required
+                  readOnly
+                  type="text"
+                  value={ticketData.companyName}
+                  onChange={(e) =>
+                    setTicketData({
+                      ...ticketData,
+                      companyName: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Quotation Number*</Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  value={ticketData.quotationNumber}
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <h5>
+                <i className="bi bi-building me-1"></i>Billing Address
+              </h5>
+              {renderAddressFields("billing")}
+            </Col>
+            <Col md={6}>
+              <h5>
+                <i className="bi bi-truck me-1"></i>Shipping Address
+              </h5>
+              {renderAddressFields("shipping")}
+            </Col>
+          </Row>
+          <h5 className="mt-4">
+            <i className="bi bi-box-seam me-1"></i>Goods Details*
+          </h5>
+          <div className="table-responsive">
+            <Table bordered className="mb-3">
+              <thead>
+                <tr className="text-center">
+                  <th title="Serial Number">Sr No.</th>
+                  <th title="Item Description">Description*</th>
+                  <th title="HSN/SAC Code">HSN/SAC*</th>
+                  <th title="Quantity">Qty*</th>
+                  <th title="Price per unit">Price*</th>
+                  <th title="Total amount for this item">Amount</th>{" "}
+                </tr>
+              </thead>
+              <tbody>
+                {ticketData.goods.map((item, index) => (
+                  <tr key={index}>
+                    <td className="align-middle text-center">{item.srNo}</td>
+                    <td>
+                      <Form.Control
+                        type="text"
+                        value={item.description}
+                        readOnly
+                        disabled
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        type="text"
+                        value={item.hsnSacCode}
+                        readOnly
+                        disabled
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        required
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleGoodsChange(index, "quantity", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price || 0}
+                        onChange={(e) =>
+                          handleGoodsChange(index, "price", e.target.value)
+                        }
+                        readOnly={
+                          !(Number(item.maxDiscountPercentage || 0) > 0)
+                        }
+                        // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
+                      />
+                    </td>
+                    <td className="align-middle">
+                      ₹{(item.amount || 0).toFixed(2)}
+                    </td>
+                    <td className="text-center align-middle">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDeleteItemFromTicket(index)}
+                      >
+                        <i className="bi bi-trash"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+          {/* Item Search for adding new items to ticket */}
+          <div className="my-3">
+            <h6>Add New Item to Ticket</h6>
+            <ItemSearchComponent
+              onItemSelect={handleAddItemToTicket} // Use the new handler
+              placeholder="Search and select item to add..."
+            />
+          </div>
 
-            <div className="bg-light p-3 rounded">
-              <Row>
-                <Col md={4}>
-                  <p>
-                    Total Quantity: <strong>{ticketData.totalQuantity}</strong>
-                  </p>
-                </Col>
-                <Col md={4}>
-                  <p>
-                    Total Amount:{" "}
-                    <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
-                  </p>
-                </Col>
-                <Col md={4}>
-                  <p>
-                    GST (18%):{" "}
-                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                  </p>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={12} className="text-end">
-                  <h4>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h4>
-                </Col>
-              </Row>
-            </div>
+          <div className="bg-light p-3 rounded">
+            <Row>
+              <Col md={4}>
+                <p>
+                  Total Quantity: <strong>{ticketData.totalQuantity}</strong>
+                </p>
+              </Col>
+              <Col md={4}>
+                <p>
+                  Total Amount:{" "}
+                  <strong>₹{ticketData.totalAmount.toFixed(2)}</strong>
+                </p>
+              </Col>
+              <Col md={4}>
+                <p>
+                  GST (18%): <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
+                </p>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={12} className="text-end">
+                <h4>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h4>
+              </Col>
+            </Row>
+          </div>
         </ReusableModal>
 
         <TransferModal />
@@ -1987,10 +2175,11 @@ setTransferHistoryDisplay(history);
           show={showPdfPreviewModal}
           onHide={() => setShowPdfPreviewModal(false)}
           title={`${pdfPreviewConfig.type?.toUpperCase()} Preview`}
-          // Footer can be part of renderPdfPreview or passed if simple
+          size="xl" // Make the modal larger for PDF preview
         >
-            {pdfPreviewConfig.type && pdfPreviewConfig.data &&
-              renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
+          {pdfPreviewConfig.type &&
+            pdfPreviewConfig.data &&
+            renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
         </ReusableModal>
 
         <ReusableModal
@@ -1999,198 +2188,335 @@ setTransferHistoryDisplay(history);
             setShowPaymentModal(false);
             setError(null);
           }}
-          title={<><i className="bi bi-credit-card-2-front me-2"></i>Payment Details - {selectedTicket?.ticketNumber}</>}
+          title={
+            <>
+              <i className="bi bi-credit-card-2-front me-2"></i>Payment Details
+              - {selectedTicket?.ticketNumber}
+            </>
+          }
           footerContent={
-            <Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowPaymentModal(false);
+                setError(null);
+              }}
+              disabled={isLoading}
+            >
+              Close
+            </Button>
           }
         >
-            {error && (
-              <Alert
-                variant="danger"
-                onClose={() => setError(null)}
-                dismissible
-              >
-                {error}
-              </Alert>
-            )}
-            <h5><i className="bi bi-files me-2"></i>Ticket Documents</h5>
-            <Row className="mb-4 text-center">
-              {[
-                {
-                  name: "Quotation",
-                  docType: "quotation",
-                  icon: "bi-file-earmark-text",
-                  generate: true,
-                },
-                { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true },
-                {
-                  name: "PO",
-                  docType: "po",
-                  icon: "bi-file-earmark-check",
-                },
-                {
-                  name: "Dispatch",
-                  docType: "challan",
-                  icon: "bi-truck",
-                },
-                { name: "Packing List", docType: "packingList", icon: "bi-list-ul" },
-                { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" },
-              ].map((docDef) => {
-                const docData = selectedTicket?.documents?.[docDef.docType];
-                return (
-                  <Col key={docDef.docType} md={4} className="mb-3">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Body className="d-flex flex-column">
-                        <Card.Title className="d-flex align-items-center">
-                          <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
-                          {docDef.name}
-                        </Card.Title>
-                        {docData && docData.path ? (
-                          <>
-                            <small className="text-muted">
-                               Uploaded by:{" "}
-                              {docData.uploadedBy && docData.uploadedBy.firstname
-                                ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim()
-                                : "N/A"}
-                              <br />
-                              On: {new Date(docData.uploadedAt).toLocaleDateString()}
-                            </small>
-                            <Button
-                              variant="outline-info"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}
-                            >
-                              <i className="bi bi-eye me-1"></i>View Uploaded
-                            </Button>
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="mt-1"
-                              onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)}
-                              disabled={isLoading}
-                            >
-                              <i className="bi bi-trash me-1"></i>Delete
-                            </Button>
-                          </>
-                        ) : (
-                          <p className="text-muted small mt-1">Not uploaded yet.</p>
-                        )}
-
-                        {docDef.generate && (
-                           <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
-                            onClick={() => {
-                                setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket });
-                                setShowPdfPreviewModal(true);
-                            }}
-                          >
-                            <i className="bi bi-gear me-1"></i>Generate & View
-                          </Button>
-                        )}
-                        
-                        {/* Upload/Replace Button */}
-                        <Button
-                          variant={docData && docData.path ? "outline-warning" : "outline-success"}
-                          size="sm"
-                          className="mt-1"
-                          onClick={() => {
-                            setUploadingDocType(docDef.docType); // Keep track for the file input
-                            document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click();
-                          }}
-                          disabled={isLoading}
-                        >
-                          <i className={`bi ${docData && docData.path ? 'bi-arrow-repeat' : 'bi-upload'} me-1`}></i>
-                          {docData && docData.path ? "Replace" : "Upload"} {docDef.name}
-                        </Button>
-                        <input
-                          type="file"
-                          id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
-                          style={{ display: "none" }}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id);
-                              e.target.value = ""; // Reset file input
-                              setUploadingDocType(null);
-                            }
-                          }}
-                        />
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
-            <hr/>
-            <h5><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
-            {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
-              <Table striped bordered hover size="sm" className="mt-2">
-                <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {selectedTicket.documents.other.map((doc, index) => (
-                    <tr key={doc.path || index}>
-                      <td>{doc.originalName}</td>
-                     <td>
-                        {doc.uploadedBy && doc.uploadedBy.firstname
-                          ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim()
-                          : "N/A"}
-                      </td>
-                      <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
-                      <td>
-                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
-                        <Button variant="info" size="sm" className="me-1" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            ) : <p className="text-muted">No other documents uploaded.</p>}
-            <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType('other'); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
-             <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{display: 'none'}} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], 'other', selectedTicket?._id); e.target.value = null; setUploadingDocType(null);}}} />
-            <hr />
-            <Row>
-              <Col md={12}>
-                <h5>
-                  <i className="bi bi-arrow-repeat me-1"></i>Transfer History
-                </h5>
-                {selectedTicket &&
-                transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
-                  <Table
-                    bordered
-                    responsive
-                    className="mt-2 transfer-history-table table-sm"
-                  >
-                                        <thead className="table-light">
-                        <tr>
-                            <th title="User involved in the transfer step">Name</th>
-                            <th title="Date of the transfer or creation">Date</th>
-                            <th title="Note or action taken">Note (Limit 50 chars)</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
- {transferHistoryDisplay.map((entry, index) => (
-                        <tr key={index}>
-                          <td>{entry.name}</td>
-                          <td>{new Date(entry.date).toLocaleString()}</td>
-                          <td title={entry.note}>
-                            {entry.note
-                              ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "")
+          {error && (
+            <Alert variant="danger" onClose={() => setError(null)} dismissible>
+              {error}
+            </Alert>
+          )}
+          <h5>
+            <i className="bi bi-files me-2"></i>Ticket Documents
+          </h5>
+          <Row className="mb-4 text-center">
+            {[
+              {
+                name: "Quotation",
+                docType: "quotation",
+                icon: "bi-file-earmark-text",
+                generate: true,
+              },
+              {
+                name: "PI",
+                docType: "pi",
+                icon: "bi-file-earmark-medical",
+                generate: true,
+              },
+              {
+                name: "PO",
+                docType: "po",
+                icon: "bi-file-earmark-check",
+              },
+              {
+                name: "Dispatch",
+                docType: "challan",
+                icon: "bi-truck",
+              },
+              {
+                name: "Packing List",
+                docType: "packingList",
+                icon: "bi-list-ul",
+              },
+              {
+                name: "Feedback",
+                docType: "feedback",
+                icon: "bi-chat-square-text",
+              },
+            ].map((docDef) => {
+              const docData = selectedTicket?.documents?.[docDef.docType];
+              return (
+                <Col key={docDef.docType} md={4} className="mb-3">
+                  <Card className="h-100 shadow-sm">
+                    <Card.Body className="d-flex flex-column">
+                      <Card.Title className="d-flex align-items-center">
+                        <i className={`bi ${docDef.icon} me-2 fs-4`}></i>
+                        {docDef.name}
+                      </Card.Title>
+                      {docData && docData.path ? (
+                        <>
+                          <small className="text-muted">
+                            Uploaded by:{" "}
+                            {docData.uploadedBy && docData.uploadedBy.firstname
+                              ? `${docData.uploadedBy.firstname} ${
+                                  docData.uploadedBy.lastname || ""
+                                }`.trim()
                               : "N/A"}
-                          </td>
-                        </tr>
-                      ))}                    </tbody>
-                  </Table>
-                ) : (
-                  <div className="text-muted mt-2">
-                    No transfer history available.
-                  </div>
-                )}
-              </Col>
-              
-            </Row>
+                            <br />
+                            On:{" "}
+                            {new Date(docData.uploadedAt).toLocaleDateString()}
+                          </small>
+                          <Button
+                            variant="outline-info"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() =>
+                              window.open(
+                                `${import.meta.env.VITE_API_BASE_URL}/uploads/${
+                                  selectedTicket?._id
+                                }/${docData.path}`,
+                                "_blank"
+                              )
+                            }
+                          >
+                            <i className="bi bi-eye me-1"></i>View Uploaded
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="mt-1"
+                            onClick={() =>
+                              handleDocumentDelete(
+                                docDef.docType,
+                                docData.path,
+                                selectedTicket?._id
+                              )
+                            }
+                            disabled={isLoading}
+                          >
+                            <i className="bi bi-trash me-1"></i>Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="text-muted small mt-1">
+                          Not uploaded yet.
+                        </p>
+                      )}
+
+                      {docDef.generate && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="mt-auto" // Pushes button to bottom if card body is d-flex flex-column
+                          onClick={() => {
+                            setPdfPreviewConfig({
+                              type: docDef.docType,
+                              data: selectedTicket,
+                            });
+                            setShowPdfPreviewModal(true);
+                          }}
+                        >
+                          <i className="bi bi-gear me-1"></i>Generate & View
+                        </Button>
+                      )}
+
+                      {/* Upload/Replace Button */}
+                      <Button
+                        variant={
+                          docData && docData.path
+                            ? "outline-warning"
+                            : "outline-success"
+                        }
+                        size="sm"
+                        className="mt-1"
+                        onClick={() => {
+                          setUploadingDocType(docDef.docType); // Keep track for the file input
+                          document
+                            .getElementById(
+                              `file-upload-${docDef.docType}-${selectedTicket?._id}`
+                            )
+                            ?.click();
+                        }}
+                        disabled={isLoading}
+                      >
+                        <i
+                          className={`bi ${
+                            docData && docData.path
+                              ? "bi-arrow-repeat"
+                              : "bi-upload"
+                          } me-1`}
+                        ></i>
+                        {docData && docData.path ? "Replace" : "Upload"}{" "}
+                        {docDef.name}
+                      </Button>
+                      <input
+                        type="file"
+                        id={`file-upload-${docDef.docType}-${selectedTicket?._id}`}
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleSpecificDocumentUpload(
+                              e.target.files[0],
+                              uploadingDocType,
+                              selectedTicket?._id
+                            );
+                            e.target.value = ""; // Reset file input
+                            setUploadingDocType(null);
+                          }
+                        }}
+                      />
+                    </Card.Body>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+          <hr />
+          <h5>
+            <i className="bi bi-paperclip me-2"></i>Other Uploaded Documents
+          </h5>
+          {selectedTicket?.documents?.other &&
+          selectedTicket.documents.other.length > 0 ? (
+            <Table striped bordered hover size="sm" className="mt-2">
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Uploaded By</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedTicket.documents.other.map((doc, index) => (
+                  <tr key={doc.path || index}>
+                    <td>{doc.originalName}</td>
+                    <td>
+                      {doc.uploadedBy && doc.uploadedBy.firstname
+                        ? `${doc.uploadedBy.firstname} ${
+                            doc.uploadedBy.lastname || ""
+                          }`.trim()
+                        : "N/A"}
+                    </td>
+                    <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
+                    <td>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="me-1"
+                        onClick={() =>
+                          window.open(
+                            `http://localhost:3000/uploads/${selectedTicket?._id}/${doc.path}`,
+                            "_blank"
+                          )
+                        }
+                      >
+                        <i className="bi bi-eye"></i>
+                      </Button>
+                      <Button
+                        variant="info"
+                        size="sm"
+                        className="me-1"
+                        onClick={() =>
+                          window.open(
+                            `${import.meta.env.VITE_API_BASE_URL}/uploads/${
+                              selectedTicket?._id
+                            }/${doc.path}`,
+                            "_blank"
+                          )
+                        }
+                      >
+                        <i className="bi bi-eye"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <p className="text-muted">No other documents uploaded.</p>
+          )}
+          <Button
+            variant="outline-primary"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              setUploadingDocType("other");
+              document
+                .getElementById(`file-upload-other-${selectedTicket?._id}`)
+                ?.click();
+            }}
+            disabled={isLoading}
+          >
+            <i className="bi bi-plus-circle"></i> Upload Other Document
+          </Button>
+          <input
+            type="file"
+            id={`file-upload-other-${selectedTicket?._id}`}
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleSpecificDocumentUpload(
+                  e.target.files[0],
+                  "other",
+                  selectedTicket?._id
+                );
+                e.target.value = null;
+                setUploadingDocType(null);
+              }
+            }}
+          />
+          <hr />
+          <Row>
+            <Col md={12}>
+              <h5>
+                <i className="bi bi-arrow-repeat me-1"></i>Transfer History
+              </h5>
+              {selectedTicket &&
+              transferHistoryDisplay &&
+              transferHistoryDisplay.length > 0 ? (
+                <Table
+                  bordered
+                  responsive
+                  className="mt-2 transfer-history-table table-sm"
+                >
+                  <thead className="table-light">
+                    <tr>
+                      <th title="User involved in the transfer step">Name</th>
+                      <th title="Date of the transfer or creation">Date</th>
+                      <th title="Note or action taken">
+                        Note (Limit 50 chars)
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {transferHistoryDisplay.map((entry, index) => (
+                      <tr key={index}>
+                        <td>{entry.name}</td>
+                        <td>{new Date(entry.date).toLocaleString()}</td>
+                        <td title={entry.note}>
+                          {entry.note
+                            ? entry.note.substring(0, 50) +
+                              (entry.note.length > 50 ? "..." : "")
+                            : "N/A"}
+                        </td>
+                      </tr>
+                    ))}{" "}
+                  </tbody>
+                </Table>
+              ) : (
+                <div className="text-muted mt-2">
+                  No transfer history available.
+                </div>
+              )}
+            </Col>
+          </Row>
         </ReusableModal>
 
         {filteredTickets.length > 0 && (
@@ -2200,7 +2526,9 @@ setTransferHistoryDisplay(history);
             itemsPerPage={itemsPerPage}
             onPageChange={(page) => {
               // Calculate totalPages locally for this boundary check
-              const currentTotalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+              const currentTotalPages = Math.ceil(
+                filteredTickets.length / itemsPerPage
+              );
               if (page >= 1 && page <= currentTotalPages) setCurrentPage(page);
             }}
             onItemsPerPageChange={handleItemsPerPageChange}

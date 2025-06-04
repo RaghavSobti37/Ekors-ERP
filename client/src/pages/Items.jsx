@@ -536,13 +536,12 @@ export default function Items() {
     if (!Array.isArray(items)) return [];
 
     let processedItems = [...items];
-    const currentLowThreshold = stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
-      ? lowStockWarningQueryThreshold
-      : effectiveLowStockThreshold;
 
     if (stockAlertFilterActive) {
       processedItems = processedItems.filter(
-        (item) => item.needsRestock || item.quantity < currentLowThreshold
+        (item) =>
+          item.quantity <= 0 || // Needs restock
+          (item.quantity > 0 && item.quantity <= (item.lowStockThreshold || 5)) // Low stock based on item's threshold
       );
     } else {
       processedItems = processedItems.filter((item) => {
@@ -561,8 +560,8 @@ export default function Items() {
 
     processedItems.sort((a, b) => {
       if (stockAlertFilterActive) {
-        if (a.quantity < b.quantity) return -1;
-        if (a.quantity > b.quantity) return 1;
+        // Sort by quantity primarily for stock alerts
+        if (a.quantity !== b.quantity) return a.quantity - b.quantity;
       } else {
         if (a[sortConfig.key] < b[sortConfig.key]) {
           return sortConfig.direction === "asc" ? -1 : 1;
@@ -578,8 +577,6 @@ export default function Items() {
   }, [
     items,
     stockAlertFilterActive,
-    lowStockWarningQueryThreshold,
-    effectiveLowStockThreshold,
     selectedCategory,
     selectedSubcategory,
     searchTerm,
@@ -782,15 +779,15 @@ export default function Items() {
                       <td>{item.name}</td>
                       <td>
                         {item.quantity}
-                        {item.quantity <= (item.lowStockThreshold || 0) ? (
+                        {item.quantity <= 0 ? (
                           <span className="badge bg-danger ms-2"
-                            title={item.quantity <= 0 ? "Out of stock! Needs immediate restock." : `Below item specific threshold (${item.lowStockThreshold}). Needs restock.`}
+                            title="Out of stock! Needs immediate restock."
                           >
                             ⚠️ Restock
                           </span>
-                        ) : item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? (
+                        ) : item.quantity > 0 && item.quantity <= (item.lowStockThreshold || 5) ? (
                           <span className="badge bg-warning text-dark ms-2"
-                            title={`Below page display threshold (< ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold})`}
+                            title={`Stock is low (≤ ${item.lowStockThreshold || 5}). Needs restock.`}
                           >
                             🔥 Low Stock
                           </span>
@@ -848,11 +845,16 @@ export default function Items() {
                                 {[
                                   ["Name", item.name],
                                   ["Category", item.category || "-"],
-                                  ["Subcategory", item.subcategory || "-"],
-                                  ["Quantity", `${item.quantity}${item.quantity <= (item.lowStockThreshold || 0) ? 
-                                    ` (${item.quantity <= 0 ? "Out of stock! Needs immediate restock." : `Item specific restock threshold: ${item.lowStockThreshold || 'Not Set'}`})` : 
-                                    item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? 
-                                    ` (Page display low stock threshold: < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold})` : ''}`],
+                                  ["Subcategory", item.subcategory || "-"],                                  
+                                  ["Quantity", (() => {
+                                      let qtyText = `${item.quantity}`;
+                                      if (item.quantity <= 0) {
+                                        qtyText += " (Out of stock! Needs immediate restock.)";
+                                      } else if (item.quantity > 0 && item.quantity <= (item.lowStockThreshold || 5)) {
+                                        qtyText += ` (Stock is low. Item specific threshold: ${item.lowStockThreshold || 5})`;
+                                      }
+                                      return qtyText;
+                                    })()],
                                   ["Selling Price", `₹${parseFloat(item.sellingPrice).toFixed(2)}`],
                                   ["Buying Price", `₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`],
                                   ["Unit", item.unit || "Nos"],

@@ -74,6 +74,16 @@ export default function Navbar({ showPurchaseModal }) {
   const [showCropModal, setShowCropModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Helper to get the backend base URL from the API URL
+  const getBackendBaseUrl = (apiUrl) => {
+    if (!apiUrl) return "";
+    // Find the last occurrence of '/api' and remove it
+    const apiIndex = apiUrl.lastIndexOf('/api');
+    if (apiIndex > -1) {
+      return apiUrl.substring(0, apiIndex);
+    }
+    return apiUrl; // If '/api' is not found, assume the apiUrl is the base URL
+  };
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const fileInputRef = useRef(null); // Ref for the hidden file input
@@ -273,7 +283,7 @@ export default function Navbar({ showPurchaseModal }) {
       formData.append("avatar", blob, fileName);
 
       try {
-const apiResponse = await apiClient("/users/profile/avatar", {           method: "POST",
+const apiResponse = await apiClient("/users/profile/avatar", {
           body: formData,
         });
         let contextUpdateSuccessful = false;
@@ -309,15 +319,15 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
         setSelectedFile(null);
      } catch (apiError) { // This catches errors from apiClient or other unexpected errors in the main try
         // handleApiError will show a toast.
-        const errorMessage = handleApiError(apiError, "Failed to upload avatar."); 
+        handleApiError(apiError, "Failed to upload avatar.");
+ 
         // The console.error below is for debugging and will show the TypeError if it's the cause.
         console.error("[Navbar.jsx] Avatar upload API/processing error:", apiError);
         // Do not close modal on error, let user retry or cancel.
       } finally {
         setProfileLoading(false);
       }
-      showToast(response.message || "Profile picture updated!", true);
-    }, selectedFile.type || "image/png"); // Provide a fallback type
+          }, selectedFile.type || "image/png"); // Provide a fallback type
   };
 
   return (
@@ -436,9 +446,8 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
           <div className="profile-section">
             {user?.avatarUrl ? (
               <Image // Small avatar in header
-                src={`${import.meta.env.VITE_API_BASE_URL || ""}${ // Ensure VITE_API_BASE_URL is set correctly in frontend env
-                  user.avatarUrl
-                }?${new Date().getTime()}`} // VITE_API_BASE_URL likely includes /api, user.avatarUrl starts with /uploads
+                // Construct image URL using backend base URL derived from API URL
+                src={`${getBackendBaseUrl(import.meta.env.VITE_API_BASE_URL || "")}${user.avatarUrl}?${new Date().getTime()}`}
                 alt="User Avatar"
                 roundedCircle
                 className="navbar-avatar-img"
@@ -462,9 +471,8 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
                 <div className="profile-avatar-large-container">
                   {user?.avatarUrl ? (
                     <Image // Large avatar in popup
-                      src={`${import.meta.env.VITE_API_BASE_URL || ""}${ // Ensure VITE_API_BASE_URL is set correctly in frontend env
-                        user.avatarUrl
-                      }?${new Date().getTime()}`}
+                      // Construct image URL using backend base URL derived from API URL
+                      src={`${getBackendBaseUrl(import.meta.env.VITE_API_BASE_URL || "")}${user.avatarUrl}?${new Date().getTime()}`}
                       alt="Profile"
                       roundedCircle
                       className="profile-avatar-large"
@@ -550,9 +558,8 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
           <Col xs={12} md="auto" className="mb-3 mb-md-0">
             {user?.avatarUrl ? (
               <Image
-                src={`${import.meta.env.VITE_API_BASE_URL || ""}${
-                  user.avatarUrl
-                }?${new Date().getTime()}`}
+                // Construct image URL using backend base URL derived from API URL
+                src={`${getBackendBaseUrl(import.meta.env.VITE_API_BASE_URL || "")}${user.avatarUrl}?${new Date().getTime()}`}
                 roundedCircle
                 style={{
                   width: "100px",

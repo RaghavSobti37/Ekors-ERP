@@ -118,13 +118,11 @@ const PIPDF = ({ ticket }) => (
       <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
 
       <View style={styles.row}>
-        <Text>Quotation No. : {ticket.quotationNumber}</Text>
         <Text>Date : {new Date(ticket.createdAt).toLocaleDateString()}</Text>
       </View>
 
       <View style={styles.row}>
         <View style={styles.col}>
-          <Text style={styles.bold}>Quotation to :</Text>
           <Text> {ticket.companyName}</Text>
           <Text> {getAddressPart(ticket.billingAddress, 'address1')}</Text>
           <Text> {getAddressPart(ticket.billingAddress, 'address2')}</Text>

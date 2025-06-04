@@ -754,32 +754,39 @@ exports.getItemPurchaseHistory = async (req, res) => {
 // New controller function for restock summary
 exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
-  // Default global low stock warning threshold, can be overridden by query param
-  const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3;
 
   try {
     logger.debug('item', "Fetching restock summary", user);
-    // Items are considered needing restock if explicitly flagged OR if their quantity is zero or less.
-    const itemsActuallyNeedingRestock = await Item.find({
-      $or: [
-        { needsRestock: true },
-        { quantity: { $lte: 0 } }
-      ]
-    }).select('name lowStockThreshold quantity needsRestock'); // Include needsRestock for clarity
-    const restockNeededCount = itemsActuallyNeedingRestock.length;
 
+    // Items needing immediate restock (quantity <= 0)
+    const restockNeededCount = await Item.countDocuments({ quantity: { $lte: 0 } });
+
+    // Items with low stock (0 < quantity <= item.lowStockThreshold)
+    // Note: $lowStockThreshold refers to the field in the document.
     const lowStockWarningCount = await Item.countDocuments({
-      quantity: { $lt: lowGlobalThreshold }
-      // This counts all items below the threshold, regardless of their individual lowStockThreshold or needsRestock status.
+      $expr: {
+        $and: [
+          { $gt: ["$quantity", 0] },
+          { $lte: ["$quantity", "$lowStockThreshold"] }
+        ]
+      }
     });
+
+    // Fetch items that fall into either category for the summary list
+    const itemsRequiringAttention = await Item.find({
+      $or: [
+        { quantity: { $lte: 0 } }, // Needs restock
+        { $expr: { $and: [ { $gt: ["$quantity", 0] }, { $lte: ["$quantity", "$lowStockThreshold"] } ] } } // Low stock
+      ]
+    }).select('name quantity lowStockThreshold unit').sort({ quantity: 1, name: 1 }); // Added sort for consistency
 
     res.json({
-      restockNeededCount: restockNeededCount, // Renamed from 'count' for clarity
+      restockNeededCount: restockNeededCount,
       lowStockWarningCount: lowStockWarningCount,
-      items: itemsActuallyNeedingRestock // Send the more inclusive list of items
+      items: itemsRequiringAttention
     });
   } catch (error) {
-    logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold });
+    logger.error('item', "Error fetching restock summary", error, user);
     res.status(500).json({ message: 'Server error while fetching restock summary' });
   }
 };
