@@ -120,7 +120,7 @@ const QuotationPDF = ({ quotation }) => (
 
           <View style={styles.headerContainer}>
             <View style={styles.headerTextContainer}>
-              <Text>Ref: {quotation.referenceNumber}</Text>
+              {/* <Text>Ref: {quotation.referenceNumber}</Text> */}
               <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
             </View>
             <View style={styles.logoContainer}>

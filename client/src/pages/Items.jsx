@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import Pagination from "../components/Pagination"; // Component for table pagination
+import Footer from "../components/Footer";
 import { saveAs } from "file-saver"; // For downloading files
 import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
@@ -2230,6 +2231,7 @@ title={
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

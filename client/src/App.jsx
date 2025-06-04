@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import QuotationPDF from "./components/QuotationPDF";
+import Footer from "./components/Footer";
 import PIPDF from "./components/PIPDF";
 import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
@@ -40,6 +41,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/quotationpdf" element={<QuotationPDF />} />
+          <Route path="/footer" element={<Footer />} />
           <Route path="/pipdf" element={<PIPDF />} />
           <Route path="/pagination" element={<Pagination />} />
           <Route path="/users" element={<Users />} />

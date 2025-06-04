@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Pagination from "../components/Pagination";
+import Footer from "../components/Footer";
 import {
   Modal,
   Button,
@@ -2206,6 +2207,7 @@ export default function Dashboard() {
         show={showTicketReportModal}
         onHide={() => setShowTicketReportModal(false)}
       />
+      <Footer />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { FaTimes, FaUserShield } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import { Table, Button as BsButton, Alert, Form } from "react-bootstrap";
 import Pagination from "../components/Pagination"; 
+import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable"; 
 import UserReportModal from "../components/UserReportModal"; 
 import SearchBar from "../components/Searchbar.jsx"; 
@@ -624,6 +625,7 @@ const Users = () => {
                   user={reportUser} // This should be the full user object
                 />
       </div>
+      <Footer />
     </div>
       )}
     </>

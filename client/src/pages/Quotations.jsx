@@ -8,6 +8,7 @@ import ItemSearchComponent from "../components/ItemSearch"; // Component for sea
 import QuotationPDF from "../components/QuotationPDF"; // Component for rendering Quotation PDF
 import CreateTicketModal from "../components/CreateTicketModal.jsx"; // Modal for creating tickets from quotations
 import Pagination from "../components/Pagination"; // Component for table pagination
+import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
@@ -1819,6 +1820,7 @@ export default function Quotations() {
         show={showQuotationReportModal}
         onHide={() => setShowQuotationReportModal(false)}
       />
+      <Footer />
     </div>
   );
 }

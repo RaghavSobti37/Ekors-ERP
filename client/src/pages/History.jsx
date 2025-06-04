@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import ActionButtons from "../components/ActionButtons";
+import Footer from "../components/Footer";
 import {
   showToast,
   handleApiError,
@@ -277,6 +278,7 @@ export default function History() {
           onSave={handleSaveSuccess}
         />
       )}
+      <Footer />
     </div>
   );
 }

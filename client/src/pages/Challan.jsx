@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar"; // Navigation bar component
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
 import Pagination from "../components/Pagination"; // Component for table pagination
+import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Table, Button, Form, Alert } from "react-bootstrap";
 import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
@@ -600,6 +601,7 @@ export default function Challan() {
           />
         )}
       </div>
+      <Footer />
     </div>
   );
 }
