@@ -4,7 +4,7 @@ import '../css/Footer.css';
 
 const HelpFooter = () => {
   const openGoogleSheet = () => {
-    window.open('https://docs.google.com/document/d/19hmO2d7km1HerCYDSW_G8FBr79GqxbjWDLUNj4xflA0/edit?tab=t.0', '_blank');
+    window.open('https://docs.google.com/spreadsheets/d/1Pgl_otIevtC7tEBE5lcSIstMoK9g-S4E46uXWQaUitM/edit?gid=0#gid=0', '_blank');
   };
 
   return (

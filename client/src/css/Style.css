@@ -3,7 +3,7 @@
 /* ================ */
 :root {
   /* Color Scheme */
-  --primary-color: #7B1E1E;          /* Deep Maroon - Logo Inspired */
+  --primary-color: #34495E;          /* Deep Maroon - Logo Inspired */
   --primary-hover: #5e1616;          /* Darker Maroon */
   --primary-light: #f5eaea;          /* Light Blush background */
 
@@ -22,9 +22,9 @@
   --danger-color: #d9534f;           /* Soft Red */
   --danger-hover: #c9302c;
 
-  --light-color: #FFFBEA;            /* Clean Light */
+  --light-color: #ECF0F1;            /* Clean Light */
   --light-hover: #e9ecef;           /* Slightly darker light for hover */
-  --dark-color: rgba(0, 0, 0, 0.452);             /* Almost Black for depth */
+  --dark-color: #1e1e1e;             /* Almost Black for depth */
 
   /* Semantic Backgrounds & Text (often derived from alerts or for custom components) */
   --success-bg: #d4edda;
