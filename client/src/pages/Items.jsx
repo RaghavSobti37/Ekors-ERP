@@ -687,6 +687,22 @@ export default function Items() {
     }
   };
 
+  const addNewPurchaseItem = () => {
+    setPurchaseData(prevData => ({
+      ...prevData,
+      items: [
+        ...(prevData.items || []), // Ensure items array exists, provide default if not
+        { // New item structure
+          itemId: null, // Or some default if applicable
+          description: "",
+          quantity: "1", // Default quantity
+          price: "",     // Default price
+          gstRate: "0",  // Default GST rate
+        },
+      ],
+    }));
+  };
+
   const handleExportToExcel = async () => {
     setIsExportingExcel(true);
     setExcelUpdateStatus({ error: null, success: null, details: [] });
@@ -1361,7 +1377,6 @@ title={
                         onChange={(e) =>
                           setFormData({ ...formData, buyingPrice: e.target.value })
                         }
-                        required
                       />
                     </div>
                     <div className="form-group">
