@@ -67,6 +67,14 @@ router.patch(
   userController.toggleUserActiveStatus
 );
 
+// @desc    Update own user profile (phone, password)
+// @route   PATCH /api/users/profile
+// @access  Private (Authenticated users)
+router.patch(
+  "/profile",
+  auth, // Ensures the user is authenticated
+  userController.updateUserProfile
+);
 // The route GET /api/users/transfer-candidates has been removed from here
 // and its logic moved to ticketController.js and ticketRoutes.js
 

@@ -380,7 +380,6 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Profile updated successfully", data: userResponse });
   } catch (error) {
     logger.error('user-profile-update-error', `Error updating profile for user ${userId}: ${error.message}`, error);
-    logger.error('user-profile-update-error', `Error updating profile for user ${userId}: ${error.message}`, error, req.user);
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: "Validation failed", errors: error.errors });
     }

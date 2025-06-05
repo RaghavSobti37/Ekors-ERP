@@ -185,7 +185,7 @@ export default function Navbar({ showPurchaseModal }) {
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo">
-            <img src="/public/logo.png" alt="E-KORS" className="logo-img" />
+            <img src="/logo.png" alt="E-KORS" className="logo-img" />
           </div>
 
           <div className="nav-links">
