@@ -69,6 +69,13 @@ router.get(
   ticketController.checkExistingTicket
 );
 
+// Route to get transfer candidates (moved from userRoutes)
+router.get(
+  "/transfer-candidates",
+  auth,
+  ticketController.getTransferCandidates
+);
+
 router.get("/:id", auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOne({
@@ -137,6 +144,14 @@ router.get("/:id", auth, async (req, res) => {
 });
 
 router.put("/:id", auth, ticketController.updateTicket); // Use the controller
+
+// POST /api/tickets/:id/transfer - Transfer a ticket
+router.post(
+  "/:id/transfer",
+  auth,
+  ticketController.transferTicket
+);
+
 
 router.delete("/:id", auth, ticketController.deleteTicket);
 
@@ -399,13 +414,6 @@ router.delete("/:id/documents", auth, async (req, res) => {
     });
   }
 });
-
-// Route to get transfer candidates (moved from userRoutes)
-router.get(
-  "/transfer-candidates",
-  auth,
-  ticketController.getTransferCandidates
-);
 
 
 router.get("/", auth, async (req, res) => {
