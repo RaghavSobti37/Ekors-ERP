@@ -425,6 +425,120 @@ exports.getCategories = async (req, res) => {
   }
 };
 
+// Create new category
+exports.createCategory = async (req, res) => {
+  const user = req.user || null;
+  const { categoryName } = req.body;
+  const logDetails = { userId: user?._id, categoryName };
+
+  if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+    logger.warn('item', 'API: createCategory - Invalid or missing categoryName', user, logDetails);
+    return res.status(400).json({ message: 'Category name is required.' });
+  }
+
+  const trimmedCategoryName = categoryName.trim();
+
+  try {
+    logger.info('item', `API: createCategory - Attempting to create category "${trimmedCategoryName}"`, user, logDetails);
+
+    // Check if category already exists by checking if any item has this category
+    const existingItem = await Item.findOne({ category: trimmedCategoryName });
+
+    if (existingItem) {
+      logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" already exists`, user, logDetails);
+      return res.status(409).json({ message: `Category "${trimmedCategoryName}" already exists.` });
+    }
+
+    // If category doesn't exist, create a minimal dummy item to register it
+    const dummyItem = new Item({
+      name: `_Dummy Item for Category: ${trimmedCategoryName}_`, // Use a distinct name
+      category: trimmedCategoryName,
+      subcategory: 'General', // Default subcategory
+      sellingPrice: 0, // Minimal required fields
+      unit: 'Nos',
+      quantity: 0,
+      gstRate: 0,
+      hsnCode: '',
+      maxDiscountPercentage: 0,
+      lowStockThreshold: 0,
+      // Other fields can be defaulted by schema
+    });
+
+    await dummyItem.save();
+    logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" created successfully via dummy item`, user, { ...logDetails, dummyItemId: dummyItem._id });
+
+    res.status(201).json({ message: 'Category added successfully.', category: trimmedCategoryName });
+
+  } catch (error) {
+    logger.error('item', `API: createCategory - Error creating category "${trimmedCategoryName}"`, error, user, logDetails);
+    res.status(500).json({
+      message: 'Server error while adding category',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Create new subcategory for a given category
+exports.createSubcategory = async (req, res) => {
+  const user = req.user || null;
+  const { categoryName, subcategoryName } = req.body;
+  const logDetails = { userId: user?._id, categoryName, subcategoryName };
+
+  if (!categoryName || typeof categoryName !== 'string' || categoryName.trim() === '') {
+    logger.warn('item', 'API: createSubcategory - Invalid or missing categoryName', user, logDetails);
+    return res.status(400).json({ message: 'Category name is required.' });
+  }
+  if (!subcategoryName || typeof subcategoryName !== 'string' || subcategoryName.trim() === '') {
+    logger.warn('item', 'API: createSubcategory - Invalid or missing subcategoryName', user, logDetails);
+    return res.status(400).json({ message: 'Subcategory name is required.' });
+  }
+
+  const trimmedCategoryName = categoryName.trim();
+  const trimmedSubcategoryName = subcategoryName.trim();
+
+  try {
+    logger.info('item', `API: createSubcategory - Attempting to add subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`, user, logDetails);
+
+    // Check if the category exists and if the subcategory already exists under it
+    const existingItem = await Item.findOne({ category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
+
+    if (existingItem) {
+      logger.info('item', `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}"`, user, logDetails);
+      return res.status(409).json({ message: `Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}".` });
+    }
+
+    // To make the new subcategory appear in the getCategories list for this category,
+    // we need to ensure at least one item exists with this category/subcategory combination.
+    // We can either update an existing item in that category or create a new minimal one.
+    // Creating a minimal dummy item is simpler and doesn't modify existing data.
+    const dummyItem = new Item({
+      name: `_Dummy Item for Subcategory: ${trimmedSubcategoryName} in ${trimmedCategoryName}_`, // Use a distinct name
+      category: trimmedCategoryName,
+      subcategory: trimmedSubcategoryName,
+      sellingPrice: 0, // Minimal required fields
+      unit: 'Nos',
+      quantity: 0,
+      gstRate: 0,
+      hsnCode: '',
+      maxDiscountPercentage: 0,
+      lowStockThreshold: 0,
+      // Other fields can be defaulted by schema
+    });
+
+    await dummyItem.save();
+    logger.info('item', `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" added to category "${trimmedCategoryName}" successfully via dummy item`, user, { ...logDetails, dummyItemId: dummyItem._id });
+
+    res.status(201).json({ message: 'Subcategory added successfully.', category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
+
+  } catch (error) {
+    logger.error('item', `API: createSubcategory - Error adding subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`, error, user, logDetails);
+    res.status(500).json({
+      message: 'Server error while adding subcategory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
   
 exports.getItemById = async (req, res) => {
   const { id } = req.params;
@@ -454,8 +568,9 @@ exports.createItem = async (req, res) => {
     const user = req.user || null;
     const newItem = new Item({
       name: req.body.name,
-      quantity: req.body.quantity || 0,
-      price: req.body.price || 0,
+      quantity: parseFloat(req.body.quantity) || 0,
+      sellingPrice: parseFloat(req.body.sellingPrice) || 0, // Changed from price to sellingPrice
+      buyingPrice: parseFloat(req.body.buyingPrice) || 0,   // Added buyingPrice
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || '',
       unit: req.body.unit || 'Nos',
