@@ -7,18 +7,19 @@ const auth = require('../middleware/auth');
 router.get('/search', auth, async (req, res) => {
   try {
     const searchTerm = req.query.q || '';
-    if (!searchTerm.trim() || searchTerm.trim().length < 2) { // Require at least 2 chars to search
+    if (!searchTerm.trim() || searchTerm.trim().length < 1) { 
       return res.json([]);
     }
 
     const clients = await Client.find({
       $or: [
         { companyName: { $regex: searchTerm, $options: 'i' } },
+        { clientName: { $regex: searchTerm, $options: 'i' } },
         { email: { $regex: searchTerm, $options: 'i' } },
         { gstNumber: { $regex: searchTerm, $options: 'i' } }
       ]
     })
-    .select('companyName email gstNumber phone _id') // Select only necessary fields
+        .select('companyName clientName email gstNumber phone _id')  // Select only necessary fields
     .limit(10); // Limit results for performance
 
     res.json(clients);
@@ -31,7 +32,7 @@ router.get('/search', auth, async (req, res) => {
 // Create or find and return client
 router.post('/', auth, async (req, res) => {
   try {
-    const { email, companyName, gstNumber, phone } = req.body;
+    const { email, companyName,clientName, gstNumber, phone } = req.body;
     const userId = req.user._id;
 
     if (!email || !companyName || !gstNumber || !phone) {
@@ -53,7 +54,7 @@ router.post('/', auth, async (req, res) => {
           return res.status(400).json({ message: 'GST Number already exists for another client.', field: 'gstNumber' });
         }
       }
-      client = await Client.findByIdAndUpdate(client._id, { companyName, gstNumber: normalizedGstNumber, phone, email: normalizedEmail }, { new: true });
+      client = await Client.findByIdAndUpdate(client._id, { companyName,clientName, gstNumber: normalizedGstNumber, phone, email: normalizedEmail }, { new: true });
       return res.status(200).json(client);
     }
 
@@ -66,6 +67,7 @@ router.post('/', auth, async (req, res) => {
     const newClient = new Client({
       email: normalizedEmail,
       companyName,
+      clientName,
       gstNumber: normalizedGstNumber,
       phone,
       user: userId

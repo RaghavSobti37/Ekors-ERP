@@ -6,6 +6,10 @@ const clientSchema = new mongoose.Schema({
     required: true,
     lowercase: true
   },
+  clientName: { // Name of the contact person at the client company
+    type: String,
+    trim: true
+  },
   companyName: { 
     type: String, 
     required: true,
@@ -36,6 +40,7 @@ const clientSchema = new mongoose.Schema({
 
 clientSchema.index({
   companyName: 'text',
+  clientName: 'text',
   gstNumber: 'text',
   email: 'text'
 });
