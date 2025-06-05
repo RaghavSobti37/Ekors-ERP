@@ -718,6 +718,34 @@ exports.transferTicket = async (req, res) => {
   }
 };
 
+// @desc    Get a list of users suitable for ticket transfer
+// @route   GET /api/tickets/transfer-candidates (New route)
+// @access  Private (Authenticated users)
+exports.getTransferCandidates = asyncHandler(async (req, res) => {
+  const requestingUser = req.user; // User making the request
+  const logContext = { initiatorId: requestingUser.id, initiatorEmail: requestingUser.email, action: "FETCH_TICKET_TRANSFER_CANDIDATES" };
+
+  if (!requestingUser || !requestingUser.id) {
+    logger.error("ticket-transfer-candidates", "Authentication error: User or User ID not found in request.", null, { path: req.path, ip: req.ip });
+    return res.status(401).json({ message: "Authentication required or user session invalid." });
+  }
+
+  try {
+    const users = await User.find({
+      _id: { $ne: requestingUser.id }, // Exclude the current user
+      role: { $nin: ["client"] },      // Exclude users with 'client' role (adjust as needed)
+      isActive: true                   // Only active users
+    }).select('firstname lastname email role _id department').lean(); // .lean() for plain JS objects
+
+    logger.info('ticket-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`, requestingUser, logContext);
+    res.status(200).json(users); // Send back the array of users directly
+  } catch (error) {
+    logger.error('ticket-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`, error, requestingUser, { ...logContext, errorMessage: error.message, stack: error.stack });
+    res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
+  }
+});
+
+
 // --- Logic moved from index.js ---
 
 exports.getAllTickets_IndexLogic = async (req, res) => {

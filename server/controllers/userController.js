@@ -2,18 +2,7 @@ const User = require("../models/users");
 const UserBackup = require("../models/userBackup"); // Import backup model
 const asyncHandler = require("express-async-handler");
 const logger = require("../utils/logger"); // Import logger
-const fs = require('fs'); // For file system operations, e.g., deleting old avatar
-const path = require('path');
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  // Ensure logger is available or use console for this critical setup error
-  if (logger && typeof logger.info === 'function') {
-    logger.info('SETUP', `Creating uploads directory: ${UPLOADS_DIR}`);
-  } else {
-    console.log(`[SETUP] Creating uploads directory: ${UPLOADS_DIR}`);
-  }
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+
 
 // @desc    Create a new user
 // @route   POST /api/users
@@ -396,93 +385,6 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: "Validation failed", errors: error.errors });
     }
     res.status(500).json({ message: "Server error while updating profile", error: error.message });
-  }
-});
-
-// @desc    Upload user avatar
-// @route   POST /api/users/profile/avatar
-// @access  Private (Authenticated users)
-exports.uploadUserAvatar = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const performingUser = req.user;
-
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded or file type is not an image." });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      // Should not happen if authMiddleware is working
-      logger.error('user-avatar-upload', `User ${userId} not found during avatar upload, though authenticated. Critical issue.`, performingUser);
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Optional: Delete old avatar if it exists and is different
-     const newAvatarFilename = req.file.filename;
-    const newAvatarUrl = `/uploads/${newAvatarFilename}`; // This is the public URL path
-
-    if (user.avatarUrl && user.avatarUrl !== newAvatarUrl) {
-      // Extract filename from the old avatarUrl (e.g., /uploads/oldfile.jpg -> oldfile.jpg)
-      const oldAvatarFilename = path.basename(user.avatarUrl);
-      const oldAvatarFullPath = path.join(UPLOADS_DIR, oldAvatarFilename);
-
-      if (fs.existsSync(oldAvatarFullPath)) {
-        fs.unlink(oldAvatarFullPath, (err) => {
-          if (err) logger.warn('avatar-delete-old-warn', `Could not delete old avatar for ${userId}: ${oldAvatarFullPath}`, err, performingUser);
-          else logger.info('avatar-delete-old-info', `Successfully deleted old avatar for ${userId}: ${oldAvatarFullPath}`, performingUser);
-        });      }
-    }
-
-    user.avatarUrl = newAvatarUrl;
-    await user.save();
-
-    logger.info('user-avatar-upload', `Avatar uploaded successfully for user ${userId}. Path: ${user.avatarUrl}`, performingUser);
-    
-    const userResponse = user.getSafeUser ? user.getSafeUser() : {
-        _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-        isActive: user.isActive,
-    };
-    res.status(200).json({ message: "Avatar uploaded successfully", data: userResponse });
-  } catch (error) {
-    logger.error('user-avatar-upload-error', `Error uploading avatar for user ${userId}: ${error.message}`, error, performingUser);
-    res.status(500).json({ message: "Server error while uploading avatar", error: error.message });
-  }
-});
-
-/**
- * @desc    Get a list of users suitable for ticket transfer
- * @route   GET /api/users/transfer-candidates
- * @access  Private (Authenticated users)
- */
-exports.getTransferCandidates = asyncHandler(async (req, res) => {
-const requestingUser = req.user; // User making the request
-  const logContext = { initiatorId: requestingUser.id, initiatorEmail: requestingUser.email, action: "FETCH_TRANSFER_CANDIDATES" };
-
-  if (!requestingUser || !requestingUser.id) {
-    // This check is more for robustness; auth middleware should handle unauthenticated requests.
-    logger.error("user-transfer-candidates", "Authentication error: User or User ID not found in request.", null, { path: req.path, ip: req.ip });
-    return res.status(401).json({ message: "Authentication required or user session invalid." });
-  }
-
-  try {
-    const users = await User.find({
-      _id: { $ne: requestingUser.id }, // Exclude the current user
-      role: { $nin: ["client"] },      // Exclude users with 'client' role (adjust as needed)
-      isActive: true                   // Only active users
-    }).select('firstname lastname email role _id department').lean(); // .lean() for plain JS objects
-
-    // User.find() returns an empty array if no documents match, which is a valid response.
-    logger.info('user-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`, requestingUser, logContext);    res.status(200).json(users); // Send back the array of users directly
-  } catch (error) {
-logger.error('user-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`, error, requestingUser, { ...logContext, errorMessage: error.message, stack: error.stack });
-    res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
   }
 });
 

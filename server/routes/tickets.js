@@ -400,6 +400,14 @@ router.delete("/:id/documents", auth, async (req, res) => {
   }
 });
 
+// Route to get transfer candidates (moved from userRoutes)
+router.get(
+  "/transfer-candidates",
+  auth,
+  ticketController.getTransferCandidates
+);
+
+
 router.get("/", auth, async (req, res) => {
   try {
     const query = {
@@ -470,9 +478,6 @@ router.get("/", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch tickets" });
   }
 });
-
-// Route to transfer a ticket
-router.post("/:id/transfer", auth, ticketController.transferTicket);
 
 // --- Routes moved from index.js (now using controller functions) ---
 // These routes are prefixed with /from-index to distinguish them if necessary

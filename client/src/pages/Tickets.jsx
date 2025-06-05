@@ -52,18 +52,18 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
         throw new Error("Authentication token not found for fetching users.");
       }
 
-      const data = await apiClient("/users/transfer-candidates"); // Use apiClient
+      const data = await apiClient("/tickets/transfer-candidates"); // Use apiClient
       setUsers(data);
     } catch (err) {
       let specificMessage = "An unexpected error occurred while trying to load users for search."; // Default generic message
-      if (err.response) {
-        // Check for 403 Forbidden specifically when fetching users
-        if (err.response.status === 403) {
+      // Adjust for apiClient error structure (err.status and err.data)
+      if (err.status) {
+        if (err.status === 403) {
           // Provide a more informative message for 403 on user list fetching
-          specificMessage = err.response.data?.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
-        } else if (err.response.data && err.response.data.message) {
+          specificMessage = err.data?.message || "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
+        } else if (err.data && err.data.message) {
           // Use message from backend response if available and not a 403, or if 403 had a specific message
-          specificMessage = err.response.data.message;
+          specificMessage = err.data.message;
         } else if (err.message) {
           // Fallback to generic error message from the error object if no backend message
           specificMessage = `Failed to load users: ${err.message}`;
