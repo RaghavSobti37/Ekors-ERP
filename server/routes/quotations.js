@@ -5,7 +5,7 @@ const Client = require("../models/client");
 const QuotationBackup = require("../models/quotationBackup");
 const auth = require("../middleware/auth");
 const logger = require("../utils/logger");
-const { generateQuotationsReport } = require("../controllers/reportController"); // Import the report generator
+const { generateQuotationsReport } = require("../controllers/reportController");
 const excelJS = require("exceljs");
 
 const handleQuotationUpsert = async (req, res) => {
@@ -15,17 +15,24 @@ const handleQuotationUpsert = async (req, res) => {
     const { id } = req.params;
 
     const user = req.user || null;
-    operation = id ? 'update' : 'create';
-    const logDetails = { 
-      userId: req.user._id, 
-      operation, 
-      quotationId: id, 
-      referenceNumber: quotationPayload.referenceNumber 
+    operation = id ? "update" : "create";
+    const logDetails = {
+      userId: req.user._id,
+      operation,
+      quotationId: id,
+      referenceNumber: quotationPayload.referenceNumber,
     };
 
     if (!quotationPayload.referenceNumber) {
-      logger.warn('quotation', `Missing reference number during quotation ${operation}`, user, logDetails);
-      return res.status(400).json({ message: "Missing quotation reference number" });
+      logger.warn(
+        "quotation",
+        `Missing reference number during quotation ${operation}`,
+        user,
+        logDetails
+      );
+      return res
+        .status(400)
+        .json({ message: "Missing quotation reference number" });
     }
 
     const refCheck = await Quotation.findOne({
@@ -35,67 +42,187 @@ const handleQuotationUpsert = async (req, res) => {
     });
 
     if (refCheck) {
-      logger.warn('quotation', `Reference number already exists for user`, user, logDetails);
-      return res.status(400).json({ message: "Reference number already exists for this user" });
+      logger.warn(
+        "quotation",
+        `Reference number already exists for user`,
+        user,
+        logDetails
+      );
+      return res
+        .status(400)
+        .json({ message: "Reference number already exists for this user" });
     }
 
     let processedClient;
 
     if (clientInput && clientInput._id) {
-      processedClient = await Client.findOne({ _id: clientInput._id, user: req.user._id });
-      logger.debug('quotation', `Processing client with ID: ${clientInput._id} for quotation ${operation}`, user, { ...logDetails, clientId: clientInput._id });
+      processedClient = await Client.findOne({
+        _id: clientInput._id,
+        user: req.user._id,
+      });
+      logger.debug(
+        "quotation",
+        `Processing client with ID: ${clientInput._id} for quotation ${operation}`,
+        user,
+        { ...logDetails, clientId: clientInput._id }
+      );
       if (!processedClient) {
-        return res.status(404).json({ message: "Client not found or does not belong to this user." });
+        return res
+          .status(404)
+          .json({
+            message: "Client not found or does not belong to this user.",
+          });
       }
 
       const { _id, ...updateData } = clientInput;
       if (Object.keys(updateData).length > 0) {
         if (updateData.email) updateData.email = updateData.email.toLowerCase();
-        if (updateData.gstNumber) updateData.gstNumber = updateData.gstNumber.toUpperCase();
-        
-        if (updateData.gstNumber && updateData.gstNumber !== processedClient.gstNumber) {
+        if (updateData.gstNumber)
+          updateData.gstNumber = updateData.gstNumber.toUpperCase();
+
+        if (
+          updateData.gstNumber &&
+          updateData.gstNumber !== processedClient.gstNumber
+        ) {
           const gstConflictCheck = await Client.findOne({
             gstNumber: updateData.gstNumber,
             user: req.user._id,
-            _id: { $ne: processedClient._id } 
+            _id: { $ne: processedClient._id },
           });
           if (gstConflictCheck) {
-            logger.warn('quotation', `GST Number conflict during client update for quotation ${operation}`, user, { ...logDetails, clientId: processedClient._id, gstNumber: updateData.gstNumber });
-            return res.status(400).json({ message: "GST Number conflicts with another existing client.", field: "gstNumber" });
+            logger.warn(
+              "quotation",
+              `GST Number conflict during client update for quotation ${operation}`,
+              user,
+              {
+                ...logDetails,
+                clientId: processedClient._id,
+                gstNumber: updateData.gstNumber,
+              }
+            );
+            return res
+              .status(400)
+              .json({
+                message: "GST Number conflicts with another existing client.",
+                field: "gstNumber",
+              });
           }
         }
-        processedClient = await Client.findByIdAndUpdate(clientInput._id, { ...updateData, user: req.user._id }, { new: true });
+        processedClient = await Client.findByIdAndUpdate(
+          clientInput._id,
+          { ...updateData, user: req.user._id },
+          { new: true }
+        );
       }
-    } else if (clientInput && clientInput.email && clientInput.companyName && clientInput.gstNumber && clientInput.phone) {
+    } else if (
+      clientInput &&
+      clientInput.email &&
+      clientInput.companyName &&
+      clientInput.gstNumber &&
+      clientInput.phone
+    ) {
       const normalizedEmail = clientInput.email.toLowerCase();
       const normalizedGst = clientInput.gstNumber.toUpperCase();
 
-      logger.debug('quotation', `Processing new/potential client details for quotation ${operation}`, user, { ...logDetails, clientEmail: normalizedEmail, clientGst: normalizedGst });
-      processedClient = await Client.findOne({ email: normalizedEmail, user: req.user._id });
+      logger.debug(
+        "quotation",
+        `Processing new/potential client details for quotation ${operation}`,
+        user,
+        {
+          ...logDetails,
+          clientEmail: normalizedEmail,
+          clientGst: normalizedGst,
+        }
+      );
+      processedClient = await Client.findOne({
+        email: normalizedEmail,
+        user: req.user._id,
+      });
       if (processedClient) {
-        logger.debug('quotation', `Found existing client by email: ${normalizedEmail}`, user, { ...logDetails, clientId: processedClient._id });
+        logger.debug(
+          "quotation",
+          `Found existing client by email: ${normalizedEmail}`,
+          user,
+          { ...logDetails, clientId: processedClient._id }
+        );
         if (normalizedGst !== processedClient.gstNumber) {
-          const gstConflictCheck = await Client.findOne({ gstNumber: normalizedGst, user: req.user._id, _id: { $ne: processedClient._id } });
-          if (gstConflictCheck) return res.status(400).json({ message: "GST Number conflicts with another client.", field: "gstNumber" });
+          const gstConflictCheck = await Client.findOne({
+            gstNumber: normalizedGst,
+            user: req.user._id,
+            _id: { $ne: processedClient._id },
+          });
+          if (gstConflictCheck)
+            return res
+              .status(400)
+              .json({
+                message: "GST Number conflicts with another client.",
+                field: "gstNumber",
+              });
         }
-        processedClient = await Client.findByIdAndUpdate(processedClient._id, { ...clientInput, email: normalizedEmail, gstNumber: normalizedGst, user: req.user._id }, { new: true });
-        logger.info('quotation', `Updated existing client for quotation ${operation}`, user, { ...logDetails, clientId: processedClient._id });
+        processedClient = await Client.findByIdAndUpdate(
+          processedClient._id,
+          {
+            ...clientInput,
+            email: normalizedEmail,
+            gstNumber: normalizedGst,
+            user: req.user._id,
+          },
+          { new: true }
+        );
+        logger.info(
+          "quotation",
+          `Updated existing client for quotation ${operation}`,
+          user,
+          { ...logDetails, clientId: processedClient._id }
+        );
       } else {
-        const gstCheck = await Client.findOne({ gstNumber: normalizedGst, user: req.user._id });
+        const gstCheck = await Client.findOne({
+          gstNumber: normalizedGst,
+          user: req.user._id,
+        });
         if (gstCheck) {
-          logger.warn('quotation', `GST Number already exists for another client during new client creation attempt`, user, { ...logDetails, clientGst: normalizedGst });
-          return res.status(400).json({ message: "GST Number already exists for another client.", field: "gstNumber" });
+          logger.warn(
+            "quotation",
+            `GST Number already exists for another client during new client creation attempt`,
+            user,
+            { ...logDetails, clientGst: normalizedGst }
+          );
+          return res
+            .status(400)
+            .json({
+              message: "GST Number already exists for another client.",
+              field: "gstNumber",
+            });
         }
-        processedClient = new Client({ ...clientInput, email: normalizedEmail, gstNumber: normalizedGst, user: req.user._id });
+        processedClient = new Client({
+          ...clientInput,
+          email: normalizedEmail,
+          gstNumber: normalizedGst,
+          user: req.user._id,
+        });
         await processedClient.save();
       }
     } else {
-      logger.warn('quotation', `Missing or invalid client information during quotation ${operation}`, user, logDetails);
-      return res.status(400).json({ message: "Client information is missing or invalid. Please select or provide full client details." });
+      logger.warn(
+        "quotation",
+        `Missing or invalid client information during quotation ${operation}`,
+        user,
+        logDetails
+      );
+      return res
+        .status(400)
+        .json({
+          message:
+            "Client information is missing or invalid. Please select or provide full client details.",
+        });
     }
 
     if (!processedClient || !processedClient._id) {
-      return res.status(500).json({ message: "Failed to process client information for the quotation." });
+      return res
+        .status(500)
+        .json({
+          message: "Failed to process client information for the quotation.",
+        });
     }
 
     const data = {
@@ -108,29 +235,70 @@ const handleQuotationUpsert = async (req, res) => {
 
     let quotation;
     if (id) {
-      const existingQuotation = await Quotation.findOne({ _id: id, user: req.user._id });
+      const existingQuotation = await Quotation.findOne({
+        _id: id,
+        user: req.user._id,
+      });
       if (!existingQuotation) {
-        logger.warn('quotation', `Update failed: Quotation ${id} not found or user ${req.user._id} not authorized.`, user, logDetails);
-        return res.status(404).json({ message: "Quotation not found or you do not have permission to update it." });
+        logger.warn(
+          "quotation",
+          `Update failed: Quotation ${id} not found or user ${req.user._id} not authorized.`,
+          user,
+          logDetails
+        );
+        return res
+          .status(404)
+          .json({
+            message:
+              "Quotation not found or you do not have permission to update it.",
+          });
       }
 
       // Handle status updates:
       // System-managed statuses ("running", "closed") cannot be manually changed by user.
       // Users can only change status to "open" or "hold" if current status allows it.
-      if (quotationPayload.status && quotationPayload.status !== existingQuotation.status) {
-        if (existingQuotation.status === "running" || existingQuotation.status === "closed") {
-          logger.warn('quotation', `Attempt to change system-managed status for quotation ${id}. Current: ${existingQuotation.status}, Attempted: ${quotationPayload.status}`, user, logDetails);
-          return res.status(400).json({ message: `Cannot manually change status from '${existingQuotation.status}'. It is system-managed.` });
+      if (
+        quotationPayload.status &&
+        quotationPayload.status !== existingQuotation.status
+      ) {
+        if (
+          existingQuotation.status === "running" ||
+          existingQuotation.status === "closed"
+        ) {
+          logger.warn(
+            "quotation",
+            `Attempt to change system-managed status for quotation ${id}. Current: ${existingQuotation.status}, Attempted: ${quotationPayload.status}`,
+            user,
+            logDetails
+          );
+          return res
+            .status(400)
+            .json({
+              message: `Cannot manually change status from '${existingQuotation.status}'. It is system-managed.`,
+            });
         }
         if (!["open", "hold"].includes(quotationPayload.status)) {
-          logger.warn('quotation', `Invalid status update attempt for quotation ${id}. Attempted: ${quotationPayload.status}`, user, logDetails);
-          return res.status(400).json({ message: "Status can only be manually changed to 'open' or 'hold'." });
+          logger.warn(
+            "quotation",
+            `Invalid status update attempt for quotation ${id}. Attempted: ${quotationPayload.status}`,
+            user,
+            logDetails
+          );
+          return res
+            .status(400)
+            .json({
+              message:
+                "Status can only be manually changed to 'open' or 'hold'.",
+            });
         }
         // If valid manual status change, it will be part of 'data'
-      } else if (quotationPayload.hasOwnProperty('status') && quotationPayload.status === existingQuotation.status) {
+      } else if (
+        quotationPayload.hasOwnProperty("status") &&
+        quotationPayload.status === existingQuotation.status
+      ) {
         // If status in payload is same as existing, no change, so remove from data to avoid issues if not intended for update
         delete data.status;
-      } else if (!quotationPayload.hasOwnProperty('status')) {
+      } else if (!quotationPayload.hasOwnProperty("status")) {
         // If status is not in payload, ensure it's not accidentally removed from 'data' if it was there from quotationPayload
         data.status = existingQuotation.status; // Keep existing status
       }
@@ -142,15 +310,26 @@ const handleQuotationUpsert = async (req, res) => {
       );
 
       if (!quotation) {
-        return res.status(404).json({ message: "Quotation not found or you do not have permission to update it." });
+        return res
+          .status(404)
+          .json({
+            message:
+              "Quotation not found or you do not have permission to update it.",
+          });
       }
     } else {
       quotation = new Quotation(data);
       await quotation.save();
     }
 
-    const logMessage = id ? 'Quotation updated successfully' : 'Quotation created successfully';
-    logger.info('quotation', logMessage, user, { ...logDetails, quotationId: quotation._id, clientId: processedClient._id });
+    const logMessage = id
+      ? "Quotation updated successfully"
+      : "Quotation created successfully";
+    logger.info("quotation", logMessage, user, {
+      ...logDetails,
+      quotationId: quotation._id,
+      clientId: processedClient._id,
+    });
 
     const populatedQuotation = await Quotation.findById(quotation._id)
       .populate("client")
@@ -159,23 +338,43 @@ const handleQuotationUpsert = async (req, res) => {
 
     if (populatedQuotation && processedClient) {
       try {
-        await Client.findByIdAndUpdate(
-          processedClient._id,
-          { $addToSet: { quotations: populatedQuotation._id } }
+        await Client.findByIdAndUpdate(processedClient._id, {
+          $addToSet: { quotations: populatedQuotation._id },
+        });
+        logger.debug(
+          "quotation",
+          `Added quotation reference ${populatedQuotation._id} to client ${processedClient._id}`,
+          user,
+          { ...logDetails, clientId: processedClient._id }
         );
-        logger.debug('quotation', `Added quotation reference ${populatedQuotation._id} to client ${processedClient._id}`, user, { ...logDetails, clientId: processedClient._id });
       } catch (clientUpdateError) {
-        logger.error('quotation', `Error adding quotation reference ${populatedQuotation._id} to client ${processedClient._id}`, clientUpdateError, user, { ...logDetails, clientId: processedClient._id });
+        logger.error(
+          "quotation",
+          `Error adding quotation reference ${populatedQuotation._id} to client ${processedClient._id}`,
+          clientUpdateError,
+          user,
+          { ...logDetails, clientId: processedClient._id }
+        );
       }
     }
     res.status(id ? 200 : 201).json(populatedQuotation);
   } catch (error) {
-    logger.error('quotation', `Error during quotation ${operation} process`, error, req.user, logDetails);
+    logger.error(
+      "quotation",
+      `Error during quotation ${operation} process`,
+      error,
+      req.user,
+      logDetails
+    );
     console.error("Error in handleQuotationUpsert:", error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message, errors: error.errors });
+    if (error.name === "ValidationError") {
+      return res
+        .status(400)
+        .json({ message: error.message, errors: error.errors });
     }
-    res.status(500).json({ message: error.message || "An unexpected error occurred." });
+    res
+      .status(500)
+      .json({ message: error.message || "An unexpected error occurred." });
   }
 };
 
@@ -195,7 +394,7 @@ router.get("/next-number", auth, async (req, res) => {
         if (numPart) {
           try {
             nextNumber = parseInt(numPart, 10) + 1;
-          } catch (e) { }
+          } catch (e) {}
         }
       }
     }
@@ -203,7 +402,12 @@ router.get("/next-number", auth, async (req, res) => {
     res.json({ nextQuotationNumber });
   } catch (error) {
     res.status(500).json({ message: error.message });
-    logger.error('quotation', `Failed to generate next quotation number`, error, req.user);
+    logger.error(
+      "quotation",
+      `Failed to generate next quotation number`,
+      error,
+      req.user
+    );
   }
 });
 
@@ -220,14 +424,39 @@ router.get("/", auth, async (req, res) => {
       query.status = req.query.status;
     }
 
+    // Add search functionality - Moved inside the async function
+    if (req.query.search) {
+      const searchTerm = req.query.search;
+      const searchRegex = { $regex: searchTerm, $options: "i" };
+
+      // Attempt to find clients matching the search term by name
+      const matchingClients = await Client.find({
+        companyName: searchRegex,
+        ...(req.user.role !== "super-admin" && { user: req.user._id }),
+      }).select("_id");
+      const clientIds = matchingClients.map((c) => c._id);
+
+      query.$or = [{ referenceNumber: searchRegex }];
+      if (clientIds.length > 0) {
+        query.$or.push({ client: { $in: clientIds } });
+      }
+    }
+
     const quotations = await Quotation.find(query)
-      .populate("client")
+      .populate("client", "companyName gstNumber email phone _id")
       .populate("user", "firstname lastname email")
-      .sort({ date: -1 });
+      .populate("orderIssuedBy", "firstname lastname")
+      .sort({ createdAt: -1 });
 
     res.json(quotations);
   } catch (error) {
-    logger.error('quotation', `Failed to fetch all accessible quotations`, error, req.user, { query: req.query });
+    logger.error(
+      "quotation",
+      `Failed to fetch all accessible quotations`,
+      error,
+      req.user,
+      { query: req.query }
+    );
     res.status(500).json({
       message: "Error fetching quotations",
       error: error.message,
@@ -243,7 +472,9 @@ router.get("/check-reference", auth, async (req, res) => {
     const { referenceNumber, excludeId } = req.query;
     const user = req.user || null;
     if (!referenceNumber) {
-      return res.status(400).json({ message: "referenceNumber query parameter is required." });
+      return res
+        .status(400)
+        .json({ message: "referenceNumber query parameter is required." });
     }
     const query = {
       user: req.user._id,
@@ -255,7 +486,13 @@ router.get("/check-reference", auth, async (req, res) => {
     res.json({ exists: !!existing });
   } catch (error) {
     res.status(500).json({ message: error.message });
-    logger.error('quotation', `Failed to check reference number availability`, error, user, { query });
+    logger.error(
+      "quotation",
+      `Failed to check reference number availability`,
+      error,
+      user,
+      { query }
+    );
   }
 });
 
@@ -264,7 +501,7 @@ router.get("/:id", auth, async (req, res) => {
     let findQuery = { _id: req.params.id };
     const user = req.user || null;
 
-    if (req.user.role !== 'super-admin') {
+    if (req.user.role !== "super-admin") {
       findQuery.user = req.user._id;
     }
 
@@ -273,8 +510,15 @@ router.get("/:id", auth, async (req, res) => {
       .populate("orderIssuedBy", "firstname lastname");
 
     if (!quotation) {
-      logger.warn('quotation', `Quotation not found or access denied: ${req.params.id}`, user, { findQuery });
-      return res.status(404).json({ message: "Quotation not found or access denied." });
+      logger.warn(
+        "quotation",
+        `Quotation not found or access denied: ${req.params.id}`,
+        user,
+        { findQuery }
+      );
+      return res
+        .status(404)
+        .json({ message: "Quotation not found or access denied." });
     }
 
     res.json(quotation);
@@ -286,22 +530,43 @@ router.get("/:id", auth, async (req, res) => {
 router.delete("/:id", auth, async (req, res) => {
   const quotationId = req.params.id;
   const userId = req.user ? req.user._id : null;
-  const userEmail = req.user ? req.user.email : 'N/A';
+  const userEmail = req.user ? req.user.email : "N/A";
   const user = req.user || null;
-  const logDetails = { userId, quotationId, model: 'Quotation', userEmail };
+  const logDetails = { userId, quotationId, model: "Quotation", userEmail };
 
-  logger.info('delete', `[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${userEmail}.`, user, logDetails);
+  logger.info(
+    "delete",
+    `[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${userEmail}.`,
+    user,
+    logDetails
+  );
 
   try {
     if (req.user.role !== "super-admin") {
-      logger.warn('delete', `[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${userEmail}.`, user, logDetails);
-      return res.status(403).json({ message: "Only superadmin can delete quotations" });
+      logger.warn(
+        "delete",
+        `[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${userEmail}.`,
+        user,
+        logDetails
+      );
+      return res
+        .status(403)
+        .json({ message: "Only superadmin can delete quotations" });
     }
 
     const quotationToBackup = await Quotation.findById(quotationId);
     if (!quotationToBackup) {
-      logger.warn('delete', `[NOT_FOUND] Quotation not found for deletion: ${quotationId}.`, logDetails);
-      return res.status(404).json({ message: "Quotation not found or you do not have permission to delete it." });
+      logger.warn(
+        "delete",
+        `[NOT_FOUND] Quotation not found for deletion: ${quotationId}.`,
+        logDetails
+      );
+      return res
+        .status(404)
+        .json({
+          message:
+            "Quotation not found or you do not have permission to delete it.",
+        });
     }
 
     const backupData = quotationToBackup.toObject();
@@ -312,7 +577,7 @@ router.delete("/:id", auth, async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: quotationToBackup.createdAt,
       originalUpdatedAt: quotationToBackup.updatedAt,
-      backupReason: "Admin-initiated deletion via API"
+      backupReason: "Admin-initiated deletion via API",
     });
 
     await newBackupEntry.save();
@@ -324,19 +589,35 @@ router.delete("/:id", auth, async (req, res) => {
           $pull: { quotations: quotationToBackup._id },
         });
       } catch (clientUpdateError) {
-        logger.error('delete', `[CLIENT_REF_REMOVE_ERROR] Error removing quotation reference ${quotationToBackup._id} from Client ID: ${quotationToBackup.client}.`, clientUpdateError, user, { ...logDetails, targetClientId: quotationToBackup.client.toString() });
+        logger.error(
+          "delete",
+          `[CLIENT_REF_REMOVE_ERROR] Error removing quotation reference ${quotationToBackup._id} from Client ID: ${quotationToBackup.client}.`,
+          clientUpdateError,
+          user,
+          { ...logDetails, targetClientId: quotationToBackup.client.toString() }
+        );
       }
     }
 
     res.status(200).json({
       message: "Quotation deleted and backed up successfully.",
       originalId: quotationToBackup._id,
-      backupId: newBackupEntry._id
+      backupId: newBackupEntry._id,
     });
-
   } catch (error) {
-    logger.error('delete', `[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${userEmail}.`, error, user, logDetails);
-    res.status(500).json({ message: "Server error during the deletion process. Please check server logs." });
+    logger.error(
+      "delete",
+      `[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${userEmail}.`,
+      error,
+      user,
+      logDetails
+    );
+    res
+      .status(500)
+      .json({
+        message:
+          "Server error during the deletion process. Please check server logs.",
+      });
   }
 });
 
@@ -346,8 +627,9 @@ router.delete("/:id", auth, async (req, res) => {
 // @access  Private
 // The controller will differentiate based on `exportToExcel` query param
 router.get("/report/summary", auth, generateQuotationsReport); // For JSON summary
-router.get("/report/excel", auth, (req, res, next) => { // For Excel download
-    req.query.exportToExcel = 'true'; // Ensure controller knows to export
-    generateQuotationsReport(req, res, next);
+router.get("/report/excel", auth, (req, res, next) => {
+  // For Excel download
+  req.query.exportToExcel = "true"; // Ensure controller knows to export
+  generateQuotationsReport(req, res, next);
 });
 module.exports = router;

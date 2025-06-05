@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Button, Form, Table, Alert } from "react-bootstrap";
+import { Button, Form, Table, Alert, Spinner, OverlayTrigger, Tooltip } from "react-bootstrap"; // Added Spinner, OverlayTrigger, Tooltip
 import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
 import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
+import QuotationSearchComponent from "../components/QuotationSearchComponent.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"; // Components for PDF viewing and downloading
 import {
@@ -164,6 +165,8 @@ const GoodsTable = ({
 };
 
 export default function Quotations() {
+  const [isReplicating, setIsReplicating] = useState(false);
+  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [quotations, setQuotations] = useState([]);
@@ -176,7 +179,7 @@ export default function Quotations() {
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [sortConfig, setSortConfig] = useState({
-    key: "date",
+    key: "referenceNumber",
     direction: "descending",
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,9 +191,8 @@ export default function Quotations() {
   const navigate = useNavigate();
   const [showQuotationReportModal, setShowQuotationReportModal] =
     useState(false);
-  // reportPeriod, quotationReportSummary, reportLoading, exportLoading states are removed
-  // as QuotationReportModal will manage these internally.
   const quotationFormId = "quotation-form";
+
   const generateQuotationNumber = () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -201,6 +203,76 @@ export default function Quotations() {
     const seconds = String(now.getSeconds()).padStart(2, "0");
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
   };
+
+  const recalculateTotals = (goodsList) => {
+    const totalQuantity = goodsList.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = goodsList.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    const gstAmount = totalAmount * 0.18;
+    const grandTotal = totalAmount + gstAmount;
+    return { totalQuantity, totalAmount, gstAmount, grandTotal };
+  };
+
+  const handleReplicationSelect = async (selectedQuotationStub) => {
+    if (!selectedQuotationStub || !selectedQuotationStub._id) {
+      toast.error("Invalid quotation selected for replication.");
+      return;
+    }
+    setIsLoadingReplicationDetails(true);
+    setError(null);
+    try {
+      const fullQuotation = await apiClient(`/quotations/${selectedQuotationStub._id}`);
+      if (!fullQuotation || !fullQuotation.client || !fullQuotation.goods) {
+        throw new Error("Incomplete quotation data received for replication.");
+      }
+
+      const replicatedGoods = fullQuotation.goods.map((item, index) => {
+        const quantity = Number(item.quantity || 1);
+        const price = Number(item.price || 0);
+        return {
+          description: item.description,
+          hsnSacCode: item.hsnSacCode || "",
+          quantity: quantity,
+          unit: item.unit || "Nos",
+          price: price,
+          amount: quantity * price,
+          originalPrice: Number(item.originalPrice || item.price),
+          maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
+          srNo: index + 1,
+        };
+      });
+
+      const totals = recalculateTotals(replicatedGoods);
+
+      setQuotationData(prevData => ({
+        ...prevData,
+        client: {
+          _id: fullQuotation.client._id,
+          companyName: fullQuotation.client.companyName || "",
+          gstNumber: fullQuotation.client.gstNumber || "",
+          email: fullQuotation.client.email || "",
+          phone: fullQuotation.client.phone || "",
+        },
+        goods: replicatedGoods,
+        ...totals,
+      }));
+      setSelectedClientIdForForm(fullQuotation.client._id);
+      setIsReplicating(false);
+      toast.info("Quotation data replicated. Review and save as new.");
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to load quotation details for replication.");
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoadingReplicationDetails(false);
+    }
+  };
+
 
   const handleSaveClientDetails = async () => {
     const {
@@ -248,20 +320,19 @@ export default function Quotations() {
       phone: phone,
     };
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
 
       const responseData = await apiClient("/clients", {
-        // Use apiClient
         method: "POST",
         body: clientPayload,
       });
       if (responseData && responseData._id) {
         setQuotationData((prev) => ({
           ...prev,
-          client: { ...responseData }, // Changed response.data to responseData
+          client: { ...responseData },
         }));
-        setSelectedClientIdForForm(responseData._id); // Changed response.data._id to responseData._id
+        setSelectedClientIdForForm(responseData._id);
         setError(null);
         toast.success("Client saved successfully!");
         if (auth.user) {
@@ -271,7 +342,7 @@ export default function Quotations() {
             auth.user,
             {
               clientId: responseData._id,
-              clientName: responseData.companyName, // Corrected: use responseData
+              clientName: responseData.companyName,
               action: "SAVE_NEW_CLIENT_SUCCESS",
             }
           );
@@ -291,16 +362,13 @@ export default function Quotations() {
       toast.error(errorMessage);
 
       if (auth.user) {
-        // handleApiError already logs, but if more specific logging is needed:
         frontendLogger.error(
           "clientActivity",
           "Failed to save new client",
           auth.user,
           {
             clientPayload: clientPayload,
-            // Error details are already part of the error object passed to handleApiError
-            // but can be logged again if needed for this specific context
-            errorMessage: error.data?.message || error.message, // apiClient error structure
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
             responseData: error.data,
             action: "SAVE_NEW_CLIENT_FAILURE",
@@ -313,10 +381,9 @@ export default function Quotations() {
   };
 
   const initialQuotationData = {
-    date: formatDateForInputHelper(new Date()), // Use helper
+    date: formatDateForInputHelper(new Date()),
     referenceNumber: generateQuotationNumber(),
     validityDate: formatDateForInputHelper(
-      // Use helper
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
     orderIssuedBy: "",
@@ -339,8 +406,8 @@ export default function Quotations() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
-    shippingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
+    billingAddress: ["", "", "", "", ""],
+    shippingAddress: ["", "", "", "", ""],
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -354,7 +421,7 @@ export default function Quotations() {
 
     setIsLoading(true);
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -368,7 +435,7 @@ export default function Quotations() {
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      const data = await apiClient(endpoint); // Use apiClient
+      const data = await apiClient(endpoint);
 
       setQuotations(data);
       setQuotationsCount(data.length);
@@ -382,7 +449,6 @@ export default function Quotations() {
       );
       setError(errorMessage);
       showToast(errorMessage, false);
-      // handleApiError already logs, but if more specific logging is needed:
       if (auth.user) {
         frontendLogger.error(
           "quotationActivity",
@@ -390,8 +456,6 @@ export default function Quotations() {
           auth.user,
           {
             errorMessage: error.response?.data?.message || error.message,
-            // stack: error.stack, // Already in handleApiError
-            // responseData: error.response?.data, // Already in handleApiError
             statusFilter,
             action: "FETCH_QUOTATIONS_FAILURE",
           }
@@ -399,7 +463,6 @@ export default function Quotations() {
       }
 
       if (error.status === 401) {
-        // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
@@ -437,7 +500,6 @@ export default function Quotations() {
           ? a.grandTotal - b.grandTotal
           : b.grandTotal - a.grandTotal;
       }
-      // For string comparisons like client.companyName or referenceNumber
       const valA = sortConfig.key.includes(".")
         ? sortConfig.key.split(".").reduce((o, i) => o?.[i], a)
         : a[sortConfig.key];
@@ -499,7 +561,7 @@ export default function Quotations() {
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to the first page
+    setCurrentPage(1);
   };
 
   const addGoodsRow = () => {
@@ -540,9 +602,9 @@ export default function Quotations() {
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
         unit: item.unit || "Nos",
-        price: item.sellingPrice, // Use sellingPrice from item
-        amount: item.sellingPrice,  // Initial amount is sellingPrice * 1
-        originalPrice: item.sellingPrice, // Store original selling price
+        price: item.sellingPrice,
+        amount: item.sellingPrice,
+        originalPrice: item.sellingPrice,
         maxDiscountPercentage: item.maxDiscountPercentage,
       },
     ];
@@ -796,7 +858,7 @@ export default function Quotations() {
     setError(null);
 
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -835,10 +897,9 @@ export default function Quotations() {
       const responseData = await apiClient(url, {
         method,
         body: submissionData,
-      }); // Use apiClient
+      });
 
       if (responseData) {
-        // apiClient returns data directly on success
         fetchQuotations();
         setShowModal(false);
         resetForm();
@@ -857,8 +918,8 @@ export default function Quotations() {
             }`,
             auth.user,
             {
-              quotationId: responseData._id, // Changed response.data._id to responseData._id
-              action: currentQuotation // Corrected: use responseData
+              quotationId: responseData._id,
+              action: currentQuotation
                 ? "UPDATE_QUOTATION_SUCCESS"
                 : "CREATE_QUOTATION_SUCCESS",
             }
@@ -873,9 +934,8 @@ export default function Quotations() {
         "quotationActivity"
       );
       if (error.status === 401) {
-        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
-        return; // Already handled by handleApiError and toast
+        return;
       }
       setError(errorMessage);
       toast.error(errorMessage);
@@ -890,9 +950,6 @@ export default function Quotations() {
           {
             referenceNumber: quotationData.referenceNumber,
             quotationId: currentQuotation?._id,
-            // errorMessage: error.data?.message || error.message, // Already in handleApiError
-            // stack: error.stack, // Already in handleApiError
-            // responseData: error.data, // Already in handleApiError
             submittedData: submissionData,
             action: currentQuotation
               ? "UPDATE_QUOTATION_FAILURE"
@@ -910,11 +967,12 @@ export default function Quotations() {
     setFormValidated(false);
     setSelectedClientIdForForm(null);
     setError(null);
+    setIsReplicating(false);
   };
 
   const generateTicketNumber = async () => {
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -936,9 +994,6 @@ export default function Quotations() {
           "Failed to generate ticket number from API",
           auth.user,
           {
-            // errorMessage: error.data?.message || error.message, // apiClient error structure
-            // stack: error.stack,
-            // responseData: error.data,
             action: "GENERATE_TICKET_NUMBER_FAILURE",
           }
         );
@@ -949,7 +1004,6 @@ export default function Quotations() {
   const handleCreateTicket = async (quotation) => {
     const ticketNumber = await generateTicketNumber();
 
-    // Prepare address arrays from quotation's client
     const clientBillingAddress = quotation.client?.billingAddress || {};
     const clientShippingAddress = quotation.client?.shippingAddress || {};
 
@@ -992,11 +1046,10 @@ export default function Quotations() {
 
   const checkExistingTicket = async (quotationNumber) => {
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
-      // Use apiClient
       const data = await apiClient(`/tickets/check/${quotationNumber}`);
       return data.exists;
     } catch (error) {
@@ -1044,7 +1097,7 @@ export default function Quotations() {
         return;
       }
 
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1080,13 +1133,11 @@ export default function Quotations() {
       };
 
       const responseData = await apiClient("/tickets", {
-        // Use apiClient
         method: "POST",
         body: completeTicketData,
       });
 
       if (responseData) {
-        // apiClient returns data directly on success
         setShowTicketModal(false);
         setError(null);
         toast.success(
@@ -1099,13 +1150,12 @@ export default function Quotations() {
             auth.user,
             {
               action: "TICKET_CREATED_FROM_QUOTATION_SUCCESS",
-              ticketNumber: responseData.ticketNumber, // Corrected: use responseData
+              ticketNumber: responseData.ticketNumber,
               quotationNumber: ticketData.quotationNumber,
             }
           );
         }
-        fetchQuotations(); // Refresh quotations to update status to 'running'
-        // navigate("/tickets"); // Optional: navigate to tickets page
+        fetchQuotations();
       }
     } catch (error) {
       const errorMessage = handleApiError(
@@ -1124,9 +1174,6 @@ export default function Quotations() {
           auth.user,
           {
             quotationNumber: ticketData.quotationNumber,
-            // errorMessage: error.data?.message || error.message, // apiClient error structure
-            // stack: error.stack,
-            // responseData: error.data,
             ticketDataSubmitted: completeTicketData,
             action: "CREATE_TICKET_FROM_QUOTATION_FAILURE",
           }
@@ -1156,9 +1203,9 @@ export default function Quotations() {
     }
 
     setQuotationData({
-      date: formatDateForInputHelper(quotation.date), // Use helper
+      date: formatDateForInputHelper(quotation.date),
       referenceNumber: quotation.referenceNumber,
-      validityDate: formatDateForInputHelper(quotation.validityDate), // Use helper
+      validityDate: formatDateForInputHelper(quotation.validityDate),
       orderIssuedBy: orderIssuedByIdToSet,
       goods: quotation.goods.map((item) => ({
         ...item,
@@ -1197,12 +1244,13 @@ export default function Quotations() {
     setCurrentQuotation(null);
     setQuotationData({
       ...initialQuotationData,
-      date: formatDateForInputHelper(new Date()), // Use helper
+      date: formatDateForInputHelper(new Date()),
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null },
     });
     setSelectedClientIdForForm(null);
+    setIsReplicating(false);
     setFormValidated(false);
     setShowModal(true);
   };
@@ -1221,10 +1269,10 @@ export default function Quotations() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
 
-      await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" }); // Use apiClient
+      await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" });
 
       setError(null);
       setCurrentQuotation(null);
@@ -1254,9 +1302,7 @@ export default function Quotations() {
         "quotationActivity"
       );
       if (error.status === 401) {
-        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
-        // toast.error is handled by handleApiError
         setIsLoading(false);
         return;
       }
@@ -1311,10 +1357,9 @@ export default function Quotations() {
               value={searchTerm}
               setSearchTerm={setSearchTerm}
               placeholder="Search quotations..."
-              className="flex-grow-1" // Allow search bar to take available space
+              className="flex-grow-1"
             />
             <div className="d-flex align-items-center gap-2">
-              {/* Status Filters */}
               <Form.Check
                 inline
                 label="All"
@@ -1390,7 +1435,9 @@ export default function Quotations() {
           </div>
         </div>
 
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && !isLoading && <Alert variant="danger">{error}</Alert>}
+        {isLoading && <div className="text-center my-3"><Spinner animation="border" /> <p>Loading quotations...</p></div>}
+
 
         <ReusableTable
           columns={[
@@ -1398,14 +1445,13 @@ export default function Quotations() {
               key: "referenceNumber",
               header: "Reference No",
               sortable: true,
-              tooltip: "year month day - (24h) hrs mins secs",
+              tooltip: "yymmdd-hhmmss",
             },
             {
               key: "client.companyName",
               header: "Company Name",
               sortable: true,
               renderCell: (item) => item.client?.companyName,
-              // tooltip: "The name of the client company."
             },
             ...(user?.role === "super-admin"
               ? [
@@ -1417,7 +1463,6 @@ export default function Quotations() {
                       `${item.user?.firstname || ""} ${
                         item.user?.lastname || ""
                       }`,
-                    // tooltip: "User who created this quotation."
                   },
                 ]
               : []),
@@ -1425,8 +1470,7 @@ export default function Quotations() {
               key: "validityDate",
               header: "Validity Date",
               sortable: true,
-              renderCell: (item) => formatDateForInputHelper(item.validityDate), // Use helper
-              // tooltip: "The date until which the quotation is valid."
+              renderCell: (item) => formatDateForInputHelper(item.validityDate),
             },
             {
               key: "grandTotal",
@@ -1434,7 +1478,6 @@ export default function Quotations() {
               sortable: true,
               renderCell: (item) => item.grandTotal.toFixed(2),
               cellClassName: "text-end",
-              // tooltip: "The total amount of the quotation including taxes."
             },
             {
               key: "status",
@@ -1449,7 +1492,7 @@ export default function Quotations() {
                       ? "bg-success"
                       : item.status === "running"
                       ? "bg-info"
-                      : "bg-warning" // for 'hold'
+                      : "bg-warning"
                   }`}
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
@@ -1458,12 +1501,11 @@ export default function Quotations() {
               tooltip:
                 "Current status of the quotation (Open, Running, Hold, Closed).",
             },
-            
           ]}
           data={currentItems}
           keyField="_id"
           isLoading={isLoading}
-          error={error && currentItems.length === 0 ? error : null}
+          error={error && currentItems.length === 0 && !isLoading ? error : null}
           onSort={requestSort}
           sortConfig={sortConfig}
           renderActions={(quotation) => (
@@ -1474,7 +1516,7 @@ export default function Quotations() {
                 quotation.status !== "closed" && quotation.status !== "running"
                   ? handleCreateTicket
                   : undefined
-              } // Disable if closed or running
+              }
               onView={() => {
                 setCurrentQuotation(quotation);
                 setShowPdfModal(true);
@@ -1483,17 +1525,21 @@ export default function Quotations() {
                 user?.role === "super-admin" ? handleDeleteQuotation : undefined
               }
               isLoading={isLoading}
-              // Disable create ticket button if status is 'closed' or 'running'
               isCreateTicketDisabled={
                 quotation.status === "closed" ||
                 quotation.status === "running" ||
-                quotations.status === "hold"
+                quotation.status === "hold" // Corrected: quotation.status
               }
+              // Tooltip texts passed to ActionButtons component
+              editTooltipText={`Edit Quotation ${quotation.referenceNumber}`}
+              createTicketTooltipText={`Create Ticket from Quotation ${quotation.referenceNumber}`}
               createTicketDisabledTooltip={
-                quotation.status === "closed" || quotation.status === "running"
-                  ? `Cannot create ticket for a quotation that is already ${quotation.status}.`
-                  : "Create a new ticket from this quotation."
+                quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold"
+                  ? `Cannot create ticket. Quotation is ${quotation.status}.`
+                  : `Create Ticket from Quotation ${quotation.referenceNumber}` // This will be overridden by the component if disabled
               }
+              viewTooltipText={`View PDF for Quotation ${quotation.referenceNumber}`}
+              deleteTooltipText={user?.role === "super-admin" ? `Delete Quotation ${quotation.referenceNumber}` : "Delete (disabled)"}
             />
           )}
           noDataMessage="No quotations found."
@@ -1522,7 +1568,7 @@ export default function Quotations() {
                   setCurrentQuotation(null);
                   resetForm();
                 }}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingReplicationDetails}
               >
                 Close
               </Button>
@@ -1530,9 +1576,9 @@ export default function Quotations() {
                 variant="primary"
                 type="submit"
                 form={quotationFormId}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingReplicationDetails}
               >
-                {isLoading
+                {isLoading || isLoadingReplicationDetails
                   ? currentQuotation
                     ? "Updating..."
                     : "Saving..."
@@ -1549,6 +1595,25 @@ export default function Quotations() {
             validated={formValidated}
             onSubmit={handleSubmit}
           >
+            {!currentQuotation && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="checkbox"
+                    label="Replicate Existing Quotation?"
+                    checked={isReplicating}
+                    onChange={(e) => {
+                      setIsReplicating(e.target.checked);
+                      if (!e.target.checked) {
+                        // Optionally reset parts of the form if unchecking
+                      }
+                    }}
+                  />
+                </Form.Group>
+                {isReplicating && !isLoadingReplicationDetails && <QuotationSearchComponent onQuotationSelect={handleReplicationSelect} placeholder="Search quotation to replicate..." />}
+                {isLoadingReplicationDetails && <div className="text-center my-3"><Spinner animation="border" /> <p>Loading quotation details...</p></div>}
+              </>
+            )}
             {error && <Alert variant="danger">{error}</Alert>}
             <div className="row">
               <Form.Group className="mb-3 col-md-4">
@@ -1561,6 +1626,7 @@ export default function Quotations() {
                   name="date"
                   value={quotationData.date}
                   onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-4">
@@ -1573,6 +1639,7 @@ export default function Quotations() {
                   name="validityDate"
                   value={quotationData.validityDate}
                   onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               {new Date(quotationData.validityDate) <
@@ -1597,6 +1664,7 @@ export default function Quotations() {
                       quotationData.status.slice(1)
                     }
                     readOnly
+                    disabled={isLoadingReplicationDetails}
                   />
                 ) : (
                   <Form.Select
@@ -1604,6 +1672,7 @@ export default function Quotations() {
                     name="status"
                     value={quotationData.status}
                     onChange={handleInputChange}
+                    disabled={isLoadingReplicationDetails}
                   >
                     <option value="open">Open</option>
                     <option value="hold">Hold</option>
@@ -1618,6 +1687,7 @@ export default function Quotations() {
                 onClientSelect={handleClientSelect}
                 placeholder="Search & select client"
                 currentClientId={selectedClientIdForForm}
+                disabled={isLoadingReplicationDetails}
               />
               {selectedClientIdForForm && (
                 <Button
@@ -1634,6 +1704,7 @@ export default function Quotations() {
                       },
                     }));
                   }}
+                  disabled={isLoadingReplicationDetails}
                 >
                   Clear/Edit Client Details
                 </Button>
@@ -1654,6 +1725,7 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
@@ -1669,6 +1741,7 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
             </div>
@@ -1685,6 +1758,7 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
@@ -1699,6 +1773,7 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
             </div>
@@ -1712,7 +1787,7 @@ export default function Quotations() {
                   variant="success"
                   onClick={handleSaveClientDetails}
                   className="mb-3"
-                  disabled={isSavingClient}
+                  disabled={isSavingClient || isLoadingReplicationDetails}
                 >
                   {isSavingClient ? "Saving Client..." : "Save New Client"}
                 </Button>
@@ -1722,7 +1797,7 @@ export default function Quotations() {
             <GoodsTable
               goods={quotationData.goods}
               handleGoodsChange={handleGoodsChange}
-              isEditing={true} // Always editing in this modal
+              isEditing={true}
               onAddItem={handleAddItem}
               onDeleteItem={handleDeleteItem}
             />
@@ -1778,9 +1853,9 @@ export default function Quotations() {
                   document={<QuotationPDF quotation={currentQuotation} />}
                   fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
                 >
-                  {({ loading }) => (
-                    <Button variant="primary" disabled={loading}>
-                      {loading ? "Generating PDF..." : "Download PDF"}
+                  {({ loading: pdfLoading }) => ( // Renamed loading to pdfLoading to avoid conflict
+                    <Button variant="primary" disabled={pdfLoading}>
+                      {pdfLoading ? "Generating PDF..." : "Download PDF"}
                     </Button>
                   )}
                 </PDFDownloadLink>
@@ -1793,8 +1868,6 @@ export default function Quotations() {
               className="flex-grow-1 d-flex flex-column overflow-hidden"
               style={{ height: "80vh" }}
             >
-              {" "}
-              {/* Adjust height as needed */}
               <PDFViewer className="flex-grow-1 w-100">
                 <QuotationPDF quotation={currentQuotation} />
               </PDFViewer>
