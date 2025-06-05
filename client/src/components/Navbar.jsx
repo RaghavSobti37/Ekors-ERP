@@ -223,54 +223,58 @@ export default function Navbar({ showPurchaseModal }) {
               <FaClipboardList /> Challan
             </NavLink>
 
-            <div
-              className="dropdown-wrapper"
-              onMouseEnter={handleMouseEnterDropdown}
-              onMouseLeave={handleMouseLeaveDropdown}
-            >
+            {user && user.role !== "user" && (
+              <div
+                className="dropdown-wrapper"
+                onMouseEnter={handleMouseEnterDropdown}
+                onMouseLeave={handleMouseLeaveDropdown}
+              >
+                <NavLink
+                  to="/itemslist"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  <FaBoxOpen /> Items List
+                </NavLink>
+                {showItemsDropdown && (
+                  <div className="dropdown-menu">
+                    <div
+                      onClick={handleViewAllItems}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      View All Items
+                    </div>
+                    <div
+                      onClick={showPurchaseModal}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Update Stock
+                    </div>
+                    <div
+                      onClick={handlePurchaseHistoryClick}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Purchase History
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {user && user.role !== "user" && (
               <NavLink
-                to="/itemslist"
+                to="/users"
                 className={({ isActive }) =>
                   isActive ? "nav-link active" : "nav-link"
                 }
               >
-                <FaBoxOpen /> Items List
+                <FaUsers /> Users
               </NavLink>
-              {showItemsDropdown && (
-                <div className="dropdown-menu">
-                  <div
-                    onClick={handleViewAllItems}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    View All Items
-                  </div>
-                  <div
-                    onClick={showPurchaseModal}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Update Stock
-                  </div>
-                  <div
-                    onClick={handlePurchaseHistoryClick}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Purchase History
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <NavLink
-              to="/users"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <FaUsers /> Users
-            </NavLink>
+            )}
 
             {/* Stock Alert Notification Area */}
-            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && (
+            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && user.role !== "user" && (
               <div
                 className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
                 onClick={handleStockAlertClick}

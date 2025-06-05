@@ -20,12 +20,6 @@ import {
 import { Spinner } from 'react-bootstrap'; // Added for loading indicators on new category/subcategory save
 import "../css/Style.css"; // General styles
 
-const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[DEBUG] ${message}`, data);
-  }
-};
-
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
@@ -56,7 +50,7 @@ export default function Items() {
   });
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  // const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
+  const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,16 +140,13 @@ export default function Items() {
   };
 
   useEffect(() => {
-    debug("Component mounted or dependencies changed", { items, categories });
   }, [items, categories]);
 
   const fetchItems = useCallback(async () => {
     try {
-      debug("Starting to fetch items");
       setLoading(true);
       setError(null);
       const response = await apiClient("/items"); // Use apiClient
-      debug("Items fetched successfully", response);
       setItems(response);
       setError(null);
       showSuccess("Items Fetched Successfully");
@@ -166,7 +157,6 @@ export default function Items() {
       );
       setError(errorMessage);
     } finally {
-      debug("Finished items fetch attempt");
     }
   }, []);
 
@@ -174,7 +164,6 @@ export default function Items() {
     try {
       setLoading(true);
       setError(null);
-      debug("Attempting to fetch categories");
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
       });
@@ -183,10 +172,6 @@ export default function Items() {
         setCategories(categoriesData);
       } else if (categoriesData === null || categoriesData === undefined) {
         // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
-        debug(
-          "Received null or undefined for categories, setting to empty array.",
-          categoriesData
-        );
         setCategories([]);
       } else {
         throw new Error(
@@ -290,7 +275,6 @@ export default function Items() {
 
   const itemsToDisplay = useMemo(() => {
     if (!Array.isArray(items)) {
-      debug("itemsToDisplay: items is not an array, returning []");
       return [];
     }
 
@@ -601,9 +585,9 @@ export default function Items() {
   };
 
   const toggleDetails = async (id) => {
-    // if (expandedRow !== id) {
-    //   await fetchPurchaseHistory(id);
-    // }
+    if (expandedRow !== id) {
+      await fetchPurchaseHistory(id);
+    }
     // For modal view, we set the item to view and show the modal
     const itemToView = items.find((item) => item._id === id);
     if (itemToView) {
@@ -611,7 +595,7 @@ export default function Items() {
       setShowViewItemModal(true);
     }
 
-    // setExpandedRow(expandedRow === id ? null : id);
+    setExpandedRow(expandedRow === id ? null : id);
   };
 
   const handleDelete = async (id) => {
@@ -1186,9 +1170,9 @@ title={
                       </td>
                     </tr>
 
-                    {/* {expandedRow === item._id && (
+                    {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="9" className="expanded-row">
+                        <td colSpan="8" className="expanded-row">
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
@@ -1334,13 +1318,13 @@ title={
                           </div>
                         </td>
                       </tr>
-                    )} */}
+                    )}
                   </React.Fragment>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="text-center">
-                    No items found
+                  <td colSpan="8" className="text-center"> {/* Corrected colSpan from 9 to 8 */}
+                    No items found 
                   </td>
                 </tr>
               )}
@@ -1348,7 +1332,7 @@ title={
           </table>
           {itemsToDisplay.length > 0 && (
             <Pagination
-              currentPage={currentPage}
+              currentPage={currentPage} 
               totalItems={itemsToDisplay.length}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
@@ -1719,8 +1703,9 @@ title={
               </div>
               <div className="modal-body">
                 {error && <div className="alert alert-danger">{error}</div>}
+                <div className="expanded-container">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    {/* <h6>Item Details</h6> */}
+                    <h6>Item Details</h6>
                     {editingItem.image && (
                       <img
                         src={editingItem.image}
@@ -1814,7 +1799,7 @@ title={
                     </tbody>
                   </table>
 
-                  {/* <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
+                  <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
                     <h6>Purchase History</h6>
                   </div>
                   {purchaseHistoryLoading[editingItem._id] ? (
@@ -1852,8 +1837,8 @@ title={
                     <div className="alert alert-info">
                       No purchase history found.
                     </div>
-                  )} */}
-                
+                  )}
+                </div>
               </div>
               <div className="modal-footer">
                 <button
@@ -2397,3 +2382,9 @@ title={
     </div>
   );
 }
+
+/* Final check on colSpans in the main table rendering:
+   - Expanded row: `colSpan="9"` changed to `colSpan="8"` (Done in diff above)
+   - "No items found" row: `colSpan="9"` needs to be `colSpan="8"`.
+     The diff for line 1119 should reflect this.
+*/
