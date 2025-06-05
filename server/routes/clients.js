@@ -12,7 +12,6 @@ router.get('/search', auth, async (req, res) => {
     }
 
     const clients = await Client.find({
-      user: req.user._id, // Ensure clients are scoped to the logged-in user
       $or: [
         { companyName: { $regex: searchTerm, $options: 'i' } },
         { email: { $regex: searchTerm, $options: 'i' } },
