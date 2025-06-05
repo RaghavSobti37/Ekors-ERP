@@ -91,10 +91,10 @@ const Users = () => {
   };
 
   // Handle delete user
-  const handleDelete = async (userId) => {
+  const handleDelete = async (userToDelete) => { // Changed parameter name for clarity
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
-        await apiClient(`/users/${userId}`, { method: "DELETE" });
+        await apiClient(`/users/${userToDelete._id}`, { method: "DELETE" }); // Use userToDelete._id
         toast.success("User deleted successfully");
         fetchUsers();
       } catch (err) {
