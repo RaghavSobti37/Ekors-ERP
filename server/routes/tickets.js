@@ -76,6 +76,13 @@ router.get(
   ticketController.getTransferCandidates
 );
 
+// Route to get transfer candidates (moved from userRoutes)
+router.get(
+  "/transfer-candidates",
+  auth,
+  ticketController.getTransferCandidates
+);
+
 router.get("/:id", auth, async (req, res) => {
   try {
     const ticket = await Ticket.findOne({
