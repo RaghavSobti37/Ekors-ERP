@@ -55,7 +55,7 @@ const Users = () => {
     } catch (err) {
       const errorMessage = handleApiError(err, "Failed to fetch users");
       setError(errorMessage);
-      
+
       if (err.status === 403) {
         setIsUnauthorized(true);
       }
@@ -106,7 +106,7 @@ const Users = () => {
   // Handle toggle active status
   const handleToggleActiveStatus = async (user) => {
     const newStatus = !user.isActive;
-    const confirmMessage = newStatus 
+    const confirmMessage = newStatus
       ? `Enable user ${user.firstname} ${user.lastname}?`
       : `Disable user ${user.firstname} ${user.lastname}?`;
 
@@ -128,7 +128,7 @@ const Users = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (name === "password" || name === "confirmPassword") {
       setPasswordError("");
     }
@@ -224,17 +224,20 @@ const Users = () => {
           </Alert>
         )}
 
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>User Management</h2>
-          <SearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            placeholder="Search users..."
-            showButton={true}
-            onAddNew={() => handleEdit(null)}
-            buttonText="Add New User"
-            buttonIcon={<PlusCircle size={18} />}
-          />
+        <div className="d-flex justify-content-between align-items-center mb-4" style={{ width: '100%', overflow: 'hidden' }}>
+          <h2 className="m-0" style={{ whiteSpace: 'nowrap' }}>User Management</h2>
+          <div className="d-flex align-items-center" style={{ width: '60%', minWidth: '300px' }}>
+            <SearchBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              placeholder="Search users..."
+              showButton={true}
+              onAddNew={() => handleEdit(null)}
+              buttonText="Add New User"
+              buttonIcon={<PlusCircle size={18} />}
+              style={{ width: '100%', maxWidth: '400px', marginRight: '10px' }}
+            />
+          </div>
         </div>
 
         <ReusableTable
@@ -320,7 +323,7 @@ const Users = () => {
               </div>
               <h3>{selectedUser.firstname} {selectedUser.lastname}</h3>
               <p className="user-email">{selectedUser.email}</p>
-              
+
               <div className="user-details-grid">
                 <div className="detail-item">
                   <span className="detail-label">Phone:</span>
@@ -425,8 +428,8 @@ const Users = () => {
                   name="isActive"
                   label={formData.isActive ? "Active" : "Inactive"}
                   checked={formData.isActive}
-                  onChange={(e) => 
-                    setFormData({...formData, isActive: e.target.checked})
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
                   }
                 />
               </Form.Group>
