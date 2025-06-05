@@ -224,7 +224,7 @@ exports.getTicket = async (req, res) => {
 exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
-   const { statusChangeComment, ...updatedTicketData } = req.body; 
+   const { statusChangeComment, ...updatedTicketData } = req.body;
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
 
@@ -722,25 +722,52 @@ exports.transferTicket = async (req, res) => {
 // @route   GET /api/tickets/transfer-candidates (New route)
 // @access  Private (Authenticated users)
 exports.getTransferCandidates = asyncHandler(async (req, res) => {
-  const requestingUser = req.user; // User making the request
-  const logContext = { initiatorId: requestingUser.id, initiatorEmail: requestingUser.email, action: "FETCH_TICKET_TRANSFER_CANDIDATES" };
+  const requestingUser = req.user;
 
   if (!requestingUser || !requestingUser.id) {
-    logger.error("ticket-transfer-candidates", "Authentication error: User or User ID not found in request.", null, { path: req.path, ip: req.ip });
+    logger.error(
+      "ticket-transfer-candidates",
+      "Authentication error: User or User ID not found in request for transfer candidates.",
+      null,
+      {
+        path: req.path,
+        ip: req.ip,
+        receivedUserId: requestingUser ? requestingUser.id : 'N/A',
+        receivedUserEmail: requestingUser ? requestingUser.email : 'N/A'
+      }
+    );
     return res.status(401).json({ message: "Authentication required or user session invalid." });
   }
 
+  // Now it's safe to define logContext
+  const logContext = {
+    initiatorId: requestingUser.id,
+    initiatorEmail: requestingUser.email,
+    action: "FETCH_TICKET_TRANSFER_CANDIDATES"
+  };
+
   try {
     const users = await User.find({
-      _id: { $ne: requestingUser.id }, // Exclude the current user
-      role: { $nin: ["client"] },      // Exclude users with 'client' role (adjust as needed)
-      isActive: true                   // Only active users
-    }).select('firstname lastname email role _id department').lean(); // .lean() for plain JS objects
+      _id: { $ne: requestingUser.id },
+      role: { $nin: ["client"] },
+      isActive: true
+    }).select('firstname lastname email role _id').lean(); // Removed 'department'
 
-    logger.info('ticket-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`, requestingUser, logContext);
-    res.status(200).json(users); // Send back the array of users directly
+    logger.info(
+      'ticket-transfer-candidates',
+      `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
+      requestingUser,
+      logContext
+    );
+    res.status(200).json(users);
   } catch (error) {
-    logger.error('ticket-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`, error, requestingUser, { ...logContext, errorMessage: error.message, stack: error.stack });
+    logger.error(
+      'ticket-transfer-candidates',
+      `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
+      error,
+      requestingUser,
+      { ...logContext, errorMessage: error.message, stack: error.stack }
+    );
     res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
   }
 });
@@ -812,7 +839,7 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
     // req.file.path from multer in routes/tickets.js will be relative to 'uploads/<ticketId>/'
     // The original index.js saved to 'uploads/filename'. We adapt to the new structure.
     const filePath = req.file.filename; // filename is now relative to 'uploads/<ticketId>/'
-    
+
     const update = {};
     update[`documents.${documentType}`] = { // Store as an object consistent with main model
         path: filePath,
@@ -865,15 +892,15 @@ exports.serveFile_IndexLogic = (req, res) => {
   // For simplicity, assuming 'uploads' is at the root of the server.
   // If files are in ticket-specific folders (e.g., uploads/ticketId/filename), this needs more context.
   const filePath = path.join(process.cwd(), 'uploads', filename); // More robust path finding
-  
+
   if (!fs.existsSync(filePath)) {
     logger.warn('ticket-controller', 'File not found for serving (index.js logic)', user, { filename });
     return res.status(404).send('File not found');
   }
-  
+
   const ext = path.extname(filename).toLowerCase();
   let contentType = 'application/octet-stream';
-  
+
   if (ext === '.pdf') contentType = 'application/pdf';
   else if (ext === '.doc' || ext === '.docx') contentType = 'application/msword';
   else if (ext === '.xls' || ext === '.xlsx') contentType = 'application/vnd.ms-excel';
@@ -885,7 +912,7 @@ exports.serveFile_IndexLogic = (req, res) => {
   } else {
     res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filename)}"`);
   }
-  
+
   res.setHeader('Content-Type', contentType);
   logger.debug('ticket-controller', `Serving file (index.js logic)`, user, { filename, contentType });
   fs.createReadStream(filePath).pipe(res);
