@@ -15,6 +15,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Helvetica",
     lineHeight: 1.5,
+    position: 'relative', // Added for absolute positioning of logo
   },
   document: {
     display: 'flex',
@@ -26,20 +27,30 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     width: '100%',
   },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 20,
+    marginTop: 60, // Added to make space for the logo
+  },
+  companyName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 5,
+    paddingTop: 10, // Added to ensure company name is below logo
+  },
   logoContainer: {
-    alignItems: "center",
-    marginBottom: 10,
+    position: "absolute",
+    right: 40,
+    top: 40,
+    zIndex: 1, // Ensure logo stays above other content
   },
   logo: {
     width: 80,
     height: 60,
     objectFit: "contain",
-  },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 5,
   },
   headerLeft: {
     flex: 1,
@@ -120,15 +131,18 @@ const styles = StyleSheet.create({
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
+      {/* Logo in top right corner - placed outside the main content flow */}
+      <View style={styles.logoContainer}>
+        <Image 
+          style={styles.logo} 
+          src="/public/logo.png"
+        />
+      </View>
+
       <View style={styles.document}>
         <View style={styles.pageContent}>
-          {/* Centered logo */}
-          <View style={styles.logoContainer}>
-            <Image 
-              style={styles.logo} 
-              src="/public/logo.png"
-            />
-          </View>
+          {/* Company name centered at top */}
+          <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
 
           {/* Header with Date on left and CIN on right */}
           <View style={styles.headerContainer}>

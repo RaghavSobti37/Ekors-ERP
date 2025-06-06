@@ -1833,6 +1833,7 @@ export default function Dashboard() {
             {
               key: "progress",
               header: "Progress",
+              tooltip: "new",
               renderCell: (ticket) => {
                 const currentStatusIndex = statusStages.indexOf(ticket.status);
                 const progressPercentage =
