@@ -126,7 +126,7 @@ const QuotationPDF = ({ quotation }) => (
             <View style={styles.logoContainer}>
               <Image 
                 style={styles.logo} 
-                src="/src/assets/logo.png"
+                src="/public/logo.png"
               />
             </View>
           </View>
