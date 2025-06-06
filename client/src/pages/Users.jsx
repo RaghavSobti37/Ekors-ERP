@@ -273,7 +273,7 @@ const Users = () => {
                   type="switch"
                   checked={user.isActive}
                   onChange={() => handleToggleActiveStatus(user)}
-                  disabled={user.role === 'super-admin'}
+                  // disabled={user.role === 'super-admin'} // Allow super-admin to toggle status of other super-admins
                 />
               ),
             },
@@ -289,7 +289,7 @@ const Users = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onGenerateReport={handleOpenReportModal} // Add report generation handler
-              disabled={{ delete: user.role === "super-admin" }}
+              // disabled={{ delete: user.role === "super-admin" }} // Allow super-admin to delete other super-admins
             />
           )}
           noDataMessage="No users found"
@@ -413,7 +413,7 @@ const Users = () => {
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
-                  disabled={selectedUser?.role === "super-admin"}
+                  // disabled={selectedUser?.role === "super-admin"} // Allow super-admin to change role of other super-admins
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>

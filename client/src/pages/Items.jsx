@@ -17,13 +17,8 @@ import {
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
 } from "react-bootstrap-icons";
+import { Spinner } from 'react-bootstrap'; // Added for loading indicators on new category/subcategory save
 import "../css/Style.css"; // General styles
-
-const debug = (message, data = null) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[DEBUG] ${message}`, data);
-  }
-};
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
@@ -89,6 +84,13 @@ export default function Items() {
     details: [],
   });
   const [showViewItemModal, setShowViewItemModal] = useState(false);
+  // State for adding new category/subcategory inline
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isAddingNewSubcategory, setIsAddingNewSubcategory] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+  const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
 
   const location = useLocation();
   const queryParams = useMemo(
@@ -138,16 +140,13 @@ export default function Items() {
   };
 
   useEffect(() => {
-    debug("Component mounted or dependencies changed", { items, categories });
   }, [items, categories]);
 
   const fetchItems = useCallback(async () => {
     try {
-      debug("Starting to fetch items");
       setLoading(true);
       setError(null);
       const response = await apiClient("/items"); // Use apiClient
-      debug("Items fetched successfully", response);
       setItems(response);
       setError(null);
       showSuccess("Items Fetched Successfully");
@@ -158,7 +157,6 @@ export default function Items() {
       );
       setError(errorMessage);
     } finally {
-      debug("Finished items fetch attempt");
     }
   }, []);
 
@@ -166,7 +164,6 @@ export default function Items() {
     try {
       setLoading(true);
       setError(null);
-      debug("Attempting to fetch categories");
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
       });
@@ -175,10 +172,6 @@ export default function Items() {
         setCategories(categoriesData);
       } else if (categoriesData === null || categoriesData === undefined) {
         // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
-        debug(
-          "Received null or undefined for categories, setting to empty array.",
-          categoriesData
-        );
         setCategories([]);
       } else {
         throw new Error(
@@ -282,7 +275,6 @@ export default function Items() {
 
   const itemsToDisplay = useMemo(() => {
     if (!Array.isArray(items)) {
-      debug("itemsToDisplay: items is not an array, returning []");
       return [];
     }
 
@@ -826,6 +818,65 @@ export default function Items() {
     }
   };
 
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showToast("Category name cannot be empty.", false);
+      return;
+    }
+    setIsSubmittingCategory(true);
+    try {
+      // Backend should handle creation and return success or the new category object
+      await apiClient("/items/categories", {
+        method: "POST",
+        body: { categoryName: newCategoryName.trim() },
+      });
+      await fetchCategories(); // Re-fetch all categories
+      setFormData((prevFormData) => ({
+         ...prevFormData,
+         category: newCategoryName.trim(),
+         subcategory: "General" // Reset subcategory when new category is added
+        }));
+      setIsAddingNewCategory(false);
+      setNewCategoryName("");
+      showToast(`Category "${newCategoryName.trim()}" added successfully.`, true);
+    } catch (err) {
+      handleApiError(err, "Failed to add new category.");
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  };
+
+  const handleAddNewSubcategory = async () => {
+    if (!newSubcategoryName.trim()) {
+      showToast("Subcategory name cannot be empty.", false);
+      return;
+    }
+    if (!formData.category) {
+      showToast("Please select a category first.", false);
+      return;
+    }
+    setIsSubmittingSubcategory(true);
+    try {
+      // Backend should handle adding subcategory to the given category
+      await apiClient(`/items/categories/subcategory`, {
+        method: "POST",
+        body: {
+          categoryName: formData.category,
+          subcategoryName: newSubcategoryName.trim(),
+        },
+      });
+      await fetchCategories(); // Re-fetch all categories
+      setFormData((prevFormData) => ({ ...prevFormData, subcategory: newSubcategoryName.trim() }));
+      setIsAddingNewSubcategory(false);
+      setNewSubcategoryName("");
+      showToast(`Subcategory "${newSubcategoryName.trim()}" added to "${formData.category}".`, true);
+    } catch (err) {
+      handleApiError(err, "Failed to add new subcategory.");
+    } finally {
+      setIsSubmittingSubcategory(false);
+    }
+  };
+
   const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
 
   return (
@@ -1121,7 +1172,7 @@ title={
 
                     {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="9" className="expanded-row">
+                        <td colSpan="8" className="expanded-row">
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
@@ -1272,8 +1323,8 @@ title={
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="text-center">
-                    No items found
+                  <td colSpan="8" className="text-center"> {/* Corrected colSpan from 9 to 8 */}
+                    No items found 
                   </td>
                 </tr>
               )}
@@ -1281,7 +1332,7 @@ title={
           </table>
           {itemsToDisplay.length > 0 && (
             <Pagination
-              currentPage={currentPage}
+              currentPage={currentPage} 
               totalItems={itemsToDisplay.length}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
@@ -1429,49 +1480,128 @@ title={
 
                     <div className="form-group">
                       <label>Category</label>
-                      <select
-                        className="form-control mb-2"
-                        name="category"
-                        value={formData.category}
-                        onChange={(e) =>
-                          setFormData({ ...formData, category: e.target.value })
-                        }
-                      >
-                        <option value="">Select Category</option>
-                        {Array.isArray(categories) &&
-                          categories.map((cat) => (
-                            <option key={cat.category} value={cat.category}>
-                              {cat.category}
-                            </option>
-                          ))}
-                      </select>
+                      <div className="input-group mb-2">
+                        {isAddingNewCategory ? (
+                          <>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Enter new category name"
+                              value={newCategoryName}
+                              onChange={(e) => setNewCategoryName(e.target.value)}
+                              disabled={isSubmittingCategory}
+                            />
+                            <button
+                              className="btn btn-success"
+                              type="button"
+                              onClick={handleAddNewCategory}
+                              disabled={isSubmittingCategory || !newCategoryName.trim()}
+                            >
+                              {isSubmittingCategory ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Save"}
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={() => {
+                                setIsAddingNewCategory(false);
+                                setNewCategoryName("");
+                              }}
+                              disabled={isSubmittingCategory}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <select
+                              className="form-control"
+                              name="category"
+                              value={formData.category}
+                              onChange={(e) =>
+                                setFormData({ ...formData, category: e.target.value, subcategory: "General" })
+                              }
+                            >
+                              <option value="">Select Category</option>
+                              {Array.isArray(categories) &&
+                                categories.map((cat) => (
+                                  <option key={cat.category} value={cat.category}>
+                                    {cat.category}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              className="btn btn-outline-primary"
+                              type="button"
+                              onClick={() => setIsAddingNewCategory(true)}
+                              title="Add new category"
+                            >
+                              <PlusCircle size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <div className="form-group">
                       <label>Subcategory</label>
-                      <select
-                        className="form-control mb-2"
-                        name="subcategory"
-                        value={formData.subcategory}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            subcategory: e.target.value,
-                          })
-                        }
-                        disabled={!formData.category}
-                      >
-                        <option value="General">General</option>
-                        {formData.category &&
-                          Array.isArray(categories) &&
-                          categories
-                            .find((c) => c.category === formData.category)
-                            ?.subcategories.map((subcat) => (
-                              <option key={subcat} value={subcat}>
-                                {subcat}
-                              </option>
-                            ))}
-                      </select>
+                      <div className="input-group mb-2">
+                        {isAddingNewSubcategory ? (
+                          <>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Enter new subcategory name"
+                              value={newSubcategoryName}
+                              onChange={(e) => setNewSubcategoryName(e.target.value)}
+                              disabled={isSubmittingSubcategory || !formData.category}
+                            />
+                            <button
+                              className="btn btn-success"
+                              type="button"
+                              onClick={handleAddNewSubcategory}
+                              disabled={isSubmittingSubcategory || !newSubcategoryName.trim() || !formData.category}
+                            >
+                              {isSubmittingSubcategory ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Save"}
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={() => {
+                                setIsAddingNewSubcategory(false);
+                                setNewSubcategoryName("");
+                              }}
+                              disabled={isSubmittingSubcategory}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <select
+                              className="form-control"
+                              name="subcategory"
+                              value={formData.subcategory}
+                              onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                              disabled={!formData.category || isAddingNewCategory}
+                            >
+                              <option value="General">General</option>
+                              {formData.category && !isAddingNewCategory && Array.isArray(categories) &&
+                                categories.find((c) => c.category === formData.category)?.subcategories.map((subcat) => (
+                                  <option key={subcat} value={subcat}>{subcat}</option>
+                                ))}
+                            </select>
+                            <button
+                              className="btn btn-outline-primary"
+                              type="button"
+                              onClick={() => setIsAddingNewSubcategory(true)}
+                              title="Add new subcategory"
+                              disabled={!formData.category || isAddingNewCategory || isAddingNewSubcategory}
+                            >
+                              <PlusCircle size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="form-group">
                       <label htmlFor="maxDiscountPercentageModalItemForm">
@@ -1543,7 +1673,8 @@ title={
                     !formData.name ||
                     !formData.sellingPrice || // Changed from price
                     !formData.category ||
-                    isSubmitting
+                    isSubmitting ||
+                    isAddingNewCategory || isAddingNewSubcategory // Disable main save if editing cat/subcat
                   }
                 >
                   {isSubmitting ? "Adding..." : "Add New Item"}
@@ -2251,3 +2382,9 @@ title={
     </div>
   );
 }
+
+/* Final check on colSpans in the main table rendering:
+   - Expanded row: `colSpan="9"` changed to `colSpan="8"` (Done in diff above)
+   - "No items found" row: `colSpan="9"` needs to be `colSpan="8"`.
+     The diff for line 1119 should reflect this.
+*/

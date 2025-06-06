@@ -6,6 +6,10 @@ const clientSchema = new mongoose.Schema({
     required: true,
     lowercase: true
   },
+  clientName: { // Name of the contact person at the client company
+    type: String,
+    trim: true
+  },
   companyName: { 
     type: String, 
     required: true,
@@ -34,12 +38,9 @@ const clientSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Compound unique indexes for per-user uniqueness
-// clientSchema.index({ email: 1, user: 1 }, { unique: true });
-// clientSchema.index({ gstNumber: 1, user: 1 }, { unique: true });
-
 clientSchema.index({
   companyName: 'text',
+  clientName: 'text',
   gstNumber: 'text',
   email: 'text'
 });

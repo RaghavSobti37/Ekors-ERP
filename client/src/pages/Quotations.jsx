@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Button, Form, Table, Alert } from "react-bootstrap";
+import {
+  Button,
+  Form,
+  Table,
+  Alert,
+  Spinner,
+  OverlayTrigger,
+  Tooltip,
+} from "react-bootstrap"; // Added Spinner, OverlayTrigger, Tooltip
 import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
@@ -14,6 +22,7 @@ import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
 import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
+import QuotationSearchComponent from "../components/QuotationSearchComponent.jsx";
 import "react-toastify/dist/ReactToastify.css";
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"; // Components for PDF viewing and downloading
 import {
@@ -28,6 +37,7 @@ import "../css/Items.css"; // Assuming this is still needed for other parts of Q
 import ReusableModal from "../components/ReusableModal.jsx";
 import QuotationReportModal from "../components/QuotationReportModal.jsx";
 import { FaChartBar } from "react-icons/fa"; // Import icon for report button
+import { FaArchive } from "react-icons/fa";
 
 const GoodsTable = ({
   goods,
@@ -55,6 +65,10 @@ const GoodsTable = ({
             <th>
               Price <span className="text-danger">*</span>
             </th>
+            <th>
+              GST <span className="text-danger">*</span>
+            </th>
+
             <th>Amount</th>
             <th>Action</th>
           </tr>
@@ -126,9 +140,21 @@ const GoodsTable = ({
                     onChange={(e) =>
                       handleGoodsChange(index, "price", e.target.value)
                     }
-                    readOnly={
-                      isEditing &&
-                      !(Number(item.maxDiscountPercentage || 0) > 0)
+                  />
+                )}
+              </td>
+              <td>
+                {!isEditing ? (
+                  `${item.gstRate || 0}%`
+                ) : (
+                  <Form.Control
+                    required
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={item.gstRate || 0}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "gstRate", e.target.value)
                     }
                   />
                 )}
@@ -164,6 +190,9 @@ const GoodsTable = ({
 };
 
 export default function Quotations() {
+  const [isReplicating, setIsReplicating] = useState(false);
+  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] =
+    useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [quotations, setQuotations] = useState([]);
@@ -176,7 +205,7 @@ export default function Quotations() {
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [sortConfig, setSortConfig] = useState({
-    key: "date",
+    key: "referenceNumber",
     direction: "descending",
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,9 +217,8 @@ export default function Quotations() {
   const navigate = useNavigate();
   const [showQuotationReportModal, setShowQuotationReportModal] =
     useState(false);
-  // reportPeriod, quotationReportSummary, reportLoading, exportLoading states are removed
-  // as QuotationReportModal will manage these internally.
   const quotationFormId = "quotation-form";
+
   const generateQuotationNumber = () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -200,6 +228,88 @@ export default function Quotations() {
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const seconds = String(now.getSeconds()).padStart(2, "0");
     return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  };
+
+  const recalculateTotals = (goodsList) => {
+    const totalQuantity = goodsList.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = goodsList.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    const gstAmount = goodsList.reduce(
+      (sum, item) =>
+        sum + Number(item.amount || 0) * (Number(item.gstRate || 0) / 100),
+      0
+    );
+    const grandTotal = totalAmount + gstAmount;
+    return { totalQuantity, totalAmount, gstAmount, grandTotal };
+  };
+
+  const handleReplicationSelect = async (selectedQuotationStub) => {
+    if (!selectedQuotationStub || !selectedQuotationStub._id) {
+      toast.error("Invalid quotation selected for replication.");
+      return;
+    }
+    setIsLoadingReplicationDetails(true);
+    setError(null);
+    try {
+      const fullQuotation = await apiClient(
+        `/quotations/${selectedQuotationStub._id}`
+      );
+      if (!fullQuotation || !fullQuotation.client || !fullQuotation.goods) {
+        throw new Error("Incomplete quotation data received for replication.");
+      }
+
+      const replicatedGoods = fullQuotation.goods.map((item, index) => {
+        const quantity = Number(item.quantity || 1);
+        const price = Number(item.price || 0);
+        return {
+          description: item.description,
+          hsnSacCode: item.hsnSacCode || "",
+          quantity: quantity,
+          unit: item.unit || "Nos",
+          price: price,
+          amount: quantity * price,
+          originalPrice: Number(item.originalPrice || item.price),
+          maxDiscountPercentage: item.maxDiscountPercentage
+            ? Number(item.maxDiscountPercentage)
+            : 0,
+          srNo: index + 1,
+          gstRate: Number(item.gstRate || 0),
+        };
+      });
+
+      const totals = recalculateTotals(replicatedGoods);
+
+      setQuotationData((prevData) => ({
+        ...prevData,
+        client: {
+          _id: fullQuotation.client._id,
+          companyName: fullQuotation.client.companyName || "",
+          gstNumber: fullQuotation.client.gstNumber || "",
+          clientName: fullQuotation.client.clientName || "",
+          email: fullQuotation.client.email || "",
+          phone: fullQuotation.client.phone || "",
+        },
+        goods: replicatedGoods,
+        ...totals,
+      }));
+      setSelectedClientIdForForm(fullQuotation.client._id);
+      setIsReplicating(false);
+      toast.info("Quotation data replicated. Review and save as new.");
+    } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Failed to load quotation details for replication."
+      );
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoadingReplicationDetails(false);
+    }
   };
 
   const handleSaveClientDetails = async () => {
@@ -215,7 +325,9 @@ export default function Quotations() {
     const email = rawEmail?.trim();
     const phone = rawPhone?.trim();
 
-    if (!companyName || !gstNumber || !email || !phone) {
+    const clientName = quotationData.client.clientName?.trim(); // Trim clientName
+
+    if (!companyName || !gstNumber || !email || !phone || !clientName) {
       const msg =
         "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
       setError(msg);
@@ -244,24 +356,23 @@ export default function Quotations() {
     const clientPayload = {
       companyName: companyName,
       gstNumber: gstNumber.toUpperCase(),
-      email: email.toLowerCase(),
+      clientName: clientName,
       phone: phone,
     };
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
 
       const responseData = await apiClient("/clients", {
-        // Use apiClient
         method: "POST",
         body: clientPayload,
       });
       if (responseData && responseData._id) {
         setQuotationData((prev) => ({
           ...prev,
-          client: { ...responseData }, // Changed response.data to responseData
+          client: { ...responseData },
         }));
-        setSelectedClientIdForForm(responseData._id); // Changed response.data._id to responseData._id
+        setSelectedClientIdForForm(responseData._id);
         setError(null);
         toast.success("Client saved successfully!");
         if (auth.user) {
@@ -271,7 +382,7 @@ export default function Quotations() {
             auth.user,
             {
               clientId: responseData._id,
-              clientName: responseData.companyName, // Corrected: use responseData
+              clientName: responseData.companyName,
               action: "SAVE_NEW_CLIENT_SUCCESS",
             }
           );
@@ -291,16 +402,13 @@ export default function Quotations() {
       toast.error(errorMessage);
 
       if (auth.user) {
-        // handleApiError already logs, but if more specific logging is needed:
         frontendLogger.error(
           "clientActivity",
           "Failed to save new client",
           auth.user,
           {
             clientPayload: clientPayload,
-            // Error details are already part of the error object passed to handleApiError
-            // but can be logged again if needed for this specific context
-            errorMessage: error.data?.message || error.message, // apiClient error structure
+            errorMessage: error.data?.message || error.message,
             stack: error.stack,
             responseData: error.data,
             action: "SAVE_NEW_CLIENT_FAILURE",
@@ -313,10 +421,9 @@ export default function Quotations() {
   };
 
   const initialQuotationData = {
-    date: formatDateForInputHelper(new Date()), // Use helper
+    date: formatDateForInputHelper(new Date()),
     referenceNumber: generateQuotationNumber(),
     validityDate: formatDateForInputHelper(
-      // Use helper
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
     orderIssuedBy: "",
@@ -329,6 +436,7 @@ export default function Quotations() {
     client: {
       _id: null,
       companyName: "",
+      clientName: "",
       gstNumber: "",
       email: "",
       phone: "",
@@ -339,8 +447,8 @@ export default function Quotations() {
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
-    billingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
-    shippingAddress: ["", "", "", "", ""], // [address1, address2, state, city, pincode]
+    billingAddress: ["", "", "", "", ""],
+    shippingAddress: ["", "", "", "", ""],
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -354,7 +462,7 @@ export default function Quotations() {
 
     setIsLoading(true);
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -368,7 +476,7 @@ export default function Quotations() {
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      const data = await apiClient(endpoint); // Use apiClient
+      const data = await apiClient(endpoint);
 
       setQuotations(data);
       setQuotationsCount(data.length);
@@ -382,7 +490,6 @@ export default function Quotations() {
       );
       setError(errorMessage);
       showToast(errorMessage, false);
-      // handleApiError already logs, but if more specific logging is needed:
       if (auth.user) {
         frontendLogger.error(
           "quotationActivity",
@@ -390,8 +497,6 @@ export default function Quotations() {
           auth.user,
           {
             errorMessage: error.response?.data?.message || error.message,
-            // stack: error.stack, // Already in handleApiError
-            // responseData: error.response?.data, // Already in handleApiError
             statusFilter,
             action: "FETCH_QUOTATIONS_FAILURE",
           }
@@ -399,7 +504,6 @@ export default function Quotations() {
       }
 
       if (error.status === 401) {
-        // apiClient error structure
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
       }
@@ -437,7 +541,6 @@ export default function Quotations() {
           ? a.grandTotal - b.grandTotal
           : b.grandTotal - a.grandTotal;
       }
-      // For string comparisons like client.companyName or referenceNumber
       const valA = sortConfig.key.includes(".")
         ? sortConfig.key.split(".").reduce((o, i) => o?.[i], a)
         : a[sortConfig.key];
@@ -499,7 +602,7 @@ export default function Quotations() {
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to the first page
+    setCurrentPage(1);
   };
 
   const addGoodsRow = () => {
@@ -540,10 +643,11 @@ export default function Quotations() {
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
         unit: item.unit || "Nos",
-        price: item.sellingPrice, // Use sellingPrice from item
-        amount: item.sellingPrice,  // Initial amount is sellingPrice * 1
-        originalPrice: item.sellingPrice, // Store original selling price
+        price: item.sellingPrice,
+        amount: item.sellingPrice,
+        originalPrice: item.sellingPrice,
         maxDiscountPercentage: item.maxDiscountPercentage,
+        gstRate: item.gstRate || 0,
       },
     ];
 
@@ -555,8 +659,7 @@ export default function Quotations() {
       (sum, item) => sum + Number(item.amount),
       0
     );
-    const gstAmount = totalAmount * 0.18;
-    const grandTotal = totalAmount + gstAmount;
+    const { gstAmount, grandTotal } = recalculateTotals(newGoods); // Use recalculateTotals
 
     setQuotationData({
       ...quotationData,
@@ -573,7 +676,7 @@ export default function Quotations() {
     const updatedGoods = [...quotationData.goods];
     let priceValidationError = null;
 
-    if (["quantity", "price", "amount"].includes(field)) {
+    if (["quantity", "price", "amount", "gstRate"].includes(field)) {
       value = Number(value);
     }
     updatedGoods[index][field] = value;
@@ -629,8 +732,7 @@ export default function Quotations() {
       (sum, item) => sum + item.amount,
       0
     );
-    const gstAmount = totalAmount * 0.18;
-    const grandTotal = totalAmount + gstAmount;
+    const { gstAmount, grandTotal } = recalculateTotals(updatedGoods);
 
     setQuotationData({
       ...quotationData,
@@ -699,8 +801,7 @@ export default function Quotations() {
       (sum, item) => sum + Number(item.amount || 0),
       0
     );
-    const gstAmount = totalAmount * 0.18;
-    const grandTotal = totalAmount + gstAmount;
+    const { gstAmount, grandTotal } = recalculateTotals(updatedGoods);
 
     setQuotationData((prevData) => ({
       ...prevData,
@@ -796,7 +897,7 @@ export default function Quotations() {
     setError(null);
 
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -818,6 +919,7 @@ export default function Quotations() {
           maxDiscountPercentage: item.maxDiscountPercentage
             ? Number(item.maxDiscountPercentage)
             : 0,
+          gstRate: Number(item.gstRate || 0),
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
@@ -835,10 +937,9 @@ export default function Quotations() {
       const responseData = await apiClient(url, {
         method,
         body: submissionData,
-      }); // Use apiClient
+      });
 
       if (responseData) {
-        // apiClient returns data directly on success
         fetchQuotations();
         setShowModal(false);
         resetForm();
@@ -857,8 +958,8 @@ export default function Quotations() {
             }`,
             auth.user,
             {
-              quotationId: responseData._id, // Changed response.data._id to responseData._id
-              action: currentQuotation // Corrected: use responseData
+              quotationId: responseData._id,
+              action: currentQuotation
                 ? "UPDATE_QUOTATION_SUCCESS"
                 : "CREATE_QUOTATION_SUCCESS",
             }
@@ -873,9 +974,8 @@ export default function Quotations() {
         "quotationActivity"
       );
       if (error.status === 401) {
-        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
-        return; // Already handled by handleApiError and toast
+        return;
       }
       setError(errorMessage);
       toast.error(errorMessage);
@@ -890,9 +990,6 @@ export default function Quotations() {
           {
             referenceNumber: quotationData.referenceNumber,
             quotationId: currentQuotation?._id,
-            // errorMessage: error.data?.message || error.message, // Already in handleApiError
-            // stack: error.stack, // Already in handleApiError
-            // responseData: error.data, // Already in handleApiError
             submittedData: submissionData,
             action: currentQuotation
               ? "UPDATE_QUOTATION_FAILURE"
@@ -910,11 +1007,12 @@ export default function Quotations() {
     setFormValidated(false);
     setSelectedClientIdForForm(null);
     setError(null);
+    setIsReplicating(false);
   };
 
   const generateTicketNumber = async () => {
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -925,31 +1023,35 @@ export default function Quotations() {
       const hours = String(now.getHours()).padStart(2, "0");
       const minutes = String(now.getMinutes()).padStart(2, "0");
       const seconds = String(now.getSeconds()).padStart(2, "0");
-      return `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-    } catch (error) {
+      return `EKORS/${year}${month}${day}${hours}${minutes}${seconds}`;
+    } catch (err) {
       toast.error(
-        "Failed to generate ticket number. Using a temporary number."
+        "Failed to generate ticket number. Using a temporary fallback."
       );
       if (auth.user) {
         frontendLogger.error(
           "ticketActivity",
-          "Failed to generate ticket number from API",
+          "Failed to generate local ticket number",
           auth.user,
           {
-            // errorMessage: error.data?.message || error.message, // apiClient error structure
-            // stack: error.stack,
-            // responseData: error.data,
-            action: "GENERATE_TICKET_NUMBER_FAILURE",
+            errorMessage: err.message,
+            stack: err.stack,
+            action: "GENERATE_LOCAL_TICKET_NUMBER_FAILURE",
           }
         );
       }
+      // Return a fallback number or rethrow, depending on desired behavior
+      const now = new Date();
+      const fallbackTime = `${String(now.getHours()).padStart(2, "0")}${String(
+        now.getMinutes()
+      ).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+      return `T-ERR-${fallbackTime}`; // Example fallback
     }
   };
 
   const handleCreateTicket = async (quotation) => {
     const ticketNumber = await generateTicketNumber();
 
-    // Prepare address arrays from quotation's client
     const clientBillingAddress = quotation.client?.billingAddress || {};
     const clientShippingAddress = quotation.client?.shippingAddress || {};
 
@@ -984,6 +1086,9 @@ export default function Quotations() {
       totalAmount: Number(quotation.totalAmount),
       gstAmount: Number(quotation.gstAmount),
       grandTotal: Number(quotation.grandTotal),
+      clientPhone: quotation.client?.phone || "", // Pass client phone
+      clientGstNumber: quotation.client?.gstNumber || "", // Pass client GST
+
       status: "Quotation Sent",
     });
 
@@ -992,11 +1097,10 @@ export default function Quotations() {
 
   const checkExistingTicket = async (quotationNumber) => {
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
-      // Use apiClient
       const data = await apiClient(`/tickets/check/${quotationNumber}`);
       return data.exists;
     } catch (error) {
@@ -1044,7 +1148,7 @@ export default function Quotations() {
         return;
       }
 
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -1080,13 +1184,11 @@ export default function Quotations() {
       };
 
       const responseData = await apiClient("/tickets", {
-        // Use apiClient
         method: "POST",
         body: completeTicketData,
       });
 
       if (responseData) {
-        // apiClient returns data directly on success
         setShowTicketModal(false);
         setError(null);
         toast.success(
@@ -1099,13 +1201,12 @@ export default function Quotations() {
             auth.user,
             {
               action: "TICKET_CREATED_FROM_QUOTATION_SUCCESS",
-              ticketNumber: responseData.ticketNumber, // Corrected: use responseData
+              ticketNumber: responseData.ticketNumber,
               quotationNumber: ticketData.quotationNumber,
             }
           );
         }
-        fetchQuotations(); // Refresh quotations to update status to 'running'
-        // navigate("/tickets"); // Optional: navigate to tickets page
+        fetchQuotations();
       }
     } catch (error) {
       const errorMessage = handleApiError(
@@ -1124,9 +1225,6 @@ export default function Quotations() {
           auth.user,
           {
             quotationNumber: ticketData.quotationNumber,
-            // errorMessage: error.data?.message || error.message, // apiClient error structure
-            // stack: error.stack,
-            // responseData: error.data,
             ticketDataSubmitted: completeTicketData,
             action: "CREATE_TICKET_FROM_QUOTATION_FAILURE",
           }
@@ -1156,9 +1254,9 @@ export default function Quotations() {
     }
 
     setQuotationData({
-      date: formatDateForInputHelper(quotation.date), // Use helper
+      date: formatDateForInputHelper(quotation.date),
       referenceNumber: quotation.referenceNumber,
-      validityDate: formatDateForInputHelper(quotation.validityDate), // Use helper
+      validityDate: formatDateForInputHelper(quotation.validityDate),
       orderIssuedBy: orderIssuedByIdToSet,
       goods: quotation.goods.map((item) => ({
         ...item,
@@ -1170,6 +1268,7 @@ export default function Quotations() {
         maxDiscountPercentage: item.maxDiscountPercentage
           ? Number(item.maxDiscountPercentage)
           : 0,
+        gstRate: Number(item.gstRate || 0),
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
@@ -1179,6 +1278,7 @@ export default function Quotations() {
       client: {
         companyName: quotation.client?.companyName || "",
         gstNumber: quotation.client?.gstNumber || "",
+        clientName: quotation.client?.clientName || "",
         email: quotation.client?.email || "",
         phone: quotation.client?.phone || "",
         _id: quotation.client?._id || null,
@@ -1197,12 +1297,13 @@ export default function Quotations() {
     setCurrentQuotation(null);
     setQuotationData({
       ...initialQuotationData,
-      date: formatDateForInputHelper(new Date()), // Use helper
+      date: formatDateForInputHelper(new Date()),
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null },
     });
     setSelectedClientIdForForm(null);
+    setIsReplicating(false);
     setFormValidated(false);
     setShowModal(true);
   };
@@ -1221,10 +1322,10 @@ export default function Quotations() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getAuthTokenUtil(); // Use utility
+      const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
 
-      await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" }); // Use apiClient
+      await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" });
 
       setError(null);
       setCurrentQuotation(null);
@@ -1254,9 +1355,7 @@ export default function Quotations() {
         "quotationActivity"
       );
       if (error.status === 401) {
-        // apiClient error structure
         navigate("/login", { state: { from: "/quotations" } });
-        // toast.error is handled by handleApiError
         setIsLoading(false);
         return;
       }
@@ -1288,6 +1387,7 @@ export default function Quotations() {
       client: {
         _id: client._id,
         companyName: client.companyName || "",
+        clientName: client.clientName || "",
         gstNumber: client.gstNumber || "",
         email: client.email || "",
         phone: client.phone || "",
@@ -1311,10 +1411,9 @@ export default function Quotations() {
               value={searchTerm}
               setSearchTerm={setSearchTerm}
               placeholder="Search quotations..."
-              className="flex-grow-1" // Allow search bar to take available space
+              className="flex-grow-1"
             />
             <div className="d-flex align-items-center gap-2">
-              {/* Status Filters */}
               <Form.Check
                 inline
                 label="All"
@@ -1380,17 +1479,24 @@ export default function Quotations() {
             <Button variant="primary" onClick={openCreateModal}>
               ➕ Quotation
             </Button>
-            <Button
-              variant="info"
-              onClick={() => setShowQuotationReportModal(true)}
-              disabled={isLoading}
-            >
-              <FaChartBar className="me-1" /> Report
-            </Button>
+            {(user?.role === "admin" || user?.role === "super-admin") && (
+              <Button
+                variant="info"
+                onClick={() => setShowQuotationReportModal(true)}
+                disabled={isLoading}
+              >
+                <FaChartBar className="me-1" /> Report
+              </Button>
+            )}
           </div>
         </div>
 
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && !isLoading && <Alert variant="danger">{error}</Alert>}
+        {isLoading && (
+          <div className="text-center my-3">
+            <Spinner animation="border" /> <p>Loading quotations...</p>
+          </div>
+        )}
 
         <ReusableTable
           columns={[
@@ -1398,14 +1504,13 @@ export default function Quotations() {
               key: "referenceNumber",
               header: "Reference No",
               sortable: true,
-              tooltip: "year month day - (24h) hrs mins secs",
+              tooltip: "yymmdd-hhmmss",
             },
             {
               key: "client.companyName",
               header: "Company Name",
               sortable: true,
               renderCell: (item) => item.client?.companyName,
-              // tooltip: "The name of the client company."
             },
             ...(user?.role === "super-admin"
               ? [
@@ -1417,7 +1522,6 @@ export default function Quotations() {
                       `${item.user?.firstname || ""} ${
                         item.user?.lastname || ""
                       }`,
-                    // tooltip: "User who created this quotation."
                   },
                 ]
               : []),
@@ -1425,8 +1529,7 @@ export default function Quotations() {
               key: "validityDate",
               header: "Validity Date",
               sortable: true,
-              renderCell: (item) => formatDateForInputHelper(item.validityDate), // Use helper
-              // tooltip: "The date until which the quotation is valid."
+              renderCell: (item) => formatDateForInputHelper(item.validityDate),
             },
             {
               key: "grandTotal",
@@ -1434,7 +1537,6 @@ export default function Quotations() {
               sortable: true,
               renderCell: (item) => item.grandTotal.toFixed(2),
               cellClassName: "text-end",
-              // tooltip: "The total amount of the quotation including taxes."
             },
             {
               key: "status",
@@ -1449,7 +1551,7 @@ export default function Quotations() {
                       ? "bg-success"
                       : item.status === "running"
                       ? "bg-info"
-                      : "bg-warning" // for 'hold'
+                      : "bg-warning"
                   }`}
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
@@ -1458,12 +1560,13 @@ export default function Quotations() {
               tooltip:
                 "Current status of the quotation (Open, Running, Hold, Closed).",
             },
-            
           ]}
           data={currentItems}
           keyField="_id"
           isLoading={isLoading}
-          error={error && currentItems.length === 0 ? error : null}
+          error={
+            error && currentItems.length === 0 && !isLoading ? error : null
+          }
           onSort={requestSort}
           sortConfig={sortConfig}
           renderActions={(quotation) => (
@@ -1474,7 +1577,7 @@ export default function Quotations() {
                 quotation.status !== "closed" && quotation.status !== "running"
                   ? handleCreateTicket
                   : undefined
-              } // Disable if closed or running
+              }
               onView={() => {
                 setCurrentQuotation(quotation);
                 setShowPdfModal(true);
@@ -1483,16 +1586,26 @@ export default function Quotations() {
                 user?.role === "super-admin" ? handleDeleteQuotation : undefined
               }
               isLoading={isLoading}
-              // Disable create ticket button if status is 'closed' or 'running'
               isCreateTicketDisabled={
                 quotation.status === "closed" ||
                 quotation.status === "running" ||
-                quotations.status === "hold"
+                quotation.status === "hold" // Corrected: quotation.status
               }
+              // Tooltip texts passed to ActionButtons component
+              editTooltipText={`Edit Quotation ${quotation.referenceNumber}`}
+              createTicketTooltipText={`Create Ticket from Quotation ${quotation.referenceNumber}`}
               createTicketDisabledTooltip={
-                quotation.status === "closed" || quotation.status === "running"
-                  ? `Cannot create ticket for a quotation that is already ${quotation.status}.`
-                  : "Create a new ticket from this quotation."
+                quotation.status === "closed" ||
+                quotation.status === "running" ||
+                quotation.status === "hold"
+                  ? `Cannot create ticket. Quotation is ${quotation.status}.`
+                  : `Create Ticket from Quotation ${quotation.referenceNumber}` // This will be overridden by the component if disabled
+              }
+              viewTooltipText={`View PDF for Quotation ${quotation.referenceNumber}`}
+              deleteTooltipText={
+                user?.role === "super-admin"
+                  ? `Delete Quotation ${quotation.referenceNumber}`
+                  : "Delete (disabled)"
               }
             />
           )}
@@ -1522,7 +1635,7 @@ export default function Quotations() {
                   setCurrentQuotation(null);
                   resetForm();
                 }}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingReplicationDetails}
               >
                 Close
               </Button>
@@ -1530,9 +1643,9 @@ export default function Quotations() {
                 variant="primary"
                 type="submit"
                 form={quotationFormId}
-                disabled={isLoading}
+                disabled={isLoading || isLoadingReplicationDetails}
               >
-                {isLoading
+                {isLoading || isLoadingReplicationDetails
                   ? currentQuotation
                     ? "Updating..."
                     : "Saving..."
@@ -1549,6 +1662,35 @@ export default function Quotations() {
             validated={formValidated}
             onSubmit={handleSubmit}
           >
+            {!currentQuotation && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Check
+                    type="checkbox"
+                    label="Replicate Existing Quotation?"
+                    checked={isReplicating}
+                    onChange={(e) => {
+                      setIsReplicating(e.target.checked);
+                      if (!e.target.checked) {
+                        // Optionally reset parts of the form if unchecking
+                      }
+                    }}
+                  />
+                </Form.Group>
+                {isReplicating && !isLoadingReplicationDetails && (
+                  <QuotationSearchComponent
+                    onQuotationSelect={handleReplicationSelect}
+                    placeholder="Search quotation to replicate..."
+                  />
+                )}
+                {isLoadingReplicationDetails && (
+                  <div className="text-center my-3">
+                    <Spinner animation="border" />{" "}
+                    <p>Loading quotation details...</p>
+                  </div>
+                )}
+              </>
+            )}
             {error && <Alert variant="danger">{error}</Alert>}
             <div className="row">
               <Form.Group className="mb-3 col-md-4">
@@ -1561,6 +1703,7 @@ export default function Quotations() {
                   name="date"
                   value={quotationData.date}
                   onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               <Form.Group className="mb-3 col-md-4">
@@ -1573,6 +1716,7 @@ export default function Quotations() {
                   name="validityDate"
                   value={quotationData.validityDate}
                   onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
               {new Date(quotationData.validityDate) <
@@ -1597,6 +1741,7 @@ export default function Quotations() {
                       quotationData.status.slice(1)
                     }
                     readOnly
+                    disabled={isLoadingReplicationDetails}
                   />
                 ) : (
                   <Form.Select
@@ -1604,6 +1749,7 @@ export default function Quotations() {
                     name="status"
                     value={quotationData.status}
                     onChange={handleInputChange}
+                    disabled={isLoadingReplicationDetails}
                   >
                     <option value="open">Open</option>
                     <option value="hold">Hold</option>
@@ -1612,38 +1758,37 @@ export default function Quotations() {
               </Form.Group>
             </div>
 
-            <h5>Client Details</h5>
+            <h5
+              style={{
+                fontWeight: "bold",
+                textAlign: "center",
+                backgroundColor: "#f0f2f5", // Light grey, adjust as needed
+                padding: "0.5rem",
+                borderRadius: "0.25rem",
+                marginBottom: "1rem",
+              }}
+            >
+              Client Details
+            </h5>
             <>
-              <ClientSearchComponent
-                onClientSelect={handleClientSelect}
-                placeholder="Search & select client"
-                currentClientId={selectedClientIdForForm}
-              />
-              {selectedClientIdForForm && (
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  className="mb-2 mt-1"
-                  onClick={() => {
-                    setSelectedClientIdForForm(null);
-                    setQuotationData((prev) => ({
-                      ...prev,
-                      client: {
-                        ...initialQuotationData.client,
-                        _id: null,
-                      },
-                    }));
-                  }}
-                >
-                  Clear/Edit Client Details
-                </Button>
-              )}
+              <div className="row mb-3">
+                {" "}
+                {/* Searchbar Row */}
+                <div className="col-12">
+                  <ClientSearchComponent
+                    onClientSelect={handleClientSelect}
+                    placeholder="Search & select client"
+                    currentClientId={selectedClientIdForForm}
+                    disabled={isLoadingReplicationDetails}
+                  />
+                </div>
+              </div>
             </>
 
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>
-                  Company Name <span className="text-danger">*</span>
+                  Company Name <span className="text-danger ">*</span>
                 </Form.Label>
                 <Form.Control
                   required
@@ -1654,8 +1799,29 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  Client Name (Contact Person){" "}
+                  <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="client.clientName"
+                  value={quotationData.client.clientName || ""}
+                  onChange={
+                    !selectedClientIdForForm ? handleInputChange : undefined
+                  }
+                  readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
+                  placeholder="Enter contact person's name"
+                />
+              </Form.Group>
+            </div>
+            <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>
                   GST Number <span className="text-danger">*</span>
@@ -1669,10 +1835,9 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
-            </div>
-            <div className="row">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>
                   Email <span className="text-danger">*</span>
@@ -1685,8 +1850,12 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
+            </div>
+            {/* Row for Phone and Action Buttons */}
+            <div className="row mb-3 align-items-end">
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>
                   Phone <span className="text-danger">*</span>
@@ -1699,58 +1868,112 @@ export default function Quotations() {
                     !selectedClientIdForForm ? handleInputChange : undefined
                   }
                   readOnly={!!selectedClientIdForForm}
+                  disabled={isLoadingReplicationDetails}
                 />
               </Form.Group>
-            </div>
-
-            {!selectedClientIdForForm &&
-              quotationData.client.companyName &&
-              quotationData.client.gstNumber &&
-              quotationData.client.email &&
-              quotationData.client.phone && (
+              <div className="col-md-6 d-flex gap-2 justify-content-start justify-content-md-end align-items-center mb-3">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedClientIdForForm(null);
+                    // Clear client fields but keep other quotation data
+                    setQuotationData((prev) => ({
+                      ...prev,
+                      client: {
+                        ...initialQuotationData.client,
+                        _id: null,
+                      },
+                      // Do not reset goods or other quotation details here
+                      // unless that's the desired behavior when clearing client
+                    }));
+                  }}
+                  disabled={
+                    isLoadingReplicationDetails || !selectedClientIdForForm
+                  }
+                >
+                  Clear/Edit Client Details
+                </Button>
                 <Button
                   variant="success"
+                  size="sm"
                   onClick={handleSaveClientDetails}
-                  className="mb-3"
-                  disabled={isSavingClient}
+                  disabled={
+                    isSavingClient ||
+                    isLoadingReplicationDetails ||
+                    !!selectedClientIdForForm || // Disable if a client is already selected
+                    !(
+                      quotationData.client.companyName &&
+                      quotationData.client.gstNumber &&
+                      quotationData.client.clientName &&
+                      quotationData.client.phone
+                    ) // Disable if required fields are empty
+                  }
                 >
-                  {isSavingClient ? "Saving Client..." : "Save New Client"}
+                  {isSavingClient ? "Saving..." : "Save New Client"}
                 </Button>
-              )}
+              </div>
+            </div>
 
-            <h5>Goods Details</h5>
+            <h5
+              style={{
+                fontWeight: "bold",
+                textAlign: "center",
+                backgroundColor: "#f0f2f5", // Light grey, adjust as needed
+                padding: "0.5rem",
+                borderRadius: "0.25rem",
+                marginBottom: "1rem",
+              }}
+            >
+              Goods Details
+            </h5>
             <GoodsTable
               goods={quotationData.goods}
               handleGoodsChange={handleGoodsChange}
-              isEditing={true} // Always editing in this modal
+              isEditing={true}
               onAddItem={handleAddItem}
               onDeleteItem={handleDeleteItem}
             />
 
-            <div className="bg-light p-3 rounded">
-              <div className="row">
-                <div className="col-md-4">
-                  <p>
-                    Total Quantity:{" "}
-                    <strong>{quotationData.totalQuantity}</strong>
-                  </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    Total Amount:{" "}
-                    <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
-                  </p>
-                </div>
-                <div className="col-md-4">
-                  <p>
-                    GST (18%):{" "}
-                    <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
-                  </p>
-                </div>
-              </div>
-              <div className="row">
-                <div className="col-md-12">
-                  <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5>
+            <div className="bg-light p-3 rounded mt-3">
+              <h5 className="text-center mb-3">Quotation Summary</h5>
+              <Table bordered size="sm">
+                <tbody>
+                  <tr>
+                    <td>Total Quantity</td>
+                    <td className="text-end">
+                      <strong>{quotationData.totalQuantity}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total Amount (Subtotal)</td>
+                    <td className="text-end">
+                      <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Total GST</td>
+                    <td className="text-end">
+                      <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                      Grand Total
+                    </td>
+                    <td
+                      className="text-end"
+                      style={{ fontWeight: "bold", fontSize: "1.1rem" }}
+                    >
+                      <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </Table>
+              <div className="row mt-2">
+                <div className="col-md-12 text-center">
+                  {/* This can be removed if Grand Total in table is sufficient */}
+                  {/* <h5>Grand Total: ₹{quotationData.grandTotal.toFixed(2)}</h5> */}{" "}
                 </div>
               </div>
             </div>
@@ -1778,9 +2001,11 @@ export default function Quotations() {
                   document={<QuotationPDF quotation={currentQuotation} />}
                   fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
                 >
-                  {({ loading }) => (
-                    <Button variant="primary" disabled={loading}>
-                      {loading ? "Generating PDF..." : "Download PDF"}
+                  {(
+                    { loading: pdfLoading } // Renamed loading to pdfLoading to avoid conflict
+                  ) => (
+                    <Button variant="primary" disabled={pdfLoading}>
+                      {pdfLoading ? "Generating PDF..." : "Download PDF"}
                     </Button>
                   )}
                 </PDFDownloadLink>
@@ -1793,8 +2018,6 @@ export default function Quotations() {
               className="flex-grow-1 d-flex flex-column overflow-hidden"
               style={{ height: "80vh" }}
             >
-              {" "}
-              {/* Adjust height as needed */}
               <PDFViewer className="flex-grow-1 w-100">
                 <QuotationPDF quotation={currentQuotation} />
               </PDFViewer>
