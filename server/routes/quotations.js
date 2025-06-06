@@ -452,7 +452,7 @@ router.get("/", auth, async (req, res) => {
     }
 
     const quotations = await Quotation.find(query)
-      .populate("client", "companyName gstNumber email phone _id")
+      .populate("client", "companyName gstNumber email phone clientName _id")
       .populate("user", "firstname lastname email")
       .populate("orderIssuedBy", "firstname lastname")
       .sort({ createdAt: -1 });
