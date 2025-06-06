@@ -329,7 +329,7 @@ export default function Quotations() {
 
     if (!companyName || !gstNumber || !email || !phone || !clientName) {
       const msg =
-        "All client fields (Company Name, GST, Email, Phone) are required and cannot be just whitespace.";
+        "All client fields (Company Name, Client Name, GST Number, Email, Phone) are required and cannot be just whitespace.";
       setError(msg);
       toast.warn(msg);
       return;
@@ -358,6 +358,7 @@ export default function Quotations() {
       gstNumber: gstNumber.toUpperCase(),
       clientName: clientName,
       phone: phone,
+      email: email, // Add email to the payload
     };
     try {
       const token = getAuthTokenUtil();

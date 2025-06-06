@@ -118,15 +118,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
       });
     }
 
-    // Prevent editing another super-admin's details by a super-admin (unless it's themselves)
-    if (userToUpdate.role === 'super-admin' && performingUser._id.toString() !== userToUpdate._id.toString()) {
-      logger.warn('user-update', `[AUTH_FAILURE] Super-admin ${performingUser.email} attempt to edit another super-admin ${userToUpdate.email}.`, performingUser);
-      return res.status(403).json({
-        success: false,
-        error: 'Super-admins cannot edit other super-admins\' details through this general update endpoint. Manage roles carefully.'
-      });
-    }
-    
     // Handle role changes with specific logic
     if (role && role !== userToUpdate.role) {
         // Prevent super-admin from being demoted if they are the only one

@@ -48,6 +48,8 @@ export default function Navbar({ showPurchaseModal }) {
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
   const { user, logout, updateUserContext } = useAuth(); // Added updateUserContext
   const [profileFormData, setProfileFormData] = useState({
+    firstname: "", // Added firstname
+    lastname: "",  // Added lastname
     phone: "",
     newPassword: "",
     confirmPassword: "",
@@ -88,9 +90,14 @@ export default function Navbar({ showPurchaseModal }) {
 
   useEffect(() => {
     if (user) {
-      setProfileFormData((prev) => ({ ...prev, phone: user.phone || "" }));
+      setProfileFormData((prev) => ({
+        ...prev,
+        firstname: user.firstname || "",
+        lastname: user.lastname || "",
+        phone: user.phone || "",
+      }));
     } else {
-      setProfileFormData({ phone: "", newPassword: "", confirmPassword: "" });
+      setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
     }
   }, [user]);
 
@@ -156,7 +163,11 @@ export default function Navbar({ showPurchaseModal }) {
 
     setProfileLoading(true);
     try {
-      const payload = { phone: profileFormData.phone };
+      const payload = {
+        firstname: profileFormData.firstname,
+        lastname: profileFormData.lastname,
+        phone: profileFormData.phone
+      };
       if (profileFormData.newPassword) {
         payload.password = profileFormData.newPassword;
       }
@@ -165,6 +176,8 @@ export default function Navbar({ showPurchaseModal }) {
         body: payload,
       });
       updateUserContext(updatedUser.data); // Assuming API returns { data: userObject }
+      // Update local form state for firstname and lastname as well, as they are now editable
+      setProfileFormData(prev => ({ ...prev, firstname: updatedUser.data.firstname, lastname: updatedUser.data.lastname, phone: updatedUser.data.phone }));
       showToast("Profile updated successfully!", true);
       setShowEditModal(false);
       setProfileFormData({
@@ -384,9 +397,9 @@ export default function Navbar({ showPurchaseModal }) {
                 <Form.Label>First Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={user?.firstname || ""}
-                  readOnly
-                  disabled
+                  name="firstname" // Add name attribute
+                  value={profileFormData.firstname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
                 />
               </Form.Group>
             </Col>
@@ -395,9 +408,9 @@ export default function Navbar({ showPurchaseModal }) {
                 <Form.Label>Last Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={user?.lastname || ""}
-                  readOnly
-                  disabled
+                  name="lastname" // Add name attribute
+                  value={profileFormData.lastname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
                 />
               </Form.Group>
             </Col>
