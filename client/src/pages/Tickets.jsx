@@ -631,22 +631,29 @@ export default function Dashboard() {
 
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
-    updatedGoods[index][field] = value;
 
     if (["quantity", "price", "gstRate"].includes(field)) {
-      value = Number(value);
+      value = Number(value) || 0;
     }
+
+    // Update the specific field
     updatedGoods[index][field] = value;
 
+    // Recalculate amount if quantity or price changes
     if (field === "quantity" || field === "price") {
       updatedGoods[index].amount =
         (Number(updatedGoods[index].quantity) || 0) *
         (Number(updatedGoods[index].price) || 0);
-
-      // if (field === "price") {
-      //   validateItemPrice(updatedGoods[index]);
-      // }
     }
+
+    // Update the state with the new goods array
+    setTicketData((prev) => ({
+      ...prev,
+      goods: updatedGoods,
+    }));
+
+    // Then update totals based on the new goods array
+    updateTotals(updatedGoods);
   };
 
   const updateTotals = (goods) => {
@@ -664,16 +671,16 @@ export default function Dashboard() {
       0
     );
     const grandTotal = totalAmount + gstAmount;
+
     setTicketData((prev) => ({
       ...prev,
-      goods,
-      totalQuantity, // Corrected: updateTotals should set this
+      goods: goods,
+      totalQuantity,
       totalAmount,
       gstAmount,
       grandTotal,
     }));
   };
-
   const validateItemPrice = (item) => {
     const newPrice = parseFloat(item.price);
     const originalPrice = parseFloat(item.originalPrice || item.price);
@@ -827,8 +834,7 @@ export default function Dashboard() {
       srNo: index + 1,
     }));
     // Update totals based on renumberedGoods
-    updateTotals(renumberedGoods); // This will update ticketData with new goods and totals
-    // No need to call setTicketData directly for goods here, updateTotals handles it.
+    updateTotals(renumberedGoods);
   };
 
   const handleTransfer = (ticketToTransfer) => {
@@ -909,7 +915,8 @@ export default function Dashboard() {
         // For consistency with how backend updateTicket is structured, send the current shippingAddress array
         // if shippingSameAsBilling is false. If true, backend will use billingAddress.
         shippingAddress: ticketData.shippingSameAsBilling
-          ? [ // If same, can send billing or let backend handle it. Sending billing for explicitness.
+          ? [
+              // If same, can send billing or let backend handle it. Sending billing for explicitness.
               ticketData.billingAddress.address1,
               ticketData.billingAddress.address2,
               ticketData.billingAddress.state,
@@ -1374,7 +1381,8 @@ export default function Dashboard() {
     }
   };
 
- const renderAddressFields = (type, isDisabled = false) => { // Added isDisabled prop
+  const renderAddressFields = (type, isDisabled = false) => {
+    // Added isDisabled prop
     const addressKey = `${type}Address`; // type is 'billing' or 'shipping'    const address = ticketData[addressKey] || {};
     const address = ticketData[addressKey] || {}; // This line was missing
     const handleChange = (field, value) => {
@@ -1400,7 +1408,6 @@ export default function Dashboard() {
               value={address.address2 || ""}
               onChange={(e) => handleChange("address2", e.target.value)}
               disabled={isDisabled}
-
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1409,7 +1416,6 @@ export default function Dashboard() {
               value={address.city || ""}
               onChange={(e) => handleChange("city", e.target.value)}
               disabled={isDisabled}
-
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1418,7 +1424,6 @@ export default function Dashboard() {
               value={address.state || ""}
               onChange={(e) => handleChange("state", e.target.value)}
               disabled={isDisabled}
-
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1427,7 +1432,6 @@ export default function Dashboard() {
               value={address.pincode || ""}
               onChange={(e) => handleChange("pincode", e.target.value)}
               disabled={isDisabled}
-
             />
           </Form.Group>
         </div>
@@ -2140,8 +2144,8 @@ export default function Dashboard() {
                 }}
               >
                 <i className="bi bi-building me-1"></i>Billing Address
-              </h5> // Billing address is typically read-only in ticket edit as it comes from quotation
-              {renderAddressFields("billing", true)} 
+              </h5>
+              {renderAddressFields("billing", true)}
             </Col>
             <Col md={6}>
               <h5
@@ -2156,29 +2160,32 @@ export default function Dashboard() {
               >
                 <i className="bi bi-truck me-1"></i>Shipping Address
               </h5>
-                           <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  label="Shipping address is the same as billing address"
-                  checked={ticketData.shippingSameAsBilling}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    setTicketData(prev => {
-                      // If checked, copy billingAddress object to shippingAddress object
-                      // Otherwise, shippingAddress retains its current values (or could be cleared)
-                      const newShippingAddress = isChecked
-                        ? { ...prev.billingAddress }
-                        : { ...prev.shippingAddress }; // Or clear: initialShippingAddressState
-                      return {
-                        ...prev,
-                        shippingSameAsBilling: isChecked,
-                        shippingAddress: newShippingAddress
-                      };
-                    });
-                  }} />
-              </Form.Group>
-              {renderAddressFields("shipping", ticketData.shippingSameAsBilling)}
+              <Form.Group className="mb-3"></Form.Group>
+              {renderAddressFields(
+                "shipping",
+                ticketData.shippingSameAsBilling
+              )}
 
+              <Form.Check
+                type="checkbox"
+                label="Shipping address is the same as billing address"
+                checked={ticketData.shippingSameAsBilling}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  setTicketData((prev) => {
+                    // If checked, copy billingAddress object to shippingAddress object
+                    // Otherwise, shippingAddress retains its current values (or could be cleared)
+                    const newShippingAddress = isChecked
+                      ? { ...prev.billingAddress }
+                      : { ...prev.shippingAddress }; // Or clear: initialShippingAddressState
+                    return {
+                      ...prev,
+                      shippingSameAsBilling: isChecked,
+                      shippingAddress: newShippingAddress,
+                    };
+                  });
+                }}
+              />
             </Col>
           </Row>
           <h5
@@ -2204,7 +2211,8 @@ export default function Dashboard() {
                   <th title="Quantity">Qty*</th>
                   <th title="GST Rate %">GST%*</th>
                   <th title="Price per unit">Price*</th>
-                  <th title="Total amount for this item">Amount</th>{" "}
+                  <th title="Total amount for this item">Amount</th>
+                  <th title="Delete Item">Delete</th>
                 </tr>
               </thead>
               <tbody>
@@ -2231,18 +2239,7 @@ export default function Dashboard() {
                       <Form.Control
                         required
                         type="number"
-                        min="0"
-                        value={item.gstRate || 0}
-                        onChange={(e) =>
-                          handleGoodsChange(index, "gstRate", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        required
-                        type="number"
-                        min="1"
+                        min="1" // Quantity typically should be at least 1
                         value={item.quantity}
                         onChange={(e) =>
                           handleGoodsChange(index, "quantity", e.target.value)
@@ -2251,9 +2248,19 @@ export default function Dashboard() {
                     </td>
                     <td>
                       <Form.Control
+                        required
+                        type="number"
+                        min="18" // GST Rate can be 0
+                        value={item.gstRate || 0}
+                        onChange={(e) =>
+                          handleGoodsChange(index, "gstRate", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
                         type="number"
                         min="0"
-                        step="0.01"
                         value={item.price || 0}
                         onChange={(e) =>
                           handleGoodsChange(index, "price", e.target.value)
