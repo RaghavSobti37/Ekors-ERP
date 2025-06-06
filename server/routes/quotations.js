@@ -10,13 +10,16 @@ const excelJS = require("exceljs");
 
 const handleQuotationUpsert = async (req, res) => {
   let operation;
+  let logDetails = {}; // Initialize logDetails
   try {
-    const { client: clientInput, ...quotationPayload } = req.body;
-    const { id } = req.params;
+    // Destructure billingAddress from quotationPayload
+    const { client: clientInput, billingAddress, ...quotationDetails } = req.body;
+    const quotationPayload = { ...quotationDetails, billingAddress }; // Re-include billingAddress
 
+    const { id } = req.params;
     const user = req.user || null;
     operation = id ? "update" : "create";
-    const logDetails = {
+    logDetails = { // Assign here after user and operation are defined
       userId: req.user._id,
       operation,
       quotationId: id,
@@ -225,12 +228,18 @@ const handleQuotationUpsert = async (req, res) => {
         });
     }
 
+    // Ensure billingAddress is an object, even if empty, to avoid issues with Mongoose
+    const processedBillingAddress = typeof billingAddress === 'object' && billingAddress !== null
+                                      ? billingAddress
+                                      : { address1: '', address2: '', city: '', state: '', pincode: '' };
+
     const data = {
       ...quotationPayload,
       user: req.user._id,
       date: new Date(quotationPayload.date),
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
+      billingAddress: processedBillingAddress, // Add billingAddress to data to be saved
     };
 
     let quotation;

@@ -14,6 +14,10 @@ const goodsItemSchema = new mongoose.Schema(
     },
     price: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
+    // Added gstRate, originalPrice, maxDiscountPercentage for consistency
+    gstRate: { type: Number, default: 0 },
+    originalPrice: { type: Number },
+    maxDiscountPercentage: { type: Number, default: 0 }
   },
   { _id: false }
 );
@@ -25,6 +29,14 @@ const documentSubSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+// Define billing address sub-schema
+const addressSchema = new mongoose.Schema({
+  address1: { type: String, default: '' },
+  address2: { type: String, default: '' },
+  city: { type: String, default: '' },
+  state: { type: String, default: '' },
+  pincode: { type: String, default: '' },
+}, { _id: false });
 
 const quotationSchema = new mongoose.Schema(
   {
@@ -41,6 +53,8 @@ const quotationSchema = new mongoose.Schema(
       trim: true,
     },
     validityDate: { type: Date, required: true },
+    // Add billingAddress to Quotation
+    billingAddress: addressSchema,
     goods: [goodsItemSchema],
     totalQuantity: { type: Number, required: true, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
