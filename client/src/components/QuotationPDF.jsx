@@ -26,27 +26,33 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     width: '100%',
   },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 5,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
   logoContainer: {
-    width: 100,
-    alignItems: "flex-end",
+    alignItems: "center",
+    marginBottom: 10,
   },
   logo: {
     width: 80,
     height: 60,
     objectFit: "contain",
   },
-  refText: {
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 5,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    alignItems: "flex-end",
+  },
+  cinText: {
     color: "red",
     fontWeight: "bold",
+    textAlign: "right",
+  },
+  refText: {
     marginBottom: 5,
   },
   heading: {
@@ -116,18 +122,21 @@ const QuotationPDF = ({ quotation }) => (
     <Page size="A4" style={styles.page}>
       <View style={styles.document}>
         <View style={styles.pageContent}>
-          <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
+          {/* Centered logo */}
+          <View style={styles.logoContainer}>
+            <Image 
+              style={styles.logo} 
+              src="/public/logo.png"
+            />
+          </View>
 
+          {/* Header with Date on left and CIN on right */}
           <View style={styles.headerContainer}>
-            <View style={styles.headerTextContainer}>
-              {/* <Text>Ref: {quotation.referenceNumber}</Text> */}
-              <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.refText}>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
             </View>
-            <View style={styles.logoContainer}>
-              <Image 
-                style={styles.logo} 
-                src="/public/logo.png"
-              />
+            <View style={styles.headerRight}>
+              <Text style={styles.cinText}>CIN NO.: U40106UP2020PTC127954</Text>
             </View>
           </View>
 
