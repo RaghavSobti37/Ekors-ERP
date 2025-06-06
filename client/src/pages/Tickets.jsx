@@ -1376,6 +1376,7 @@ export default function Dashboard() {
 
  const renderAddressFields = (type, isDisabled = false) => { // Added isDisabled prop
     const addressKey = `${type}Address`; // type is 'billing' or 'shipping'    const address = ticketData[addressKey] || {};
+    const address = ticketData[addressKey] || {}; // This line was missing
     const handleChange = (field, value) => {
       setTicketData((prev) => ({
         ...prev,
