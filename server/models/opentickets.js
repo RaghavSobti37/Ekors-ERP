@@ -30,6 +30,7 @@ const ticketSchema = new mongoose.Schema({
     type: [String], 
     validate: [arrayLimit, 'Shipping address needs 5 fields']
   },
+  shippingSameAsBilling: { type: Boolean, default: false }, // New field
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
   totalAmount: { type: Number, required: true },

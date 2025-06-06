@@ -39,6 +39,7 @@ import QuotationReportModal from "../components/QuotationReportModal.jsx";
 import { FaChartBar } from "react-icons/fa"; // Import icon for report button
 import { FaArchive } from "react-icons/fa";
 
+import axios from "axios"; // For pincode API call
 const GoodsTable = ({
   goods,
   handleGoodsChange,
@@ -212,6 +213,8 @@ export default function Quotations() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [selectedClientIdForForm, setSelectedClientIdForForm] = useState(null);
   const { user, loading } = useAuth();
+  const [isFetchingBillingAddress, setIsFetchingBillingAddress] =
+    useState(false); // New state for pincode fetch
   const auth = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
@@ -428,6 +431,14 @@ export default function Quotations() {
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
     orderIssuedBy: "",
+    // Add billingAddress object
+    billingAddress: {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
@@ -445,17 +456,28 @@ export default function Quotations() {
   };
 
   const [quotationData, setQuotationData] = useState(initialQuotationData);
+  // Initialize ticketData with new fields for shipping address modal input
   const [ticketData, setTicketData] = useState({
     companyName: "",
     quotationNumber: "",
     billingAddress: ["", "", "", "", ""],
-    shippingAddress: ["", "", "", "", ""],
+    // For shipping address input in modal:
+    shippingAddressObj: {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: "",
+    },
+    shippingSameAsBilling: false,
     goods: [],
     totalQuantity: 0,
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
     status: "Quotation Sent",
+    clientPhone: "",
+    clientGstNumber: "",
   });
 
   const fetchQuotations = useCallback(async () => {
@@ -758,6 +780,41 @@ export default function Quotations() {
     }
   };
 
+  const fetchBillingAddressFromPincode = async (pincode) => {
+    if (!pincode || pincode.length !== 6) {
+      return;
+    }
+    setIsFetchingBillingAddress(true);
+    try {
+      const response = await axios.get(
+        `https://api.postalpincode.in/pincode/${pincode}`
+      );
+      const data = response.data[0];
+
+      if (data.Status === "Success") {
+        const postOffice = data.PostOffice[0];
+        setQuotationData((prev) => ({
+          ...prev,
+          billingAddress: {
+            ...prev.billingAddress,
+            city: postOffice.District,
+            state: postOffice.State,
+            // Pincode is already set by handleInputChange
+          },
+        }));
+        toast.success(`City and State auto-filled for pincode ${pincode}.`);
+      } else {
+        toast.warn(
+          `Could not find details for pincode ${pincode}. Please enter manually.`
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching billing address from pincode:", error);
+      toast.error("Error fetching address details. Please enter manually.");
+    } finally {
+      setIsFetchingBillingAddress(false);
+    }
+  };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -778,6 +835,20 @@ export default function Quotations() {
           [clientField]: processedValue,
         },
       }));
+    } else if (name.startsWith("billingAddress.")) {
+      // New: Handle billingAddress changes
+      const addressField = name.split(".")[1];
+      setQuotationData((prev) => ({
+        ...prev,
+        billingAddress: {
+          ...prev.billingAddress,
+          [addressField]: value,
+        },
+      }));
+      // If the changed field is pincode and its length is 6, fetch address
+      if (addressField === "pincode" && value.length === 6) {
+        setTimeout(() => fetchBillingAddressFromPincode(value), 0);
+      }
     } else {
       setQuotationData((prev) => ({
         ...prev,
@@ -928,6 +999,7 @@ export default function Quotations() {
         grandTotal: Number(quotationData.grandTotal),
         status: quotationData.status || "open",
         client: quotationData.client,
+        billingAddress: quotationData.billingAddress, // Add billingAddress
       };
 
       const url = currentQuotation
@@ -1052,31 +1124,34 @@ export default function Quotations() {
 
   const handleCreateTicket = async (quotation) => {
     const ticketNumber = await generateTicketNumber();
+    // Billing address now comes directly from the quotation object
+    const quotationBillingAddressObject = quotation.billingAddress || {};
 
-    const clientBillingAddress = quotation.client?.billingAddress || {};
-    const clientShippingAddress = quotation.client?.shippingAddress || {};
+    // The old billingAddressArray and shippingAddressArray are no longer needed
+    // as billing address comes from quotation.billingAddress and shipping is handled by shippingAddressObj.
 
-    const billingAddressArray = [
-      clientBillingAddress.address1 || "",
-      clientBillingAddress.address2 || "",
-      clientBillingAddress.state || "",
-      clientBillingAddress.city || "",
-      clientBillingAddress.pincode || "",
-    ];
-    const shippingAddressArray = [
-      clientShippingAddress.address1 || "",
-      clientShippingAddress.address2 || "",
-      clientShippingAddress.state || "",
-      clientShippingAddress.city || "",
-      clientShippingAddress.pincode || "",
+    const ticketBillingAddressArrayFromQuotation = [
+      // Convert quotation's billingAddress object to array for the ticket
+      quotationBillingAddressObject.address1 || "",
+      quotationBillingAddressObject.address2 || "",
+      quotationBillingAddressObject.state || "", // Ensure order matches: add1, add2, state, city, pincode
+      quotationBillingAddressObject.city || "",
+      quotationBillingAddressObject.pincode || "",
     ];
 
     setTicketData({
       ticketNumber,
       companyName: quotation.client?.companyName || "",
       quotationNumber: quotation.referenceNumber,
-      billingAddress: billingAddressArray,
-      shippingAddress: shippingAddressArray,
+      billingAddress: ticketBillingAddressArrayFromQuotation, // Pass billing address array from quotation
+      shippingAddressObj: {
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      }, // Reset for modal
+      shippingSameAsBilling: false, // Reset for modal
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -1162,6 +1237,18 @@ export default function Quotations() {
         throw new Error(noUserIdError);
       }
 
+      // Construct shippingAddress array based on shippingSameAsBilling and shippingAddressObj
+      const finalShippingAddressArray = ticketData.shippingSameAsBilling
+        ? ticketData.billingAddress // Use the billingAddress array (already sourced from quotation)
+        : [
+            // Convert shippingAddressObj to array
+            ticketData.shippingAddressObj.address1 || "",
+            ticketData.shippingAddressObj.address2 || "",
+            ticketData.shippingAddressObj.state || "",
+            ticketData.shippingAddressObj.city || "",
+            ticketData.shippingAddressObj.pincode || "",
+          ];
+
       completeTicketData = {
         ...ticketData,
         createdBy: auth.user.id,
@@ -1173,6 +1260,8 @@ export default function Quotations() {
             changedBy: auth.user.id,
           },
         ],
+        shippingAddress: finalShippingAddressArray, // Set the determined shipping address array
+        // shippingSameAsBilling is already part of ticketData
         documents: {
           quotation: null,
           po: null,
@@ -1183,6 +1272,8 @@ export default function Quotations() {
           other: [],
         },
       };
+      // Remove shippingAddressObj from the final payload to backend as it's not part of the Ticket model
+      delete completeTicketData.shippingAddressObj;
 
       const responseData = await apiClient("/tickets", {
         method: "POST",
@@ -1274,7 +1365,10 @@ export default function Quotations() {
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
       gstAmount: Number(quotation.gstAmount),
+
       grandTotal: Number(quotation.grandTotal),
+      billingAddress:
+        quotation.billingAddress || initialQuotationData.billingAddress, // Load billing address
       status: quotation.status || "open",
       client: {
         companyName: quotation.client?.companyName || "",
@@ -1302,6 +1396,7 @@ export default function Quotations() {
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
       client: { ...initialQuotationData.client, _id: null },
+      billingAddress: { ...initialQuotationData.billingAddress }, // Reset billing address
     });
     setSelectedClientIdForForm(null);
     setIsReplicating(false);
@@ -1914,6 +2009,108 @@ export default function Quotations() {
                   {isSavingClient ? "Saving..." : "Save New Client"}
                 </Button>
               </div>
+            </div>
+            <h5
+              style={{
+                fontWeight: "bold",
+                textAlign: "center",
+                backgroundColor: "#f0f2f5",
+                padding: "0.5rem",
+                borderRadius: "0.25rem",
+                marginBottom: "1rem",
+              }}
+            >
+              Billing Address
+            </h5>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>
+                  Address Line 1 <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="billingAddress.address1"
+                  value={quotationData.billingAddress.address1}
+                  onChange={handleInputChange}
+                  disabled={
+                    isLoadingReplicationDetails || isFetchingBillingAddress
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Address Line 2</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="billingAddress.address2"
+                  value={quotationData.billingAddress.address2}
+                  onChange={handleInputChange}
+                  disabled={
+                    isLoadingReplicationDetails || isFetchingBillingAddress
+                  }
+                />
+              </Form.Group>
+            </div>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  Pincode <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="billingAddress.pincode"
+                  value={quotationData.billingAddress.pincode}
+                  pattern="[0-9]{6}"
+                  onChange={handleInputChange}
+                  disabled={
+                    isLoadingReplicationDetails || isFetchingBillingAddress
+                  }
+                />
+                <Form.Text className="text-muted">
+                  Enter 6-digit pincode to auto-fill City & State.
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  City <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="billingAddress.city"
+                  value={quotationData.billingAddress.city}
+                  onChange={handleInputChange}
+                  disabled={
+                    isLoadingReplicationDetails || isFetchingBillingAddress
+                  }
+                  readOnly={
+                    !(
+                      isLoadingReplicationDetails || isFetchingBillingAddress
+                    ) && !!quotationData.billingAddress.city
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>
+                  State <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="text"
+                  name="billingAddress.state"
+                  value={quotationData.billingAddress.state}
+                  onChange={handleInputChange}
+                  disabled={
+                    isLoadingReplicationDetails || isFetchingBillingAddress
+                  }
+                  readOnly={
+                    !(
+                      isLoadingReplicationDetails || isFetchingBillingAddress
+                    ) && !!quotationData.billingAddress.state
+                  }
+                />
+              </Form.Group>
             </div>
 
             <h5

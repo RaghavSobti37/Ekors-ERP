@@ -11,10 +11,10 @@ const asyncHandler = require("express-async-handler");
 
 exports.createTicket = asyncHandler(async (req, res) => {
   const user = req.user || null;
-
   // Ensure ticketData is a fresh object to avoid modifying req.body directly
-  const ticketData = { ...req.body };
+  const ticketInputData = { ...req.body }; // Use a new variable for input
 
+  
   if (!user) {
     logger.error(
       "ticket-create",
@@ -25,7 +25,59 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .json({ error: "Unauthorized: User not authenticated." });
   }
 
-  ticketData.createdBy = user.id;
+  // --- Billing Address from Quotation ---
+  let quotationBillingAddressArray = ["", "", "", "", ""]; // Default empty address
+  if (ticketInputData.quotationNumber) {
+    const quotation = await Quotation.findOne({
+      referenceNumber: ticketInputData.quotationNumber,
+      // user: user.id // Assuming quotation is user-specific or accessible
+    }).select('billingAddress'); // Only select billingAddress
+
+    if (quotation && quotation.billingAddress) {
+      const ba = quotation.billingAddress;
+      // Frontend Tickets.jsx handleUpdateTicket converts object to [add1, add2, state, city, pincode]
+      // So, the mapping from quotation object to ticket array should be:
+      quotationBillingAddressArray = [
+        ba.address1 || "",
+        ba.address2 || "",
+        ba.state || "",    // state is 3rd element
+        ba.city || "",     // city is 4th element
+        ba.pincode || ""
+      ];
+    } else {
+      logger.warn('ticket-create', `Quotation ${ticketInputData.quotationNumber} not found or has no billing address. Using default empty for ticket.`, user);
+    }
+  }
+
+  const finalTicketData = { ...ticketInputData }; // Start with input data
+  finalTicketData.createdBy = user.id;
+  finalTicketData.currentAssignee = user.id; // Set currentAssignee to creator by default
+  finalTicketData.billingAddress = quotationBillingAddressArray; // Set billing address from quotation
+
+  // --- Shipping Address Logic ---
+  if (ticketInputData.shippingSameAsBilling === true) {
+    finalTicketData.shippingAddress = quotationBillingAddressArray; // Copy from billing
+  } else {
+    // Ensure shippingAddress from req.body is an array of 5 strings
+    // The frontend should send it in the correct array format if not shippingSameAsBilling
+    if (Array.isArray(ticketInputData.shippingAddress) && ticketInputData.shippingAddress.length === 5) {
+        finalTicketData.shippingAddress = ticketInputData.shippingAddress;
+    } else if (typeof ticketInputData.shippingAddress === 'object' && ticketInputData.shippingAddress !== null) {
+        // If frontend sends an object, convert it
+        const sa = ticketInputData.shippingAddress;
+        finalTicketData.shippingAddress = [
+            sa.address1 || "",
+            sa.address2 || "",
+            sa.state || "",
+            sa.city || "",
+            sa.pincode || ""
+        ];
+    } else {
+        finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default empty if not provided correctly
+        logger.warn('ticket-create', `Shipping address not provided correctly and not same as billing. Using default empty.`, user);
+    }
+  }
+  finalTicketData.shippingSameAsBilling = ticketInputData.shippingSameAsBilling || false;
 
   // --- Ticket Number Generation ---
   const now = new Date();
@@ -35,19 +87,18 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
-
-  if (!ticketData.ticketNumber) {
-    ticketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  
+  if (!finalTicketData.ticketNumber) { // Use finalTicketData
+    finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     logger.warn(
       "ticket",
-      `Generated fallback ticket number: ${ticketData.ticketNumber}`,
+      `Generated fallback ticket number: ${finalTicketData.ticketNumber}`,
       user
     );
   }
-
   // --- Inventory Deduction Logic ---
-  if (ticketData.goods && ticketData.goods.length > 0) {
-    for (const good of ticketData.goods) {
+  if (finalTicketData.goods && finalTicketData.goods.length > 0) { // Use finalTicketData
+    for (const good of finalTicketData.goods) {
       if (!good.description || !(Number(good.quantity) > 0)) {
         logger.warn(
           "inventory",
@@ -119,7 +170,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
 
   // --- Ticket Creation ---
   try {
-    const ticket = new Ticket(ticketData);
+    // Use finalTicketData for creating the ticket
+    const ticket = new Ticket(finalTicketData);
     await ticket.save();
 
     logger.info(
@@ -139,7 +191,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // });
 
     // --- Update Quotation Status if applicable ---
-    if (ticket.quotationNumber) {
+    if (finalTicketData.quotationNumber) { // Use finalTicketData
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
@@ -153,7 +205,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
         if (updatedQuotation) {
           logger.info(
             "quotation",
-            `Quotation ${ticket.quotationNumber} set to 'running'.`,
+            `Quotation ${finalTicketData.quotationNumber} set to 'running'.`,
             user,
             { quotationId: updatedQuotation._id }
           );
@@ -161,7 +213,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       } catch (quotationError) {
         logger.error(
           "quotation",
-          `Failed to update quotation status to 'running' for ${ticket.quotationNumber}`,
+          `Failed to update quotation status to 'running' for ${finalTicketData.quotationNumber}`,
           quotationError,
           user
         );
@@ -172,7 +224,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
   } catch (error) {
     logger.error("ticket", `Failed to create ticket`, error, user, {
       requestBody: req.body,
-    });
+    }); // Log original req.body for debugging
     return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
@@ -224,7 +276,9 @@ exports.getTicket = async (req, res) => {
 exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
-   const { statusChangeComment, ...updatedTicketData } = req.body;
+   // Destructure shippingSameAsBilling, statusChangeComment, and the rest of ticket data
+  const { shippingSameAsBilling, statusChangeComment, ...updatedTicketPayload } = req.body;
+  let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
 
@@ -234,13 +288,13 @@ exports.updateTicket = async (req, res) => {
     }
 
         // Handle status change and history
-    if (updatedTicketData.status && updatedTicketData.status !== originalTicket.status) {
+    if (ticketDataForUpdate.status && ticketDataForUpdate.status !== originalTicket.status) { // Use ticketDataForUpdate
       if (!statusChangeComment) {
         logger.warn("ticket", `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`, user);
         // return res.status(400).json({ error: "A comment is required when changing the ticket status." }); // Optional: make it strictly mandatory
       }
-      const newStatusEntry = { status: updatedTicketData.status, changedAt: new Date(), changedBy: user.id, note: statusChangeComment || "Status updated." };
-      updatedTicketData.statusHistory = [...(originalTicket.statusHistory || []), newStatusEntry];
+      const newStatusEntry = { status: ticketDataForUpdate.status, changedAt: new Date(), changedBy: user.id, note: statusChangeComment || "Status updated." };
+      ticketDataForUpdate.statusHistory = [...(originalTicket.statusHistory || []), newStatusEntry]; // Use ticketDataForUpdate
           }
 
 
@@ -256,7 +310,7 @@ exports.updateTicket = async (req, res) => {
 
     // --- Inventory Adjustment Logic ---
     const originalGoods = originalTicket.goods || [];
-    const newGoods = updatedTicketData.goods || [];
+    const newGoods = ticketDataForUpdate.goods || []; // Use ticketDataForUpdate
 
     // Step A: Add back old quantities
     for (const good of originalGoods) {
@@ -304,9 +358,37 @@ exports.updateTicket = async (req, res) => {
     }
     // --- End Inventory Adjustment Logic ---
 
+    // --- Shipping Address Update Logic ---
+    if (typeof shippingSameAsBilling === 'boolean') {
+        ticketDataForUpdate.shippingSameAsBilling = shippingSameAsBilling;
+        if (shippingSameAsBilling === true) {
+            // If shipping is same as billing, copy billingAddress to shippingAddress
+            // originalTicket.billingAddress should be the source of truth for billing address on an existing ticket
+            ticketDataForUpdate.shippingAddress = originalTicket.billingAddress;
+        } else {
+            // If not same as billing, the frontend should provide the shippingAddress object/array
+            // Ensure shippingAddress from req.body is an array of 5 strings
+            if (Array.isArray(ticketDataForUpdate.shippingAddress) && ticketDataForUpdate.shippingAddress.length === 5) {
+                // It's already in the correct format
+            } else if (typeof ticketDataForUpdate.shippingAddress === 'object' && ticketDataForUpdate.shippingAddress !== null) {
+                const sa = ticketDataForUpdate.shippingAddress;
+                ticketDataForUpdate.shippingAddress = [
+                    sa.address1 || "",
+                    sa.address2 || "",
+                    sa.state || "",
+                    sa.city || "",
+                    sa.pincode || ""
+                ];
+            } else {
+                 if (!ticketDataForUpdate.shippingAddress) { // Check if it was part of payload
+                    ticketDataForUpdate.shippingAddress = originalTicket.shippingAddress; // Keep original if not provided
+                 }
+            }
+        }
+    }
     const ticket = await Ticket.findOneAndUpdate(
       { _id: ticketId }, // Filter already handled by originalTicket check and auth
-      updatedTicketData,
+      ticketDataForUpdate, // Use the modified data
       { new: true, runValidators: true }
     );
 
@@ -315,7 +397,7 @@ exports.updateTicket = async (req, res) => {
         "ticket",
         `Ticket not found for update: ${req.params.id}`,
         user,
-        { requestBody: req.body });
+        { requestBody: req.body }); // Log original req.body
       return res.status(404).json({ error: "Ticket not found" });
     }
 
@@ -342,7 +424,7 @@ exports.updateTicket = async (req, res) => {
       }
     }
   } catch (error) {
-    logger.error("ticket", `Failed to update ticket ID: ${ticketId}`, error, user, { requestBody: updatedTicketData });
+    logger.error("ticket", `Failed to update ticket ID: ${ticketId}`, error, user, { requestBody: ticketDataForUpdate }); // Log modified data
     res.status(500).json({ error: "Failed to update ticket" });
   }
 };

@@ -808,6 +808,8 @@ export default function Dashboard() {
         new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
       clientPhone: selectedTicketToEdit.clientPhone || "",
       clientGstNumber: selectedTicketToEdit.clientGstNumber || "",
+      shippingSameAsBilling:
+        selectedTicketToEdit.shippingSameAsBilling || false, // Load this
       termsAndConditions:
         selectedTicketToEdit.termsAndConditions ||
         ticketData.termsAndConditions,
@@ -888,7 +890,8 @@ export default function Dashboard() {
         statusChangeComment:
           ticketData.status !== editTicket?.status
             ? statusChangeComment
-            : undefined,
+            : undefined, // Only send if status changed
+        shippingSameAsBilling: ticketData.shippingSameAsBilling,
         __v: undefined,
         createdAt: undefined,
         updatedAt: undefined,
@@ -899,13 +902,27 @@ export default function Dashboard() {
           ticketData.billingAddress.city,
           ticketData.billingAddress.pincode,
         ],
-        shippingAddress: [
-          ticketData.shippingAddress.address1,
-          ticketData.shippingAddress.address2,
-          ticketData.shippingAddress.state,
-          ticketData.shippingAddress.city,
-          ticketData.shippingAddress.pincode,
-        ],
+        // shippingAddress will be determined based on shippingSameAsBilling
+        // This logic is now handled in the backend controller based on the flag
+        // However, frontend should still send the current shippingAddress object if not sameAsBilling
+        // Backend will prioritize the flag.
+        // For consistency with how backend updateTicket is structured, send the current shippingAddress array
+        // if shippingSameAsBilling is false. If true, backend will use billingAddress.
+        shippingAddress: ticketData.shippingSameAsBilling
+          ? [ // If same, can send billing or let backend handle it. Sending billing for explicitness.
+              ticketData.billingAddress.address1,
+              ticketData.billingAddress.address2,
+              ticketData.billingAddress.state,
+              ticketData.billingAddress.city,
+              ticketData.billingAddress.pincode,
+            ]
+          : [
+              ticketData.shippingAddress.address1,
+              ticketData.shippingAddress.address2,
+              ticketData.shippingAddress.state,
+              ticketData.shippingAddress.city,
+              ticketData.shippingAddress.pincode,
+            ],
         goods: ticketData.goods.map((g) => ({
           ...g,
           originalPrice: g.originalPrice,
@@ -1065,6 +1082,8 @@ export default function Dashboard() {
           // Fields specific to QuotationPDF
           referenceNumber: currentTicketForPdf.quotationNumber,
           date: currentTicketForPdf.createdAt,
+          shippingSameAsBilling:
+            currentTicketForPdf.shippingSameAsBilling || false,
           client: {
             companyName: currentTicketForPdf.companyName,
             siteLocation: getAddressString(
@@ -1355,9 +1374,8 @@ export default function Dashboard() {
     }
   };
 
-  const renderAddressFields = (type) => {
-    const addressKey = `${type}Address`;
-    const address = ticketData[addressKey] || {};
+ const renderAddressFields = (type, isDisabled = false) => { // Added isDisabled prop
+    const addressKey = `${type}Address`; // type is 'billing' or 'shipping'    const address = ticketData[addressKey] || {};
     const handleChange = (field, value) => {
       setTicketData((prev) => ({
         ...prev,
@@ -1372,6 +1390,7 @@ export default function Dashboard() {
               placeholder="Address Line 1"
               value={address.address1 || ""}
               onChange={(e) => handleChange("address1", e.target.value)}
+              disabled={isDisabled} // Apply disabled state
             />
           </Form.Group>
           <Form.Group className="col-md-6">
@@ -1379,6 +1398,8 @@ export default function Dashboard() {
               placeholder="Address Line 2"
               value={address.address2 || ""}
               onChange={(e) => handleChange("address2", e.target.value)}
+              disabled={isDisabled}
+
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1386,6 +1407,8 @@ export default function Dashboard() {
               placeholder="City"
               value={address.city || ""}
               onChange={(e) => handleChange("city", e.target.value)}
+              disabled={isDisabled}
+
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1393,6 +1416,8 @@ export default function Dashboard() {
               placeholder="State"
               value={address.state || ""}
               onChange={(e) => handleChange("state", e.target.value)}
+              disabled={isDisabled}
+
             />
           </Form.Group>
           <Form.Group className="col-md-4">
@@ -1400,6 +1425,8 @@ export default function Dashboard() {
               placeholder="Pincode"
               value={address.pincode || ""}
               onChange={(e) => handleChange("pincode", e.target.value)}
+              disabled={isDisabled}
+
             />
           </Form.Group>
         </div>
@@ -2112,8 +2139,8 @@ export default function Dashboard() {
                 }}
               >
                 <i className="bi bi-building me-1"></i>Billing Address
-              </h5>
-              {renderAddressFields("billing")}
+              </h5> // Billing address is typically read-only in ticket edit as it comes from quotation
+              {renderAddressFields("billing", true)} 
             </Col>
             <Col md={6}>
               <h5
@@ -2128,7 +2155,29 @@ export default function Dashboard() {
               >
                 <i className="bi bi-truck me-1"></i>Shipping Address
               </h5>
-              {renderAddressFields("shipping")}
+                           <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  label="Shipping address is the same as billing address"
+                  checked={ticketData.shippingSameAsBilling}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setTicketData(prev => {
+                      // If checked, copy billingAddress object to shippingAddress object
+                      // Otherwise, shippingAddress retains its current values (or could be cleared)
+                      const newShippingAddress = isChecked
+                        ? { ...prev.billingAddress }
+                        : { ...prev.shippingAddress }; // Or clear: initialShippingAddressState
+                      return {
+                        ...prev,
+                        shippingSameAsBilling: isChecked,
+                        shippingAddress: newShippingAddress
+                      };
+                    });
+                  }} />
+              </Form.Group>
+              {renderAddressFields("shipping", ticketData.shippingSameAsBilling)}
+
             </Col>
           </Row>
           <h5
