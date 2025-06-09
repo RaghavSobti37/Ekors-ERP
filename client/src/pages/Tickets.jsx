@@ -2217,17 +2217,31 @@ export default function Dashboard() {
                     <td>
                       <Form.Control
                         type="text"
-                        value={item.description}
-                        
-                        
+                        value={item.description || ""}
+                        onChange={(e) =>
+                          handleGoodsChange(
+                            index,
+                            "description",
+                            e.target.value
+                          )
+                        }
+                        required
+                        placeholder="Item Description"
                       />
                     </td>
                     <td>
                       <Form.Control
                         type="text"
-                        value={item.hsnSacCode}
-                        
-                        
+                        value={item.description || ""}
+                        onChange={(e) =>
+                          handleGoodsChange(
+                            index,
+                            "description",
+                            e.target.value
+                          )
+                        }
+                        required
+                        placeholder="Item Description"
                       />
                     </td>
                     <td>

@@ -82,19 +82,34 @@ const GoodsTable = ({
             <tr key={index}>
               <td>{item.srNo}</td>
               <td>
-                <Form.Control
-                  plaintext
-                  
-                  value={item.description || ""}
-                />
+               {!isEditing ? (
+                  item.description || ""
+                ) : (
+                  <Form.Control
+                    required
+                    type="text"
+                    value={item.description || ""}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "description", e.target.value)
+                    }
+                    placeholder="Item Description"
+                  />
+                )}
               </td>
               <td>
-                <Form.Control
-                  plaintext
-                  
-                  value={item.hsnSacCode || ""}
-                />
-              </td>
+                {!isEditing ? (
+                  item.hsnSacCode || ""
+                ) : (
+                  <Form.Control
+                    required
+                    type="text"
+                    value={item.hsnSacCode || ""}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "hsnSacCode", e.target.value)
+                    }
+                    placeholder="HSN/SAC"
+                  />
+                )}              </td>
               <td>
                 {!isEditing ? (
                   item.quantity || 0
@@ -2139,7 +2154,6 @@ export default function Quotations() {
               onDeleteItem={handleDeleteItem}
               onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
             />
-
             {isItemSearchDropdownOpenInModal && (
               <div style={{ height: "300px" }}></div>
             )}
