@@ -13,9 +13,9 @@ import { getAuthToken } from "../utils/authUtils";
 import apiClient from "../utils/apiClient";
 import { toast } from "react-toastify";
 import { handleApiError } from "../utils/helpers";
-import { PlusCircle } from 'react-bootstrap-icons';
+import { PlusCircle } from "react-bootstrap-icons";
 import ReusableModal from "../components/ReusableModal";
-import UserReportModal from "../components/UserReportModal"; // Import the report modal
+import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
 
 const Users = () => {
@@ -34,7 +34,7 @@ const Users = () => {
     role: "user",
     password: "",
     confirmPassword: "",
-    isActive: true
+    isActive: true,
   });
   const [passwordError, setPasswordError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,7 +44,6 @@ const Users = () => {
   const [showUserReportModal, setShowUserReportModal] = useState(false);
   const [selectedUserForReport, setSelectedUserForReport] = useState(null);
 
-  // Fetch users
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -68,13 +67,11 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  // Handle view user
   const handleView = (user) => {
     setSelectedUser(user);
     setShowViewModal(true);
   };
 
-  // Handle edit user
   const handleEdit = (user) => {
     setSelectedUser(user);
     setFormData({
@@ -85,16 +82,16 @@ const Users = () => {
       role: user?.role || "user",
       password: "",
       confirmPassword: "",
-      isActive: user?.isActive ?? true
+      isActive: user?.isActive ?? true,
     });
+    setPasswordError("");
     setShowEditModal(true);
   };
 
-  // Handle delete user
-  const handleDelete = async (userToDelete) => { // Changed parameter name for clarity
+  const handleDelete = async (userToDelete) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
-        await apiClient(`/users/${userToDelete._id}`, { method: "DELETE" }); // Use userToDelete._id
+        await apiClient(`/users/${userToDelete._id}`, { method: "DELETE" });
         toast.success("User deleted successfully");
         fetchUsers();
       } catch (err) {
@@ -103,7 +100,6 @@ const Users = () => {
     }
   };
 
-  // Handle toggle active status
   const handleToggleActiveStatus = async (user) => {
     const newStatus = !user.isActive;
     const confirmMessage = newStatus
@@ -114,9 +110,11 @@ const Users = () => {
       try {
         await apiClient(`/users/${user._id}/status`, {
           method: "PATCH",
-          body: { isActive: newStatus }
+          body: { isActive: newStatus },
         });
-        toast.success(`User ${newStatus ? "enabled" : "disabled"} successfully`);
+        toast.success(
+          `User ${newStatus ? "enabled" : "disabled"} successfully`
+        );
         fetchUsers();
       } catch (err) {
         toast.error(handleApiError(err, "Failed to update user status"));
@@ -124,37 +122,38 @@ const Users = () => {
     }
   };
 
-  // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (name === "password" || name === "confirmPassword") {
       setPasswordError("");
     }
   };
 
-  // Validate password
   const validatePassword = () => {
+    setPasswordError("");
+
+    // For new users, password is required
     if (!selectedUser && !formData.password) {
       setPasswordError("Password is required");
       return false;
     }
 
-    if (formData.password && formData.password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-      return false;
+    // If password is provided (for new or existing user)
+    if (formData.password) {
+      if (formData.password.length < 5) {
+        setPasswordError("Password must be at least 5 characters");
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setPasswordError("Passwords do not match");
+        return false;
+      }
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      setPasswordError("Passwords do not match");
-      return false;
-    }
-
     return true;
   };
 
-  // Save user (create or update)
   const handleSave = async () => {
     if (!validatePassword()) return;
 
@@ -166,26 +165,32 @@ const Users = () => {
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        isActive: formData.isActive
+        isActive: formData.isActive,
       };
 
+      // Include password in the payload if it's provided
       if (formData.password) {
         userData.password = formData.password;
       }
 
       if (selectedUser) {
+        // For existing user - update
         response = await apiClient(`/users/${selectedUser._id}`, {
           method: "PUT",
-          body: userData
+          body: userData,
         });
       } else {
+        // For new user - create
         response = await apiClient("/users", {
           method: "POST",
-          body: userData
+          body: userData,
         });
       }
 
-      toast.success(`User ${selectedUser ? "updated" : "created"} successfully`);
+      toast.success(
+        `User ${selectedUser ? "updated" : "created"} successfully` +
+          (formData.password ? " (password changed)" : "")
+      );
       setShowEditModal(false);
       fetchUsers();
     } catch (err) {
@@ -193,14 +198,12 @@ const Users = () => {
     }
   };
 
-  // Handle opening the report modal
   const handleOpenReportModal = (userToReport) => {
     setSelectedUserForReport(userToReport);
     setShowUserReportModal(true);
   };
 
-  // Filter and paginate users
-  const filteredUsers = users.filter(user =>
+  const filteredUsers = users.filter((user) =>
     `${user.firstname} ${user.lastname} ${user.email} ${user.role}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
@@ -224,9 +227,17 @@ const Users = () => {
           </Alert>
         )}
 
-        <div className="d-flex justify-content-between align-items-center mb-4" style={{ width: '100%', overflow: 'hidden' }}>
-          <h2 className="m-0" style={{ whiteSpace: 'nowrap' }}>User Management</h2>
-          <div className="d-flex align-items-center" style={{ width: '60%', minWidth: '300px' }}>
+        <div
+          className="d-flex justify-content-between align-items-center mb-4"
+          style={{ width: "100%", overflow: "hidden" }}
+        >
+          <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
+            User Management
+          </h2>
+          <div
+            className="d-flex align-items-center"
+            style={{ width: "60%", minWidth: "300px" }}
+          >
             <SearchBar
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -235,7 +246,7 @@ const Users = () => {
               onAddNew={() => handleEdit(null)}
               buttonText="Add New User"
               buttonIcon={<PlusCircle size={18} />}
-              style={{ width: '100%', maxWidth: '400px', marginRight: '10px' }}
+              style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
             />
           </div>
         </div>
@@ -243,22 +254,25 @@ const Users = () => {
         <ReusableTable
           columns={[
             {
-              key: 'name',
-              header: 'Name',
+              key: "name",
+              header: "Name",
               renderCell: (user) => (
                 <div className="user-avatar">
                   <span>{user.firstname?.charAt(0).toUpperCase()}</span>
                   {user.firstname} {user.lastname}
                   {user.role === "super-admin" && (
-                    <FaUserShield className="super-admin-icon" title="Super Admin" />
+                    <FaUserShield
+                      className="super-admin-icon"
+                      title="Super Admin"
+                    />
                   )}
                 </div>
               ),
             },
-            { key: 'email', header: 'Email' },
+            { key: "email", header: "Email" },
             {
-              key: 'role',
-              header: 'Role',
+              key: "role",
+              header: "Role",
               renderCell: (user) => (
                 <span className={`role-badge ${user.role.toLowerCase()}`}>
                   {user.role}
@@ -266,14 +280,13 @@ const Users = () => {
               ),
             },
             {
-              key: 'status',
-              header: 'Status',
+              key: "status",
+              header: "Status",
               renderCell: (user) => (
                 <Form.Check
                   type="switch"
                   checked={user.isActive}
                   onChange={() => handleToggleActiveStatus(user)}
-                  // disabled={user.role === 'super-admin'} // Allow super-admin to toggle status of other super-admins
                 />
               ),
             },
@@ -288,8 +301,7 @@ const Users = () => {
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onGenerateReport={handleOpenReportModal} // Add report generation handler
-              // disabled={{ delete: user.role === "super-admin" }} // Allow super-admin to delete other super-admins
+              onGenerateReport={handleOpenReportModal}
             />
           )}
           noDataMessage="No users found"
@@ -312,7 +324,10 @@ const Users = () => {
             onHide={() => setShowViewModal(false)}
             title="User Details"
             footerContent={
-              <BsButton variant="secondary" onClick={() => setShowViewModal(false)}>
+              <BsButton
+                variant="secondary"
+                onClick={() => setShowViewModal(false)}
+              >
                 Close
               </BsButton>
             }
@@ -321,7 +336,9 @@ const Users = () => {
               <div className="avatar-large">
                 {selectedUser.firstname?.charAt(0).toUpperCase()}
               </div>
-              <h3>{selectedUser.firstname} {selectedUser.lastname}</h3>
+              <h3>
+                {selectedUser.firstname} {selectedUser.lastname}
+              </h3>
               <p className="user-email">{selectedUser.email}</p>
 
               <div className="user-details-grid">
@@ -333,7 +350,9 @@ const Users = () => {
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Role:</span>
-                  <span className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}>
+                  <span
+                    className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}
+                  >
                     {selectedUser.role}
                   </span>
                 </div>
@@ -356,7 +375,10 @@ const Users = () => {
             title={selectedUser ? "Edit User" : "Add New User"}
             footerContent={
               <>
-                <BsButton variant="secondary" onClick={() => setShowEditModal(false)}>
+                <BsButton
+                  variant="secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
                   Cancel
                 </BsButton>
                 <BsButton variant="primary" onClick={handleSave}>
@@ -413,7 +435,6 @@ const Users = () => {
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
-                  // disabled={selectedUser?.role === "super-admin"} // Allow super-admin to change role of other super-admins
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
@@ -434,6 +455,8 @@ const Users = () => {
                 />
               </Form.Group>
 
+              <hr />
+              <h5>Password {selectedUser ? "Change" : ""}</h5>
               <Form.Group className="mb-3">
                 <Form.Label>
                   {selectedUser ? "New Password" : "Password *"}
@@ -443,27 +466,48 @@ const Users = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  required={!selectedUser}
+                  required={!selectedUser} // Required only for new users
+                  placeholder={
+                    selectedUser
+                      ? "Enter new password to change"
+                      : "Enter password"
+                  }
                 />
+                <Form.Text className="text-muted">
+                  Must be at least 5 characters.
+                </Form.Text>
               </Form.Group>
 
-              <Form.Group className="mb-3">
-                <Form.Label>Confirm Password *</Form.Label>
-                <Form.Control
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required={!selectedUser || formData.password}
-                />
-                {passwordError && (
-                  <Form.Text className="text-danger">{passwordError}</Form.Text>
-                )}
-              </Form.Group>
+              {(formData.password || !selectedUser) && (
+                <Form.Group className="mb-3">
+                  <Form.Label>
+                    {selectedUser
+                      ? "Confirm New Password"
+                      : "Confirm Password *"}
+                  </Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required={!selectedUser || formData.password}
+                    placeholder={
+                      selectedUser ? "Confirm new password" : "Confirm password"
+                    }
+                  />
+                </Form.Group>
+              )}
+
+              {passwordError && (
+                <Alert variant="danger" className="mt-2">
+                  {passwordError}
+                </Alert>
+              )}
             </Form>
           </ReusableModal>
         )}
       </div>
+
       {/* User Report Modal */}
       {showUserReportModal && selectedUserForReport && (
         <UserReportModal

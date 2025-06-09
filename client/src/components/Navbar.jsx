@@ -33,8 +33,6 @@ import {
 import ReusableModal from "./ReusableModal.jsx"; // Import ReusableModal
 import { showToast, handleApiError } from "../utils/helpers"; // For toasts and error handling
 
-// import AddNewItem from '../pages/AddNewItem';
-
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 
@@ -59,7 +57,6 @@ export default function Navbar({ showPurchaseModal }) {
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
-  // const fileInputRef = useRef(null); // Ref for the hidden file input - REMOVED
 
   useEffect(() => {
     if (!user) return; // Don't fetch if not logged in
@@ -86,7 +83,7 @@ export default function Navbar({ showPurchaseModal }) {
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
     return () => clearInterval(intervalId);
-  }, [user]); // Re-fetch if user logs in/out. Threshold changes will be picked up on next interval or page load.
+  }, [user]); 
 
   useEffect(() => {
     if (user) {
