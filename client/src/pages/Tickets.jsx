@@ -2232,16 +2232,17 @@ export default function Dashboard() {
                     <td>
                       <Form.Control
                         type="text"
-                        value={item.description || ""}
+                        value={item.hsnSacCode || ""}
+
                         onChange={(e) =>
                           handleGoodsChange(
                             index,
-                            "description",
+ "hsnSacCode",
                             e.target.value
                           )
                         }
                         required
-                        placeholder="Item Description"
+                        placeholder="HSN/SAC"
                       />
                     </td>
                     <td>
@@ -2259,7 +2260,8 @@ export default function Dashboard() {
                       <Form.Control
                         required
                         type="number"
-                        min="18" // GST Rate can be 0
+                        min="0" // GST Rate can be 0
+                        step="0.1"
                         value={item.gstRate || 0}
                         onChange={(e) =>
                           handleGoodsChange(index, "gstRate", e.target.value)
