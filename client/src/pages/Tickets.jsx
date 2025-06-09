@@ -2218,16 +2218,16 @@ export default function Dashboard() {
                       <Form.Control
                         type="text"
                         value={item.description}
-                        readOnly
-                        disabled
+                        
+                        
                       />
                     </td>
                     <td>
                       <Form.Control
                         type="text"
                         value={item.hsnSacCode}
-                        readOnly
-                        disabled
+                        
+                        
                       />
                     </td>
                     <td>

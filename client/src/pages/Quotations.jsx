@@ -84,14 +84,14 @@ const GoodsTable = ({
               <td>
                 <Form.Control
                   plaintext
-                  readOnly
+                  
                   value={item.description || ""}
                 />
               </td>
               <td>
                 <Form.Control
                   plaintext
-                  readOnly
+                  
                   value={item.hsnSacCode || ""}
                 />
               </td>
@@ -2139,7 +2139,7 @@ export default function Quotations() {
               onDeleteItem={handleDeleteItem}
               onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
             />
-            
+
             {isItemSearchDropdownOpenInModal && (
               <div style={{ height: "300px" }}></div>
             )}
