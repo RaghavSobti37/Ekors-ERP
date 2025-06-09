@@ -231,15 +231,9 @@ const PIPDF = ({ ticket }) => (
             {getAddressPart(ticket.billingAddress, "state")} -{" "}
             {getAddressPart(ticket.billingAddress, "pincode")}
           </Text>
-          <Text>
-            Party Mobile No:{" "}
-            {ticket.clientPhone || ticket.client?.phone || "N/A"}
-          </Text>
+          <Text>Party Mobile No: {ticket.clientPhone || "N/A"}</Text>
           <Text>State: {getAddressPart(ticket.billingAddress, "state")}</Text>
-          <Text>
-            GSTIN / UIN:{" "}
-            {ticket.clientGstNumber || ticket.client?.gstNumber || "N/A"}
-          </Text>{" "}
+          <Text>GSTIN / UIN: {ticket.clientGstNumber || "N/A"}</Text>{" "}
         </View>
         <View style={styles.col}>
           <Text style={styles.bold}>Shipped to:</Text>
@@ -251,15 +245,9 @@ const PIPDF = ({ ticket }) => (
             {getAddressPart(ticket.shippingAddress, "state")} -{" "}
             {getAddressPart(ticket.shippingAddress, "pincode")}
           </Text>
-          <Text>
-            Party Mobile No:{" "}
-            {ticket.clientPhone || ticket.client?.phone || "N/A"}
-          </Text>
+          <Text>Party Mobile No: {ticket.clientPhone || "N/A"}</Text>
           <Text>State: {getAddressPart(ticket.shippingAddress, "state")}</Text>
-          <Text>
-            GSTIN / UIN:{" "}
-            {ticket.clientGstNumber || ticket.client?.gstNumber || "N/A"}
-          </Text>{" "}
+          <Text>GSTIN / UIN: {ticket.clientGstNumber || "N/A"}</Text>{" "}
         </View>
       </View>
 

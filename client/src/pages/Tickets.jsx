@@ -262,6 +262,10 @@ export default function Dashboard() {
     key: null,
     direction: "ascending",
   });
+  const [
+    isItemSearchDropdownOpenInEditModal,
+    setIsItemSearchDropdownOpenInEditModal,
+  ] = useState(false);
   const [transferHistoryDisplay, setTransferHistoryDisplay] = useState([]);
 
   const statusStages = [
@@ -1091,15 +1095,6 @@ export default function Dashboard() {
           date: currentTicketForPdf.createdAt,
           shippingSameAsBilling:
             currentTicketForPdf.shippingSameAsBilling || false,
-          client: {
-            companyName: currentTicketForPdf.companyName,
-            siteLocation: getAddressString(
-              currentTicketForPdf.shippingAddress ||
-                currentTicketForPdf.billingAddress
-            ),
-            phone: currentTicketForPdf.clientPhone || "N/A",
-            gstNumber: currentTicketForPdf.clientGstNumber || "N/A",
-          },
           goods: currentTicketForPdf.goods.map((item) => ({
             ...item,
             gstRate: item.gstRate || 0,
@@ -2291,9 +2286,12 @@ export default function Dashboard() {
             <ItemSearchComponent
               onItemSelect={handleAddItemToTicket} // Use the new handler
               placeholder="Search and select item to add..."
+              onDropdownToggle={setIsItemSearchDropdownOpenInEditModal}
             />
           </div>
-
+          {isItemSearchDropdownOpenInEditModal && (
+            <div style={{ height: "300px" }}></div>
+          )}
           <div className="bg-light p-3 rounded mt-3">
             <h5 className="text-center mb-3">Ticket Summary</h5>
             <Table bordered size="sm">

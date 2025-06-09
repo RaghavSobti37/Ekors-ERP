@@ -46,6 +46,7 @@ const GoodsTable = ({
   isEditing, // currentQuotation prop removed as isEditing implies its context
   onAddItem,
   onDeleteItem,
+  onItemSearchDropdownToggle,
 }) => {
   return (
     <div className="table-responsive">
@@ -56,7 +57,9 @@ const GoodsTable = ({
             <th>
               Description <span className="text-danger">*</span>
             </th>
-            <th>HSN/SAC</th>
+            <th>
+              HSN/SAC <span className="text-danger">*</span>
+            </th>
             <th>
               Qty <span className="text-danger">*</span>
             </th>
@@ -183,6 +186,7 @@ const GoodsTable = ({
           <ItemSearchComponent
             onItemSelect={onAddItem}
             placeholder="Search items to add to quotation..."
+            onDropdownToggle={onItemSearchDropdownToggle}
           />
         </div>
       )}
@@ -219,6 +223,8 @@ export default function Quotations() {
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
   const [showQuotationReportModal, setShowQuotationReportModal] =
+    useState(false);
+  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] =
     useState(false);
   const quotationFormId = "quotation-form";
 
@@ -2131,8 +2137,12 @@ export default function Quotations() {
               isEditing={true}
               onAddItem={handleAddItem}
               onDeleteItem={handleDeleteItem}
+              onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
             />
-
+            
+            {isItemSearchDropdownOpenInModal && (
+              <div style={{ height: "300px" }}></div>
+            )}
             <div className="bg-light p-3 rounded mt-3">
               <h5 className="text-center mb-3">Quotation Summary</h5>
               <Table bordered size="sm">

@@ -1,0 +1,25 @@
+graph TD
+    A[End User] --> B[1.0 User Authentication \n JWT-based];
+    B --> C[2.0 Role Management \n RBAC: Admin/Employee];
+    C --> D[3.0 Quotation Management];
+    C --> E[4.0 Inventory Management \n ItemList];
+    C --> F[5.0 Ticket Management \n OpenTickets];
+    C --> L[6.0 Client Management];
+    C --> M[7.0 Challan Management];
+    C --> N[8.0 Supplier Management];
+
+    D --> G([PDF Generator for Quotations]);
+    E --> H([Stock Alerts/Item Tracking]);
+    F --> I([Ticket Status Updates]);
+    L --> O([Client Data Operations]);
+    M --> P([Challan Generation/Tracking]);
+    N --> Q([Supplier Data Operations]);
+
+    G --> J{MongoDB Database \n Users, Quotations, ItemList, \n OpenTickets, Clients, Challans, \n Suppliers, LogTime};
+    H --> J;
+    I --> J;
+    O --> J;
+    P --> J;
+    Q --> J;
+
+    J --> K[9.0 Audit Logging \n LogTime - User activities];

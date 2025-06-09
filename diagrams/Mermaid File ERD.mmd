@@ -1,0 +1,106 @@
+---
+id: a052a40e-fc7b-4e51-90b4-4bf3747fafec
+---
+erDiagram
+    User {
+        ObjectId _id PK "Mongoose default PK"
+        String userid UK "Business Key, unique"
+        String username
+        String email UK "Unique"
+        String password
+        String role "Enum: ['admin', 'employee']"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    Client {
+        ObjectId _id PK
+        String clientid UK "Business Key, unique"
+        String clientname
+        String companyname
+        String gstno
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    Challan {
+        ObjectId _id PK
+        String challanid UK "Business Key, unique"
+        String clientname "Denormalized client name"
+        ObjectId clientid FK "References Client(_id)"
+        String projectname
+        Date date
+        Object itemdetails "Array of embedded objects"
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    ItemList {
+        ObjectId _id PK
+        String itemid UK "Business Key, unique"
+        String itemname
+        String description
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    LogTime {
+        ObjectId _id PK
+        String logid UK "Business Key, unique"
+        String projectname
+        String task
+        Number hours
+        Date date
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    OpenTicket {
+        ObjectId _id PK
+        String ticketid UK "Business Key, unique"
+        String clientname "Denormalized client name"
+        ObjectId clientid FK "References Client(_id)"
+        String projectname
+        ObjectId assignedto FK "References User(_id)"
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    Quotation {
+        ObjectId _id PK
+        String quotationid UK "Business Key, unique"
+        String clientname "Denormalized client name"
+        ObjectId clientid FK "References Client(_id)"
+        String projectname
+        Object itemdetails "Array of embedded objects"
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    Supplier {
+        ObjectId _id PK
+        String supplierid UK "Business Key, unique"
+        String suppliername
+        ObjectId createdby FK "References User(_id)"
+        Date createdAt "Timestamp"
+        Date updatedAt "Timestamp"
+    }
+
+    User ||--o{ Challan : "createdby (User creates many Challans)"
+    User ||--o{ Client : "createdby (User creates many Clients)"
+    User ||--o{ ItemList : "createdby (User creates many ItemLists)"
+    User ||--o{ LogTime : "createdby (User creates many LogTimes)"
+    User ||--o{ OpenTicket : "createdby (User creates many OpenTickets)"
+    User ||--o{ OpenTicket : "assignedto (User assigned to many OpenTickets)"
+    User ||--o{ Quotation : "createdby (User creates many Quotations)"
+    User ||--o{ Supplier : "createdby (User creates many Suppliers)"
+
+    Client ||--o{ Challan : "clientid (Client has many Challans)"
+    Client ||--o{ OpenTicket : "clientid (Client has many OpenTickets)"
+    Client ||--o{ Quotation : "clientid (Client has many Quotations)"
