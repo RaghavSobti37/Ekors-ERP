@@ -613,6 +613,7 @@ export default function Dashboard() {
           quantity: 1,
           price: 0,
           amount: 0,
+          gstRate: 0, // Initialize gstRate
         },
       ],
     }));
@@ -636,12 +637,19 @@ export default function Dashboard() {
   const handleGoodsChange = (index, field, value) => {
     const updatedGoods = [...ticketData.goods];
 
-    if (["quantity", "price", "gstRate"].includes(field)) {
-      value = Number(value) || 0;
+    if (field === "gstRate") {
+      if (value.trim() === "") {
+        updatedGoods[index].gstRate = null; // Allow GST rate to be explicitly empty (will show as blank)
+      } else {
+        const numericValue = Number(value);
+        // If input is not empty but not a valid number (e.g. "abc"), set to 0. Otherwise, use the parsed number.
+        updatedGoods[index].gstRate = isNaN(numericValue) ? 0 : numericValue;
+      }
+    } else if (["quantity", "price"].includes(field)) {
+      updatedGoods[index][field] = Number(value) || 0; // Original behavior for quantity/price
+    } else {
+      updatedGoods[index][field] = value; // For non-numeric fields like description
     }
-
-    // Update the specific field
-    updatedGoods[index][field] = value;
 
     // Recalculate amount if quantity or price changes
     if (field === "quantity" || field === "price") {
@@ -748,12 +756,15 @@ export default function Dashboard() {
         description: item.name,
         hsnSacCode: item.hsnCode || "",
         quantity: 1,
-        unit: item.unit || "Nos",
-        price: item.price,
-        amount: item.price, // Initial amount
-        originalPrice: item.price,
-        maxDiscountPercentage: item.maxDiscountPercentage,
-        gstRate: item.gstRate || 0, // Added GST Rate
+        unit: item.unit || "Nos", // Assuming item might have a unit
+        // Use sellingPrice from the searched item, ensure it's a number, default to 0
+        price: Number(item.sellingPrice) || 0,
+        // Amount is price * quantity (initial quantity is 1)
+        amount: (Number(item.sellingPrice) || 0) * 1,
+        originalPrice: Number(item.sellingPrice) || 0, // Store original price from item
+        maxDiscountPercentage: Number(item.maxDiscountPercentage) || 0, // Ensure numeric, default 0
+        // Use gstRate from the searched item, ensure it's a number, default to 0
+        gstRate: Number(item.gstRate) || 0,
       },
     ];
     updateTotals(newGoods); // This will set ticketData
@@ -1088,28 +1099,25 @@ export default function Dashboard() {
 
     const pdfData = currentTicketForPdf
       ? {
-          // Common fields
-          ...currentTicketForPdf,
-          // Fields specific to QuotationPDF
+          ...currentTicketForPdf, // Spread all properties from the current ticket
+          client: { // Create the 'client' object QuotationPDF expects
+            companyName: currentTicketForPdf.companyName || "N/A", // Get companyName from the ticket root
+            siteLocation: currentTicketForPdf.siteLocation || "Site Not Specified", // Provide a fallback for siteLocation
+          },
+          // Ensure other fields are mapped or available as QuotationPDF expects
           referenceNumber: currentTicketForPdf.quotationNumber,
           date: currentTicketForPdf.createdAt,
-          shippingSameAsBilling:
-            currentTicketForPdf.shippingSameAsBilling || false,
           goods: currentTicketForPdf.goods.map((item) => ({
             ...item,
             gstRate: item.gstRate || 0,
-
             unit: item.unit || "Nos",
           })),
-          dispatchDays: currentTicketForPdf.dispatchDays || "7-10 working",
-          validityDate:
-            currentTicketForPdf.validityDate ||
-            new Date(
-              new Date().setDate(new Date().getDate() + 15)
-            ).toISOString(),
+          // Properties like totalAmount, dispatchDays, validityDate, shippingSameAsBilling
+          // should be available from the ...currentTicketForPdf spread if their names match
+          // what QuotationPDF expects (e.g., quotation.totalAmount).
+          // If QuotationPDF expects different names, they would need explicit mapping here.
         }
       : null;
-
     if (!pdfData)
       return (
         <Alert variant="warning">Could not load data for PDF preview.</Alert>
@@ -2262,7 +2270,8 @@ export default function Dashboard() {
                         type="number"
                         min="0" // GST Rate can be 0
                         step="0.1"
-                        value={item.gstRate || 0}
+                        // Display empty string if gstRate is null, otherwise the value (0 will show as "0")
+                        value={item.gstRate === null ? '' : item.gstRate}
                         onChange={(e) =>
                           handleGoodsChange(index, "gstRate", e.target.value)
                         }
