@@ -42,8 +42,7 @@ const ReusableModal = ({
           closeButton
           onHide={onHide}
           style={{
-            backgroundColor: "darkblue", // A light grey, adjust as needed
-            borderBottom: "1px solid #dee2e6",
+            backgroundColor: "maroon", // 1. grey
             padding: "1rem",
             flexShrink: 0,
             display: "flex", // For centering title

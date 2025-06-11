@@ -711,10 +711,6 @@ export default function Items() {
         method: "GET",
         rawResponse: true, // We need the raw response to get the blob
       });
-
-      // response is already checked for .ok inside apiClient if rawResponse is true
-      // and an error would have been thrown if not ok.
-
       const blob = await response.blob();
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({

@@ -18,6 +18,8 @@ import ReusableModal from "../components/ReusableModal";
 import UserReportModal from "../components/UserReportModal";
 import "../css/Users.css";
 
+//to-do add getauth token
+
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
