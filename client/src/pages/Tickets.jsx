@@ -629,7 +629,7 @@ export default function Dashboard() {
       amount: (updatedGoods[index].quantity || 1) * item.price,
       originalPrice: item.price,
       maxDiscountPercentage: item.maxDiscountPercentage,
-      gstRate: item.gstRate || 0, // Added GST Rate
+      gstRate: item.gstRate || 18, // Added GST Rate
     };
     updateTotals(updatedGoods);
   };
@@ -762,9 +762,9 @@ export default function Dashboard() {
         // Amount is price * quantity (initial quantity is 1)
         amount: (Number(item.sellingPrice) || 0) * 1,
         originalPrice: Number(item.sellingPrice) || 0, // Store original price from item
-        maxDiscountPercentage: Number(item.maxDiscountPercentage) || 0, // Ensure numeric, default 0
-        // Use gstRate from the searched item, ensure it's a number, default to 0
-        gstRate: Number(item.gstRate) || 0,
+        maxDiscountPercentage: Number(item.maxDiscountPercentage) || 0, 
+        gstRate: Number(item.gstRate ?? 18),
+        
       },
     ];
     updateTotals(newGoods); // This will set ticketData
@@ -815,8 +815,10 @@ export default function Dashboard() {
           ...g,
           originalPrice: g.originalPrice || g.price,
           // discountAvailable: g.discountAvailable, // Removed as per Quotations.jsx
-          maxDiscountPercentage: g.maxDiscountPercentage || 0,
-          gstRate: g.gstRate || 0,
+          maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
+          // Send null if gstRate is explicitly null in state,
+          // otherwise send the number (or 0 if it's falsy but not null, e.g. undefined)
+          gstRate: g.gstRate === null ? null : Number(g.gstRate) || 0,
         })) || [],
       totalQuantity: selectedTicketToEdit.totalQuantity || 0,
       totalAmount: selectedTicketToEdit.totalAmount || 0,
@@ -948,8 +950,10 @@ export default function Dashboard() {
         goods: ticketData.goods.map((g) => ({
           ...g,
           originalPrice: g.originalPrice,
-          maxDiscountPercentage: g.maxDiscountPercentage || 0,
-          gstRate: g.gstRate || 0,
+          maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
+          // Send null if gstRate is explicitly null in state,
+          // otherwise send the number (or 0 if it's falsy but not null, e.g. undefined)
+          gstRate: g.gstRate === null ? null : Number(g.gstRate) || 0,
         })),
       };
 
@@ -1100,16 +1104,18 @@ export default function Dashboard() {
     const pdfData = currentTicketForPdf
       ? {
           ...currentTicketForPdf, // Spread all properties from the current ticket
-          client: { // Create the 'client' object QuotationPDF expects
+          client: {
+            // Create the 'client' object QuotationPDF expects
             companyName: currentTicketForPdf.companyName || "N/A", // Get companyName from the ticket root
-            siteLocation: currentTicketForPdf.siteLocation || "Site Not Specified", // Provide a fallback for siteLocation
+            siteLocation:
+              currentTicketForPdf.siteLocation || "Site Not Specified", // Provide a fallback for siteLocation
           },
           // Ensure other fields are mapped or available as QuotationPDF expects
           referenceNumber: currentTicketForPdf.quotationNumber,
           date: currentTicketForPdf.createdAt,
           goods: currentTicketForPdf.goods.map((item) => ({
             ...item,
-            gstRate: item.gstRate || 0,
+            gstRate: item.gstRate || 18,
             unit: item.unit || "Nos",
           })),
           // Properties like totalAmount, dispatchDays, validityDate, shippingSameAsBilling
@@ -2241,13 +2247,8 @@ export default function Dashboard() {
                       <Form.Control
                         type="text"
                         value={item.hsnSacCode || ""}
-
                         onChange={(e) =>
-                          handleGoodsChange(
-                            index,
- "hsnSacCode",
-                            e.target.value
-                          )
+                          handleGoodsChange(index, "hsnSacCode", e.target.value)
                         }
                         required
                         placeholder="HSN/SAC"
@@ -2269,9 +2270,8 @@ export default function Dashboard() {
                         required
                         type="number"
                         min="0" // GST Rate can be 0
-                        step="0.1"
-                        // Display empty string if gstRate is null, otherwise the value (0 will show as "0")
-                        value={item.gstRate === null ? '' : item.gstRate}
+                        step="1"
+                        value={item.gstRate === null ? "" : item.gstRate}
                         onChange={(e) =>
                           handleGoodsChange(index, "gstRate", e.target.value)
                         }
