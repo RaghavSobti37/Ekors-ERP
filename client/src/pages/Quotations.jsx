@@ -1648,13 +1648,13 @@ export default function Quotations() {
               sortable: true,
               renderCell: (item) => formatDateForInputHelper(item.validityDate),
             },
-            {
-              key: "grandTotal",
-              header: "Total (₹)",
-              sortable: true,
-              renderCell: (item) => item.grandTotal.toFixed(2),
-              cellClassName: "text-end",
-            },
+            // {
+            //   key: "grandTotal",
+            //   header: "Total (₹)",
+            //   sortable: true,
+            //   renderCell: (item) => item.grandTotal.toFixed(2),
+            //   cellClassName: "text-end",
+            // },
             {
               key: "status",
               header: "Status",
