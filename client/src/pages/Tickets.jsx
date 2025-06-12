@@ -764,6 +764,7 @@ export default function Dashboard() {
         originalPrice: Number(item.sellingPrice) || 0, // Store original price from item
         maxDiscountPercentage: Number(item.maxDiscountPercentage) || 0, 
         gstRate: Number(item.gstRate ?? 18),
+        subtexts: [], 
         
       },
     ];
@@ -819,6 +820,7 @@ export default function Dashboard() {
           // Send null if gstRate is explicitly null in state,
           // otherwise send the number (or 0 if it's falsy but not null, e.g. undefined)
           gstRate: g.gstRate === null ? null : Number(g.gstRate) || 0,
+          subtexts: g.subtexts || [], // Ensure subtexts is part of each good item 'g'
         })) || [],
       totalQuantity: selectedTicketToEdit.totalQuantity || 0,
       totalAmount: selectedTicketToEdit.totalAmount || 0,
@@ -853,6 +855,45 @@ export default function Dashboard() {
     // Update totals based on renumberedGoods
     updateTotals(renumberedGoods);
   };
+
+    const handleAddSubtextToTicketItem = (itemIndex) => {
+    const updatedGoods = [...ticketData.goods];
+    if (!updatedGoods[itemIndex].subtexts) {
+      updatedGoods[itemIndex].subtexts = [];
+    }
+    updatedGoods[itemIndex].subtexts.push("");
+    setTicketData((prevData) => ({
+      ...prevData,
+      goods: updatedGoods,
+    }));
+  };
+
+  const handleDeleteSubtextFromTicketItem = (itemIndex, subtextIndexToDelete) => {
+    const updatedGoods = [...ticketData.goods];
+    updatedGoods[itemIndex].subtexts.splice(subtextIndexToDelete, 1);
+    setTicketData((prevData) => ({
+      ...prevData,
+      goods: updatedGoods,
+    }));
+  };
+
+    const handleTicketGoodsChange = (index, field, value, subtextIndex = null) => {
+    const updatedGoods = [...ticketData.goods];
+    if (field === "subtexts" && subtextIndex !== null) {
+      if (!updatedGoods[index].subtexts) {
+        updatedGoods[index].subtexts = [];
+      }
+      updatedGoods[index].subtexts[subtextIndex] = value;
+    } else {
+      updatedGoods[index][field] = value;
+    }
+    // Recalculate amount if quantity or price changes
+    if (field === "quantity" || field === "price") {
+      updatedGoods[index].amount = (Number(updatedGoods[index].quantity) || 0) * (Number(updatedGoods[index].price) || 0);
+    }
+    updateTotals(updatedGoods); // This will also call setTicketData
+  };
+
 
   const handleTransfer = (ticketToTransfer) => {
     setTransferTicket(ticketToTransfer);
@@ -955,6 +996,7 @@ export default function Dashboard() {
           // otherwise send the number (or 0 if it's falsy but not null, e.g. undefined)
           gstRate: g.gstRate === null ? null : Number(g.gstRate) || 0,
         })),
+         subtexts: g.subtexts || [],
       };
 
       const responseData = await apiClient(`/tickets/${editTicket._id}`, {
@@ -2228,12 +2270,12 @@ export default function Dashboard() {
                 {ticketData.goods.map((item, index) => (
                   <tr key={index}>
                     <td className="align-middle text-center">{item.srNo}</td>
-                    <td>
+                    <td style={{ minWidth: "250px" }}>
                       <Form.Control
                         type="text"
                         value={item.description || ""}
                         onChange={(e) =>
-                          handleGoodsChange(
+                          handleTicketGoodsChange( // Use specific handler for ticket goods
                             index,
                             "description",
                             e.target.value
@@ -2242,6 +2284,36 @@ export default function Dashboard() {
                         required
                         placeholder="Item Description"
                       />
+                      {item.subtexts &&
+                        item.subtexts.map((subtext, subtextIndex) => (
+                          <div key={subtextIndex} className="d-flex mt-1">
+                            <Form.Control
+                              type="text"
+                              value={subtext}
+                              onChange={(e) =>
+                                handleTicketGoodsChange( // Use specific handler
+                                  index,
+                                  "subtexts",
+                                  e.target.value,
+                                  subtextIndex
+                                )
+                              }
+                              placeholder={`Subtext ${subtextIndex + 1}`}
+                              className="form-control-sm me-1"
+                              style={{ fontStyle: "italic" }}
+                            />
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => handleDeleteSubtextFromTicketItem(index, subtextIndex)}
+                            >
+                              &times;
+                            </Button>
+                          </div>
+                        ))}
+                      <Button variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>
+                        + Subtext
+                      </Button>
                     </td>
                     <td>
                       <Form.Control
@@ -2261,7 +2333,7 @@ export default function Dashboard() {
                         min="1" // Quantity typically should be at least 1
                         value={item.quantity}
                         onChange={(e) =>
-                          handleGoodsChange(index, "quantity", e.target.value)
+                                                  handleTicketGoodsChange(index, "quantity", e.target.value)
                         }
                       />
                     </td>
@@ -2273,8 +2345,7 @@ export default function Dashboard() {
                         step="1"
                         value={item.gstRate === null ? "" : item.gstRate}
                         onChange={(e) =>
-                          handleGoodsChange(index, "gstRate", e.target.value)
-                        }
+handleTicketGoodsChange(index, "gstRate", e.target.value)                        }
                       />
                     </td>
                     <td>
@@ -2283,8 +2354,7 @@ export default function Dashboard() {
                         min="0"
                         value={item.price || 0}
                         onChange={(e) =>
-                          handleGoodsChange(index, "price", e.target.value)
-                        }
+                           handleTicketGoodsChange(index, "price", e.target.value)                         }
                         // isInvalid={!!item.priceError} // Add item.priceError to item state if needed
                       />
                     </td>

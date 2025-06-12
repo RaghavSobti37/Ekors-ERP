@@ -4,6 +4,7 @@ const goodsItemSchema = new mongoose.Schema(
   {
     srNo: { type: Number, required: true },
     description: { type: String, required: true },
+    subtexts: { type: [String], default: [] },
     hsnSacCode: { type: String, default: '' },
     quantity: { type: Number, required: true, min: 1 },
     unit: { 
@@ -14,7 +15,6 @@ const goodsItemSchema = new mongoose.Schema(
     },
     price: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
-    // Added gstRate, originalPrice, maxDiscountPercentage for consistency
     gstRate: { type: Number, default: 0 },
     originalPrice: { type: Number },
     maxDiscountPercentage: { type: Number, default: 0 }

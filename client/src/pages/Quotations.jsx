@@ -46,6 +46,8 @@ const GoodsTable = ({
   isEditing, // currentQuotation prop removed as isEditing implies its context
   onAddItem,
   onDeleteItem,
+  onAddSubtext,
+  onDeleteSubtext,
   onItemSearchDropdownToggle,
 }) => {
   return (
@@ -81,19 +83,53 @@ const GoodsTable = ({
           {goods.map((item, index) => (
             <tr key={index}>
               <td>{item.srNo}</td>
-              <td>
-               {!isEditing ? (
-                  item.description || ""
+              <td style={{ minWidth: "250px" }}>
+                {!isEditing ? (
+                  <>
+                    {item.description || ""}
+                    {item.subtexts && item.subtexts.length > 0 && (
+                      <div className="mt-1">
+                        {item.subtexts.map((st, stIndex) => (
+                          <em key={stIndex} className="d-block text-muted small">
+                            - {st}
+                          </em>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <Form.Control
-                    required
-                    type="text"
-                    value={item.description || ""}
-                    onChange={(e) =>
-                      handleGoodsChange(index, "description", e.target.value)
-                    }
-                    placeholder="Item Description"
-                  />
+                  <>
+                    <Form.Control
+                      required
+                      type="text"
+                      value={item.description || ""}
+                      onChange={(e) =>
+                        handleGoodsChange(index, "description", e.target.value)
+                      }
+                      placeholder="Item Description"
+                    />
+                    {item.subtexts &&
+                      item.subtexts.map((subtext, subtextIndex) => (
+                        <div key={subtextIndex} className="d-flex mt-1">
+                          <Form.Control
+                            type="text"
+                            value={subtext}
+                            onChange={(e) =>
+                              handleGoodsChange(index, "subtexts", e.target.value, subtextIndex)
+                            }
+                            placeholder={`Subtext ${subtextIndex + 1}`}
+                            className="form-control-sm me-1"
+                            style={{ fontStyle: "italic" }}
+                          />
+                          <Button variant="outline-danger" size="sm" onClick={() => onDeleteSubtext(index, subtextIndex)}>
+                            &times;
+                          </Button>
+                        </div>
+                      ))}
+                    <Button variant="outline-primary" size="sm" className="mt-1" onClick={() => onAddSubtext(index)}>
+                      + Subtext
+                    </Button>
+                  </>
                 )}
               </td>
               <td>
@@ -303,6 +339,7 @@ export default function Quotations() {
             : 0,
           srNo: index + 1,
           gstRate: Number(item.gstRate || 0),
+          subtexts: item.subtexts || [], // Replicate subtexts
         };
       });
 
@@ -655,11 +692,13 @@ export default function Quotations() {
       {
         srNo: quotationData.goods.length + 1,
         description: "",
+        subtexts: [], 
         hsnSacCode: "",
         quantity: 1,
         price: 0,
         amount: 0,
       },
+      // Initialize subtexts for new row
     ];
 
     setQuotationData({
@@ -692,6 +731,7 @@ export default function Quotations() {
         originalPrice: item.sellingPrice,
         maxDiscountPercentage: item.maxDiscountPercentage,
         gstRate: item.gstRate || 0,
+        subtexts: [], // Initialize subtexts for newly added item
       },
     ];
 
@@ -716,14 +756,21 @@ export default function Quotations() {
     setError(null);
   };
 
-  const handleGoodsChange = (index, field, value) => {
+  const handleGoodsChange = (index, field, value, subtextIndex = null) => {
     const updatedGoods = [...quotationData.goods];
     let priceValidationError = null;
 
-    if (["quantity", "price", "amount", "gstRate"].includes(field)) {
-      value = Number(value);
+    if (field === "subtexts" && subtextIndex !== null) {
+      if (!updatedGoods[index].subtexts) {
+        updatedGoods[index].subtexts = [];
+      }
+      updatedGoods[index].subtexts[subtextIndex] = value;
+    } else {
+      if (["quantity", "price", "amount", "gstRate"].includes(field)) {
+        value = Number(value);
+      }
+      updatedGoods[index][field] = value;
     }
-    updatedGoods[index][field] = value;
 
     if (field === "quantity" || field === "price") {
       updatedGoods[index].amount =
@@ -906,6 +953,28 @@ export default function Quotations() {
     }));
   };
 
+  const handleAddSubtext = (itemIndex) => {
+    const updatedGoods = [...quotationData.goods];
+    if (!updatedGoods[itemIndex].subtexts) {
+      updatedGoods[itemIndex].subtexts = [];
+    }
+    updatedGoods[itemIndex].subtexts.push("");
+    setQuotationData((prevData) => ({
+      ...prevData,
+      goods: updatedGoods,
+    }));
+  };
+
+  const handleDeleteSubtext = (itemIndex, subtextIndexToDelete) => {
+    const updatedGoods = [...quotationData.goods];
+    updatedGoods[itemIndex].subtexts.splice(subtextIndexToDelete, 1);
+    setQuotationData((prevData) => ({
+      ...prevData,
+      goods: updatedGoods,
+    }));
+  };
+
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormValidated(true);
@@ -1013,6 +1082,7 @@ export default function Quotations() {
             ? Number(item.maxDiscountPercentage)
             : 0,
           gstRate: Number(item.gstRate || 0),
+          subtexts: item.subtexts || [], // Include subtexts for each item
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
@@ -1178,6 +1248,7 @@ export default function Quotations() {
         quantity: Number(item.quantity),
         price: Number(item.price),
         amount: Number(item.amount),
+        subtexts: item.subtexts || [], // Pass subtexts
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
@@ -1382,6 +1453,7 @@ export default function Quotations() {
           ? Number(item.maxDiscountPercentage)
           : 0,
         gstRate: Number(item.gstRate || 0),
+        subtexts: item.subtexts || [], // Ensure subtexts is an array for each good item
       })),
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount),
@@ -2152,6 +2224,8 @@ export default function Quotations() {
               isEditing={true}
               onAddItem={handleAddItem}
               onDeleteItem={handleDeleteItem}
+              onAddSubtext={handleAddSubtext}
+              onDeleteSubtext={handleDeleteSubtext}
               onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
             />
             {isItemSearchDropdownOpenInModal && (

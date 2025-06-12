@@ -27,9 +27,9 @@ const clientSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  user: { // Ensure this field exists and is tied to a user
+  user: { 
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Replace 'User' with your actual User model name if different
+    ref: 'User',
     required: true
   },
   quotations: [{
@@ -45,4 +45,5 @@ clientSchema.index({
   email: 'text'
 });
 
+clientSchema.index({ user: 1, email: 1 }, { unique: true });
 module.exports = mongoose.model('Client', clientSchema);

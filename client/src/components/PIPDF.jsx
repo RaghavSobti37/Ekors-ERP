@@ -90,6 +90,13 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     width: "100%",
   },
+  subtextItem: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Oblique", // Italic
+    color: "#555", // Greyish color for subtext
+    marginLeft: 5, // Indent subtext slightly
+    // paddingVertical: 1,
+  },
 });
 
 const toWords = (num) => {
@@ -269,9 +276,14 @@ const PIPDF = ({ ticket }) => (
       {ticket.goods.map((item, i) => (
         <View style={styles.tableRow} key={i}>
           <Text style={[styles.cell, { width: "5%" }]}>{i + 1}</Text>
-          <Text style={[styles.cell, { width: "35%", textAlign: "left" }]}>
-            {item.description}
-          </Text>
+          <View style={[styles.cell, { width: "35%", textAlign: "left" }]}>
+            <Text>{item.description}</Text>
+            {item.subtexts && item.subtexts.map((sub, subIndex) => (
+              <Text key={subIndex} style={styles.subtextItem}>
+                - {sub}
+              </Text>
+            ))}
+          </View>
           <Text style={[styles.cell, { width: "15%" }]}>{item.hsnSacCode}</Text>
           <Text style={[styles.cell, { width: "10%" }]}>{item.quantity}</Text>
           <Text style={[styles.cell, { width: "8%" }]}>

@@ -5,10 +5,10 @@ import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import Pagination from "../components/Pagination"; // Component for table pagination
 import Footer from "../components/Footer";
 import { saveAs } from "file-saver"; // For downloading files
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+// import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token - Not directly used here
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import * as XLSX from "xlsx"; // Library for Excel file operations
+// import * as XLSX from "xlsx"; // Library for Excel file operations - Not directly used here
 // ActionButtons is not directly used in the main table here, but could be if edit functionality was present
 import {
   Eye, // View
@@ -16,8 +16,10 @@ import {
   FileEarmarkArrowDown, // For Excel Export
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
+  ClockHistory, // For Item History
 } from "react-bootstrap-icons";
-import { Spinner } from 'react-bootstrap'; // Added for loading indicators on new category/subcategory save
+import ReusableModal from "../components/ReusableModal.jsx";
+import { Spinner } from "react-bootstrap"; // Added for loading indicators on new category/subcategory save
 import "../css/Style.css"; // General styles
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
@@ -34,12 +36,14 @@ export default function Items() {
     key: "name",
     direction: "asc",
   });
+  const [itemHistory, setItemHistory] = useState([]);
+  const [itemHistoryLoading, setItemHistoryLoading] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     quantity: "",
     sellingPrice: "", // Changed from price
-    buyingPrice: "",  // Added buyingPrice
+    buyingPrice: "", // Added buyingPrice
     gstRate: "0",
     hsnCode: "",
     unit: "Nos",
@@ -49,7 +53,7 @@ export default function Items() {
     lowStockThreshold: "5", // Added for consistency with item schema
   });
   const [showEditItemModal, setShowEditItemModal] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showAddItemModal, setShowAddItemModal] = useState(false); // Renamed from showModal for clarity
   const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
@@ -83,7 +87,7 @@ export default function Items() {
     success: null,
     details: [],
   });
-  const [showViewItemModal, setShowViewItemModal] = useState(false);
+  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); // Corrected from showViewItemModal
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -124,23 +128,21 @@ export default function Items() {
     setCurrentPage(1); // Reset to the first page
   };
 
-  const handleGlobalThresholdChange = (e) => {
-    const newThreshold =
-      parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
-    setEffectiveLowStockThreshold(newThreshold);
-    localStorage.setItem(
-      LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
-      newThreshold.toString()
-    );
-    // Optionally, you could trigger a re-fetch of navbar summary if it's critical for it to update immediately
-  };
+  // const handleGlobalThresholdChange = (e) => { // This function seems unused, can be removed if not needed
+  //   const newThreshold =
+  //     parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
+  //   setEffectiveLowStockThreshold(newThreshold);
+  //   localStorage.setItem(
+  //     LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
+  //     newThreshold.toString()
+  //   );
+  // };
 
   const showSuccess = (message) => {
     showToast(message, true);
   };
 
-  useEffect(() => {
-  }, [items, categories]);
+  // useEffect(() => {}, [items, categories]); // This useEffect is empty, can be removed
 
   const fetchItems = useCallback(async () => {
     try {
@@ -157,12 +159,13 @@ export default function Items() {
       );
       setError(errorMessage);
     } finally {
+      setLoading(false); // Ensure loading is set to false in finally
     }
   }, []);
 
   const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Should be setLoading(true) at the start
       setError(null);
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
@@ -171,7 +174,6 @@ export default function Items() {
       if (Array.isArray(categoriesData)) {
         setCategories(categoriesData);
       } else if (categoriesData === null || categoriesData === undefined) {
-        // Handle cases where API might return null/undefined for no categories, or if apiClient returns that for a 204
         setCategories([]);
       } else {
         throw new Error(
@@ -179,12 +181,12 @@ export default function Items() {
         );
       }
     } catch (err) {
-      const errorDetails = {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        config: err.config,
-      };
+      // const errorDetails = { // This variable seems unused
+      //   message: err.message,
+      //   status: err.response?.status,
+      //   data: err.response?.data,
+      //   config: err.config,
+      // };
 
       let errorMessage = handleApiError(err, "Failed to load categories.");
       if (err.response) {
@@ -248,9 +250,9 @@ export default function Items() {
       setError(null);
     } catch (err) {
       const errorMessage = handleApiError(err, "Failed to load history.");
-      setError(errorMessage);
+      // setError(errorMessage); // Already set by handleApiError
       console.error("Fetch purchase history error:", err);
-      setError(errorMessage);
+      // setError(errorMessage); // Duplicate setError
       setPurchaseHistory((prev) => ({
         ...prev,
         [itemId]: [],
@@ -260,10 +262,10 @@ export default function Items() {
     }
   }, []);
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value.toLowerCase());
-    setCurrentPage(1);
-  };
+  // const handleSearchChange = (e) => { // This function seems unused, SearchBar component handles its own state
+  //   setSearchTerm(e.target.value.toLowerCase());
+  //   setCurrentPage(1);
+  // };
 
   const requestSort = (key) => {
     let direction = "asc";
@@ -314,16 +316,6 @@ export default function Items() {
     }
 
     processedItems.sort((a, b) => {
-      // const aIsLowStock = a.quantity < currentLowThreshold; // Removed
-      // const bIsLowStock = b.quantity < currentLowThreshold; // Removed
-
-      // Priority 1: Needs Restock
-      // if (a.needsRestock && !b.needsRestock) return -1; // Removed
-      // if (!a.needsRestock && b.needsRestock) return 1; // Removed
-      // Priority 2: Is Low Stock
-      // if (aIsLowStock && !bIsLowStock) return -1; // Removed
-      // if (!aIsLowStock && bIsLowStock) return 1; // Removed
-
       if (stockAlertFilterActive) {
         if (a.quantity < b.quantity) return -1;
         if (a.quantity > b.quantity) return 1;
@@ -356,33 +348,35 @@ export default function Items() {
     return itemsToDisplay.slice(indexOfFirst, indexOfLast);
   }, [itemsToDisplay, currentPage, itemsPerPage]);
 
-  const addExistingItemToPurchase = (item) => {
-    setPurchaseData({
-      ...purchaseData,
-      items: [
-        ...(purchaseData.items || []),
-        {
-          itemId: item._id,
-          description: item.name,
-          quantity: "1",
-          // Pre-fill purchase price with item's buyingPrice or lastPurchasePrice as a suggestion
-          price: item.buyingPrice ? item.buyingPrice.toString() : (item.lastPurchasePrice ? item.lastPurchasePrice.toString() : "0"),
-          gstRate: item.gstRate.toString(),
-        },
-      ],
-    });
-    setItemSearchTerm("");
-    setShowItemSearch(false);
-  };
+  // const addExistingItemToPurchase = (item) => { // This function seems unused
+  //   setPurchaseData({
+  //     ...purchaseData,
+  //     items: [
+  //       ...(purchaseData.items || []),
+  //       {
+  //         itemId: item._id,
+  //         description: item.name,
+  //         quantity: "1",
+  //         price: item.buyingPrice
+  //           ? item.buyingPrice.toString()
+  //           : item.lastPurchasePrice
+  //           ? item.lastPurchasePrice.toString()
+  //           : "0",
+  //         gstRate: item.gstRate.toString(),
+  //       },
+  //     ],
+  //   });
+  //   setItemSearchTerm("");
+  //   setShowItemSearch(false);
+  // };
 
   const handleEditItem = (item) => {
     setEditingItem(item);
     setFormData({
-      // Pre-fill form data for editing
       name: item.name,
       quantity: item.quantity?.toString() || "0",
-      sellingPrice: item.sellingPrice?.toString() || "0", // Changed from price
-      buyingPrice: item.buyingPrice?.toString() || "0",   // Added buyingPrice
+      sellingPrice: item.sellingPrice?.toString() || "0",
+      buyingPrice: item.buyingPrice?.toString() || "0",
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
@@ -401,15 +395,16 @@ export default function Items() {
     }
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { ...formData }; // formData should already be in correct format
-      // Convert numeric fields
+      const updatedItemPayload = { ...formData };
       updatedItemPayload.quantity =
         parseFloat(updatedItemPayload.quantity) || 0;
-      updatedItemPayload.sellingPrice = parseFloat(updatedItemPayload.sellingPrice) || 0; // Changed from price
-      updatedItemPayload.buyingPrice = parseFloat(updatedItemPayload.buyingPrice) || 0;   // Added buyingPrice
+      updatedItemPayload.sellingPrice =
+        parseFloat(updatedItemPayload.sellingPrice) || 0;
+      updatedItemPayload.buyingPrice =
+        parseFloat(updatedItemPayload.buyingPrice) || 0;
       updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
-      updatedItemPayload.lowStockThreshold = parseFloat(updatedItemPayload.lowStockThreshold) || 0;
-
+      updatedItemPayload.lowStockThreshold =
+        parseFloat(updatedItemPayload.lowStockThreshold) || 0;
       updatedItemPayload.maxDiscountPercentage =
         parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
 
@@ -479,7 +474,6 @@ export default function Items() {
     const quantity = parseFloat(item.quantity) || 0;
     const price = parseFloat(item.price) || 0;
     const gstRate = parseFloat(item.gstRate) || 0;
-
     return quantity * price * (1 + gstRate / 100);
   };
 
@@ -499,11 +493,9 @@ export default function Items() {
     ) {
       return false;
     }
-
     if (!purchaseData.items || purchaseData.items.length === 0) {
       return false;
     }
-
     return purchaseData.items.every(
       (item) =>
         item.description &&
@@ -534,14 +526,13 @@ export default function Items() {
       setError("Item name is required");
       return;
     }
-
     try {
       setIsSubmitting(true);
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        sellingPrice: parseFloat(formData.sellingPrice) || 0, // Changed from price
-        buyingPrice: parseFloat(formData.buyingPrice) || 0,   // Added buyingPrice
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
@@ -550,15 +541,14 @@ export default function Items() {
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
       };
-
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
-      setShowModal(false);
+      setShowAddItemModal(false); // Use renamed state
       setFormData({
         name: "",
         quantity: "",
-        sellingPrice: "", // Changed from price
-        buyingPrice: "",  // Added buyingPrice
+        sellingPrice: "",
+        buyingPrice: "",
         gstRate: "0",
         hsnCode: "",
         unit: "Nos",
@@ -568,6 +558,7 @@ export default function Items() {
         lowStockThreshold: "5",
       });
       setError(null);
+      showSuccess("Item added successfully!");
     } catch (err) {
       const errorMessage = handleApiError(
         err,
@@ -584,18 +575,70 @@ export default function Items() {
     setPurchaseData({ ...purchaseData, [e.target.name]: e.target.value });
   };
 
-  const toggleDetails = async (id) => {
+  const toggleExpandedRow = async (id) => {
     if (expandedRow !== id) {
       await fetchPurchaseHistory(id);
     }
-    // For modal view, we set the item to view and show the modal
-    const itemToView = items.find((item) => item._id === id);
-    if (itemToView) {
-      setEditingItem(itemToView); // Using editingItem to store the item to view for simplicity
-      setShowViewItemModal(true);
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  const handleShowItemHistoryModal = async (item) => {
+    setEditingItem(item);
+    setShowItemHistoryModal(true);
+    setItemHistoryLoading(true);
+    setError(null);
+    let combinedHistory = [];
+
+    if (item.excelImportHistory && item.excelImportHistory.length > 0) {
+      item.excelImportHistory.forEach((entry) => {
+        let quantityChange = 0;
+        let details = `File: ${entry.fileName || "N/A"}. `;
+        let oldQtyText = "";
+        let newQtyText = "";
+        if (entry.action === "created") {
+          const createdQty = entry.snapshot?.quantity;
+          quantityChange = parseFloat(createdQty) || 0;
+          newQtyText = ` (New Qty: ${quantityChange})`;
+          details += `Item created.`;
+        } else if (entry.action === "updated") {
+          const qtyChangeInfo = entry.changes?.find(
+            (c) => c.field === "quantity"
+          );
+          if (qtyChangeInfo) {
+            const oldQty = parseFloat(qtyChangeInfo.oldValue);
+            const newQty = parseFloat(qtyChangeInfo.newValue);
+            quantityChange = newQty - oldQty;
+            oldQtyText = ` (Old: ${oldQty} -> New: ${newQty})`;
+          }
+          details += `Item fields updated.`;
+        }
+        combinedHistory.push({
+          date: new Date(entry.importedAt),
+          type: `Excel Import (${entry.action})`,
+          user: entry.importedBy?.firstname || "System",
+          details: details.trim() + oldQtyText + newQtyText,
+          quantityChange: quantityChange,
+        });
+      });
     }
 
-    setExpandedRow(expandedRow === id ? null : id);
+    const existingPurchaseHistory = purchaseHistory[item._id];
+    if (existingPurchaseHistory && existingPurchaseHistory.length > 0) {
+      existingPurchaseHistory.forEach((purchase) => {
+        combinedHistory.push({
+          date: new Date(purchase.date),
+          type: "Purchase Entry",
+          user: purchase.createdByName || "System",
+          details: `Purchased from ${purchase.companyName} (Inv: ${
+            purchase.invoiceNumber
+          }). Price: ₹${purchase.price?.toFixed(2)}/unit.`,
+          quantityChange: parseFloat(purchase.quantity) || 0,
+        });
+      });
+    }
+    combinedHistory.sort((a, b) => b.date - a.date);
+    setItemHistory(combinedHistory);
+    setItemHistoryLoading(false);
   };
 
   const handleDelete = async (id) => {
@@ -619,14 +662,13 @@ export default function Items() {
     try {
       setIsSubmitting(true);
       setError(null);
-
       if (!isPurchaseDataValid()) {
         setError(
           "Please fill all required fields and ensure each item has a description, quantity, and price"
         );
+        setIsSubmitting(false); // Reset submitting state
         return false;
       }
-
       const purchaseDataToSend = {
         companyName: purchaseData.companyName,
         gstNumber: purchaseData.gstNumber,
@@ -642,12 +684,10 @@ export default function Items() {
           gstRate: parseFloat(item.gstRate || 0),
         })),
       };
-
       await apiClient(`/items/purchase`, {
         method: "POST",
         body: purchaseDataToSend,
       });
-
       await fetchItems();
       setShowPurchaseModal(false);
       resetPurchaseForm();
@@ -663,11 +703,6 @@ export default function Items() {
             .map((e) => e.message)
             .join("; ");
           detailedErrorMessage += ` Details: ${validationErrors}`;
-        } else if (
-          typeof err.response.data === "string" &&
-          err.response.data.length < 200
-        ) {
-          // Avoid overly long string responses
         }
       } else if (err.message) {
         detailedErrorMessage += ` ${err.message}`;
@@ -680,16 +715,16 @@ export default function Items() {
   };
 
   const addNewPurchaseItem = () => {
-    setPurchaseData(prevData => ({
+    setPurchaseData((prevData) => ({
       ...prevData,
       items: [
-        ...(prevData.items || []), // Ensure items array exists, provide default if not
-        { // New item structure
-          itemId: null, // Or some default if applicable
+        ...(prevData.items || []),
+        {
+          itemId: null,
           description: "",
-          quantity: "1", // Default quantity
-          price: "",     // Default price
-          gstRate: "0",  // Default GST rate
+          quantity: "1",
+          price: "",
+          gstRate: "0",
         },
       ],
     }));
@@ -707,9 +742,9 @@ export default function Items() {
       return;
     }
     try {
-      const response = await apiClient("/items/export-excel", { // Use apiClient
+      const response = await apiClient("/items/export-excel", {
         method: "GET",
-        rawResponse: true, // We need the raw response to get the blob
+        rawResponse: true,
       });
       const blob = await response.blob();
       saveAs(blob, "items_export.xlsx");
@@ -720,14 +755,18 @@ export default function Items() {
       });
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
-      console.error("Error exporting to Excel:", err); // Log the full error from apiClient
-      // Prioritize err.data.message, then err.message, then a fallback
+      console.error("Error exporting to Excel:", err);
       const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to export items. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please try again.'}`;
-      
-      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
-      setError(displayMessage); // Sets page-level error
-      showToast(displayMessage, false); // Show toast for immediate feedback
+      const displayMessage = `Failed to export items. ${
+        err.status ? `Status: ${err.status}.` : ""
+      } ${specificMessage || "Please try again."}`;
+      setExcelUpdateStatus({
+        error: displayMessage,
+        success: null,
+        details: [],
+      });
+      setError(displayMessage);
+      showToast(displayMessage, false);
     } finally {
       setIsExportingExcel(false);
     }
@@ -736,12 +775,8 @@ export default function Items() {
   const handleFileSelectedForUploadAndProcess = async (event) => {
     const file = event.target.files[0];
     setExcelUpdateStatus({ error: null, success: null, details: [] });
+    if (!file) return;
 
-    if (!file) {
-      return;
-    }
-
-    // Confirmation before processing
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
@@ -750,29 +785,24 @@ export default function Items() {
           "Are you absolutely sure you want to proceed?"
       )
     ) {
+      event.target.value = null; // Reset file input if user cancels
       return;
     }
     setIsProcessingExcel(true);
-
     const formData = new FormData();
     formData.append("excelFile", file);
-
     try {
-      // Use apiClient for the upload. It handles token and FormData.
       const responseData = await apiClient("/items/import-uploaded-excel", {
         method: "POST",
         body: formData,
-        isFormData: true, // Explicitly tell apiClient this is FormData
+        isFormData: true,
       });
-
       const response = responseData;
-
       let successMessage = `Excel sync complete: ${
         response.itemsCreated || 0
       } created, ${response.itemsUpdated || 0} updated, ${
         response.itemsDeleted || 0
       } deleted.`;
-
       if (response.parsingErrors && response.parsingErrors.length > 0) {
         successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
         console.warn("Excel Parsing Issues:", response.parsingErrors);
@@ -794,20 +824,19 @@ export default function Items() {
       });
       showSuccess(successMessage);
       fetchItems();
-      const fileInput = document.getElementById("excel-upload-input");
-      if (fileInput) {
-        fileInput.value = null;
-      }
     } catch (err) {
-      console.error("Error updating from Excel:", err); // Log the full error from apiClient
-      // Prioritize err.data.message, then err.message, then a fallback
+      console.error("Error updating from Excel:", err);
       const specificMessage = err.data?.message || err.message;
-      // If specificMessage is the SyntaxError itself, it will be included here.
-      const displayMessage = `Failed to update from Excel. ${err.status ? `Status: ${err.status}.` : ''} ${specificMessage || 'Please check the file and try again.'}`;
-
-      setExcelUpdateStatus({ error: displayMessage, success: null, details: [] });
-      setError(displayMessage); // Sets page-level error
-      showToast(displayMessage, false); // Show toast for immediate feedback
+      const displayMessage = `Failed to update from Excel. ${
+        err.status ? `Status: ${err.status}.` : ""
+      } ${specificMessage || "Please check the file and try again."}`;
+      setExcelUpdateStatus({
+        error: displayMessage,
+        success: null,
+        details: [],
+      });
+      setError(displayMessage);
+      showToast(displayMessage, false);
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -821,20 +850,22 @@ export default function Items() {
     }
     setIsSubmittingCategory(true);
     try {
-      // Backend should handle creation and return success or the new category object
       await apiClient("/items/categories", {
         method: "POST",
         body: { categoryName: newCategoryName.trim() },
       });
-      await fetchCategories(); // Re-fetch all categories
+      await fetchCategories();
       setFormData((prevFormData) => ({
-         ...prevFormData,
-         category: newCategoryName.trim(),
-         subcategory: "General" // Reset subcategory when new category is added
-        }));
+        ...prevFormData,
+        category: newCategoryName.trim(),
+        subcategory: "General",
+      }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
-      showToast(`Category "${newCategoryName.trim()}" added successfully.`, true);
+      showToast(
+        `Category "${newCategoryName.trim()}" added successfully.`,
+        true
+      );
     } catch (err) {
       handleApiError(err, "Failed to add new category.");
     } finally {
@@ -853,7 +884,6 @@ export default function Items() {
     }
     setIsSubmittingSubcategory(true);
     try {
-      // Backend should handle adding subcategory to the given category
       await apiClient(`/items/categories/subcategory`, {
         method: "POST",
         body: {
@@ -861,11 +891,19 @@ export default function Items() {
           subcategoryName: newSubcategoryName.trim(),
         },
       });
-      await fetchCategories(); // Re-fetch all categories
-      setFormData((prevFormData) => ({ ...prevFormData, subcategory: newSubcategoryName.trim() }));
+      await fetchCategories();
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        subcategory: newSubcategoryName.trim(),
+      }));
       setIsAddingNewSubcategory(false);
       setNewSubcategoryName("");
-      showToast(`Subcategory "${newSubcategoryName.trim()}" added to "${formData.category}".`, true);
+      showToast(
+        `Subcategory "${newSubcategoryName.trim()}" added to "${
+          formData.category
+        }".`,
+        true
+      );
     } catch (err) {
       handleApiError(err, "Failed to add new subcategory.");
     } finally {
@@ -879,7 +917,7 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && (
+        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( // Only show page-level error if no modal is active
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
@@ -896,13 +934,10 @@ export default function Items() {
         )}
 
         <div className="top-controls-container">
-          {" "}
-          {/* Container for all top controls */}
           <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
               {stockAlertFilterActive ? `Stock Alerts` : "All Items List"}
             </h2>
-
             <div className="d-flex align-items-center gap-2">
               <SearchBar
                 searchTerm={searchTerm}
@@ -952,7 +987,7 @@ export default function Items() {
                 )}
               </button>
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => setShowAddItemModal(true)} // Changed from setShowModal
                 className="btn btn-success d-flex align-items-center"
                 disabled={anyLoading}
                 title="Add New Item"
@@ -989,7 +1024,6 @@ export default function Items() {
                   ))}
               </select>
             </div>
-
             <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
@@ -1016,7 +1050,6 @@ export default function Items() {
                     ))}
               </select>
             </div>
-
             <div className="flex-fill" style={{ minWidth: "150px" }}>
               <select
                 className="form-select w-100"
@@ -1060,7 +1093,14 @@ export default function Items() {
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
               <tr>
-                {["name", "quantity", "sellingPrice", "buyingPrice", "unit", "gstRate"].map((key) => (
+                {[
+                  "name",
+                  "quantity",
+                  "sellingPrice",
+                  "buyingPrice",
+                  "unit",
+                  "gstRate",
+                ].map((key) => (
                   <th
                     key={key}
                     onClick={() => !anyLoading && requestSort(key)}
@@ -1097,17 +1137,21 @@ export default function Items() {
                       <td>{item.name}</td>
                       <td>
                         <>
-                          {item.quantity}                          {(item.quantity <= 0 || item.needsRestock) ? (                             <span
+                          {item.quantity}{" "}
+                          {item.quantity <= 0 || item.needsRestock ? (
+                            <span
                               className="badge bg-danger ms-2"
-title={
+                              title={
                                 item.quantity <= 0
                                   ? "Out of stock! Needs immediate restock."
-                                  : `Below item specific threshold (${item.lowStockThreshold || 'Not Set'}). Needs restock.`
+                                  : `Below item specific threshold (${
+                                      item.lowStockThreshold || "Not Set"
+                                    }). Needs restock.`
                               }
                             >
                               ⚠️ Restock
                             </span>
-                         ) : (
+                          ) : (
                             item.quantity <
                               (stockAlertFilterActive
                                 ? lowStockWarningQueryThreshold
@@ -1122,11 +1166,14 @@ title={
                               >
                                 🔥 Low Stock
                               </span>
-                           ))}
+                            )
+                          )}
                         </>
                       </td>
-                      <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td> {/* Changed from item.price */}
-                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td> {/* Added buyingPrice display */}
+                      <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
+                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(
+                        2
+                      )}`}</td>
                       <td>{item.unit || "Nos"}</td>
                       <td>{`${item.gstRate || 0}%`}</td>
                       <td>
@@ -1137,12 +1184,20 @@ title={
                       <td>
                         <div className="d-flex gap-1">
                           <button
-                            onClick={() => toggleDetails(item._id)}
+                            onClick={() => toggleExpandedRow(item._id)}
                             className="btn btn-info btn-sm"
                             disabled={anyLoading}
                             title="View Details"
                           >
                             <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleShowItemHistoryModal(item)}
+                            className="btn btn-secondary btn-sm"
+                            disabled={anyLoading}
+                            title="View Item History"
+                          >
+                            <ClockHistory size={16} />
                           </button>
                           <button
                             onClick={() => handleDelete(item._id)}
@@ -1159,13 +1214,10 @@ title={
                             title="Edit Item"
                           >
                             <i className="bi bi-pencil-square"></i>
-                            {/* <Pencil size={16} />{" "} */}
-                            {/* Placeholder for PencilSquare if not imported */}
                           </button>
                         </div>
                       </td>
                     </tr>
-
                     {expandedRow === item._id && (
                       <tr>
                         <td colSpan="8" className="expanded-row">
@@ -1183,80 +1235,60 @@ title={
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td>
-                                    <strong>Name</strong>
-                                  </td>
+                                  <td><strong>Name</strong></td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Category</strong>
-                                  </td>
+                                  <td><strong>Category</strong></td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Subcategory</strong>
-                                  </td>
+                                  <td><strong>Subcategory</strong></td>
                                   <td>{item.subcategory || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Quantity</strong>
-                                  </td>
+                                  <td><strong>Quantity</strong></td>
                                   <td>
                                     {item.quantity}
-                                                                      {(item.quantity <= 0 || item.needsRestock) ? (
-                                      item.quantity <= 0
+                                    {item.quantity <= 0 || item.needsRestock
+                                      ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Item specific restock threshold: ${item.lowStockThreshold || 'Not Set'})`
-                                    ) : (
-
-                                      item.quantity <
-                                        (stockAlertFilterActive
-                                          ? lowStockWarningQueryThreshold
-                                          : effectiveLowStockThreshold) &&
-  ` (Page display low stock threshold: < ${                                        stockAlertFilterActive
-                                          ? lowStockWarningQueryThreshold
-                                          : effectiveLowStockThreshold
-                                      })`
-                                  )}
+                                        : ` (Item specific restock threshold: ${
+                                            item.lowStockThreshold || "Not Set"
+                                          })`
+                                      : item.quantity <
+                                          (stockAlertFilterActive
+                                            ? lowStockWarningQueryThreshold
+                                            : effectiveLowStockThreshold) &&
+                                        ` (Page display low stock threshold: < ${
+                                          stockAlertFilterActive
+                                            ? lowStockWarningQueryThreshold
+                                            : effectiveLowStockThreshold
+                                        })`}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Selling Price</strong>
-                                  </td>
+                                  <td><strong>Selling Price</strong></td>
                                   <td>₹{parseFloat(item.sellingPrice).toFixed(2)}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Buying Price</strong>
-                                  </td>
+                                  <td><strong>Buying Price</strong></td>
                                   <td>₹{parseFloat(item.buyingPrice || 0).toFixed(2)}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Unit</strong>
-                                  </td>
+                                  <td><strong>Unit</strong></td>
                                   <td>{item.unit || "Nos"}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>GST Rate</strong>
-                                  </td>
+                                  <td><strong>GST Rate</strong></td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>HSN Code</strong>
-                                  </td>
+                                  <td><strong>HSN Code</strong></td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Max Discount</strong>
-                                  </td>
+                                  <td><strong>Max Discount</strong></td>
                                   <td>
                                     {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
@@ -1265,11 +1297,12 @@ title={
                                 </tr>
                               </tbody>
                             </table>
-
                             <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
                               <h6>Purchase History</h6>
                             </div>
-                            {purchaseHistory[item._id]?.length > 0 ? (
+                            {purchaseHistoryLoading[item._id] ? (
+                               <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
+                            ) : purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
                                 <thead className="table-secondary">
                                   <tr>
@@ -1283,30 +1316,22 @@ title={
                                 </thead>
                                 <tbody>
                                   {purchaseHistory[item._id].map(
-                                    (purchase, idx) => {
-                                      return (
-                                        <tr key={purchase._id || idx}>
-                                          <td>
-                                            {new Date(
-                                              purchase.date
-                                            ).toLocaleDateString()}
-                                          </td>
-                                          <td>{purchase.companyName}</td>
-                                          <td>
-                                            {purchase.createdByName || "N/A"}
-                                          </td>
-                                          <td>{purchase.invoiceNumber}</td>
-                                          <td>{purchase.quantity}</td>
-                                          <td>₹{purchase.price.toFixed(2)}</td>
-                                        </tr>
-                                      );
-                                    }
+                                    (purchase, idx) => (
+                                      <tr key={purchase._id || idx}>
+                                        <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                                        <td>{purchase.companyName}</td>
+                                        <td>{purchase.createdByName || "N/A"}</td>
+                                        <td>{purchase.invoiceNumber}</td>
+                                        <td>{purchase.quantity}</td>
+                                        <td>₹{purchase.price.toFixed(2)}</td>
+                                      </tr>
+                                    )
                                   )}
                                 </tbody>
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error
+                                {error && expandedRow === item._id // Show error only for the current expanded row
                                   ? `Error loading history: ${error}`
                                   : "No purchase history found"}
                               </div>
@@ -1319,8 +1344,8 @@ title={
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center"> {/* Corrected colSpan from 9 to 8 */}
-                    No items found 
+                  <td colSpan="8" className="text-center">
+                    No items found
                   </td>
                 </tr>
               )}
@@ -1328,11 +1353,13 @@ title={
           </table>
           {itemsToDisplay.length > 0 && (
             <Pagination
-              currentPage={currentPage} 
+              currentPage={currentPage}
               totalItems={itemsToDisplay.length}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
-                const totalPages = Math.ceil(itemsToDisplay.length / itemsPerPage);
+                const totalPages = Math.ceil(
+                  itemsToDisplay.length / itemsPerPage
+                );
                 if (page >= 1 && page <= totalPages) setCurrentPage(page);
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
@@ -1340,324 +1367,33 @@ title={
           )}
         </div>
 
-        {showModal && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Add New Item</h5>
+        {showAddItemModal && (
+          <ReusableModal
+            show={showAddItemModal}
+            onHide={() => {
+              setShowAddItemModal(false);
+              setFormData({ // Reset form on hide
+                name: "", quantity: "", sellingPrice: "", buyingPrice: "",
+                gstRate: "0", hsnCode: "", unit: "Nos", category: "",
+                subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
+              });
+              setError(null); // Clear modal-specific errors
+            }}
+            title="Add New Item"
+            footerContent={
+              <>
                 <button
                   type="button"
-                  className="close"
+                  className="btn btn-secondary" // Changed from "close" to "btn btn-secondary"
                   onClick={() => {
-                    setShowModal(false);
+                    setShowAddItemModal(false);
                     setFormData({
-                      name: "",
-                      quantity: "",
-                      sellingPrice: "", // Changed
-                      buyingPrice: "",  // Added
-                      gstRate: "0",
-                      hsnCode: "",
-                      unit: "Nos",
-                      category: "",
-                      subcategory: "General",
-                      maxDiscountPercentage: "",
-                      lowStockThreshold: "5",
-                    });
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Name*</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="Name"
-                        name="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        placeholder="Quantity"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={(e) =>
-                          setFormData({ ...formData, quantity: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Selling Price*</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Selling Price"
-                        name="sellingPrice"
-                        value={formData.sellingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, sellingPrice: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Buying Price</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Buying Price"
-                        name="buyingPrice"
-                        value={formData.buyingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, buyingPrice: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>GST Rate (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="GST Rate"
-                        name="gstRate"
-                        value={formData.gstRate}
-                        onChange={(e) =>
-                          setFormData({ ...formData, gstRate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>HSN Code</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="HSN Code"
-                        name="hsnCode"
-                        value={formData.hsnCode}
-                        onChange={(e) =>
-                          setFormData({ ...formData, hsnCode: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Unit</label>
-                      <select
-                        className="form-control mb-2"
-                        name="unit"
-                        value={formData.unit}
-                        onChange={(e) =>
-                          setFormData({ ...formData, unit: e.target.value })
-                        }
-                      >
-                        <option value="Nos">Nos</option>
-                        <option value="Mtr">Meter</option>
-                        <option value="PKT">Packet</option>
-                        <option value="Pair">Pair</option>
-                        <option value="Set">Set</option>
-                        <option value="Bottle">Bottle</option>
-                        <option value="KG">Kilogram</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Category</label>
-                      <div className="input-group mb-2">
-                        {isAddingNewCategory ? (
-                          <>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter new category name"
-                              value={newCategoryName}
-                              onChange={(e) => setNewCategoryName(e.target.value)}
-                              disabled={isSubmittingCategory}
-                            />
-                            <button
-                              className="btn btn-success"
-                              type="button"
-                              onClick={handleAddNewCategory}
-                              disabled={isSubmittingCategory || !newCategoryName.trim()}
-                            >
-                              {isSubmittingCategory ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Save"}
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              type="button"
-                              onClick={() => {
-                                setIsAddingNewCategory(false);
-                                setNewCategoryName("");
-                              }}
-                              disabled={isSubmittingCategory}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <select
-                              className="form-control"
-                              name="category"
-                              value={formData.category}
-                              onChange={(e) =>
-                                setFormData({ ...formData, category: e.target.value, subcategory: "General" })
-                              }
-                            >
-                              <option value="">Select Category</option>
-                              {Array.isArray(categories) &&
-                                categories.map((cat) => (
-                                  <option key={cat.category} value={cat.category}>
-                                    {cat.category}
-                                  </option>
-                                ))}
-                            </select>
-                            <button
-                              className="btn btn-outline-primary"
-                              type="button"
-                              onClick={() => setIsAddingNewCategory(true)}
-                              title="Add new category"
-                            >
-                              <PlusCircle size={18} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Subcategory</label>
-                      <div className="input-group mb-2">
-                        {isAddingNewSubcategory ? (
-                          <>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="Enter new subcategory name"
-                              value={newSubcategoryName}
-                              onChange={(e) => setNewSubcategoryName(e.target.value)}
-                              disabled={isSubmittingSubcategory || !formData.category}
-                            />
-                            <button
-                              className="btn btn-success"
-                              type="button"
-                              onClick={handleAddNewSubcategory}
-                              disabled={isSubmittingSubcategory || !newSubcategoryName.trim() || !formData.category}
-                            >
-                              {isSubmittingSubcategory ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Save"}
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              type="button"
-                              onClick={() => {
-                                setIsAddingNewSubcategory(false);
-                                setNewSubcategoryName("");
-                              }}
-                              disabled={isSubmittingSubcategory}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <select
-                              className="form-control"
-                              name="subcategory"
-                              value={formData.subcategory}
-                              onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                              disabled={!formData.category || isAddingNewCategory}
-                            >
-                              <option value="General">General</option>
-                              {formData.category && !isAddingNewCategory && Array.isArray(categories) &&
-                                categories.find((c) => c.category === formData.category)?.subcategories.map((subcat) => (
-                                  <option key={subcat} value={subcat}>{subcat}</option>
-                                ))}
-                            </select>
-                            <button
-                              className="btn btn-outline-primary"
-                              type="button"
-                              onClick={() => setIsAddingNewSubcategory(true)}
-                              title="Add new subcategory"
-                              disabled={!formData.category || isAddingNewCategory || isAddingNewSubcategory}
-                            >
-                              <PlusCircle size={18} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="maxDiscountPercentageModalItemForm">
-                        Max Discount (%)
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        id="maxDiscountPercentageModalItemForm"
-                        placeholder="Max Discount % (0-100)"
-                        name="maxDiscountPercentage"
-                        value={formData.maxDiscountPercentage}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maxDiscountPercentage: e.target.value,
-                          })
-                        }
-                        min="0"
-                        max="100"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="lowStockThresholdModalItemForm">Low Stock Threshold</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        id="lowStockThresholdModalItemForm"
-                        placeholder="Default: 5"
-                        name="lowStockThreshold"
-                        value={formData.lowStockThreshold}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lowStockThreshold: e.target.value })
-                        }
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({
-                      name: "",
-                      quantity: "",
-                      sellingPrice: "", // Changed
-                      buyingPrice: "",  // Added
-                      gstRate: "0",
-                      hsnCode: "",
-                      unit: "Nos",
-                      category: "",
-                      subcategory: "General",
-                      maxDiscountPercentage: "",
-                      lowStockThreshold: "5",
+                      name: "", quantity: "", sellingPrice: "", buyingPrice: "",
+                      gstRate: "0", hsnCode: "", unit: "Nos", category: "",
+                      subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
                     });
                     setError(null);
                   }}
-                  className="btn btn-secondary"
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -1667,387 +1403,439 @@ title={
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || // Changed from price
+                    !formData.sellingPrice ||
                     !formData.category ||
                     isSubmitting ||
-                    isAddingNewCategory || isAddingNewSubcategory // Disable main save if editing cat/subcat
+                    isAddingNewCategory || isAddingNewSubcategory
                   }
                 >
-                  {isSubmitting ? "Adding..." : "Add New Item"}
+                  {isSubmitting ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Adding...
+                    </>
+                  ) : "Add New Item"}
                 </button>
+              </>
+            }
+            isLoading={isSubmitting}
+          >
+            <>
+              {error && <div className="alert alert-danger">{error}</div>} {/* Show error inside modal */}
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Name*</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Name"
+                      name="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      placeholder="Quantity"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, quantity: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Selling Price*</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      placeholder="Selling Price"
+                      name="sellingPrice"
+                      value={formData.sellingPrice}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          sellingPrice: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Buying Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      placeholder="Buying Price"
+                      name="buyingPrice"
+                      value={formData.buyingPrice}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          buyingPrice: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>GST Rate (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      placeholder="GST Rate"
+                      name="gstRate"
+                      value={formData.gstRate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gstRate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>HSN Code</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="HSN Code"
+                      name="hsnCode"
+                      value={formData.hsnCode}
+                      onChange={(e) =>
+                        setFormData({ ...formData, hsnCode: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Unit</label>
+                    <select
+                      className="form-control mb-2"
+                      name="unit"
+                      value={formData.unit}
+                      onChange={(e) =>
+                        setFormData({ ...formData, unit: e.target.value })
+                      }
+                    >
+                      <option value="Nos">Nos</option>
+                      <option value="Mtr">Meter</option>
+                      <option value="PKT">Packet</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Set">Set</option>
+                      <option value="Bottle">Bottle</option>
+                      <option value="KG">Kilogram</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <div className="input-group mb-2">
+                      {isAddingNewCategory ? (
+                        <>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter new category name"
+                            value={newCategoryName}
+                            onChange={(e) =>
+                              setNewCategoryName(e.target.value)
+                            }
+                            disabled={isSubmittingCategory}
+                          />
+                          <button
+                            className="btn btn-success"
+                            type="button"
+                            onClick={handleAddNewCategory}
+                            disabled={
+                              isSubmittingCategory || !newCategoryName.trim()
+                            }
+                          >
+                            {isSubmittingCategory ? (
+                              <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              "Save"
+                            )}
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            onClick={() => {
+                              setIsAddingNewCategory(false);
+                              setNewCategoryName("");
+                            }}
+                            disabled={isSubmittingCategory}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <select
+                            className="form-control"
+                            name="category"
+                            value={formData.category}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                category: e.target.value,
+                                subcategory: "General",
+                              })
+                            }
+                          >
+                            <option value="">Select Category</option>
+                            {Array.isArray(categories) &&
+                              categories.map((cat) => (
+                                <option
+                                  key={cat.category}
+                                  value={cat.category}
+                                >
+                                  {cat.category}
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            className="btn btn-outline-primary"
+                            type="button"
+                            onClick={() => setIsAddingNewCategory(true)}
+                            title="Add new category"
+                          >
+                            <PlusCircle size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Subcategory</label>
+                    <div className="input-group mb-2">
+                      {isAddingNewSubcategory ? (
+                        <>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter new subcategory name"
+                            value={newSubcategoryName}
+                            onChange={(e) =>
+                              setNewSubcategoryName(e.target.value)
+                            }
+                            disabled={
+                              isSubmittingSubcategory || !formData.category
+                            }
+                          />
+                          <button
+                            className="btn btn-success"
+                            type="button"
+                            onClick={handleAddNewSubcategory}
+                            disabled={
+                              isSubmittingSubcategory ||
+                              !newSubcategoryName.trim() ||
+                              !formData.category
+                            }
+                          >
+                            {isSubmittingSubcategory ? (
+                              <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              "Save"
+                            )}
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            onClick={() => {
+                              setIsAddingNewSubcategory(false);
+                              setNewSubcategoryName("");
+                            }}
+                            disabled={isSubmittingSubcategory}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <select
+                            className="form-control"
+                            name="subcategory"
+                            value={formData.subcategory}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                subcategory: e.target.value,
+                              })
+                            }
+                            disabled={
+                              !formData.category || isAddingNewCategory
+                            }
+                          >
+                            <option value="General">General</option>
+                            {formData.category &&
+                              !isAddingNewCategory &&
+                              Array.isArray(categories) &&
+                              categories
+                                .find((c) => c.category === formData.category)
+                                ?.subcategories.map((subcat) => (
+                                  <option key={subcat} value={subcat}>
+                                    {subcat}
+                                  </option>
+                                ))}
+                          </select>
+                          <button
+                            className="btn btn-outline-primary"
+                            type="button"
+                            onClick={() => setIsAddingNewSubcategory(true)}
+                            title="Add new subcategory"
+                            disabled={
+                              !formData.category ||
+                              isAddingNewCategory ||
+                              isAddingNewSubcategory
+                            }
+                          >
+                            <PlusCircle size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="maxDiscountPercentageModalItemForm">
+                      Max Discount (%)
+                    </label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      id="maxDiscountPercentageModalItemForm"
+                      placeholder="Max Discount % (0-100)"
+                      name="maxDiscountPercentage"
+                      value={formData.maxDiscountPercentage}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          maxDiscountPercentage: e.target.value,
+                        })
+                      }
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="lowStockThresholdModalItemForm">
+                      Low Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      id="lowStockThresholdModalItemForm"
+                      placeholder="Default: 5"
+                      name="lowStockThreshold"
+                      value={formData.lowStockThreshold}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          lowStockThreshold: e.target.value,
+                        })
+                      }
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          </ReusableModal>
         )}
 
-        {/* View Item Modal */}
-        {showViewItemModal && editingItem && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">View Item: {editingItem.name}</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowViewItemModal(false);
-                    setEditingItem(null);
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                {error && <div className="alert alert-danger">{error}</div>}
-                <div className="expanded-container">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6>Item Details</h6>
-                    {editingItem.image && (
-                      <img
-                        src={editingItem.image}
-                        alt={editingItem.name}
-                        className="image-preview"
-                      />
-                    )}
-                  </div>
-                  <table className="table table-sm table-bordered item-details-table">
+        {showItemHistoryModal && editingItem && (
+          <ReusableModal
+            show={showItemHistoryModal}
+            onHide={() => {
+              setShowItemHistoryModal(false);
+              setEditingItem(null);
+              setItemHistory([]);
+              setError(null); // Clear error on close
+            }}
+            title={`Item History: ${editingItem.name}`}
+            footerContent={
+              <button
+                onClick={() => {
+                  setShowItemHistoryModal(false);
+                  setEditingItem(null);
+                  setItemHistory([]);
+                  setError(null);
+                }}
+                className="btn btn-secondary"
+              >
+                Close
+              </button>
+            }
+          >
+            <>
+              {itemHistoryLoading ? (
+                <div className="text-center">
+                  <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Loading history...</span>
+                  </Spinner>
+                </div>
+              ) : error ? (
+                <div className="alert alert-danger">{error}</div>
+              ) : itemHistory.length > 0 ? (
+                <div className="table-responsive">
+                  <table className="table table-sm table-striped table-bordered">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>User/Source</th>
+                        <th>Details</th>
+                        <th>Qty Change</th>
+                      </tr>
+                    </thead>
                     <tbody>
-                      <tr>
-                        <td>
-                          <strong>Name</strong>
-                        </td>
-                        <td>{editingItem.name}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Category</strong>
-                        </td>
-                        <td>{editingItem.category || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Subcategory</strong>
-                        </td>
-                        <td>{editingItem.subcategory || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Quantity</strong>
-                        </td>
-                                                <td>
-                          {editingItem.quantity}
-                          {(editingItem.quantity <= 0 || editingItem.needsRestock) ? (
-                            <span className="ms-2 badge bg-danger">
-                              {editingItem.quantity <= 0 ? "Out of Stock!" : "Needs Restock"}
-                            </span>
-                          ) : (
-                            editingItem.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) && (
-                              <span className="ms-2 badge bg-warning text-dark">
-                                Low Stock
-                              </span>
-                            )
-                          )}
-                          <small className="d-block text-muted mt-1">
-                            (Item Threshold: {editingItem.lowStockThreshold || 'N/A'}, Page Display Threshold: {effectiveLowStockThreshold})
-                          </small>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Selling Price</strong>
-                        </td>
-                        <td>₹{parseFloat(editingItem.sellingPrice).toFixed(2)}</td>
-                      </tr>
-                       <tr>
-                        <td>
-                          <strong>Buying Price</strong>
-                        </td>
-                        <td>₹{parseFloat(editingItem.buyingPrice || 0).toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Unit</strong>
-                        </td>
-                        <td>{editingItem.unit || "Nos"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>GST Rate</strong>
-                        </td>
-                        <td>{editingItem.gstRate}%</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>HSN Code</strong>
-                        </td>
-                        <td>{editingItem.hsnCode || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <strong>Max Discount</strong>
-                        </td>
-                        <td>
-                          {editingItem.maxDiscountPercentage > 0
-                            ? `${editingItem.maxDiscountPercentage}%`
-                            : "N/A"}
-                        </td>
-                      </tr>
+                      {itemHistory.map((entry, index) => (
+                        <tr key={index}>
+                          <td>{new Date(entry.date).toLocaleString()}</td>
+                          <td>{entry.type}</td>
+                          <td>{entry.user}</td>
+                          <td>{entry.details}</td>
+                          <td className={entry.quantityChange >= 0 ? 'text-success' : 'text-danger'}>
+                            {entry.quantityChange > 0 ? `+${entry.quantityChange}` : entry.quantityChange}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
-
-                  <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
-                    <h6>Purchase History</h6>
-                  </div>
-                  {purchaseHistoryLoading[editingItem._id] ? (
-                    <p>Loading history...</p>
-                  ) : purchaseHistory[editingItem._id]?.length > 0 ? (
-                    <table className="table table-sm table-striped table-bordered">
-                      <thead className="table-secondary">
-                        <tr>
-                          <th>Date</th>
-                          <th>Supplier</th>
-                          <th>Added By</th>
-                          <th>Invoice No</th>
-                          <th>Qty</th>
-                          <th>Price (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {purchaseHistory[editingItem._id].map(
-                          (purchase, idx) => (
-                            <tr key={purchase._id || idx}>
-                              <td>
-                                {new Date(purchase.date).toLocaleDateString()}
-                              </td>
-                              <td>{purchase.companyName}</td>
-                              <td>{purchase.createdByName || "N/A"}</td>
-                              <td>{purchase.invoiceNumber}</td>
-                              <td>{purchase.quantity}</td>
-                              <td>₹{purchase.price.toFixed(2)}</td>
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="alert alert-info">
-                      No purchase history found.
-                    </div>
-                  )}
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  onClick={() => {
-                    setShowViewItemModal(false);
-                    setEditingItem(null);
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+              ) : (
+                <div className="alert alert-info">No history found for this item.</div>
+              )}
+            </>
+          </ReusableModal>
         )}
 
-        {/* Edit Item Modal */}
         {showEditItemModal && editingItem && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Item: {editingItem.name}</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowEditItemModal(false);
-                    setEditingItem(null);
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                {error && <div className="alert alert-danger">{error}</div>}
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Name*</label>
-                      <input
-                        className="form-control mb-2"
-                        name="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={(e) =>
-                          setFormData({ ...formData, quantity: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Selling Price*</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        name="sellingPrice"
-                        value={formData.sellingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, sellingPrice: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Buying Price</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        name="buyingPrice"
-                        value={formData.buyingPrice}
-                        onChange={(e) =>
-                          setFormData({ ...formData, buyingPrice: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>GST Rate (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        name="gstRate"
-                        value={formData.gstRate}
-                        onChange={(e) =>
-                          setFormData({ ...formData, gstRate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>HSN Code</label>
-                      <input
-                        className="form-control mb-2"
-                        name="hsnCode"
-                        value={formData.hsnCode}
-                        onChange={(e) =>
-                          setFormData({ ...formData, hsnCode: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Unit</label>
-                      <select
-                        className="form-control mb-2"
-                        name="unit"
-                        value={formData.unit}
-                        onChange={(e) =>
-                          setFormData({ ...formData, unit: e.target.value })
-                        }
-                      >
-                        <option value="Nos">Nos</option>
-                        <option value="Mtr">Meter</option>
-                        <option value="PKT">Packet</option>
-                        <option value="Pair">Pair</option>
-                        <option value="Set">Set</option>
-                        <option value="Bottle">Bottle</option>
-                        <option value="KG">Kilogram</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Category</label>
-                      <select
-                        className="form-control mb-2"
-                        name="category"
-                        value={formData.category}
-                        onChange={(e) =>
-                          setFormData({ ...formData, category: e.target.value })
-                        }
-                      >
-                        <option value="">Select Category</option>
-                        {Array.isArray(categories) &&
-                          categories.map((cat) => (
-                            <option key={cat.category} value={cat.category}>
-                              {cat.category}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Subcategory</label>
-                      <select
-                        className="form-control mb-2"
-                        name="subcategory"
-                        value={formData.subcategory}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            subcategory: e.target.value,
-                          })
-                        }
-                        disabled={!formData.category}
-                      >
-                        <option value="General">General</option>
-                        {formData.category &&
-                          Array.isArray(categories) &&
-                          categories
-                            .find((c) => c.category === formData.category)
-                            ?.subcategories.map((subcat) => (
-                              <option key={subcat} value={subcat}>
-                                {subcat}
-                              </option>
-                            ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Max Discount (%)</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        placeholder="Max Discount % (0-100)"
-                        name="maxDiscountPercentage"
-                        value={formData.maxDiscountPercentage}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maxDiscountPercentage: e.target.value,
-                          })
-                        }
-                        min="0"
-                        max="100"
-                      />
-                    </div>
-                     <div className="form-group">
-                      <label>Low Stock Threshold</label>
-                      <input
-                        type="number"
-                        className="form-control mb-2"
-                        name="lowStockThreshold"
-                        value={formData.lowStockThreshold}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lowStockThreshold: e.target.value })
-                        }
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
+          <ReusableModal
+            show={showEditItemModal}
+            onHide={() => {
+              setShowEditItemModal(false);
+              setEditingItem(null);
+              setError(null);
+            }}
+            title={`Edit Item: ${editingItem.name}`}
+            footerContent={
+              <>
                 <button
                   onClick={() => {
                     setShowEditItemModal(false);
@@ -2064,298 +1852,224 @@ title={
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || // Changed from price
+                    !formData.sellingPrice ||
                     !formData.category ||
                     isSubmitting
                   }
                 >
-                  {isSubmitting ? "Updating..." : "Update Item"}
+                  {isSubmitting ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Updating...
+                    </>
+                  ) : "Update Item"}
                 </button>
+              </>
+            }
+            isLoading={isSubmitting}
+          >
+            <>
+              {error && <div className="alert alert-danger">{error}</div>}
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Name*</label>
+                    <input
+                      className="form-control mb-2"
+                      name="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, quantity: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Selling Price*</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      name="sellingPrice"
+                      value={formData.sellingPrice}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          sellingPrice: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Buying Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      name="buyingPrice"
+                      value={formData.buyingPrice}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          buyingPrice: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>GST Rate (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-control mb-2"
+                      name="gstRate"
+                      value={formData.gstRate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gstRate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>HSN Code</label>
+                    <input
+                      className="form-control mb-2"
+                      name="hsnCode"
+                      value={formData.hsnCode}
+                      onChange={(e) =>
+                        setFormData({ ...formData, hsnCode: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Unit</label>
+                    <select
+                      className="form-control mb-2"
+                      name="unit"
+                      value={formData.unit}
+                      onChange={(e) =>
+                        setFormData({ ...formData, unit: e.target.value })
+                      }
+                    >
+                      <option value="Nos">Nos</option>
+                      <option value="Mtr">Meter</option>
+                      <option value="PKT">Packet</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Set">Set</option>
+                      <option value="Bottle">Bottle</option>
+                      <option value="KG">Kilogram</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select
+                      className="form-control mb-2"
+                      name="category"
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value, subcategory: "General" }) // Reset subcategory
+                      }
+                    >
+                      <option value="">Select Category</option>
+                      {Array.isArray(categories) &&
+                        categories.map((cat) => (
+                          <option key={cat.category} value={cat.category}>
+                            {cat.category}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Subcategory</label>
+                    <select
+                      className="form-control mb-2"
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          subcategory: e.target.value,
+                        })
+                      }
+                      disabled={!formData.category}
+                    >
+                      <option value="General">General</option>
+                      {formData.category &&
+                        Array.isArray(categories) &&
+                        categories
+                          .find((c) => c.category === formData.category)
+                          ?.subcategories.map((subcat) => (
+                            <option key={subcat} value={subcat}>
+                              {subcat}
+                            </option>
+                          ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Max Discount (%)</label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      placeholder="Max Discount % (0-100)"
+                      name="maxDiscountPercentage"
+                      value={formData.maxDiscountPercentage}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          maxDiscountPercentage: e.target.value,
+                        })
+                      }
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Low Stock Threshold</label>
+                    <input
+                      type="number"
+                      className="form-control mb-2"
+                      name="lowStockThreshold"
+                      value={formData.lowStockThreshold}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          lowStockThreshold: e.target.value,
+                        })
+                      }
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          </ReusableModal>
         )}
 
         {showPurchaseModal && (
-          <div className="modal-backdrop full-screen-modal">
-            <div className="modal-content full-screen-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Purchase Tracking</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => {
-                    setShowPurchaseModal(false);
-                    resetPurchaseForm();
-                  }}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                {error && (
-                  <div className="alert alert-danger" role="alert">
-                    {error}
-                  </div>
-                )}
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Company Name*</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="Company Name"
-                        name="companyName"
-                        value={purchaseData.companyName}
-                        onChange={handlePurchaseChange}
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>GST Number</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="GST Number"
-                        name="gstNumber"
-                        value={purchaseData.gstNumber}
-                        onChange={handlePurchaseChange}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Address</label>
-                  <input
-                    className="form-control mb-2"
-                    placeholder="Address"
-                    name="address"
-                    value={purchaseData.address}
-                    onChange={handlePurchaseChange}
-                    disabled={isSubmitting}
-                  />
-                </div>
-
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>State</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="State Name"
-                        name="stateName"
-                        value={purchaseData.stateName}
-                        onChange={handlePurchaseChange}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <div className="form-group">
-                      <label>Invoice Number*</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="Invoice Number"
-                        name="invoiceNumber"
-                        value={purchaseData.invoiceNumber}
-                        onChange={handlePurchaseChange}
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Invoice Date*</label>
-                  <input
-                    type="date"
-                    className="form-control mb-3"
-                    name="date"
-                    value={purchaseData.date}
-                    onChange={handlePurchaseChange}
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-
-                <h6>Items Purchased</h6>
-                {purchaseData.items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="purchase-item-container mb-3 p-3 border rounded"
-                  >
-                    <div className="position-relative">
-                      <label>Search Item</label>
-                      <input
-                        className="form-control mb-2"
-                        placeholder="Search item by name or HSN..."
-                        value={idx === currentItemIndex ? itemSearchTerm : ""}
-                        onChange={(e) => {
-                          setItemSearchTerm(e.target.value);
-                          setCurrentItemIndex(idx);
-                          setShowItemSearch(true);
-                        }}
-                        onFocus={() => setCurrentItemIndex(idx)}
-                        disabled={isSubmitting}
-                      />
-
-                      {filteredItemsList.length > 0 &&
-                        currentItemIndex === idx &&
-                        showItemSearch && (
-                          <div className="suggestions-dropdown">
-                            {filteredItemsList.map((suggestion, i) => (
-                              <div
-                                key={i}
-                                className="suggestion-item"
-                                onClick={() => {
-                                  handleItemChange(
-                                    idx,
-                                    "description",
-                                    suggestion.name
-                                  );
-                                  handleItemChange(
-                                    idx,
-                                    "price",
-                                    suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0") // Use buyingPrice or lastPurchasePrice as default for purchase
-                                  );
-                                  handleItemChange(
-                                    idx,
-                                    "gstRate",
-                                    suggestion.gstRate.toString()
-                                  );
-                                  setItemSearchTerm("");
-                                  setShowItemSearch(false);
-                                }}
-                              >
-                                <strong>{suggestion.name}</strong>
-                                <span className="text-muted">
-                                  {" "}
-                                  - SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP: ₹{(suggestion.buyingPrice || 0).toFixed(2)}
-                                </span>
-                                <br />
-                                <small>
-                                  HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
-                                  {suggestion.gstRate || 0}%
-                                </small>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-
-                    {item.description && (
-                      <div className="selected-item-details mb-2 p-2 bg-light border rounded">
-                        <strong>{item.description}</strong>
-                        {item.price && (
-                          <small className="d-block">
-                            Price: ₹{item.price}, GST: {item.gstRate || 0}%
-                          </small>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="row">
-                      <div className="col-md-3">
-                        <div className="form-group">
-                          <label>Description*</label>
-                          <input
-                            type="text"
-                            className="form-control mb-2"
-                            placeholder="Description"
-                            value={item.description || ""}
-                            onChange={(e) =>
-                              handleItemChange(
-                                idx,
-                                "description",
-                                e.target.value
-                              )
-                            }
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-2">
-                        <div className="form-group">
-                          <label>Price*</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control mb-2"
-                            placeholder="Price"
-                            value={item.price || ""}
-                            onChange={(e) =>
-                              handleItemChange(idx, "price", e.target.value)
-                            }
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-2">
-                        <div className="form-group">
-                          <label>Quantity*</label>
-                          <input
-                            type="number"
-                            className="form-control mb-2"
-                            placeholder="Quantity"
-                            value={item.quantity || ""}
-                            onChange={(e) =>
-                              handleItemChange(idx, "quantity", e.target.value)
-                            }
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-2">
-                        <div className="form-group">
-                          <label>GST Rate (%)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="form-control mb-2"
-                            placeholder="GST Rate"
-                            value={item.gstRate || "0"}
-                            onChange={(e) =>
-                              handleItemChange(idx, "gstRate", e.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="col-md-2 d-flex align-items-end">
-                        <button
-                          onClick={() => removeItem(idx)}
-                          className="btn btn-danger btn-block"
-                          disabled={purchaseData.items.length === 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="d-flex justify-content-between mb-3">
-                  <button
-                    onClick={addNewPurchaseItem}
-                    className="btn btn-outline-primary"
-                  >
-                    Add Another Item
-                  </button>
-                  <div className="total-amount">
-                    <strong>
-                      Total Amount: ₹{calculateTotalAmount().toFixed(2)}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
+          <ReusableModal
+            show={showPurchaseModal}
+            onHide={() => { setShowPurchaseModal(false); resetPurchaseForm(); setError(null); }}
+            title="Purchase Tracking"
+            footerContent={
+              <>
                 <button
                   onClick={() => {
                     setShowPurchaseModal(false);
                     resetPurchaseForm();
+                    setError(null);
                   }}
                   className="btn btn-secondary"
                   disabled={isSubmitting}
@@ -2367,20 +2081,240 @@ title={
                   className="btn btn-success"
                   disabled={!isPurchaseDataValid() || isSubmitting}
                 >
-                  {isSubmitting ? "Submitting..." : "Submit Purchase"}
+                  {isSubmitting ? (
+                     <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Submitting...
+                    </>
+                  ) : "Submit Purchase"}
                 </button>
+              </>
+            }
+            isLoading={isSubmitting}
+          >
+            <>
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Company Name*</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Company Name"
+                      name="companyName"
+                      value={purchaseData.companyName}
+                      onChange={handlePurchaseChange}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>GST Number</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="GST Number"
+                      name="gstNumber"
+                      value={purchaseData.gstNumber}
+                      onChange={handlePurchaseChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+              <div className="form-group">
+                <label>Address</label>
+                <input
+                  className="form-control mb-2"
+                  placeholder="Address"
+                  name="address"
+                  value={purchaseData.address}
+                  onChange={handlePurchaseChange}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>State</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="State Name"
+                      name="stateName"
+                      value={purchaseData.stateName}
+                      onChange={handlePurchaseChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="form-group">
+                    <label>Invoice Number*</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Invoice Number"
+                      name="invoiceNumber"
+                      value={purchaseData.invoiceNumber}
+                      onChange={handlePurchaseChange}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Invoice Date*</label>
+                <input
+                  type="date"
+                  className="form-control mb-3"
+                  name="date"
+                  value={purchaseData.date}
+                  onChange={handlePurchaseChange}
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+              <h6>Items Purchased</h6>
+              {purchaseData.items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="purchase-item-container mb-3 p-3 border rounded"
+                >
+                  <div className="position-relative">
+                    <label>Search Item</label>
+                    <input
+                      className="form-control mb-2"
+                      placeholder="Search item by name or HSN..."
+                      value={idx === currentItemIndex ? itemSearchTerm : ""}
+                      onChange={(e) => {
+                        setItemSearchTerm(e.target.value);
+                        setCurrentItemIndex(idx);
+                        setShowItemSearch(true);
+                      }}
+                      onFocus={() => setCurrentItemIndex(idx)}
+                      disabled={isSubmitting}
+                    />
+                    {filteredItemsList.length > 0 &&
+                      currentItemIndex === idx &&
+                      showItemSearch && (
+                        <div className="suggestions-dropdown">
+                          {filteredItemsList.map((suggestion, i) => (
+                            <div
+                              key={i}
+                              className="suggestion-item"
+                              onClick={() => {
+                                handleItemChange(idx, "description", suggestion.name);
+                                handleItemChange(idx, "price", suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0"));
+                                handleItemChange(idx, "gstRate", suggestion.gstRate.toString());
+                                setItemSearchTerm("");
+                                setShowItemSearch(false);
+                              }}
+                            >
+                              <strong>{suggestion.name}</strong>
+                              <span className="text-muted">
+                                {" "}- SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP: ₹{(suggestion.buyingPrice || 0).toFixed(2)}
+                              </span>
+                              <br />
+                              <small>HSN: {suggestion.hsnCode || "N/A"}, GST: {suggestion.gstRate || 0}%</small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                  {item.description && (
+                    <div className="selected-item-details mb-2 p-2 bg-light border rounded">
+                      <strong>{item.description}</strong>
+                      {item.price && (
+                        <small className="d-block">Price: ₹{item.price}, GST: {item.gstRate || 0}%</small>
+                      )}
+                    </div>
+                  )}
+                  <div className="row">
+                    <div className="col-md-3">
+                      <div className="form-group">
+                        <label>Description*</label>
+                        <input
+                          type="text"
+                          className="form-control mb-2"
+                          placeholder="Description"
+                          value={item.description || ""}
+                          onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>Price*</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control mb-2"
+                          placeholder="Price"
+                          value={item.price || ""}
+                          onChange={(e) => handleItemChange(idx, "price", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>Quantity*</label>
+                        <input
+                          type="number"
+                          className="form-control mb-2"
+                          placeholder="Quantity"
+                          value={item.quantity || ""}
+                          onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2">
+                      <div className="form-group">
+                        <label>GST Rate (%)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control mb-2"
+                          placeholder="GST Rate"
+                          value={item.gstRate || "0"}
+                          onChange={(e) => handleItemChange(idx, "gstRate", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-2 d-flex align-items-end">
+                      <button
+                        onClick={() => removeItem(idx)}
+                        className="btn btn-danger btn-block"
+                        disabled={purchaseData.items.length === 1}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="d-flex justify-content-between mb-3">
+                <button
+                  onClick={addNewPurchaseItem}
+                  className="btn btn-outline-primary"
+                >
+                  Add Another Item
+                </button>
+                <div className="total-amount">
+                  <strong>Total Amount: ₹{calculateTotalAmount().toFixed(2)}</strong>
+                </div>
+              </div>
+            </>
+          </ReusableModal>
         )}
       </div>
       <Footer />
     </div>
   );
 }
-
-/* Final check on colSpans in the main table rendering:
-   - Expanded row: `colSpan="9"` changed to `colSpan="8"` (Done in diff above)
-   - "No items found" row: `colSpan="9"` needs to be `colSpan="8"`.
-     The diff for line 1119 should reflect this.
-*/

@@ -4,9 +4,9 @@ const Quotation = require("../models/quotation"); // Import Quotation model
 const OpenticketModel = require("../models/opentickets.js"); // Used by index.js logic
 const User = require("../models/users");
 const logger = require("../utils/logger"); // Import logger
-const { Item } = require('../models/itemlist'); // Import Item model for inventory
-const fs = require('fs-extra'); // fs-extra for recursive directory removal
-const path = require('path');
+const { Item } = require("../models/itemlist"); // Import Item model for inventory
+const fs = require("fs-extra"); // fs-extra for recursive directory removal
+const path = require("path");
 const asyncHandler = require("express-async-handler");
 
 exports.createTicket = asyncHandler(async (req, res) => {
@@ -14,7 +14,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
   // Ensure ticketData is a fresh object to avoid modifying req.body directly
   const ticketInputData = { ...req.body }; // Use a new variable for input
 
-  
   if (!user) {
     logger.error(
       "ticket-create",
@@ -31,7 +30,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     const quotation = await Quotation.findOne({
       referenceNumber: ticketInputData.quotationNumber,
       // user: user.id // Assuming quotation is user-specific or accessible
-    }).select('billingAddress'); // Only select billingAddress
+    }).select("billingAddress"); // Only select billingAddress
 
     if (quotation && quotation.billingAddress) {
       const ba = quotation.billingAddress;
@@ -40,12 +39,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
       quotationBillingAddressArray = [
         ba.address1 || "",
         ba.address2 || "",
-        ba.state || "",    // state is 3rd element
-        ba.city || "",     // city is 4th element
-        ba.pincode || ""
+        ba.state || "", // state is 3rd element
+        ba.city || "", // city is 4th element
+        ba.pincode || "",
       ];
     } else {
-      logger.warn('ticket-create', `Quotation ${ticketInputData.quotationNumber} not found or has no billing address. Using default empty for ticket.`, user);
+      logger.warn(
+        "ticket-create",
+        `Quotation ${ticketInputData.quotationNumber} not found or has no billing address. Using default empty for ticket.`,
+        user
+      );
     }
   }
 
@@ -60,24 +63,43 @@ exports.createTicket = asyncHandler(async (req, res) => {
   } else {
     // Ensure shippingAddress from req.body is an array of 5 strings
     // The frontend should send it in the correct array format if not shippingSameAsBilling
-    if (Array.isArray(ticketInputData.shippingAddress) && ticketInputData.shippingAddress.length === 5) {
-        finalTicketData.shippingAddress = ticketInputData.shippingAddress;
-    } else if (typeof ticketInputData.shippingAddress === 'object' && ticketInputData.shippingAddress !== null) {
-        // If frontend sends an object, convert it
-        const sa = ticketInputData.shippingAddress;
-        finalTicketData.shippingAddress = [
-            sa.address1 || "",
-            sa.address2 || "",
-            sa.state || "",
-            sa.city || "",
-            sa.pincode || ""
-        ];
+    if (
+      Array.isArray(ticketInputData.shippingAddress) &&
+      ticketInputData.shippingAddress.length === 5
+    ) {
+      finalTicketData.shippingAddress = ticketInputData.shippingAddress;
+    } else if (
+      typeof ticketInputData.shippingAddress === "object" &&
+      ticketInputData.shippingAddress !== null
+    ) {
+      // If frontend sends an object, convert it
+      const sa = ticketInputData.shippingAddress;
+      finalTicketData.shippingAddress = [
+        sa.address1 || "",
+        sa.address2 || "",
+        sa.state || "",
+        sa.city || "",
+        sa.pincode || "",
+      ];
     } else {
-        finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default empty if not provided correctly
-        logger.warn('ticket-create', `Shipping address not provided correctly and not same as billing. Using default empty.`, user);
+      finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default empty if not provided correctly
+      logger.warn(
+        "ticket-create",
+        `Shipping address not provided correctly and not same as billing. Using default empty.`,
+        user
+      );
     }
   }
-  finalTicketData.shippingSameAsBilling = ticketInputData.shippingSameAsBilling || false;
+  finalTicketData.shippingSameAsBilling =
+    ticketInputData.shippingSameAsBilling || false;
+
+  // Ensure subtexts are copied from input goods to final goods
+  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
+    finalTicketData.goods = finalTicketData.goods.map((item) => ({
+      ...item,
+      subtexts: item.subtexts || [],
+    }));
+  }
 
   // --- Ticket Number Generation ---
   const now = new Date();
@@ -87,8 +109,9 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
-  
-  if (!finalTicketData.ticketNumber) { // Use finalTicketData
+
+  if (!finalTicketData.ticketNumber) {
+    // Use finalTicketData
     finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     logger.warn(
       "ticket",
@@ -97,7 +120,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
   }
   // --- Inventory Deduction Logic ---
-  if (finalTicketData.goods && finalTicketData.goods.length > 0) { // Use finalTicketData
+  if (finalTicketData.goods && finalTicketData.goods.length > 0) {
+    // Use finalTicketData
     for (const good of finalTicketData.goods) {
       if (!good.description || !(Number(good.quantity) > 0)) {
         logger.warn(
@@ -191,7 +215,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // });
 
     // --- Update Quotation Status if applicable ---
-    if (finalTicketData.quotationNumber) { // Use finalTicketData
+    if (finalTicketData.quotationNumber) {
+      // Use finalTicketData
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
@@ -230,7 +255,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .json({ error: "Failed to create ticket", details: error.message });
   }
 });
-
 
 // Get all tickets for the logged-in user
 exports.getUserTickets = async (req, res) => {
@@ -276,8 +300,12 @@ exports.getTicket = async (req, res) => {
 exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
-   // Destructure shippingSameAsBilling, statusChangeComment, and the rest of ticket data
-  const { shippingSameAsBilling, statusChangeComment, ...updatedTicketPayload } = req.body;
+  // Destructure shippingSameAsBilling, statusChangeComment, and the rest of ticket data
+  const {
+    shippingSameAsBilling,
+    statusChangeComment,
+    ...updatedTicketPayload
+  } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
@@ -287,25 +315,56 @@ exports.updateTicket = async (req, res) => {
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-        // Handle status change and history
-    if (ticketDataForUpdate.status && ticketDataForUpdate.status !== originalTicket.status) { // Use ticketDataForUpdate
+    // Handle status change and history
+    if (
+      ticketDataForUpdate.status &&
+      ticketDataForUpdate.status !== originalTicket.status
+    ) {
+      // Use ticketDataForUpdate
       if (!statusChangeComment) {
-        logger.warn("ticket", `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`, user);
+        logger.warn(
+          "ticket",
+          `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`,
+          user
+        );
         // return res.status(400).json({ error: "A comment is required when changing the ticket status." }); // Optional: make it strictly mandatory
       }
-      const newStatusEntry = { status: ticketDataForUpdate.status, changedAt: new Date(), changedBy: user.id, note: statusChangeComment || "Status updated." };
-      ticketDataForUpdate.statusHistory = [...(originalTicket.statusHistory || []), newStatusEntry]; // Use ticketDataForUpdate
-          }
-
+      const newStatusEntry = {
+        status: ticketDataForUpdate.status,
+        changedAt: new Date(),
+        changedBy: user.id,
+        note: statusChangeComment || "Status updated.",
+      };
+      ticketDataForUpdate.statusHistory = [
+        ...(originalTicket.statusHistory || []),
+        newStatusEntry,
+      ]; // Use ticketDataForUpdate
+    }
 
     // Authorization check (similar to your route but within controller)
-    const canUpdate = originalTicket.createdBy.toString() === user.id.toString() ||
-                      (originalTicket.currentAssignee && originalTicket.currentAssignee.toString() === user.id.toString()) ||
-                      user.role === 'super-admin';
+    const canUpdate =
+      originalTicket.createdBy.toString() === user.id.toString() ||
+      (originalTicket.currentAssignee &&
+        originalTicket.currentAssignee.toString() === user.id.toString()) ||
+      user.role === "super-admin";
 
     if (!canUpdate) {
-        logger.warn("ticket", `User ${user.id} not authorized to update ticket ${ticketId}. Creator: ${originalTicket.createdBy}, Assignee: ${originalTicket.currentAssignee}`, user);
-        return res.status(403).json({ error: "Not authorized to update this ticket" });
+      logger.warn(
+        "ticket",
+        `User ${user.id} not authorized to update ticket ${ticketId}. Creator: ${originalTicket.createdBy}, Assignee: ${originalTicket.currentAssignee}`,
+        user
+      );
+      return res
+        .status(403)
+        .json({ error: "Not authorized to update this ticket" });
+    }
+
+    // Ensure subtexts are copied from input goods to update data
+    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
+      ticketDataForUpdate.goods = ticketDataForUpdate.goods.map((item) => ({
+        ...item,
+        subtexts: item.subtexts || [],
+      }));
     }
 
     // --- Inventory Adjustment Logic ---
@@ -316,20 +375,39 @@ exports.updateTicket = async (req, res) => {
     for (const good of originalGoods) {
       if (!good.description || !(Number(good.quantity) > 0)) continue;
       try {
-        const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) });
+        const itemToUpdate = await Item.findOne({
+          name: good.description,
+          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
+        });
         if (itemToUpdate) {
           itemToUpdate.quantity += Number(good.quantity);
-          if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+          if (
+            itemToUpdate.needsRestock &&
+            itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
+          ) {
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
-          } else if (itemToUpdate.needsRestock) { // Still needs restock, update amount
-            itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+          } else if (itemToUpdate.needsRestock) {
+            // Still needs restock, update amount
+            itemToUpdate.restockAmount = Math.max(
+              0,
+              itemToUpdate.lowStockThreshold - itemToUpdate.quantity
+            );
           }
           await itemToUpdate.save();
-          logger.info('inventory', `Restored stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Added: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`, user);
+          logger.info(
+            "inventory",
+            `Restored stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Added: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`,
+            user
+          );
         }
       } catch (invError) {
-        logger.error('inventory', `Error restoring stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`, user, { error: invError });
+        logger.error(
+          "inventory",
+          `Error restoring stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`,
+          user,
+          { error: invError }
+        );
       }
     }
 
@@ -337,54 +415,86 @@ exports.updateTicket = async (req, res) => {
     for (const good of newGoods) {
       if (!good.description || !(Number(good.quantity) > 0)) continue;
       try {
-        const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) });
+        const itemToUpdate = await Item.findOne({
+          name: good.description,
+          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
+        });
         if (itemToUpdate) {
           itemToUpdate.quantity -= Number(good.quantity);
           if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
             itemToUpdate.needsRestock = true;
-            itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
-          } else if (itemToUpdate.needsRestock && itemToUpdate.quantity >= itemToUpdate.lowStockThreshold) {
+            itemToUpdate.restockAmount = Math.max(
+              0,
+              itemToUpdate.lowStockThreshold - itemToUpdate.quantity
+            );
+          } else if (
+            itemToUpdate.needsRestock &&
+            itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
+          ) {
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
           }
           await itemToUpdate.save();
-          logger.info('inventory', `Deducted stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Subtracted: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`, user);
+          logger.info(
+            "inventory",
+            `Deducted stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Subtracted: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`,
+            user
+          );
         } else {
-            logger.warn('inventory', `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found in inventory for ticket ${ticketId} update. Stock not updated.`, user);
+          logger.warn(
+            "inventory",
+            `Item "${good.description}" (HSN: ${
+              good.hsnSacCode || "N/A"
+            }) not found in inventory for ticket ${ticketId} update. Stock not updated.`,
+            user
+          );
         }
       } catch (invError) {
-        logger.error('inventory', `Error deducting stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`, user, { error: invError });
+        logger.error(
+          "inventory",
+          `Error deducting stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`,
+          user,
+          { error: invError }
+        );
       }
     }
     // --- End Inventory Adjustment Logic ---
 
     // --- Shipping Address Update Logic ---
-    if (typeof shippingSameAsBilling === 'boolean') {
-        ticketDataForUpdate.shippingSameAsBilling = shippingSameAsBilling;
-        if (shippingSameAsBilling === true) {
-            // If shipping is same as billing, copy billingAddress to shippingAddress
-            // originalTicket.billingAddress should be the source of truth for billing address on an existing ticket
-            ticketDataForUpdate.shippingAddress = originalTicket.billingAddress;
+    if (typeof shippingSameAsBilling === "boolean") {
+      ticketDataForUpdate.shippingSameAsBilling = shippingSameAsBilling;
+      if (shippingSameAsBilling === true) {
+        // If shipping is same as billing, copy billingAddress to shippingAddress
+        // originalTicket.billingAddress should be the source of truth for billing address on an existing ticket
+        ticketDataForUpdate.shippingAddress = originalTicket.billingAddress;
+      } else {
+        // If not same as billing, the frontend should provide the shippingAddress object/array
+        // Ensure shippingAddress from req.body is an array of 5 strings
+        if (
+          Array.isArray(ticketDataForUpdate.shippingAddress) &&
+          ticketDataForUpdate.shippingAddress.length === 5
+        ) {
+          // It's already in the correct format
+        } else if (
+          typeof ticketDataForUpdate.shippingAddress === "object" &&
+          ticketDataForUpdate.shippingAddress !== null
+        ) {
+          const sa = ticketDataForUpdate.shippingAddress;
+          ticketDataForUpdate.shippingAddress = [
+            sa.address1 || "",
+            sa.address2 || "",
+            sa.state || "",
+            sa.city || "",
+            sa.pincode || "",
+          ];
         } else {
-            // If not same as billing, the frontend should provide the shippingAddress object/array
-            // Ensure shippingAddress from req.body is an array of 5 strings
-            if (Array.isArray(ticketDataForUpdate.shippingAddress) && ticketDataForUpdate.shippingAddress.length === 5) {
-                // It's already in the correct format
-            } else if (typeof ticketDataForUpdate.shippingAddress === 'object' && ticketDataForUpdate.shippingAddress !== null) {
-                const sa = ticketDataForUpdate.shippingAddress;
-                ticketDataForUpdate.shippingAddress = [
-                    sa.address1 || "",
-                    sa.address2 || "",
-                    sa.state || "",
-                    sa.city || "",
-                    sa.pincode || ""
-                ];
-            } else {
-                 if (!ticketDataForUpdate.shippingAddress) { // Check if it was part of payload
-                    ticketDataForUpdate.shippingAddress = originalTicket.shippingAddress; // Keep original if not provided
-                 }
-            }
+          if (!ticketDataForUpdate.shippingAddress) {
+            // Check if it was part of payload
+            ticketDataForUpdate.shippingAddress =
+              originalTicket.shippingAddress; // Keep original if not provided
+          }
         }
+      }
     }
     const ticket = await Ticket.findOneAndUpdate(
       { _id: ticketId }, // Filter already handled by originalTicket check and auth
@@ -397,34 +507,63 @@ exports.updateTicket = async (req, res) => {
         "ticket",
         `Ticket not found for update: ${req.params.id}`,
         user,
-        { requestBody: req.body }); // Log original req.body
+        { requestBody: req.body }
+      ); // Log original req.body
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-    logger.info("ticket", `Ticket ${ticket.ticketNumber} updated successfully by controller function.`, user, {
-      ticketId: ticket._id,
-      ticketNumber: ticket.ticketNumber,
-    });
+    logger.info(
+      "ticket",
+      `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
+      user,
+      {
+        ticketId: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+      }
+    );
     res.json(ticket);
 
     // If ticket status changed to "Closed", update corresponding Quotation status to "closed"
     // Ensure user context for quotation update is correct, e.g., originalTicket.createdBy
-    if (originalTicket.status !== ticket.status && ticket.status === "Closed" && ticket.quotationNumber) {
+    if (
+      originalTicket.status !== ticket.status &&
+      ticket.status === "Closed" &&
+      ticket.quotationNumber
+    ) {
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
-          { referenceNumber: ticket.quotationNumber, user: originalTicket.createdBy },
+          {
+            referenceNumber: ticket.quotationNumber,
+            user: originalTicket.createdBy,
+          },
           { status: "closed" },
           { new: true }
         );
         if (updatedQuotation) {
-          logger.info('quotation', `Quotation ${ticket.quotationNumber} status updated to 'closed' as ticket is closed.`, user, { quotationId: updatedQuotation._id });
+          logger.info(
+            "quotation",
+            `Quotation ${ticket.quotationNumber} status updated to 'closed' as ticket is closed.`,
+            user,
+            { quotationId: updatedQuotation._id }
+          );
         }
       } catch (quotationError) {
-        logger.error('quotation', `Failed to update quotation ${ticket.quotationNumber} status to 'closed'.`, quotationError, user);
+        logger.error(
+          "quotation",
+          `Failed to update quotation ${ticket.quotationNumber} status to 'closed'.`,
+          quotationError,
+          user
+        );
       }
     }
   } catch (error) {
-    logger.error("ticket", `Failed to update ticket ID: ${ticketId}`, error, user, { requestBody: ticketDataForUpdate }); // Log modified data
+    logger.error(
+      "ticket",
+      `Failed to update ticket ID: ${ticketId}`,
+      error,
+      user,
+      { requestBody: ticketDataForUpdate }
+    ); // Log modified data
     res.status(500).json({ error: "Failed to update ticket" });
   }
 };
@@ -463,21 +602,40 @@ exports.deleteTicket = async (req, res) => {
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-        // Update corresponding Quotation status to "hold" before deleting the ticket
+    // Update corresponding Quotation status to "hold" before deleting the ticket
     if (ticketToBackup.quotationNumber) {
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
-          { referenceNumber: ticketToBackup.quotationNumber, user: ticketToBackup.createdBy },
+          {
+            referenceNumber: ticketToBackup.quotationNumber,
+            user: ticketToBackup.createdBy,
+          },
           { status: "hold" },
           { new: true }
         );
         if (updatedQuotation) {
-          logger.info('quotation', `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`, user, { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id });
+          logger.info(
+            "quotation",
+            `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`,
+            user,
+            { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id }
+          );
         } else {
-          logger.warn('quotation', `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`, user, { ticketId: ticketToBackup._id });
+          logger.warn(
+            "quotation",
+            `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`,
+            user,
+            { ticketId: ticketToBackup._id }
+          );
         }
       } catch (quotationError) {
-        logger.error('quotation', `Failed to update quotation ${ticketToBackup.quotationNumber} status to 'hold' during linked ticket deletion.`, quotationError, user, { ticketId: ticketToBackup._id });
+        logger.error(
+          "quotation",
+          `Failed to update quotation ${ticketToBackup.quotationNumber} status to 'hold' during linked ticket deletion.`,
+          quotationError,
+          user,
+          { ticketId: ticketToBackup._id }
+        );
       }
     }
 
@@ -497,11 +655,9 @@ exports.deleteTicket = async (req, res) => {
         `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
         { ...logDetails, createdBy: ticketToBackup.createdBy.toString() }
       );
-      return res
-        .status(403)
-        .json({
-          error: "Forbidden: You do not have permission to delete this ticket.",
-        });
+      return res.status(403).json({
+        error: "Forbidden: You do not have permission to delete this ticket.",
+      });
     }
     logger.debug(
       "delete",
@@ -557,13 +713,24 @@ exports.deleteTicket = async (req, res) => {
     );
 
     // Delete associated documents folder
-    const ticketDocumentsPath = path.join('uploads', ticketId); // Adjusted path if uploads are directly in ticketId folder
+    const ticketDocumentsPath = path.join("uploads", ticketId); // Adjusted path if uploads are directly in ticketId folder
     if (fs.existsSync(ticketDocumentsPath)) {
       try {
         await fs.remove(ticketDocumentsPath); // fs-extra's remove is like rm -rf
-        logger.info('delete', `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`, user, logDetails);
+        logger.info(
+          "delete",
+          `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
+          user,
+          logDetails
+        );
       } catch (folderError) {
-        logger.error('delete', `[DOC_FOLDER_DELETE_ERROR] Error deleting documents folder ${ticketDocumentsPath}:`, folderError, user, logDetails);
+        logger.error(
+          "delete",
+          `[DOC_FOLDER_DELETE_ERROR] Error deleting documents folder ${ticketDocumentsPath}:`,
+          folderError,
+          user,
+          logDetails
+        );
         // Decide if this error should prevent ticket deletion or just be logged.
         // For now, we'll log it and proceed with ticket deletion.
       }
@@ -726,38 +893,68 @@ exports.transferTicket = async (req, res) => {
   };
 
   try {
-    logger.info("transfer", `[TRANSFER_INITIATED] Ticket ID: ${ticketId} to User ID: ${newAssigneeId} by User: ${initiator.email}.`, initiator, logContext);
+    logger.info(
+      "transfer",
+      `[TRANSFER_INITIATED] Ticket ID: ${ticketId} to User ID: ${newAssigneeId} by User: ${initiator.email}.`,
+      initiator,
+      logContext
+    );
 
     const ticket = await Ticket.findById(ticketId);
     if (!ticket) {
-      logger.warn("transfer", `[NOT_FOUND] Ticket not found for transfer: ${ticketId}.`, initiator, logContext);
+      logger.warn(
+        "transfer",
+        `[NOT_FOUND] Ticket not found for transfer: ${ticketId}.`,
+        initiator,
+        logContext
+      );
       return res.status(404).json({ message: "Ticket not found" });
     }
 
-    const isSuperAdmin = initiator.role === 'super-admin';
-    const isCurrentAssignee = ticket.currentAssignee && ticket.currentAssignee.toString() === initiator.id.toString();
+    const isSuperAdmin = initiator.role === "super-admin";
+    const isCurrentAssignee =
+      ticket.currentAssignee &&
+      ticket.currentAssignee.toString() === initiator.id.toString();
 
     if (!isSuperAdmin && !isCurrentAssignee) {
-      logger.warn("transfer", `[AUTH_FAILURE] Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`, initiator, { ...logContext, currentAssignee: ticket.currentAssignee?.toString() });
+      logger.warn(
+        "transfer",
+        `[AUTH_FAILURE] Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`,
+        initiator,
+        { ...logContext, currentAssignee: ticket.currentAssignee?.toString() }
+      );
       return res.status(403).json({
-        message: "Forbidden: Only the current assignee or a super-admin can transfer this ticket.",
+        message:
+          "Forbidden: Only the current assignee or a super-admin can transfer this ticket.",
       });
     }
-    logger.debug("transfer", `[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}.`, initiator, logContext);
+    logger.debug(
+      "transfer",
+      `[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}.`,
+      initiator,
+      logContext
+    );
 
     const newAssigneeUser = await User.findById(newAssigneeId);
     if (!newAssigneeUser) {
-      logger.warn("transfer", `[ASSIGNEE_NOT_FOUND] User to transfer to (ID: ${newAssigneeId}) not found.`, initiator, logContext);
+      logger.warn(
+        "transfer",
+        `[ASSIGNEE_NOT_FOUND] User to transfer to (ID: ${newAssigneeId}) not found.`,
+        initiator,
+        logContext
+      );
       return res.status(404).json({ message: "User to transfer to not found" });
     }
 
-    const oldAssigneeId = ticket.currentAssignee ? ticket.currentAssignee.toString() : null;
+    const oldAssigneeId = ticket.currentAssignee
+      ? ticket.currentAssignee.toString()
+      : null;
 
     // Add to transferHistory
     ticket.transferHistory.push({
       from: ticket.currentAssignee, // The one who was assigned before this transfer
-      to: newAssigneeId,            // The new assignee
-      transferredBy: initiator.id,  // The user initiating the transfer
+      to: newAssigneeId, // The new assignee
+      transferredBy: initiator.id, // The user initiating the transfer
       note: note || "",
       transferredAt: new Date(),
       statusAtTransfer: ticket.status,
@@ -774,29 +971,67 @@ exports.transferTicket = async (req, res) => {
     // Update currentAssignee
     ticket.currentAssignee = newAssigneeId;
     await ticket.save();
-    logger.info("transfer", `[TICKET_UPDATED] Ticket ID: ${ticketId} currentAssignee updated to ${newAssigneeId}.`, initiator, logContext);
+    logger.info(
+      "transfer",
+      `[TICKET_UPDATED] Ticket ID: ${ticketId} currentAssignee updated to ${newAssigneeId}.`,
+      initiator,
+      logContext
+    );
 
     // Update user documents: remove from old assignee's list, add to new assignee's list
     if (oldAssigneeId && oldAssigneeId !== newAssigneeId.toString()) {
-      await User.findByIdAndUpdate(oldAssigneeId, { $pull: { tickets: ticket._id } });
-      logger.debug("transfer", `[USER_TICKET_REF_REMOVED] Ticket ${ticket._id} pulled from old assignee ${oldAssigneeId}.`, initiator, logContext);
+      await User.findByIdAndUpdate(oldAssigneeId, {
+        $pull: { tickets: ticket._id },
+      });
+      logger.debug(
+        "transfer",
+        `[USER_TICKET_REF_REMOVED] Ticket ${ticket._id} pulled from old assignee ${oldAssigneeId}.`,
+        initiator,
+        logContext
+      );
     }
-    await User.findByIdAndUpdate(newAssigneeId, { $addToSet: { tickets: ticket._id } });
-    logger.debug("transfer", `[USER_TICKET_REF_ADDED] Ticket ${ticket._id} added to new assignee ${newAssigneeId}.`, initiator, logContext);
+    await User.findByIdAndUpdate(newAssigneeId, {
+      $addToSet: { tickets: ticket._id },
+    });
+    logger.debug(
+      "transfer",
+      `[USER_TICKET_REF_ADDED] Ticket ${ticket._id} added to new assignee ${newAssigneeId}.`,
+      initiator,
+      logContext
+    );
 
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate("currentAssignee", "firstname lastname email")
-      .populate("transferHistory.from transferHistory.to transferHistory.transferredBy", "firstname lastname email")
+      .populate(
+        "transferHistory.from transferHistory.to transferHistory.transferredBy",
+        "firstname lastname email"
+      )
       .populate("createdBy", "firstname lastname email"); // Added createdBy for completeness
 
-    logger.info("transfer", `[TRANSFER_SUCCESS] Ticket ID: ${ticketId} successfully transferred to ${newAssigneeUser.email}.`, initiator, logContext);
+    logger.info(
+      "transfer",
+      `[TRANSFER_SUCCESS] Ticket ID: ${ticketId} successfully transferred to ${newAssigneeUser.email}.`,
+      initiator,
+      logContext
+    );
     res.status(200).json({
       message: "Ticket transferred successfully.",
       ticket: populatedTicket,
     });
   } catch (error) {
-    logger.error("transfer", `[TRANSFER_ERROR] Error transferring Ticket ID: ${ticketId}.`, error, initiator, logContext);
-    res.status(500).json({ message: "Server error during ticket transfer.", details: error.message });
+    logger.error(
+      "transfer",
+      `[TRANSFER_ERROR] Error transferring Ticket ID: ${ticketId}.`,
+      error,
+      initiator,
+      logContext
+    );
+    res
+      .status(500)
+      .json({
+        message: "Server error during ticket transfer.",
+        details: error.message,
+      });
   }
 };
 
@@ -814,29 +1049,33 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       {
         path: req.path,
         ip: req.ip,
-        receivedUserId: requestingUser ? requestingUser.id : 'N/A',
-        receivedUserEmail: requestingUser ? requestingUser.email : 'N/A'
+        receivedUserId: requestingUser ? requestingUser.id : "N/A",
+        receivedUserEmail: requestingUser ? requestingUser.email : "N/A",
       }
     );
-    return res.status(401).json({ message: "Authentication required or user session invalid." });
+    return res
+      .status(401)
+      .json({ message: "Authentication required or user session invalid." });
   }
 
   // Now it's safe to define logContext
   const logContext = {
     initiatorId: requestingUser.id,
     initiatorEmail: requestingUser.email,
-    action: "FETCH_TICKET_TRANSFER_CANDIDATES"
+    action: "FETCH_TICKET_TRANSFER_CANDIDATES",
   };
 
   try {
     const users = await User.find({
       _id: { $ne: requestingUser.id },
       role: { $nin: ["client"] },
-      isActive: true
-    }).select('firstname lastname email role _id').lean(); // Removed 'department'
+      isActive: true,
+    })
+      .select("firstname lastname email role _id")
+      .lean(); // Removed 'department'
 
     logger.info(
-      'ticket-transfer-candidates',
+      "ticket-transfer-candidates",
       `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
       requestingUser,
       logContext
@@ -844,16 +1083,20 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     logger.error(
-      'ticket-transfer-candidates',
+      "ticket-transfer-candidates",
       `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
       error,
       requestingUser,
       { ...logContext, errorMessage: error.message, stack: error.stack }
     );
-    res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Failed to load users for transfer.",
+        details: error.message,
+      });
   }
 });
-
 
 // --- Logic moved from index.js ---
 
@@ -863,15 +1106,26 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
     const tickets = await OpenticketModel.find().sort({ createdAt: -1 });
     res.json(tickets);
   } catch (err) {
-    logger.error('ticket-controller', 'Error fetching all tickets (index.js logic)', err, user);
-    res.status(500).json({ error: 'Error fetching tickets' });
+    logger.error(
+      "ticket-controller",
+      "Error fetching all tickets (index.js logic)",
+      err,
+      user
+    );
+    res.status(500).json({ error: "Error fetching tickets" });
   }
 };
 
 exports.createTicket_IndexLogic = async (req, res) => {
   const user = req.user || null; // This route in index.js was not authenticated, so user might be null
   try {
-    const { companyName, quotationNumber, billingAddress, shippingAddress, goods } = req.body;
+    const {
+      companyName,
+      quotationNumber,
+      billingAddress,
+      shippingAddress,
+      goods,
+    } = req.body;
 
     const totalQuantity = goods.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = goods.reduce((sum, item) => sum + item.amount, 0);
@@ -890,22 +1144,41 @@ exports.createTicket_IndexLogic = async (req, res) => {
       gstAmount,
       grandTotal,
       status: "Quotation Sent", // Default status
-      statusHistory: [{
-        status: "Quotation Sent",
-        changedAt: new Date(),
-        // changedBy would ideally be set if user context was available
-      }],
-      documents: { // Initialize documents
-        quotation: "", po: "", pi: "", challan: "", packingList: "", feedback: ""
+      statusHistory: [
+        {
+          status: "Quotation Sent",
+          changedAt: new Date(),
+          // changedBy would ideally be set if user context was available
+        },
+      ],
+      documents: {
+        // Initialize documents
+        quotation: "",
+        po: "",
+        pi: "",
+        challan: "",
+        packingList: "",
+        feedback: "",
       },
       // createdBy and currentAssignee would ideally be set if user context was available
       // For now, mirroring index.js which didn't explicitly set them from req.user
     });
-    logger.info('ticket-controller', `Ticket created (index.js logic)`, user, { ticketId: newTicket._id, companyName: newTicket.companyName });
+    logger.info("ticket-controller", `Ticket created (index.js logic)`, user, {
+      ticketId: newTicket._id,
+      companyName: newTicket.companyName,
+    });
     res.status(201).json(newTicket);
   } catch (err) {
-    logger.error('ticket-controller', 'Error creating ticket (index.js logic)', err, user, { requestBody: req.body });
-    res.status(500).json({ error: 'Error creating ticket', details: err.message });
+    logger.error(
+      "ticket-controller",
+      "Error creating ticket (index.js logic)",
+      err,
+      user,
+      { requestBody: req.body }
+    );
+    res
+      .status(500)
+      .json({ error: "Error creating ticket", details: err.message });
   }
 };
 
@@ -914,8 +1187,13 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
   try {
     const { documentType } = req.body;
     if (!req.file) {
-      logger.warn('ticket-controller', 'No file uploaded (index.js logic)', user, { ticketId: req.params.id, documentType });
-      return res.status(400).json({ error: 'No file uploaded' });
+      logger.warn(
+        "ticket-controller",
+        "No file uploaded (index.js logic)",
+        user,
+        { ticketId: req.params.id, documentType }
+      );
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     // req.file.path from multer in routes/tickets.js will be relative to 'uploads/<ticketId>/'
@@ -923,24 +1201,45 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
     const filePath = req.file.filename; // filename is now relative to 'uploads/<ticketId>/'
 
     const update = {};
-    update[`documents.${documentType}`] = { // Store as an object consistent with main model
-        path: filePath,
-        originalName: req.file.originalname,
-        // uploadedBy: user ? user.id : null, // If user context was available
-        uploadedAt: new Date()
+    update[`documents.${documentType}`] = {
+      // Store as an object consistent with main model
+      path: filePath,
+      originalName: req.file.originalname,
+      // uploadedBy: user ? user.id : null, // If user context was available
+      uploadedAt: new Date(),
     };
 
-    const updatedTicket = await OpenticketModel.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
+    const updatedTicket = await OpenticketModel.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true }
+    );
 
     if (!updatedTicket) {
-      logger.warn('ticket-controller', 'Ticket not found for document upload (index.js logic)', user, { ticketId: req.params.id });
-      return res.status(404).json({ error: 'Ticket not found' });
+      logger.warn(
+        "ticket-controller",
+        "Ticket not found for document upload (index.js logic)",
+        user,
+        { ticketId: req.params.id }
+      );
+      return res.status(404).json({ error: "Ticket not found" });
     }
-    logger.info('ticket-controller', `Document uploaded (index.js logic)`, user, { ticketId: updatedTicket._id, documentType });
+    logger.info(
+      "ticket-controller",
+      `Document uploaded (index.js logic)`,
+      user,
+      { ticketId: updatedTicket._id, documentType }
+    );
     res.json(updatedTicket);
   } catch (err) {
-    logger.error('ticket-controller', `Error uploading document for ticket ${req.params.id} (index.js logic)`, err, user, { documentType: req.body.documentType });
-    res.status(500).json({ error: 'Error uploading document' });
+    logger.error(
+      "ticket-controller",
+      `Error uploading document for ticket ${req.params.id} (index.js logic)`,
+      err,
+      user,
+      { documentType: req.body.documentType }
+    );
+    res.status(500).json({ error: "Error uploading document" });
   }
 };
 
@@ -948,16 +1247,35 @@ exports.updateTicket_IndexLogic = async (req, res) => {
   const user = req.user || null; // This route in index.js was not authenticated
   try {
     const { _id, __v, createdAt, updatedAt, ...updateData } = req.body;
-    const updatedTicket = await OpenticketModel.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
+    const updatedTicket = await OpenticketModel.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
     if (!updatedTicket) {
-      logger.warn('ticket-controller', 'Ticket not found for update (index.js logic)', user, { ticketId: req.params.id });
-      return res.status(404).json({ error: 'Ticket not found' });
+      logger.warn(
+        "ticket-controller",
+        "Ticket not found for update (index.js logic)",
+        user,
+        { ticketId: req.params.id }
+      );
+      return res.status(404).json({ error: "Ticket not found" });
     }
-    logger.info('ticket-controller', `Ticket updated (index.js logic)`, user, { ticketId: updatedTicket._id });
+    logger.info("ticket-controller", `Ticket updated (index.js logic)`, user, {
+      ticketId: updatedTicket._id,
+    });
     res.json(updatedTicket);
   } catch (err) {
-    logger.error('ticket-controller', `Error updating ticket ${req.params.id} (index.js logic)`, err, user, { requestBody: req.body });
-    res.status(500).json({ error: 'Error updating ticket', message: err.message });
+    logger.error(
+      "ticket-controller",
+      `Error updating ticket ${req.params.id} (index.js logic)`,
+      err,
+      user,
+      { requestBody: req.body }
+    );
+    res
+      .status(500)
+      .json({ error: "Error updating ticket", message: err.message });
   }
 };
 
@@ -973,29 +1291,45 @@ exports.serveFile_IndexLogic = (req, res) => {
   // This needs to be relative to the project root's 'uploads' or the specific ticket's upload folder.
   // For simplicity, assuming 'uploads' is at the root of the server.
   // If files are in ticket-specific folders (e.g., uploads/ticketId/filename), this needs more context.
-  const filePath = path.join(process.cwd(), 'uploads', filename); // More robust path finding
+  const filePath = path.join(process.cwd(), "uploads", filename); // More robust path finding
 
   if (!fs.existsSync(filePath)) {
-    logger.warn('ticket-controller', 'File not found for serving (index.js logic)', user, { filename });
-    return res.status(404).send('File not found');
+    logger.warn(
+      "ticket-controller",
+      "File not found for serving (index.js logic)",
+      user,
+      { filename }
+    );
+    return res.status(404).send("File not found");
   }
 
   const ext = path.extname(filename).toLowerCase();
-  let contentType = 'application/octet-stream';
+  let contentType = "application/octet-stream";
 
-  if (ext === '.pdf') contentType = 'application/pdf';
-  else if (ext === '.doc' || ext === '.docx') contentType = 'application/msword';
-  else if (ext === '.xls' || ext === '.xlsx') contentType = 'application/vnd.ms-excel';
-  else if (ext === '.png') contentType = 'image/png';
-  else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+  if (ext === ".pdf") contentType = "application/pdf";
+  else if (ext === ".doc" || ext === ".docx")
+    contentType = "application/msword";
+  else if (ext === ".xls" || ext === ".xlsx")
+    contentType = "application/vnd.ms-excel";
+  else if (ext === ".png") contentType = "image/png";
+  else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
 
-  if (contentType === 'application/pdf') {
-    res.setHeader('Content-Disposition', `inline; filename="${path.basename(filename)}"`);
+  if (contentType === "application/pdf") {
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${path.basename(filename)}"`
+    );
   } else {
-    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filename)}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${path.basename(filename)}"`
+    );
   }
 
-  res.setHeader('Content-Type', contentType);
-  logger.debug('ticket-controller', `Serving file (index.js logic)`, user, { filename, contentType });
+  res.setHeader("Content-Type", contentType);
+  logger.debug("ticket-controller", `Serving file (index.js logic)`, user, {
+    filename,
+    contentType,
+  });
   fs.createReadStream(filePath).pipe(res);
 };

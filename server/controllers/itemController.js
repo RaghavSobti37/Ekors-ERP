@@ -107,17 +107,23 @@ exports.importItemsFromUploadedExcel = async (req, res) => {
         message: 'No valid items found in the uploaded Excel to process or file is empty.',
         itemsCreated: 0,
         itemsUpdated: 0,
+        itemsDeleted: 0, // Added for consistency
         parsingErrors,
       });
     }
 
-    // Re-use the upsert logic from the previous Excel import function
-    // const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await processUpsert(itemsToUpsert, user, 'excel_upload_import'); // Old call
+    const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await syncItemsWithDatabase(req, itemsToUpsert, user, 'excel_upload_import');
 
-    const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await syncItemsWithDatabase(itemsToUpsert, user, 'excel_upload_import');
-
-    logger.info('excel_upload_import', 'API: Excel import from upload process completed', { itemsCreated, itemsUpdated, errors: databaseProcessingErrors.length, userId: user?._id });
-    res.status(200).json({ message: 'Uploaded Excel data processed.', itemsCreated, itemsUpdated, parsingErrors, databaseProcessingDetails: operationResults, databaseProcessingErrors });
+    logger.info('excel_upload_import', 'API: Excel import from upload process completed', { itemsCreated, itemsUpdated, itemsDeleted, errors: databaseProcessingErrors.length, userId: user?._id });
+    res.status(200).json({ 
+        message: 'Uploaded Excel data processed.', 
+        itemsCreated, 
+        itemsUpdated, 
+        itemsDeleted, // Added for consistency
+        parsingErrors, 
+        databaseProcessingDetails: operationResults, 
+        databaseProcessingErrors 
+    });
 
   } catch (error) {
     if (error instanceof multer.MulterError) {
@@ -129,82 +135,110 @@ exports.importItemsFromUploadedExcel = async (req, res) => {
   }
 };
 
-async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
+async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
   let itemsCreated = 0;
   let itemsUpdated = 0;
   let itemsDeleted = 0;
-  const operationResults = []; // This will store summary of bulk operations
+  const operationResults = []; 
   const databaseProcessingErrors = [];
   
-  // For Item collection: inserts and updates
   const itemUpsertOps = []; 
-  // For ItemBackup collection: inserts
   const backupInsertOps = [];
-  // For Item collection: deletes (only if backup is successful or not errored out)
   const itemDeleteOps = [];
 
-  const userId = user?._id || null; // For backup record
+  const importUserId = user?._id || null;
+  const importFileName = req?.file?.originalname || 'unknown_excel_file.xlsx';
 
   try {
-    logger.info(logContextPrefix, 'Starting database sync with Excel data.', user, { itemCountExcel: excelItems.length });
+    logger.info(logContextPrefix, 'Starting database sync with Excel data.', {userId: importUserId}, { itemCountExcel: excelItems.length });
 
-    // 1. Fetch all existing items from DB
-    const existingDbItems = await Item.find().lean(); // .lean() for performance
-    const dbItemsMap = new Map(existingDbItems.map(item => [item.name.toLowerCase(), item])); // For quick lookup by name
-    const excelItemNamesLowerCase = new Set(excelItems.map(item => item.name.toLowerCase())); // For quick check of items in Excel
+    const existingDbItems = await Item.find().lean(); 
+    const dbItemsMap = new Map(existingDbItems.map(item => [item.name.toLowerCase(), item])); 
+    const excelItemNamesLowerCase = new Set(excelItems.map(item => item.name.toLowerCase())); 
 
-    logger.debug(logContextPrefix, `Fetched ${existingDbItems.length} existing items from DB.`, user);
+    logger.debug(logContextPrefix, `Fetched ${existingDbItems.length} existing items from DB.`, {userId: importUserId});
 
-    // 2. Process Excel items: Identify items to create or update
     for (const excelItemData of excelItems) {
       const normalizedExcelItemName = excelItemData.name.toLowerCase();
       const existingItem = dbItemsMap.get(normalizedExcelItemName);
 
-      // Construct payload, ensuring all relevant fields from Item schema are considered
       const payload = {
-        name: excelItemData.name, // Preserve original casing from Excel for name
+        name: excelItemData.name, 
         quantity: excelItemData.quantity || 0,
-        sellingPrice: excelItemData.sellingPrice || excelItemData.price || 0, // Use sellingPrice, fallback to price for backward compatibility
-        buyingPrice: excelItemData.buyingPrice || 0, // Add buyingPrice
+        sellingPrice: excelItemData.sellingPrice || excelItemData.price || 0, 
+        buyingPrice: excelItemData.buyingPrice || 0, 
         unit: excelItemData.unit || 'Nos',
         category: excelItemData.category || 'Other',
         subcategory: excelItemData.subcategory || 'General',
         gstRate: excelItemData.gstRate || 0,
         hsnCode: excelItemData.hsnCode || '',
         maxDiscountPercentage: excelItemData.maxDiscountPercentage || 0,
-        lowStockThreshold: excelItemData.lowStockThreshold || 5, // Default if not in Excel
-        image: excelItemData.image || '', // Will be '' from parser
-        // Preserve fields not typically in a simple Excel import, or set defaults
+        lowStockThreshold: excelItemData.lowStockThreshold || 5,
+        // Fields to be preserved or updated from existing item if not in excel
+        image: excelItemData.image !== undefined ? excelItemData.image : (existingItem?.image || ''),
         discountAvailable: excelItemData.discountAvailable !== undefined ? excelItemData.discountAvailable : (existingItem?.discountAvailable || false),
         needsRestock: excelItemData.needsRestock !== undefined ? excelItemData.needsRestock : (existingItem?.needsRestock || false),
-        lastPurchaseDate: excelItemData.lastPurchaseDate || existingItem?.lastPurchaseDate || null,
-        lastPurchasePrice: excelItemData.lastPurchasePrice || existingItem?.lastPurchasePrice || null,
+        lastPurchaseDate: excelItemData.lastPurchaseDate !== undefined ? excelItemData.lastPurchaseDate : (existingItem?.lastPurchaseDate || null),
+        lastPurchasePrice: excelItemData.lastPurchasePrice !== undefined ? excelItemData.lastPurchasePrice : (existingItem?.lastPurchasePrice || null),
       };
 
       if (existingItem) {
-        // Item exists in DB, so update it
-        if (payload.image === '' && existingItem.image) { // Preserve existing image
-          payload.image = existingItem.image;
-        }
-        itemUpsertOps.push({
-          updateOne: {
-            filter: { _id: existingItem._id },
-            update: { $set: payload },
+        const currentHistory = existingItem.excelImportHistory || [];
+        const changes = [];
+        let itemActuallyModified = false;
+
+        Object.keys(payload).forEach(key => {
+          if (payload.hasOwnProperty(key)) { // Ensure key is own property of payload
+            // Compare stringified values to handle type differences simply, or use deep equality for complex cases
+            if (String(existingItem[key]) !== String(payload[key])) {
+              changes.push({
+                field: key,
+                oldValue: existingItem[key],
+                newValue: payload[key],
+              });
+              itemActuallyModified = true;
+            }
           }
         });
-        logger.debug(logContextPrefix, `Item "${excelItemData.name}" marked for UPDATE.`, user, { itemId: existingItem._id });
+        
+        if (itemActuallyModified) {
+          currentHistory.push({
+            action: 'updated',
+            importedBy: importUserId,
+            importedAt: new Date(),
+            fileName: importFileName,
+            changes: changes,
+          });
+          payload.excelImportHistory = currentHistory; 
+
+          itemUpsertOps.push({
+            updateOne: {
+              filter: { _id: existingItem._id },
+              update: { $set: payload }, 
+            }
+          });
+          logger.debug(logContextPrefix, `Item "${excelItemData.name}" marked for UPDATE with history.`, {userId: importUserId}, { itemId: existingItem._id });
+        } else {
+           logger.debug(logContextPrefix, `Item "${excelItemData.name}" has no changes from Excel. Skipping update.`, {userId: importUserId}, { itemId: existingItem._id });
+        }
       } else {
-        // Item does not exist in DB, so create it
+        payload.excelImportHistory = [{
+          action: 'created',
+          importedBy: importUserId,
+          importedAt: new Date(),
+          fileName: importFileName,
+          snapshot: { ...payload } 
+        }];
+
         itemUpsertOps.push({
           insertOne: {
             document: payload
           }
         });
-        logger.debug(logContextPrefix, `Item "${excelItemData.name}" marked for CREATE.`, user);
+        logger.debug(logContextPrefix, `Item "${excelItemData.name}" marked for CREATE with history.`, {userId: importUserId});
       }
     }
 
-    // 3. Identify items to delete and prepare backups
     const itemsToBeDeletedFromDb = [];
     for (const dbItem of existingDbItems) {
       if (!excelItemNamesLowerCase.has(dbItem.name.toLowerCase())) {
@@ -213,76 +247,72 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
     }
 
     if (itemsToBeDeletedFromDb.length > 0) {
-      logger.info(logContextPrefix, `${itemsToBeDeletedFromDb.length} items identified for DELETION. Preparing backups.`, user);
+      logger.info(logContextPrefix, `${itemsToBeDeletedFromDb.length} items identified for DELETION. Preparing backups.`, {userId: importUserId});
       for (const itemToDelete of itemsToBeDeletedFromDb) {
         const backupData = {
-          ...itemToDelete, // Spread all fields from the item model
+          ...itemToDelete, 
           originalId: itemToDelete._id,
-          deletedBy: userId,
+          deletedBy: importUserId,
           deletedAt: new Date(),
           originalCreatedAt: itemToDelete.createdAt,
           originalUpdatedAt: itemToDelete.updatedAt,
           backupReason: "Deleted during Excel synchronization"
         };
-        delete backupData._id; // Remove _id from backupData as ItemBackup will generate its own
+        delete backupData._id; 
         
         backupInsertOps.push({
             insertOne: {
                 document: backupData
             }
         });
-        // Initially, prepare all for deletion. We will filter out if backup fails.
         itemDeleteOps.push({
             deleteOne: {
                 filter: { _id: itemToDelete._id }
             }
         });
-        logger.debug(logContextPrefix, `Item "${itemToDelete.name}" (ID: ${itemToDelete._id}) marked for BACKUP and DELETION.`, user);
+        logger.debug(logContextPrefix, `Item "${itemToDelete.name}" (ID: ${itemToDelete._id}) marked for BACKUP and DELETION.`, {userId: importUserId});
       }
     } else {
-        logger.info(logContextPrefix, "No items from DB are marked for deletion (all DB items present in Excel or DB is empty).", user);
+        logger.info(logContextPrefix, "No items from DB are marked for deletion (all DB items present in Excel or DB is empty).", {userId: importUserId});
     }
 
-    // 4. Execute backup operations first (if any)
     if (backupInsertOps.length > 0) {
-        logger.info(logContextPrefix, `Attempting to bulk insert ${backupInsertOps.length} item backups.`, user);
+        logger.info(logContextPrefix, `Attempting to bulk insert ${backupInsertOps.length} item backups.`, {userId: importUserId});
         try {
             const backupResult = await ItemBackup.bulkWrite(backupInsertOps, { ordered: false });
-            logger.info(logContextPrefix, `Item backups bulk operation completed. Inserted: ${backupResult.insertedCount}.`, user, { backupResult: { inserted: backupResult.insertedCount, errors: backupResult.hasWriteErrors() ? backupResult.getWriteErrors().length : 0 } });
+            logger.info(logContextPrefix, `Item backups bulk operation completed. Inserted: ${backupResult.insertedCount}.`, {userId: importUserId}, { backupResult: { inserted: backupResult.insertedCount, errors: backupResult.hasWriteErrors() ? backupResult.getWriteErrors().length : 0 } });
             
             if (backupResult.hasWriteErrors()) {
                 const writeErrors = backupResult.getWriteErrors();
-                logger.warn(logContextPrefix, `${writeErrors.length} errors occurred during item backup. These items will not be deleted.`, user);
+                logger.warn(logContextPrefix, `${writeErrors.length} errors occurred during item backup. These items will not be deleted.`, {userId: importUserId});
                 writeErrors.forEach(err => {
                     const failedBackupOp = backupInsertOps[err.index]?.insertOne?.document;
                     const originalItemId = failedBackupOp?.originalId;
-                    logger.error(logContextPrefix, `Backup failed for item (original name: ${failedBackupOp?.name}, original ID: ${originalItemId}). Original item will NOT be deleted.`, user, { error: err.errmsg, opDetails: failedBackupOp });
+                    logger.error(logContextPrefix, `Backup failed for item (original name: ${failedBackupOp?.name}, original ID: ${originalItemId}). Original item will NOT be deleted.`, {userId: importUserId}, { error: err.errmsg, opDetails: failedBackupOp });
                     databaseProcessingErrors.push({ name: `Backup for ${failedBackupOp?.name || originalItemId}`, status: 'backup_error', message: err.errmsg });
                     
-                    // Remove corresponding delete operation if backup failed for this specific item
                     const deleteOpIndex = itemDeleteOps.findIndex(op => op.deleteOne.filter._id.toString() === originalItemId.toString());
                     if (deleteOpIndex > -1) {
                         itemDeleteOps.splice(deleteOpIndex, 1);
-                        logger.warn(logContextPrefix, `Removed item "${failedBackupOp?.name}" (ID: ${originalItemId}) from deletion queue due to backup failure.`, user);
+                        logger.warn(logContextPrefix, `Removed item "${failedBackupOp?.name}" (ID: ${originalItemId}) from deletion queue due to backup failure.`, {userId: importUserId});
                     }
                 });
             }
         } catch (backupBulkError) {
-            logger.error(logContextPrefix, 'CRITICAL error during ItemBackup.bulkWrite. ALL delete operations for this sync will be cancelled.', user, { error: backupBulkError.message, stack: backupBulkError.stack });
+            logger.error(logContextPrefix, 'CRITICAL error during ItemBackup.bulkWrite. ALL delete operations for this sync will be cancelled.', {userId: importUserId}, { error: backupBulkError.message, stack: backupBulkError.stack });
             databaseProcessingErrors.push({ name: 'Bulk Backup Operation', status: 'critical_error', message: `Backup bulkWrite failed: ${backupBulkError.message}. No items were deleted.` });
-            itemDeleteOps.length = 0; // Clear ALL delete operations if the entire bulk backup call fails
-            logger.warn(logContextPrefix, 'All item delete operations cancelled due to critical failure in bulk backup.', user);
+            itemDeleteOps.length = 0; 
+            logger.warn(logContextPrefix, 'All item delete operations cancelled due to critical failure in bulk backup.', {userId: importUserId});
         }
     }
 
-    // 5. Execute Item Create/Update operations (if any)
     if (itemUpsertOps.length > 0) {
-      logger.info(logContextPrefix, `Attempting to bulk create/update ${itemUpsertOps.length} items.`, user);
+      logger.info(logContextPrefix, `Attempting to bulk create/update ${itemUpsertOps.length} items.`, {userId: importUserId});
       const upsertResult = await Item.bulkWrite(itemUpsertOps, { ordered: false });
       itemsCreated = upsertResult.insertedCount || 0;
       itemsUpdated = upsertResult.modifiedCount || 0;
       
-      logger.info(logContextPrefix, `Item create/update bulk operation completed. Created: ${itemsCreated}, Updated: ${itemsUpdated}.`, user, { upsertResult: { inserted: itemsCreated, modified: itemsUpdated, errors: upsertResult.hasWriteErrors() ? upsertResult.getWriteErrors().length : 0 } });
+      logger.info(logContextPrefix, `Item create/update bulk operation completed. Created: ${itemsCreated}, Updated: ${itemsUpdated}.`, {userId: importUserId}, { upsertResult: { inserted: itemsCreated, modified: itemsUpdated, errors: upsertResult.hasWriteErrors() ? upsertResult.getWriteErrors().length : 0 } });
       operationResults.push({
         type: 'upsert',
         created: itemsCreated,
@@ -293,20 +323,19 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
       if (upsertResult.hasWriteErrors()) {
         upsertResult.getWriteErrors().forEach(err => {
           const opDescription = itemUpsertOps[err.index]?.insertOne ? `Create item "${itemUpsertOps[err.index].insertOne.document.name}"` : `Update item (filter: ${JSON.stringify(itemUpsertOps[err.index]?.updateOne?.filter)})`;
-          logger.error(logContextPrefix, `DB Bulk Write Error during upsert: ${opDescription}`, user, { error: err.errmsg, op: err.op });
+          logger.error(logContextPrefix, `DB Bulk Write Error during upsert: ${opDescription}`, {userId: importUserId}, { error: err.errmsg, op: err.op });
           databaseProcessingErrors.push({ name: opDescription, status: 'error', message: err.errmsg, details: err.op });
         });
       }
     } else {
-      logger.info(logContextPrefix, 'No items to create or update from Excel.', user);
+      logger.info(logContextPrefix, 'No items to create or update from Excel.', {userId: importUserId});
     }
 
-    // 6. Execute Item Delete operations (if any and backups were successful or handled)
     if (itemDeleteOps.length > 0) {
-        logger.info(logContextPrefix, `Attempting to bulk delete ${itemDeleteOps.length} items (whose backups were processed).`, user);
+        logger.info(logContextPrefix, `Attempting to bulk delete ${itemDeleteOps.length} items (whose backups were processed).`, {userId: importUserId});
         const deleteResult = await Item.bulkWrite(itemDeleteOps, { ordered: false });
         itemsDeleted = deleteResult.deletedCount || 0;
-        logger.info(logContextPrefix, `Item delete bulk operation completed. Deleted: ${itemsDeleted}.`, user, { deleteResult: { deleted: itemsDeleted, errors: deleteResult.hasWriteErrors() ? deleteResult.getWriteErrors().length : 0 } });
+        logger.info(logContextPrefix, `Item delete bulk operation completed. Deleted: ${itemsDeleted}.`, {userId: importUserId}, { deleteResult: { deleted: itemsDeleted, errors: deleteResult.hasWriteErrors() ? deleteResult.getWriteErrors().length : 0 } });
         operationResults.push({
             type: 'delete',
             deleted: itemsDeleted,
@@ -316,32 +345,29 @@ async function syncItemsWithDatabase(excelItems, user, logContextPrefix) {
         if (deleteResult.hasWriteErrors()) {
             deleteResult.getWriteErrors().forEach(err => {
                 const opDescription = `Delete item (filter: ${JSON.stringify(itemDeleteOps[err.index]?.deleteOne?.filter)})`;
-                logger.error(logContextPrefix, `DB Bulk Write Error during delete: ${opDescription}`, user, { error: err.errmsg, op: err.op });
+                logger.error(logContextPrefix, `DB Bulk Write Error during delete: ${opDescription}`, {userId: importUserId}, { error: err.errmsg, op: err.op });
                 databaseProcessingErrors.push({ name: opDescription, status: 'error', message: err.errmsg, details: err.op });
             });
         }
     } else {
-        logger.info(logContextPrefix, 'No items to delete, or all deletions were cancelled due to backup issues.', user);
+        logger.info(logContextPrefix, 'No items to delete, or all deletions were cancelled due to backup issues.', {userId: importUserId});
     }
     
-    logger.info(logContextPrefix, 'Database sync with Excel data finished.', user, { itemsCreated, itemsUpdated, itemsDeleted });
+    logger.info(logContextPrefix, 'Database sync with Excel data finished.', {userId: importUserId}, { itemsCreated, itemsUpdated, itemsDeleted });
 
   } catch (error) {
-    logger.error(logContextPrefix, `CRITICAL error during syncItemsWithDatabase: ${error.message}`, user, { error, stack: error.stack });
+    logger.error(logContextPrefix, `CRITICAL error during syncItemsWithDatabase: ${error.message}`, {userId: importUserId}, { error, stack: error.stack });
     databaseProcessingErrors.push({ name: 'General Sync Error', status: 'critical_error', message: error.message });
   }
 
   return { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors };
 }
 
-// This function is for the old flow of reading itemlist.xlsx from server root.
-// It can be removed if the new upload flow is the sole method.
 exports.importItemsFromExcelViaAPI = async (req, res) => {
   const user = req.user || null;
   logger.info('excel_import_api', 'API: Starting Excel import process', { userId: user?._id });
 
   try {
-    // Assuming itemlist.xlsx is in the root of the server directory
     const excelFilePath = path.resolve(__dirname, '..', 'itemlist.xlsx'); 
     logger.debug('excel_import_api', `Attempting to read Excel file from: ${excelFilePath}`, { userId: user?._id });
 
@@ -350,8 +376,7 @@ exports.importItemsFromExcelViaAPI = async (req, res) => {
       return res.status(404).json({ message: 'Excel file (itemlist.xlsx) not found on server.' });
     }
 
-    // This would need to use a parser that reads from a path, e.g. the original parseExcelDataForUpdate
-    const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(require('fs').readFileSync(excelFilePath)); // Example if using buffer parser
+    const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(require('fs').readFileSync(excelFilePath)); 
 
     if (parsingErrors && parsingErrors.length > 0) {
       logger.warn('excel_import_api', 'API: Errors/Warnings during Excel parsing', { parsingErrorsCount: parsingErrors.length, parsingErrors, userId: user?._id });
@@ -363,17 +388,25 @@ exports.importItemsFromExcelViaAPI = async (req, res) => {
         message: 'No valid items found in Excel to process or file is empty.',
         itemsCreated: 0,
         itemsUpdated: 0,
+        itemsDeleted: 0, // Added for consistency
         parsingErrors,
       });
     }
+    
+    // Pass req to syncItemsWithDatabase for filename access
+    const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await syncItemsWithDatabase(req, itemsToUpsert, user, 'excel_import_api');
 
-    // Use the refactored upsert logic
-    // const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await processUpsert(itemsToUpsert, user, 'excel_import_api'); // Old call
 
-    const { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors } = await syncItemsWithDatabase(itemsToUpsert, user, 'excel_import_api');
-
-    logger.info('excel_import_api', 'API: Excel import process completed', { itemsCreated, itemsUpdated, errors: databaseProcessingErrors.length, userId: user?._id });
-    res.status(200).json({ message: 'Excel data processed.', itemsCreated, itemsUpdated, parsingErrors, databaseProcessingDetails: operationResults, databaseProcessingErrors });
+    logger.info('excel_import_api', 'API: Excel import process completed', { itemsCreated, itemsUpdated, itemsDeleted, errors: databaseProcessingErrors.length, userId: user?._id });
+    res.status(200).json({ 
+        message: 'Excel data processed.', 
+        itemsCreated, 
+        itemsUpdated, 
+        itemsDeleted, // Added for consistency
+        parsingErrors, 
+        databaseProcessingDetails: operationResults, 
+        databaseProcessingErrors 
+    });
 
   } catch (error) {
     logger.error('excel_import_api', 'API: Unhandled error during Excel import process', { error: error.message, stack: error.stack, userId: user?._id });
@@ -386,14 +419,12 @@ exports.getCategories = async (req, res) => {
   const user = req.user || null;
   try {
     logger.debug('item', "Attempting to fetch categories", user);
-    // Simplified approach to get unique categories and subcategories
     const items = await Item.find({}, 'category subcategory');
     
-    // Create a map to track categories and their subcategories
     const categoriesMap = new Map();
     
     items.forEach(item => {
-      const category = item.category || 'Other'; // Handle null/undefined categories
+      const category = item.category || 'Other'; 
       
       if (!categoriesMap.has(category)) {
         categoriesMap.set(category, new Set());
@@ -406,7 +437,6 @@ exports.getCategories = async (req, res) => {
       }
     });
     
-    // Convert map to array format suitable for frontend
     const categories = Array.from(categoriesMap).map(([category, subcategories]) => ({
       category,
       subcategories: Array.from(subcategories)
@@ -441,7 +471,6 @@ exports.createCategory = async (req, res) => {
   try {
     logger.info('item', `API: createCategory - Attempting to create category "${trimmedCategoryName}"`, user, logDetails);
 
-    // Check if category already exists by checking if any item has this category
     const existingItem = await Item.findOne({ category: trimmedCategoryName });
 
     if (existingItem) {
@@ -449,19 +478,17 @@ exports.createCategory = async (req, res) => {
       return res.status(409).json({ message: `Category "${trimmedCategoryName}" already exists.` });
     }
 
-    // If category doesn't exist, create a minimal dummy item to register it
     const dummyItem = new Item({
-      name: `_Dummy Item for Category: ${trimmedCategoryName}_`, // Use a distinct name
+      name: `_Dummy Item for Category: ${trimmedCategoryName}_`, 
       category: trimmedCategoryName,
-      subcategory: 'General', // Default subcategory
-      sellingPrice: 0, // Minimal required fields
+      subcategory: 'General', 
+      sellingPrice: 0, 
       unit: 'Nos',
       quantity: 0,
       gstRate: 0,
       hsnCode: '',
       maxDiscountPercentage: 0,
       lowStockThreshold: 0,
-      // Other fields can be defaulted by schema
     });
 
     await dummyItem.save();
@@ -499,7 +526,6 @@ exports.createSubcategory = async (req, res) => {
   try {
     logger.info('item', `API: createSubcategory - Attempting to add subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`, user, logDetails);
 
-    // Check if the category exists and if the subcategory already exists under it
     const existingItem = await Item.findOne({ category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
 
     if (existingItem) {
@@ -507,22 +533,17 @@ exports.createSubcategory = async (req, res) => {
       return res.status(409).json({ message: `Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}".` });
     }
 
-    // To make the new subcategory appear in the getCategories list for this category,
-    // we need to ensure at least one item exists with this category/subcategory combination.
-    // We can either update an existing item in that category or create a new minimal one.
-    // Creating a minimal dummy item is simpler and doesn't modify existing data.
     const dummyItem = new Item({
-      name: `_Dummy Item for Subcategory: ${trimmedSubcategoryName} in ${trimmedCategoryName}_`, // Use a distinct name
+      name: `_Dummy Item for Subcategory: ${trimmedSubcategoryName} in ${trimmedCategoryName}_`, 
       category: trimmedCategoryName,
       subcategory: trimmedSubcategoryName,
-      sellingPrice: 0, // Minimal required fields
+      sellingPrice: 0, 
       unit: 'Nos',
       quantity: 0,
       gstRate: 0,
       hsnCode: '',
       maxDiscountPercentage: 0,
       lowStockThreshold: 0,
-      // Other fields can be defaulted by schema
     });
 
     await dummyItem.save();
@@ -538,13 +559,11 @@ exports.createSubcategory = async (req, res) => {
     });
   }
 };
-
   
 exports.getItemById = async (req, res) => {
   const { id } = req.params;
   const user = req.user || null;
 
-  // Check if id is a valid ObjectId
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: 'Invalid item ID format' });
   }
@@ -569,15 +588,15 @@ exports.createItem = async (req, res) => {
     const newItem = new Item({
       name: req.body.name,
       quantity: parseFloat(req.body.quantity) || 0,
-      sellingPrice: parseFloat(req.body.sellingPrice) || 0, // Changed from price to sellingPrice
-      buyingPrice: parseFloat(req.body.buyingPrice) || 0,   // Added buyingPrice
+      sellingPrice: parseFloat(req.body.sellingPrice) || 0, 
+      buyingPrice: parseFloat(req.body.buyingPrice) || 0,   
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || '',
       unit: req.body.unit || 'Nos',
       category: req.body.category || 'Other',
       subcategory: req.body.subcategory || 'General',
       maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-      lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 // Default 5
+      lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 
     });
 
     const savedItem = await newItem.save();
@@ -603,15 +622,15 @@ exports.updateItem = async (req, res) => {
         $set: {
           name: req.body.name,
           quantity: req.body.quantity || 0,
-          sellingPrice: req.body.sellingPrice || 0, // Changed from price
-          buyingPrice: req.body.buyingPrice || 0,   // Added buyingPrice
+          sellingPrice: req.body.sellingPrice || 0, 
+          buyingPrice: req.body.buyingPrice || 0,   
           gstRate: req.body.gstRate || 0,
           hsnCode: req.body.hsnCode || '',
           unit: req.body.unit || 'Nos',
           category: req.body.category || 'Other',
           subcategory: req.body.subcategory || 'General',
           maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-          lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 // Default 5
+          lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 
         }
       },
       { new: true, runValidators: true }
@@ -638,7 +657,7 @@ exports.updateItem = async (req, res) => {
 exports.deleteItem = async (req, res) => {
   const itemId = req.params.id;
   const userId = req.user ? req.user._id : null;
-  const user = req.user || null;
+  const user = req.user || null; // For logger consistency
   const session = await mongoose.startSession();
   const logDetails = { userId, itemId, model: 'Item', operation: 'delete', sessionId: session.id };
 
@@ -650,12 +669,12 @@ exports.deleteItem = async (req, res) => {
     const itemToBackup = await Item.findById(itemId).session(session);
     
     if (!itemToBackup) {
-      await session.abortTransaction(); // Ensure transaction is aborted on not found
+      await session.abortTransaction(); 
       session.endSession();
-      logger.warn(`[NOT_FOUND] Item not found for deletion. Transaction aborted.`, logDetails);
+      logger.warn('delete', `[NOT_FOUND] Item not found for deletion. Transaction aborted.`, user, logDetails);
       return res.status(404).json({ message: 'Item not found' });
     }
-    logger.debug(`[FETCH_SUCCESS] Found Item ID: ${itemId}. Preparing for backup within transaction.`, logDetails);
+    logger.debug('delete', `[FETCH_SUCCESS] Found Item ID: ${itemId}. Preparing for backup within transaction.`, user, logDetails);
 
     const backupData = itemToBackup.toObject();
     const newBackupEntry = new ItemBackup({
@@ -669,21 +688,19 @@ exports.deleteItem = async (req, res) => {
     });
 
     logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
-    await newBackupEntry.save({ session }); // Save backup within the transaction
+    await newBackupEntry.save({ session }); 
     logger.info('delete', `[BACKUP_SUCCESS] Item successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'ItemBackup' });
 
     logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
     await Item.findByIdAndDelete(itemId, { session });
     logger.info('delete', `[ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted.`, user, { ...logDetails, originalId: itemToBackup._id });
 
-    // Update any purchase records that reference this item
-    // This part remains, ensuring data integrity for purchases
-    logger.debug(`[UPDATE_PURCHASES_ATTEMPT] Updating Purchase records referencing deleted Item ID: ${itemId} within transaction.`, { ...logDetails, targetModel: 'Purchase' });
+    logger.debug('delete', `[UPDATE_PURCHASES_ATTEMPT] Updating Purchase records referencing deleted Item ID: ${itemId} within transaction.`, user, { ...logDetails, targetModel: 'Purchase' });
     await Purchase.updateMany(
       { 'items.itemId': itemId },
       { $set: { 'items.$.itemId': null } }
-    ).session(session); // Ensure this is also in the transaction
-    logger.info(`[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: ${itemId}.`, { ...logDetails, targetModel: 'Purchase' });
+    ).session(session); 
+    logger.info('delete', `[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: ${itemId}.`, user, { ...logDetails, targetModel: 'Purchase' });
 
     await session.commitTransaction();
     res.status(200).json({
@@ -697,7 +714,7 @@ exports.deleteItem = async (req, res) => {
       await session.abortTransaction();
       logger.warn('delete', `[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, user, { ...logDetails, errorMessage: error.message });
     }
-    logger.error(`[DELETE_ERROR] Error during Item deletion process for ID: ${itemId}.`, error, logDetails);
+    logger.error('delete', `[DELETE_ERROR] Error during Item deletion process for ID: ${itemId}.`, error, user, logDetails);
     res.status(500).json({ message: 'Server error during the deletion process. Please check server logs.' });
   } finally {
     session.endSession();
@@ -710,19 +727,16 @@ exports.getItemPurchaseHistory = async (req, res) => {
     const user = req.user || null;
     const { id } = req.params;
     
-    // Validate ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid item ID format' });
     }
 
-    // First check if item exists
     const itemExists = await Item.exists({ _id: id });
     if (!itemExists) {
       logger.warn('item', `Item not found when fetching purchase history: ${id}`, user);
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    // Get purchases where this item is referenced - with projection for better performance
     const purchases = await Purchase.find({ 
       'items.itemId': new mongoose.Types.ObjectId(id) 
     }, {
@@ -730,13 +744,11 @@ exports.getItemPurchaseHistory = async (req, res) => {
       companyName: 1,
       gstNumber: 1,
       invoiceNumber: 1,
-      'items.$': 1 // MongoDB positional operator to get only matching items
-    }).sort({ date: -1 }).limit(50); // Add limit for performance
+      'items.$': 1 
+    }).sort({ date: -1 }).limit(50); 
 
-    // logger.debug('item', `Fetched purchase history for item ID: ${id}`, user, { purchaseCount: purchases.length }); // Debug level
-    // Format response
     const formattedPurchases = purchases.map(purchase => {
-      const itemData = purchase.items[0]; // Using the positional projection above
+      const itemData = purchase.items[0]; 
       
       return {
         _id: purchase._id,
@@ -766,29 +778,26 @@ exports.getItemPurchaseHistory = async (req, res) => {
 // New controller function for restock summary
 exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
-  // Default global low stock warning threshold, can be overridden by query param
   const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3;
 
   try {
     logger.debug('item', "Fetching restock summary", user);
-    // Items are considered needing restock if explicitly flagged OR if their quantity is zero or less.
     const itemsActuallyNeedingRestock = await Item.find({
       $or: [
         { needsRestock: true },
         { quantity: { $lte: 0 } }
       ]
-    }).select('name lowStockThreshold quantity needsRestock'); // Include needsRestock for clarity
+    }).select('name lowStockThreshold quantity needsRestock'); 
     const restockNeededCount = itemsActuallyNeedingRestock.length;
 
     const lowStockWarningCount = await Item.countDocuments({
       quantity: { $lt: lowGlobalThreshold }
-      // This counts all items below the threshold, regardless of their individual lowStockThreshold or needsRestock status.
     });
 
     res.json({
-      restockNeededCount: restockNeededCount, // Renamed from 'count' for clarity
+      restockNeededCount: restockNeededCount, 
       lowStockWarningCount: lowStockWarningCount,
-      items: itemsActuallyNeedingRestock // Send the more inclusive list of items
+      items: itemsActuallyNeedingRestock 
     });
   } catch (error) {
     logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold });

@@ -5,7 +5,7 @@ import {
   Text,
   View,
   StyleSheet,
-  Image
+  Image,
 } from "@react-pdf/renderer";
 
 // Styles
@@ -17,14 +17,14 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
   document: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100%',
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100%",
   },
   pageContent: {
-    maxWidth: '100%',
-    width: '100%',
+    maxWidth: "100%",
+    width: "100%",
   },
   headerContainer: {
     flexDirection: "row",
@@ -54,14 +54,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textDecoration: "underline",
     fontWeight: "bold",
-    textAlign: 'center',
+    textAlign: "center",
   },
   section: {
     marginBottom: 10,
   },
   bodyText: {
     marginBottom: 5,
-    textAlign: 'justify',
+    textAlign: "justify",
   },
   table: {
     display: "table",
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   col1: { width: "8%" },
-  col2: { width: "42%" },
+  col2: { width: "42%", textAlign: "left", paddingLeft: 5 },
   col3: { width: "10%" },
   col4: { width: "10%" },
   col5: { width: "15%" },
@@ -108,6 +108,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     marginTop: 5,
   },
+  subtextItem: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Oblique", // Italic
+    color: "#555", // Greyish color for subtext
+    marginLeft: 10, // Indent subtext
+    // paddingVertical: 1, // Small padding
+  },
 });
 
 // Component
@@ -124,10 +131,7 @@ const QuotationPDF = ({ quotation }) => (
               <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
             </View>
             <View style={styles.logoContainer}>
-              <Image 
-                style={styles.logo} 
-                src="/src/assets/logo.png"
-              />
+              <Image style={styles.logo} src="/src/assets/logo.png" />
             </View>
           </View>
 
@@ -141,11 +145,11 @@ const QuotationPDF = ({ quotation }) => (
             Sub: Quotation for Earthing Material and Installation
           </Text>
 
+          <Text style={styles.bodyText}>Dear Sir,</Text>
           <Text style={styles.bodyText}>
-            Dear Sir,
-          </Text>
-          <Text style={styles.bodyText}>
-            Thanks for your enquiry of <Text style={{ fontStyle: "italic" }}>Earthing Items</Text>. As per your requirement here we are giving you, our prices. Kindly view it.
+            Thanks for your enquiry of{" "}
+            <Text style={{ fontStyle: "italic" }}>Earthing Items</Text>. As per
+            your requirement here we are giving you, our prices. Kindly view it.
           </Text>
 
           <Text style={styles.heading}>Supply & Installation</Text>
@@ -154,7 +158,9 @@ const QuotationPDF = ({ quotation }) => (
           <View style={styles.table}>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCol, styles.col1]}>S.No</Text>
-              <Text style={[styles.tableCol, styles.col2]}>Item description</Text>
+              <Text style={[styles.tableCol, styles.col2]}>
+                Item description
+              </Text>
               <Text style={[styles.tableCol, styles.col3]}>Unit</Text>
               <Text style={[styles.tableCol, styles.col4]}>Qty</Text>
               <Text style={[styles.tableCol, styles.col5]}>Rate</Text>
@@ -165,11 +171,24 @@ const QuotationPDF = ({ quotation }) => (
             {quotation.goods.map((item, index) => (
               <View style={styles.tableRow} key={index}>
                 <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
-                <Text style={[styles.tableCol, styles.col2]}>{item.description}</Text>
+                 <View style={[styles.tableCol, styles.col2]}>
+                  <Text>{item.description}</Text>
+                  {item.subtexts && item.subtexts.map((sub, subIndex) => (
+                    <Text key={subIndex} style={styles.subtextItem}>
+                      - {sub}
+                    </Text>
+                  ))}
+                </View>
                 <Text style={[styles.tableCol, styles.col3]}>{item.unit}</Text>
-                <Text style={[styles.tableCol, styles.col4]}>{item.quantity}</Text>
-                <Text style={[styles.tableCol, styles.col5]}>₹{item.price.toFixed(2)}</Text>
-                <Text style={[styles.tableCol, styles.col6]}>₹{item.amount.toFixed(2)}</Text>
+                <Text style={[styles.tableCol, styles.col4]}>
+                  {item.quantity}
+                </Text>
+                <Text style={[styles.tableCol, styles.col5]}>
+                  ₹{item.price.toFixed(2)}
+                </Text>
+                <Text style={[styles.tableCol, styles.col6]}>
+                  ₹{item.amount.toFixed(2)}
+                </Text>
               </View>
             ))}
           </View>
@@ -185,10 +204,20 @@ const QuotationPDF = ({ quotation }) => (
             <Text>- GST: 18% is applicable</Text>
             <Text>- Freight: Extra as applicable</Text>
             <Text>- Packing: Extra if applicable</Text>
-            <Text>- Payment: 100% in advance after receiving Formal PO and Advance</Text>
-            <Text>- Dispatch: Within {quotation.dispatchDays} days after receiving payment</Text>
-            <Text>- Validity: This quotation is valid till {new Date(quotation.validityDate).toLocaleDateString()}</Text>
-            <Text>- Order: Order to be placed in the name of "E-KORS PVT LTD"</Text>
+            <Text>
+              - Payment: 100% in advance after receiving Formal PO and Advance
+            </Text>
+            <Text>
+              - Dispatch: Within {quotation.dispatchDays} days after receiving
+              payment
+            </Text>
+            <Text>
+              - Validity: This quotation is valid till{" "}
+              {new Date(quotation.validityDate).toLocaleDateString()}
+            </Text>
+            <Text>
+              - Order: Order to be placed in the name of "E-KORS PVT LTD"
+            </Text>
           </View>
 
           {/* Footer */}
