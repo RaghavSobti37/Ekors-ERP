@@ -17,8 +17,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     position: "absolute",
-    right: 30,
-    top: 30,
+    left: 30,   // changed from 'right' to 'left'
+    top: 30,    // keep it at the top
     width: 80,
     height: "auto",
   },
@@ -276,7 +276,7 @@ const toWords = (num) => {
 const PIPDF = ({ invoice }) => {
   // Sample data matching the PDF
   const invoiceData = {
-    quotationNo: "PI 118",
+    PI_NO: "PI 118",
     date: "09-06-2025",
     company: {
       name: "E-KORS PRIVATE LIMITED",
