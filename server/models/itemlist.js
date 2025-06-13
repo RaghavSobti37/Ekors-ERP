@@ -148,9 +148,20 @@ const itemSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
-    needsRestock: { type: Boolean, default: false },
-    lowStockThreshold: { type: Number, default: 5 } // Default low stock threshold
-,
+  needsRestock: { type: Boolean, default: false },
+  lowStockThreshold: { type: Number, default: 5 }, // Default low stock threshold
+  excelImportHistory: [{
+    action: { type: String, enum: ['created', 'updated'], required: true },
+    importedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // User who performed the import
+    importedAt: { type: Date, default: Date.now },
+    fileName: { type: String }, // Name of the Excel file
+    changes: [{ // For 'updated' action: logs specific field changes
+      field: String,
+      oldValue: mongoose.Schema.Types.Mixed,
+      newValue: mongoose.Schema.Types.Mixed,
+    }],
+    snapshot: mongoose.Schema.Types.Mixed // For 'created' action: stores the initial state of the item
+  }],
   // Reference to purchases instead of embedding them
   lastPurchaseDate: {
     type: Date,

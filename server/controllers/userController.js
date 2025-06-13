@@ -2,18 +2,7 @@ const User = require("../models/users");
 const UserBackup = require("../models/userBackup"); // Import backup model
 const asyncHandler = require("express-async-handler");
 const logger = require("../utils/logger"); // Import logger
-const fs = require('fs'); // For file system operations, e.g., deleting old avatar
-const path = require('path');
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  // Ensure logger is available or use console for this critical setup error
-  if (logger && typeof logger.info === 'function') {
-    logger.info('SETUP', `Creating uploads directory: ${UPLOADS_DIR}`);
-  } else {
-    console.log(`[SETUP] Creating uploads directory: ${UPLOADS_DIR}`);
-  }
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+
 
 // @desc    Create a new user
 // @route   POST /api/users
@@ -129,15 +118,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
       });
     }
 
-    // Prevent editing another super-admin's details by a super-admin (unless it's themselves)
-    if (userToUpdate.role === 'super-admin' && performingUser._id.toString() !== userToUpdate._id.toString()) {
-      logger.warn('user-update', `[AUTH_FAILURE] Super-admin ${performingUser.email} attempt to edit another super-admin ${userToUpdate.email}.`, performingUser);
-      return res.status(403).json({
-        success: false,
-        error: 'Super-admins cannot edit other super-admins\' details through this general update endpoint. Manage roles carefully.'
-      });
-    }
-    
     // Handle role changes with specific logic
     if (role && role !== userToUpdate.role) {
         // Prevent super-admin from being demoted if they are the only one
@@ -391,7 +371,6 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Profile updated successfully", data: userResponse });
   } catch (error) {
     logger.error('user-profile-update-error', `Error updating profile for user ${userId}: ${error.message}`, error);
-    logger.error('user-profile-update-error', `Error updating profile for user ${userId}: ${error.message}`, error, req.user);
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: "Validation failed", errors: error.errors });
     }
@@ -399,90 +378,114 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Upload user avatar
-// @route   POST /api/users/profile/avatar
-// @access  Private (Authenticated users)
-exports.uploadUserAvatar = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  const performingUser = req.user;
+// @desc    Update user
+// @route   PUT /api/users/:id
+// @access  Private/SuperAdmin
+exports.updateUser = asyncHandler(async (req, res) => {
+  const performingUser = req.user || null; // User performing the update
+  const userIdToUpdate = req.params.id;
+  const { firstname, lastname, email, phone, role, password } = req.body;
 
+  logger.debug('user-update', `Update user request for ID: ${userIdToUpdate} by User: ${performingUser?.email}`, performingUser, { 
+    targetUserId: userIdToUpdate, 
+    requestBody: { ...req.body, password: password ? '*****' : 'not provided' } // Mask password in logs
+  });
+  
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded or file type is not an image." });
+    const userToUpdate = await User.findById(userIdToUpdate);
+    if (!userToUpdate) {
+      logger.warn('user-update', `User not found for update: ${userIdToUpdate}`, performingUser);
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      // Should not happen if authMiddleware is working
-      logger.error('user-avatar-upload', `User ${userId} not found during avatar upload, though authenticated. Critical issue.`, performingUser);
-      return res.status(404).json({ message: "User not found" });
+    // Authorization check: Only super-admin can update users through this endpoint
+    if (performingUser.role !== 'super-admin') {
+      logger.warn('user-update', `[AUTH_FAILURE] Unauthorized update attempt for User ID: ${userIdToUpdate} by User: ${performingUser.email}`, performingUser);
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to update users'
+      });
     }
 
-    // Optional: Delete old avatar if it exists and is different
-     const newAvatarFilename = req.file.filename;
-    const newAvatarUrl = `/uploads/${newAvatarFilename}`; // This is the public URL path
-
-    if (user.avatarUrl && user.avatarUrl !== newAvatarUrl) {
-      // Extract filename from the old avatarUrl (e.g., /uploads/oldfile.jpg -> oldfile.jpg)
-      const oldAvatarFilename = path.basename(user.avatarUrl);
-      const oldAvatarFullPath = path.join(UPLOADS_DIR, oldAvatarFilename);
-
-      if (fs.existsSync(oldAvatarFullPath)) {
-        fs.unlink(oldAvatarFullPath, (err) => {
-          if (err) logger.warn('avatar-delete-old-warn', `Could not delete old avatar for ${userId}: ${oldAvatarFullPath}`, err, performingUser);
-          else logger.info('avatar-delete-old-info', `Successfully deleted old avatar for ${userId}: ${oldAvatarFullPath}`, performingUser);
-        });      }
+    // Handle password update if provided
+    if (password) {
+      if (password.length < 5) {
+        logger.warn('user-update', `[PASSWORD_VALIDATION_FAILED] Password too short for User ID: ${userIdToUpdate}`, performingUser);
+        return res.status(400).json({
+          success: false,
+          error: 'Password must be at least 5 characters'
+        });
+      }
+      userToUpdate.password = password; // Password will be hashed by pre-save hook
+      logger.info('user-update', `[PASSWORD_CHANGE_INITIATED] Password change for User ID: ${userIdToUpdate} by Super Admin: ${performingUser.email}`, performingUser);
     }
 
-    user.avatarUrl = newAvatarUrl;
-    await user.save();
+    // Handle role changes with specific logic
+    if (role && role !== userToUpdate.role) {
+        // Prevent super-admin from being demoted if they are the only one
+        if (userToUpdate.role === 'super-admin' && role !== 'super-admin') {
+            const superAdminCount = await User.countDocuments({ role: 'super-admin' });
+            if (superAdminCount <= 1) { // This user is the last/only super-admin
+                logger.warn('user-update', `[ROLE_CHANGE_DENIED] Attempt to demote the last super-admin: ${userToUpdate.email} by ${performingUser.email}.`, performingUser);
+                return res.status(400).json({
+                    success: false,
+                    error: 'Cannot demote the last super-admin.'
+                });
+            }
+        }
+        // Only a super-admin can assign/change to super-admin role
+        if (role === 'super-admin' && performingUser.role !== 'super-admin') {
+            logger.warn('user-update', `[ROLE_CHANGE_DENIED] Non-super-admin ${performingUser.email} attempt to promote user ${userToUpdate.email} to super-admin.`, performingUser);
+            return res.status(403).json({
+                success: false,
+                error: 'Forbidden: Only super-admins can assign super-admin role.'
+            });
+        }
+        userToUpdate.role = role;
+    }
 
-    logger.info('user-avatar-upload', `Avatar uploaded successfully for user ${userId}. Path: ${user.avatarUrl}`, performingUser);
+    // Update fields
+    userToUpdate.firstname = firstname || userToUpdate.firstname;
+    userToUpdate.lastname = lastname || userToUpdate.lastname;
+    userToUpdate.email = email || userToUpdate.email; // Allow email update by super-admin
+    userToUpdate.phone = phone !== undefined ? phone : userToUpdate.phone; // Allow phone to be set to empty string
+
+    const updatedUser = await userToUpdate.save();
+    logger.info('user', `User updated successfully by ${performingUser.email}`, performingUser, { 
+      updatedUserId: updatedUser._id, 
+      updatedUserEmail: updatedUser.email, 
+      updatedUserRole: updatedUser.role,
+      passwordChanged: !!password // Log whether password was changed
+    });
     
-    const userResponse = user.getSafeUser ? user.getSafeUser() : {
-        _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-        isActive: user.isActive,
-    };
-    res.status(200).json({ message: "Avatar uploaded successfully", data: userResponse });
-  } catch (error) {
-    logger.error('user-avatar-upload-error', `Error uploading avatar for user ${userId}: ${error.message}`, error, performingUser);
-    res.status(500).json({ message: "Server error while uploading avatar", error: error.message });
-  }
-});
+    // Prepare response, excluding sensitive fields
+    const responseUser = updatedUser.toObject();
+    delete responseUser.password;
+    delete responseUser.__v;
+    delete responseUser.loginAttempts;
+    delete responseUser.lockUntil;
 
-/**
- * @desc    Get a list of users suitable for ticket transfer
- * @route   GET /api/users/transfer-candidates
- * @access  Private (Authenticated users)
- */
-exports.getTransferCandidates = asyncHandler(async (req, res) => {
-const requestingUser = req.user; // User making the request
-  const logContext = { initiatorId: requestingUser.id, initiatorEmail: requestingUser.email, action: "FETCH_TRANSFER_CANDIDATES" };
-
-  if (!requestingUser || !requestingUser.id) {
-    // This check is more for robustness; auth middleware should handle unauthenticated requests.
-    logger.error("user-transfer-candidates", "Authentication error: User or User ID not found in request.", null, { path: req.path, ip: req.ip });
-    return res.status(401).json({ message: "Authentication required or user session invalid." });
-  }
-
-  try {
-    const users = await User.find({
-      _id: { $ne: requestingUser.id }, // Exclude the current user
-      role: { $nin: ["client"] },      // Exclude users with 'client' role (adjust as needed)
-      isActive: true                   // Only active users
-    }).select('firstname lastname email role _id department').lean(); // .lean() for plain JS objects
-
-    // User.find() returns an empty array if no documents match, which is a valid response.
-    logger.info('user-transfer-candidates', `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`, requestingUser, logContext);    res.status(200).json(users); // Send back the array of users directly
-  } catch (error) {
-logger.error('user-transfer-candidates', `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`, error, requestingUser, { ...logContext, errorMessage: error.message, stack: error.stack });
-    res.status(500).json({ message: 'Failed to load users for transfer.', details: error.message });
+    res.status(200).json({
+      success: true,
+      data: responseUser,
+      message: "User updated successfully" + (password ? " (password changed)" : "")
+    });
+    
+  } catch (err) {
+    logger.error('user-update', `User update failed for ID: ${userIdToUpdate} by ${performingUser?.email}`, err, performingUser, { 
+      requestBody: { ...req.body, password: req.body.password ? '*****' : 'not provided' } // Mask password in error logs
+    });
+    if (err.code === 11000) { // Duplicate key error (e.g., email)
+        return res.status(400).json({ success: false, error: 'Email already in use by another account.' });
+    }
+    res.status(500).json({
+      success: false,
+      error: 'Server error during user update',
+      details: err.message
+    });
   }
 });
 

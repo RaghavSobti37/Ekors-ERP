@@ -6,6 +6,10 @@ const clientSchema = new mongoose.Schema({
     required: true,
     lowercase: true
   },
+  clientName: { // Name of the contact person at the client company
+    type: String,
+    trim: true
+  },
   companyName: { 
     type: String, 
     required: true,
@@ -23,9 +27,9 @@ const clientSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  user: { // Ensure this field exists and is tied to a user
+  user: { 
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Replace 'User' with your actual User model name if different
+    ref: 'User',
     required: true
   },
   quotations: [{
@@ -34,14 +38,12 @@ const clientSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Compound unique indexes for per-user uniqueness
-clientSchema.index({ email: 1, user: 1 }, { unique: true });
-clientSchema.index({ gstNumber: 1, user: 1 }, { unique: true });
-
 clientSchema.index({
   companyName: 'text',
+  clientName: 'text',
   gstNumber: 'text',
   email: 'text'
 });
 
+clientSchema.index({ user: 1, email: 1 }, { unique: true });
 module.exports = mongoose.model('Client', clientSchema);

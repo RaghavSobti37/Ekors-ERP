@@ -10,7 +10,6 @@ import {
   FaUsers,
   FaExclamationTriangle, // For restock alerts
   FaExclamationCircle, // For low quantity warnings
-  FaCamera, // For profile picture upload
 } from "react-icons/fa";
 import {
   Navbar as BootstrapNavbar,
@@ -29,25 +28,13 @@ import {
   Alert,
   Row,
   Col,
-  Image,
+  // Image, // Image component might no longer be needed if only icons are used. Let's check usage.
 } from "react-bootstrap"; // For Edit Profile Modal
 import ReusableModal from "./ReusableModal.jsx"; // Import ReusableModal
-import ReactCrop, { centerCrop, makeAspectCrop } from "react-image-crop"; // For image cropping
-import "react-image-crop/dist/ReactCrop.css"; // Styles for react-image-crop
 import { showToast, handleApiError } from "../utils/helpers"; // For toasts and error handling
-
-// import AddNewItem from '../pages/AddNewItem';
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
-
-function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
-  return centerCrop(
-    makeAspectCrop({ unit: "%", width: 90 }, aspect, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight
-  );
-}
 
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -59,24 +46,17 @@ export default function Navbar({ showPurchaseModal }) {
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
   const { user, logout, updateUserContext } = useAuth(); // Added updateUserContext
   const [profileFormData, setProfileFormData] = useState({
+    firstname: "", // Added firstname
+    lastname: "",  // Added lastname
     phone: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [profileError, setProfileError] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
-  const [imgSrc, setImgSrc] = useState(""); // For image cropper: original image selected by user
-  const [crop, setCrop] = useState(); // For image cropper: current crop selection
-  const [completedCrop, setCompletedCrop] = useState(null); // For image cropper: final crop
-  const [aspect, setAspect] = useState(1 / 1); // Aspect ratio for cropper (1:1 for square)
-  const imgRef = useRef(null); // Ref for the image element in cropper
-  const previewCanvasRef = useRef(null); // Ref for the canvas to preview crop
-  const [showCropModal, setShowCropModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
-  const fileInputRef = useRef(null); // Ref for the hidden file input
 
   useEffect(() => {
     if (!user) return; // Don't fetch if not logged in
@@ -103,13 +83,18 @@ export default function Navbar({ showPurchaseModal }) {
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
     return () => clearInterval(intervalId);
-  }, [user]); // Re-fetch if user logs in/out. Threshold changes will be picked up on next interval or page load.
+  }, [user]); 
 
   useEffect(() => {
     if (user) {
-      setProfileFormData((prev) => ({ ...prev, phone: user.phone || "" }));
+      setProfileFormData((prev) => ({
+        ...prev,
+        firstname: user.firstname || "",
+        lastname: user.lastname || "",
+        phone: user.phone || "",
+      }));
     } else {
-      setProfileFormData({ phone: "", newPassword: "", confirmPassword: "" });
+      setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
     }
   }, [user]);
 
@@ -175,7 +160,11 @@ export default function Navbar({ showPurchaseModal }) {
 
     setProfileLoading(true);
     try {
-      const payload = { phone: profileFormData.phone };
+      const payload = {
+        firstname: profileFormData.firstname,
+        lastname: profileFormData.lastname,
+        phone: profileFormData.phone
+      };
       if (profileFormData.newPassword) {
         payload.password = profileFormData.newPassword;
       }
@@ -184,6 +173,8 @@ export default function Navbar({ showPurchaseModal }) {
         body: payload,
       });
       updateUserContext(updatedUser.data); // Assuming API returns { data: userObject }
+      // Update local form state for firstname and lastname as well, as they are now editable
+      setProfileFormData(prev => ({ ...prev, firstname: updatedUser.data.firstname, lastname: updatedUser.data.lastname, phone: updatedUser.data.phone }));
       showToast("Profile updated successfully!", true);
       setShowEditModal(false);
       setProfileFormData({
@@ -199,133 +190,12 @@ export default function Navbar({ showPurchaseModal }) {
     }
   };
 
-  const onSelectFile = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-      setCrop(undefined); // Makes crop preview update between images.
-      const reader = new FileReader();
-      reader.addEventListener("load", () =>
-        setImgSrc(reader.result?.toString() || "")
-      );
-      reader.readAsDataURL(e.target.files[0]);
-      setShowCropModal(true); // Show cropping modal
-      e.target.value = null; // Reset file input
-    }
-  };
-
-  function onImageLoad(e) {
-    const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, aspect));
-  }
-
-  useEffect(() => {
-    if (
-      completedCrop?.width &&
-      completedCrop?.height &&
-      imgRef.current &&
-      previewCanvasRef.current
-    ) {
-      const image = imgRef.current;
-      const canvas = previewCanvasRef.current;
-      const crop = completedCrop;
-
-      const scaleX = image.naturalWidth / image.width;
-      const scaleY = image.naturalHeight / image.height;
-      const ctx = canvas.getContext("2d");
-
-      canvas.width = crop.width * scaleX;
-      canvas.height = crop.height * scaleY;
-
-      ctx.drawImage(
-        image,
-        crop.x * scaleX,
-        crop.y * scaleY,
-        crop.width * scaleX,
-        crop.height * scaleY,
-        0,
-        0,
-        crop.width * scaleX,
-        crop.height * scaleY
-      );
-    }
-  }, [completedCrop]);
-
-  const handleUploadCroppedImage = async () => {
-    if (!completedCrop || !previewCanvasRef.current || !selectedFile) {
-      showToast("Please select and crop an image first.", false);
-      return;
-    }
-    setProfileLoading(true);
-
-    previewCanvasRef.current.toBlob(async (blob) => {
-      if (!blob) {
-        showToast(
-          "Could not process image for upload. Please try again.",
-          false
-        );
-        setProfileLoading(false);
-        return;
-      }
-
-      const formData = new FormData();
-      // Use a generic name or ensure selectedFile.name is safe
-      const fileName = selectedFile.name || "avatar.png";
-      formData.append("avatar", blob, fileName);
-
-      try {
-const apiResponse = await apiClient("/users/profile/avatar", {           method: "POST",
-          body: formData,
-        });
-        let contextUpdateSuccessful = false;
-        try {
-          if (typeof updateUserContext === 'function') {
-            if (apiResponse && apiResponse.data && typeof apiResponse.data === "object" && apiResponse.data._id) {
-              updateUserContext(apiResponse.data);
-              contextUpdateSuccessful = true;
-            } else if (apiResponse && typeof apiResponse === "object" && apiResponse._id) {
-              updateUserContext(apiResponse);
-              contextUpdateSuccessful = true;
-            } else {
-              console.warn("[Navbar.jsx] Avatar upload: API response structure not fully recognized for context update.", apiResponse);
-            }
-          } else {
-            // This is where the TypeError originates. Log it clearly.
-            console.error("[Navbar.jsx] CRITICAL: updateUserContext is not a function. AuthContext is not providing it correctly. Profile changes will require a page refresh to be visible everywhere.");
-          }
-        } catch (contextError) {
-          console.error("[Navbar.jsx] Error occurred during updateUserContext after avatar upload:", contextError);
-          // contextUpdateSuccessful remains false
-        }
-
-        if (contextUpdateSuccessful) {
-          showToast(apiResponse.message || "Profile picture updated successfully!", true);
-        } else {
-          showToast("Profile picture uploaded. UI may need a refresh to reflect changes due to a context update issue.", true);
-        }
-        setShowCropModal(false);
-        setImgSrc("");
-        setCrop(undefined);
-        setCompletedCrop(null);
-        setSelectedFile(null);
-     } catch (apiError) { // This catches errors from apiClient or other unexpected errors in the main try
-        // handleApiError will show a toast.
-        const errorMessage = handleApiError(apiError, "Failed to upload avatar."); 
-        // The console.error below is for debugging and will show the TypeError if it's the cause.
-        console.error("[Navbar.jsx] Avatar upload API/processing error:", apiError);
-        // Do not close modal on error, let user retry or cancel.
-      } finally {
-        setProfileLoading(false);
-      }
-      showToast(response.message || "Profile picture updated!", true);
-    }, selectedFile.type || "image/png"); // Provide a fallback type
-  };
-
   return (
     <>
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo">
-            <img src="/public/logo.png" alt="E-KORS" className="logo-img" />
+            <img src="/logo.png" alt="E-KORS" className="logo-img" />
           </div>
 
           <div className="nav-links">
@@ -363,54 +233,58 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
               <FaClipboardList /> Challan
             </NavLink>
 
-            <div
-              className="dropdown-wrapper"
-              onMouseEnter={handleMouseEnterDropdown}
-              onMouseLeave={handleMouseLeaveDropdown}
-            >
+            {user && user.role !== "user" && (
+              <div
+                className="dropdown-wrapper"
+                onMouseEnter={handleMouseEnterDropdown}
+                onMouseLeave={handleMouseLeaveDropdown}
+              >
+                <NavLink
+                  to="/itemslist"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  <FaBoxOpen /> Items List
+                </NavLink>
+                {showItemsDropdown && (
+                  <div className="dropdown-menu">
+                    <div
+                      onClick={handleViewAllItems}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      View All Items
+                    </div>
+                    <div
+                      onClick={showPurchaseModal}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Update Stock
+                    </div>
+                    <div
+                      onClick={handlePurchaseHistoryClick}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Purchase History
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {user && user.role !== "user" && (
               <NavLink
-                to="/itemslist"
+                to="/users"
                 className={({ isActive }) =>
                   isActive ? "nav-link active" : "nav-link"
                 }
               >
-                <FaBoxOpen /> Items List
+                <FaUsers /> Users
               </NavLink>
-              {showItemsDropdown && (
-                <div className="dropdown-menu">
-                  <div
-                    onClick={handleViewAllItems}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    View All Items
-                  </div>
-                  <div
-                    onClick={showPurchaseModal}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Update Stock
-                  </div>
-                  <div
-                    onClick={handlePurchaseHistoryClick}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Purchase History
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <NavLink
-              to="/users"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <FaUsers /> Users
-            </NavLink>
+            )}
 
             {/* Stock Alert Notification Area */}
-            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && (
+            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && user.role !== "user" && (
               <div
                 className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
                 onClick={handleStockAlertClick}
@@ -434,20 +308,10 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
           onMouseLeave={handleMouseLeaveProfile}
         >
           <div className="profile-section">
-            {user?.avatarUrl ? (
-              <Image
-                src={`${import.meta.env.VITE_API_BASE_URL || ""}${
-                  user.avatarUrl
-                }?${new Date().getTime()}`} // VITE_API_BASE_URL likely includes /api, user.avatarUrl starts with /uploads
-                alt="User Avatar"
-                roundedCircle
-                className="navbar-avatar-img"
-              />
-            ) : (
-              <div className="profile-icon">
-                <FaUser />
-              </div>
-            )}
+            {/* Always show placeholder */}
+            <div className="profile-icon">
+              <FaUser />
+            </div>
             <span className="navbar-username">{user?.firstname || "User"}</span>
           </div>
 
@@ -460,24 +324,10 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
               /> */}
               <div className="profile-details">
                 <div className="profile-avatar-large-container">
-                  {user?.avatarUrl ? (
-                    <Image
-                      src={`${import.meta.env.VITE_API_BASE_URL || ""}${
-                        user.avatarUrl
-                      }?${new Date().getTime()}`}
-                      alt="Profile"
-                      roundedCircle
-                      className="profile-avatar-large"
-                    />
-                  ) : (
-                    <div className="profile-avatar-large-placeholder">
-                      <FaUser size={40} />
-                    </div>
-                  )}
-                  {/* <Button variant="link" size="sm" className="upload-avatar-btn" onClick={() => fileInputRef.current?.click()} title="Change Profile Picture">
-                   Edit Profile Picture
-                     <FaCamera /> 
-                  </Button> */}
+                  {/* Always show placeholder */}
+                  <div className="profile-avatar-large-placeholder">
+                    <FaUser size={40} />
+                  </div>
                 </div>
                 <p>
                   <strong>
@@ -508,14 +358,6 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
         </div>
       </nav>
 
-      {/* Hidden file input for avatar */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        accept="image/*"
-        onChange={onSelectFile}
-      />
 
       {/* Edit Profile Modal */}
       <ReusableModal
@@ -545,57 +387,6 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
       >
         {profileError && <Alert variant="danger">{profileError}</Alert>}
 
-        {/* Profile Picture Section */}
-        <Row className="mb-4 align-items-center text-center text-md-start">
-          <Col xs={12} md="auto" className="mb-3 mb-md-0">
-            {user?.avatarUrl ? (
-              <Image
-                src={`${import.meta.env.VITE_API_BASE_URL || ""}${
-                  user.avatarUrl
-                }?${new Date().getTime()}`}
-                roundedCircle
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  objectFit: "cover",
-                  border: "2px solid #dee2e6",
-                }}
-                alt="Current Avatar"
-              />
-            ) : (
-              <div
-                className="profile-avatar-large-placeholder mx-auto mx-md-0"
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#e9ecef",
-                  borderRadius: "50%",
-                }}
-              >
-                <FaUser size={50} />
-              </div>
-            )}
-          </Col>
-          <Col>
-            <BsButton
-              variant="outline-primary"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-auto"
-            >
-              <FaCamera className="me-2" />
-              Change Profile Picture
-            </BsButton>
-            <Form.Text muted className="d-block mt-1">
-              Click to select a new image. You'll be able to crop it before
-              uploading.
-            </Form.Text>
-          </Col>
-        </Row>
-        <hr className="mb-4" />
-
         <Form>
           <Row>
             <Col md={6}>
@@ -603,9 +394,9 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
                 <Form.Label>First Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={user?.firstname || ""}
-                  readOnly
-                  disabled
+                  name="firstname" // Add name attribute
+                  value={profileFormData.firstname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
                 />
               </Form.Group>
             </Col>
@@ -614,9 +405,9 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
                 <Form.Label>Last Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={user?.lastname || ""}
-                  readOnly
-                  disabled
+                  name="lastname" // Add name attribute
+                  value={profileFormData.lastname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
                 />
               </Form.Group>
             </Col>
@@ -688,68 +479,6 @@ const apiResponse = await apiClient("/users/profile/avatar", {           method:
             </Col>
           </Row>
         </Form>
-      </ReusableModal>
-
-      {/* Image Cropping Modal */}
-      <ReusableModal
-        show={showCropModal}
-        onHide={() => setShowCropModal(false)}
-        title="Crop Profile Picture"
-        footerContent={
-          <>
-            <BsButton
-              variant="secondary"
-              onClick={() => setShowCropModal(false)}
-              disabled={profileLoading}
-            >
-              Cancel
-            </BsButton>
-            <BsButton
-              variant="primary"
-              onClick={handleUploadCroppedImage}
-              disabled={profileLoading || !completedCrop}
-            >
-              {profileLoading ? "Uploading..." : "Upload Cropped Image"}
-            </BsButton>
-          </>
-        }
-        // size="xl" // Or rely on ReusableModal's default fullScreenModalStyle
-        isLoading={profileLoading}
-      >
-        {imgSrc && (
-          <div className="d-flex flex-column align-items-center">
-            <ReactCrop
-              crop={crop}
-              onChange={(_, percentCrop) => setCrop(percentCrop)}
-              onComplete={(c) => setCompletedCrop(c)}
-              aspect={aspect}
-              minWidth={100} // Minimum crop width in pixels
-              minHeight={100} // Minimum crop height in pixels
-            >
-              <img
-                ref={imgRef}
-                alt="Crop me"
-                src={imgSrc}
-                onLoad={onImageLoad}
-                style={{ maxHeight: "70vh", maxWidth: "100%" }}
-              />
-            </ReactCrop>
-            {completedCrop && (
-              <div className="mt-3">
-                <p>Preview:</p>
-                <canvas
-                  ref={previewCanvasRef}
-                  style={{
-                    border: "1px solid black",
-                    objectFit: "contain",
-                    width: 150,
-                    height: 150,
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
       </ReusableModal>
     </>
   );

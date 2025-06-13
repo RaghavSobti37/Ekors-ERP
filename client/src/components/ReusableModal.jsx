@@ -42,12 +42,19 @@ const ReusableModal = ({
           closeButton
           onHide={onHide}
           style={{
-            borderBottom: "1px solid #dee2e6",
+            backgroundColor: "maroon", // 1. grey
             padding: "1rem",
             flexShrink: 0,
+            display: "flex", // For centering title
+            justifyContent: "center", // For centering title
+            alignItems: "center", // For centering title
           }}
         >
-          <Modal.Title>{title}</Modal.Title>
+          <Modal.Title
+            style={{ fontWeight: "bold", textAlign: "center", flexGrow: 1 }}
+          >
+            {title}
+          </Modal.Title>
         </Modal.Header>
         <div
           style={{

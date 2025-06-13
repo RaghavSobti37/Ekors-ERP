@@ -34,7 +34,7 @@ ChartJS.register(
 
 // Define an Axios instance for API calls to the backend
 const apiClient = axios.create({
-  baseURL: "http://localhost:3000", // Adjust if your backend runs on a different port/URL
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
 });
 
 const fullScreenModalStyle = {
@@ -99,7 +99,7 @@ const UserReportModal = ({ show, onHide, user }) => {
       }
 
       console.log(`[UserReportModal.jsx] fetchReport: Making API call to /api/reports/users/${user._id} with period ${period}`);
-      const response = await apiClient.get(`/api/reports/users/${user._id}`, {
+      const response = await apiClient.get(`/reports/users/${user._id}`, {
         params: { period },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -167,7 +167,7 @@ const UserReportModal = ({ show, onHide, user }) => {
 
     try {
       const response = await apiClient.get(
-        `/api/reports/users/${user._id}/generate-pdf`,
+        `/reports/users/${user._id}/generate-pdf`,
         {
           params: { period },
           responseType: "blob",

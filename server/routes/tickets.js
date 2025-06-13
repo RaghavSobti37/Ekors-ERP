@@ -1,3 +1,4 @@
+// c:\Users\Raghav Raj Sobti\Desktop\fresh\server\routes\tickets.js
 const express = require("express");
 const router = express.Router();
 const Ticket = require("../models/opentickets");
@@ -5,15 +6,12 @@ const auth = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-// User and Quotation models will be used in the controller
-// const User = require("../models/users");
-// const Quotation = require("../models/quotation"); // Import Quotation model
 const ticketController = require("../controllers/ticketController");
 const logger = require("../utils/logger"); // Ensure logger is available
 
+// ... (multer setup remains the same) ...
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Store documents in a subfolder named by the ticket ID
     const uploadPath = path.join(__dirname, "../uploads", req.params.id);
     fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
@@ -30,7 +28,6 @@ const fileFilter = (req, file, cb) => {
     "application/pdf",
     "image/jpeg",
     "image/png",
-    // Removed MS Word types, add back if needed. Keep it simple for now.
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -58,85 +55,73 @@ router.delete(
   ticketController.adminDeleteTicket
 );
 
-// POST /api/tickets - Create a new ticket
-// All logic is now moved to ticketController.createTicket
 router.post("/", auth, ticketController.createTicket);
 
-// Route to check if a ticket exists for a given quotation number
 router.get(
   "/check/:quotationNumber",
   auth,
   ticketController.checkExistingTicket
 );
 
+// CRITICAL: This route MUST come BEFORE any general '/:id' route
+router.get(
+  "/transfer-candidates",
+  auth,
+  ticketController.getTransferCandidates
+);
+
 router.get("/:id", auth, async (req, res) => {
   try {
-    const ticket = await Ticket.findOne({
-      _id: req.params.id,
-      $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
-    });
-    if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+    // Ensure this is not matching '/transfer-candidates'
+    if (req.params.id === 'transfer-candidates') {
+        // This should not happen if routes are ordered correctly
+        logger.error('ticket-route-error', 'CRITICAL: /:id route incorrectly matched /transfer-candidates. Check route order.', req.user, { params: req.params });
+        return res.status(500).json({ error: "Server routing configuration error." });
     }
 
-    // Populate uploadedBy fields for all document types
+    const ticket = await Ticket.findOne({
+      _id: req.params.id,
+      // Allow super-admin to view any ticket by ID, others are restricted
+      ...(req.user.role !== 'super-admin' && {
+        $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
+      })
+    });
+    if (!ticket) {
+      logger.warn('ticket-fetch', `Ticket not found or access denied for ID: ${req.params.id}`, req.user);
+      return res.status(404).json({ error: "Ticket not found or access denied" });
+    }
+
+    // ... (rest of your population logic for GET /:id)
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate({ path: "currentAssignee", select: "firstname lastname email" })
       .populate({ path: "createdBy", select: "firstname lastname email" })
-      .populate({
-        path: "transferHistory.from",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "transferHistory.to",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "transferHistory.transferredBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.quotation.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.po.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.pi.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.challan.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.packingList.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.feedback.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.other.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        // Added population for status history
-        path: "statusHistory.changedBy",
-        select: "firstname lastname email",
-      });
+      .populate({ path: "transferHistory.from", select: "firstname lastname email" })
+      .populate({ path: "transferHistory.to", select: "firstname lastname email" })
+      .populate({ path: "transferHistory.transferredBy", select: "firstname lastname email" })
+      .populate({ path: "documents.quotation.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.po.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.pi.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.challan.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.packingList.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.feedback.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.other.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" });
 
     res.json(populatedTicket);
   } catch (error) {
-    console.error("Error fetching ticket:", error);
+    // This is the source of the "Failed to fetch ticket" error
+    logger.error('ticket-fetch-error', `Error fetching ticket by ID: ${req.params.id}`, error, req.user);
     res.status(500).json({ error: "Failed to fetch ticket" });
   }
 });
 
-router.put("/:id", auth, ticketController.updateTicket); // Use the controller
+router.put("/:id", auth, ticketController.updateTicket);
+
+router.post(
+  "/:id/transfer",
+  auth,
+  ticketController.transferTicket
+);
 
 router.delete("/:id", auth, ticketController.deleteTicket);
 
@@ -144,6 +129,7 @@ router.post(
   "/:id/documents",
   auth,
   upload.single("document"),
+  // ... (your existing document upload logic) ...
   async (req, res) => {
     try {
       const { documentType } = req.body;
@@ -152,9 +138,6 @@ router.post(
       }
 
       const ticketId = req.params.id;
-      // Ensure user is authorized to upload to this ticket (e.g., assignee or creator)
-      // This check might be more complex depending on your exact rules.
-      // Allow creator or current assignee to upload
       const ticket = await Ticket.findOne({
         _id: ticketId,
         $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
@@ -163,24 +146,22 @@ router.post(
       if (!ticket) {
         return res.status(404).json({
           error:
-            "Ticket not found or you are not the current assignee to upload documents.",
+            "Ticket not found or you are not authorized to upload documents.",
         });
       }
 
       const documentData = {
-        path: req.file.filename, // Filename is now relative to 'uploads/<ticketId>/'
+        path: req.file.filename,
         originalName: req.file.originalname,
         uploadedBy: req.user.id,
         uploadedAt: new Date(),
       };
 
       if (!ticket.documents) {
-        // Initialize documents object if it doesn't exist
         ticket.documents = {};
       }
 
       if (documentType && documentType !== "other") {
-        // If replacing an existing file for a specific type, delete the old one
         if (
           ticket.documents[documentType] &&
           ticket.documents[documentType].path
@@ -197,71 +178,34 @@ router.post(
         }
         ticket.documents[documentType] = documentData;
       } else {
-        // Default to 'other' or if documentType is explicitly 'other'
         if (!ticket.documents.other) {
           ticket.documents.other = [];
         }
         ticket.documents.other.push(documentData);
       }
 
-      // Mark 'documents' as modified if it's a Mixed type or to ensure save
       ticket.markModified("documents");
-
       await ticket.save();
 
-      // Repopulate after save to get user details for uploadedBy
       const finalTicket = await Ticket.findById(ticket._id)
-        .populate({
-          path: "currentAssignee",
-          select: "firstname lastname email",
-        })
+        .populate({ path: "currentAssignee", select: "firstname lastname email" })
         .populate({ path: "createdBy", select: "firstname lastname email" })
-        .populate({
-          path: "transferHistory.from",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "transferHistory.to",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "transferHistory.transferredBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.quotation.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.po.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.pi.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.challan.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.packingList.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.feedback.uploadedBy",
-          select: "firstname lastname email",
-        })
-        .populate({
-          path: "documents.other.uploadedBy",
-          select: "firstname lastname email",
-        });
+        .populate({ path: "transferHistory.from", select: "firstname lastname email" })
+        .populate({ path: "transferHistory.to", select: "firstname lastname email" })
+        .populate({ path: "transferHistory.transferredBy", select: "firstname lastname email" })
+        .populate({ path: "documents.quotation.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.po.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.pi.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.challan.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.packingList.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.feedback.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.other.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" });
 
       res.json(finalTicket);
     } catch (error) {
-      console.error(
-        // Assuming logger might not be defined here, use console.error
-        "Error uploading document for ticket",
+      logger.error(
+        "ticket-doc-upload-error",
         `Failed to upload document for Ticket ID: ${req.params.id}`,
         error,
         req.user
@@ -273,227 +217,162 @@ router.post(
   }
 );
 
-// DELETE a document from a ticket
-router.delete("/:id/documents", auth, async (req, res) => {
-  const { documentType, documentPath } = req.body; // documentPath is the filename stored in DB, relative to 'uploads/<ticketId>/'
-  const ticketId = req.params.id;
+router.delete("/:id/documents", auth, 
+  // ... (your existing document delete logic) ...
+  async (req, res) => {
+    const { documentType, documentPath } = req.body; 
+    const ticketId = req.params.id;
 
-  try {
-    const ticket = await Ticket.findById(ticketId);
-    if (!ticket) {
-      return res.status(404).json({ message: "Ticket not found." });
-    }
+    try {
+      const ticket = await Ticket.findById(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found." });
+      }
 
-    // Authorization: Only current assignee or creator (or super-admin)
-    const canModify =
-      req.user.role === "super-admin" ||
-      ticket.currentAssignee.toString() === req.user.id.toString() ||
-      ticket.createdBy.toString() === req.user.id.toString();
+      const canModify =
+        req.user.role === "super-admin" ||
+        ticket.currentAssignee.toString() === req.user.id.toString() ||
+        ticket.createdBy.toString() === req.user.id.toString();
 
-    if (!canModify) {
-      return res.status(403).json({
-        message: "Forbidden: You cannot modify this ticket's documents.",
-      });
-    }
-
-    let fileRemoved = false;
-    // Construct full path: uploads/<ticketId>/<documentPath>
-    const fullFilePath = path.join(
-      __dirname,
-      "../uploads",
-      ticketId,
-      documentPath
-    );
-
-    if (!ticket.documents) {
-      return res
-        .status(404)
-        .json({ message: "No documents found for this ticket." });
-    }
-
-    if (documentType && documentType !== "other") {
-      if (
-        ticket.documents[documentType] &&
-        ticket.documents[documentType].path === documentPath
-      ) {
-        if (fs.existsSync(fullFilePath)) {
-          fs.unlinkSync(fullFilePath);
-          fileRemoved = true;
-        }
-        ticket.documents[documentType] = undefined; // Or delete ticket.documents[documentType];
-      } else {
-        return res.status(404).json({
-          message: `Document of type ${documentType} with specified path not found.`,
+      if (!canModify) {
+        return res.status(403).json({
+          message: "Forbidden: You cannot modify this ticket's documents.",
         });
       }
-    } else {
-      // Handling 'other' documents array
-      const docIndex = ticket.documents.other?.findIndex(
-        (doc) => doc.path === documentPath
+
+      let fileRemoved = false;
+      const fullFilePath = path.join(
+        __dirname,
+        "../uploads",
+        ticketId,
+        documentPath
       );
 
-      if (docIndex > -1) {
-        ticket.documents.other.splice(docIndex, 1);
-        if (fs.existsSync(fullFilePath)) {
-          fs.unlinkSync(fullFilePath);
-          fileRemoved = true;
-        }
-      } else {
+      if (!ticket.documents) {
         return res
           .status(404)
-          .json({ message: "Document not found in 'other' documents." });
+          .json({ message: "No documents found for this ticket." });
       }
-    }
-    ticket.markModified("documents");
-    await ticket.save();
 
-    // Repopulate after save
-    const finalTicket = await Ticket.findById(ticket._id)
-      .populate({ path: "currentAssignee", select: "firstname lastname email" })
-      .populate({ path: "createdBy", select: "firstname lastname email" })
-      // Add all other necessary populates here as in the GET route
-      .populate({
-        path: "documents.quotation.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.po.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.pi.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.challan.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.packingList.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.feedback.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.other.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        // Added population for status history
-        path: "statusHistory.changedBy",
-        select: "firstname lastname email",
+      if (documentType && documentType !== "other") {
+        if (
+          ticket.documents[documentType] &&
+          ticket.documents[documentType].path === documentPath
+        ) {
+          if (fs.existsSync(fullFilePath)) {
+            fs.unlinkSync(fullFilePath);
+            fileRemoved = true;
+          }
+          ticket.documents[documentType] = undefined; 
+        } else {
+          return res.status(404).json({
+            message: `Document of type ${documentType} with specified path not found.`,
+          });
+        }
+      } else {
+        const docIndex = ticket.documents.other?.findIndex(
+          (doc) => doc.path === documentPath
+        );
+
+        if (docIndex > -1) {
+          ticket.documents.other.splice(docIndex, 1);
+          if (fs.existsSync(fullFilePath)) {
+            fs.unlinkSync(fullFilePath);
+            fileRemoved = true;
+          }
+        } else {
+          return res
+            .status(404)
+            .json({ message: "Document not found in 'other' documents." });
+        }
+      }
+      ticket.markModified("documents");
+      await ticket.save();
+
+      const finalTicket = await Ticket.findById(ticket._id)
+        .populate({ path: "currentAssignee", select: "firstname lastname email" })
+        .populate({ path: "createdBy", select: "firstname lastname email" })
+        .populate({ path: "documents.quotation.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.po.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.pi.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.challan.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.packingList.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.feedback.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "documents.other.uploadedBy", select: "firstname lastname email" })
+        .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" });
+
+      res.status(200).json({
+        message: "Document deleted successfully.",
+        ticket: finalTicket,
+        fileRemoved,
       });
-
-    res.status(200).json({
-      message: "Document deleted successfully.",
-      ticket: finalTicket,
-      fileRemoved,
-    });
-  } catch (error) {
-    console.error("Error deleting document:", error);
-    res.status(500).json({
-      message: "Server error while deleting document.",
-      details: error.message,
-    });
+    } catch (error) {
+      logger.error("ticket-doc-delete-error", `Error deleting document for ticket ${ticketId}`, error, req.user);
+      res.status(500).json({
+        message: "Server error while deleting document.",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
+// This is the GET /api/tickets route (for listing tickets)
 router.get("/", auth, async (req, res) => {
   try {
-    const query = {
-      $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
-    };
+    let query = {};
 
-    if (req.query.status) {
-      query.status = req.query.status;
-    }
-
-    if (req.query.companyName) {
-      query.companyName = { $regex: req.query.companyName, $options: "i" };
+    if (req.user.role === 'super-admin') {
+      if (req.query.status && req.query.status !== 'all') {
+        query.status = req.query.status;
+      }
+      if (req.query.companyName) {
+        query.companyName = { $regex: req.query.companyName, $options: "i" };
+      }
+    } else {
+      query = {
+        $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
+      };
+      if (req.query.status && req.query.status !== 'all') {
+        query.status = req.query.status;
+      }
+      if (req.query.companyName) {
+        query.companyName = { $regex: req.query.companyName, $options: "i" };
+      }
     }
 
     const tickets = await Ticket.find(query)
       .populate({ path: "currentAssignee", select: "firstname lastname email" })
       .populate({ path: "createdBy", select: "firstname lastname email" })
-      .populate({
-        path: "transferHistory.from",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "transferHistory.to",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "transferHistory.transferredBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.quotation.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.po.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.pi.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.challan.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.packingList.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.feedback.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "documents.other.uploadedBy",
-        select: "firstname lastname email",
-      })
-      .populate({
-        // Added population for status history
-        path: "statusHistory.changedBy",
-        select: "firstname lastname email",
-      })
+      .populate({ path: "transferHistory.from", select: "firstname lastname email" })
+      .populate({ path: "transferHistory.to", select: "firstname lastname email" })
+      .populate({ path: "transferHistory.transferredBy", select: "firstname lastname email" })
+      .populate({ path: "documents.quotation.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.po.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.pi.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.challan.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.packingList.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.feedback.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "documents.other.uploadedBy", select: "firstname lastname email" })
+      .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" })
       .sort({ createdAt: -1 });
 
     res.json(tickets);
   } catch (error) {
-    console.error("Error fetching tickets:", error);
+    logger.error('ticket-list-error', "Error fetching tickets list", error, req.user);
     res.status(500).json({ error: "Failed to fetch tickets" });
   }
 });
 
-// Route to transfer a ticket
-router.post("/:id/transfer", auth, ticketController.transferTicket);
-
-// --- Routes moved from index.js (now using controller functions) ---
-// These routes are prefixed with /from-index to distinguish them if necessary
-// and to indicate their origin. They might represent older or public/unauthenticated logic.
-
+// ... (rest of your routes, e.g., /from-index/*)
 router.get("/from-index/all", ticketController.getAllTickets_IndexLogic);
-
 router.post("/from-index/create", ticketController.createTicket_IndexLogic);
-
-// This uses the 'upload' instance defined in this file (routes/tickets.js)
-// which saves to a ticket-specific folder: 'uploads/<ticketId>/'
 router.post(
   "/from-index/:id/documents",
-  auth,
+  auth, // Assuming auth is needed, adjust if not
   upload.single("document"),
   ticketController.uploadDocument_IndexLogic
 );
-
 router.put("/from-index/:id", ticketController.updateTicket_IndexLogic);
-
-// General file serving (moved from index.js, consider if this is the best place long-term)
 router.get("/serve-file/:filename", ticketController.serveFile_IndexLogic);
 
 module.exports = router;
