@@ -131,7 +131,7 @@ const QuotationPDF = ({ quotation }) => (
               <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
             </View>
             <View style={styles.logoContainer}>
-              <Image style={styles.logo} src="/src/assets/logo.png" />
+              <Image style={styles.logo} src="/logo.png" />
             </View>
           </View>
 

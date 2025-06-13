@@ -213,7 +213,7 @@ const getAddressPart = (address, part) => {
 const PIPDF = ({ ticket }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <Image style={styles.logo} src="/src/assets/logo.png" />
+      <Image style={styles.logo} src="/logo.png" />
       <Text style={styles.header}>GSTIN : 09AAFCE8706R1ZV</Text>
       <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
       <Text style={styles.subHeader}>
