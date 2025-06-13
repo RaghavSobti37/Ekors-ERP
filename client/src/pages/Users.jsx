@@ -391,7 +391,7 @@ const Users = () => {
           >
             <Form>
               <Form.Group className="mb-3">
-                <Form.Label>First Name *</Form.Label>
+                <Form.Label>First Name <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   name="firstname"
                   value={formData.firstname}
@@ -401,7 +401,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Last Name *</Form.Label>
+                <Form.Label>Last Name <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   name="lastname"
                   value={formData.lastname}
@@ -411,7 +411,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Email *</Form.Label>
+                <Form.Label>Email <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -432,7 +432,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Role *</Form.Label>
+                <Form.Label>Role <span className="text-danger">*</span></Form.Label>
                 <Form.Select
                   name="role"
                   value={formData.role}
