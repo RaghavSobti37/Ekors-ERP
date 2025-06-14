@@ -1143,30 +1143,67 @@ export default function Dashboard() {
       return parts.join(", ").replace(/ ,/g, ",");
     };
 
-    const pdfData = currentTicketForPdf
-      ? {
-          ...currentTicketForPdf, // Spread all properties from the current ticket
-          client: {
-            // Create the 'client' object QuotationPDF expects
-            companyName: currentTicketForPdf.companyName || "N/A", // Get companyName from the ticket root
-            siteLocation:
-              currentTicketForPdf.siteLocation || "Site Not Specified", // Provide a fallback for siteLocation
-          },
-          // Ensure other fields are mapped or available as QuotationPDF expects
-          referenceNumber: currentTicketForPdf.quotationNumber,
-          date: currentTicketForPdf.createdAt,
-          goods: currentTicketForPdf.goods.map((item) => ({
-            ...item,
-            gstRate: item.gstRate || 18,
-            unit: item.unit || "Nos",
-          })),
-          // Properties like totalAmount, dispatchDays, validityDate, shippingSameAsBilling
-          // should be available from the ...currentTicketForPdf spread if their names match
-          // what QuotationPDF expects (e.g., quotation.totalAmount).
-          // If QuotationPDF expects different names, they would need explicit mapping here.
-        }
-      : null;
-    if (!pdfData)
+    let pdfDataToUse = null;
+
+    if (previewType === "quotation") {
+      pdfDataToUse = currentTicketForPdf
+        ? {
+            ...currentTicketForPdf,
+            client: {
+              companyName: currentTicketForPdf.companyName || "N/A",
+              siteLocation: currentTicketForPdf.siteLocation || "Site Not Specified",
+            },
+            referenceNumber: currentTicketForPdf.quotationNumber,
+            date: currentTicketForPdf.createdAt,
+            goods: (currentTicketForPdf.goods || []).map((item) => ({
+              ...item,
+              gstRate: item.gstRate || 18, // QuotationPDF might expect this
+              unit: item.unit || "Nos",
+            })),
+          }
+        : null;
+    } else if (previewType === "pi") {
+      let billingAddrObj = {};
+      if (Array.isArray(currentTicketForPdf.billingAddress)) {
+        billingAddrObj = {
+          address1: currentTicketForPdf.billingAddress[0] || "",
+          address2: currentTicketForPdf.billingAddress[1] || "",
+          state:    currentTicketForPdf.billingAddress[2] || "",
+          city:     currentTicketForPdf.billingAddress[3] || "",
+          pincode:  currentTicketForPdf.billingAddress[4] || "",
+        };
+      } else if (typeof currentTicketForPdf.billingAddress === 'object' && currentTicketForPdf.billingAddress !== null) {
+        billingAddrObj = currentTicketForPdf.billingAddress;
+      }
+
+      let shippingAddrObj = currentTicketForPdf.shippingAddressObj || currentTicketForPdf.shippingAddress || {};
+       if (Array.isArray(shippingAddrObj) && shippingAddrObj.length > 0) {
+         shippingAddrObj = {
+            address1: shippingAddrObj[0] || "", address2: shippingAddrObj[1] || "",
+            state: shippingAddrObj[2] || "", city: shippingAddrObj[3] || "",
+            pincode: shippingAddrObj[4] || "",
+        };
+      }
+
+      pdfDataToUse = currentTicketForPdf ? {
+        ...currentTicketForPdf,
+        piNumber: currentTicketForPdf.quotationNumber, // Or a dedicated piNumber field
+        piDate: currentTicketForPdf.createdAt || new Date().toISOString(),
+        clientName: currentTicketForPdf.companyName,
+        clientGst: currentTicketForPdf.clientGstNumber,
+        clientPhoneNum: currentTicketForPdf.clientPhone,
+        billingAddressResolved: billingAddrObj,
+        shippingAddressResolved: currentTicketForPdf.shippingSameAsBilling ? billingAddrObj : shippingAddrObj,
+        goods: (currentTicketForPdf.goods || []).map((item, index) => ({
+          ...item,
+          sn: item.srNo || index + 1,
+          description: item.description + (item.subtexts && item.subtexts.length > 0 ? "\n" + item.subtexts.map(s => `  - ${s}`).join("\n") : ""),
+          unit: item.unit || "Nos",
+        })),
+      } : null;
+    }
+
+    if (!pdfDataToUse)
       return (
         <Alert variant="warning">Could not load data for PDF preview.</Alert>
       );
@@ -1186,12 +1223,12 @@ export default function Dashboard() {
         {previewType === "quotation" && (
           <div className="document-preview-container">
             <PDFViewer width="100%" height="500px" className="mb-3">
-              <QuotationPDF quotation={pdfData} />
+              <QuotationPDF quotation={pdfDataToUse} />
             </PDFViewer>
             <div className="d-flex justify-content-center gap-2 mt-3">
               <PDFDownloadLink
-                document={<QuotationPDF quotation={pdfData} />}
-                fileName={`quotation_${pdfData.referenceNumber}.pdf`}
+                document={<QuotationPDF quotation={pdfDataToUse} />}
+                fileName={`quotation_${pdfDataToUse.referenceNumber}.pdf`}
               >
                 {({ loading }) => (
                   <Button variant="primary" disabled={loading}>
@@ -1214,12 +1251,12 @@ export default function Dashboard() {
         {previewType === "pi" && (
           <div className="document-preview-container">
             <PDFViewer width="100%" height="500px" className="mb-3">
-              <PIPDF ticket={pdfData} />
+              <PIPDF ticket={pdfDataToUse} />
             </PDFViewer>
             <div className="d-flex justify-content-center gap-2 mt-3">
               <PDFDownloadLink
-                document={<PIPDF ticket={pdfData} />}
-                fileName={`pi_${pdfData.quotationNumber}.pdf`}
+                document={<PIPDF ticket={pdfDataToUse} />}
+                fileName={`pi_${pdfDataToUse.piNumber || pdfDataToUse.quotationNumber}.pdf`}
               >
                 {({ loading }) => (
                   <Button variant="primary" disabled={loading}>

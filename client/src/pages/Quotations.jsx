@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
 import ClientSearchComponent from "../components/ClientSearchComponent.jsx"; // Component for searching clients
 import ItemSearchComponent from "../components/ItemSearch"; // Component for searching items
-import QuotationPDF from "../components/QuotationPDF"; // Component for rendering Quotation PDF
+import QuotationPDF , {QuotationActions} from "../components/QuotationPDF"; // Component for rendering Quotation PDF
 import CreateTicketModal from "../components/CreateTicketModal.jsx"; // Modal for creating tickets from quotations
 import Pagination from "../components/Pagination"; // Component for table pagination
 import Footer from "../components/Footer";
@@ -90,7 +90,10 @@ const GoodsTable = ({
                     {item.subtexts && item.subtexts.length > 0 && (
                       <div className="mt-1">
                         {item.subtexts.map((st, stIndex) => (
-                          <em key={stIndex} className="d-block text-muted small">
+                          <em
+                            key={stIndex}
+                            className="d-block text-muted small"
+                          >
                             - {st}
                           </em>
                         ))}
@@ -115,18 +118,32 @@ const GoodsTable = ({
                             type="text"
                             value={subtext}
                             onChange={(e) =>
-                              handleGoodsChange(index, "subtexts", e.target.value, subtextIndex)
+                              handleGoodsChange(
+                                index,
+                                "subtexts",
+                                e.target.value,
+                                subtextIndex
+                              )
                             }
                             placeholder={`Subtext ${subtextIndex + 1}`}
                             className="form-control-sm me-1"
                             style={{ fontStyle: "italic" }}
                           />
-                          <Button variant="outline-danger" size="sm" onClick={() => onDeleteSubtext(index, subtextIndex)}>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => onDeleteSubtext(index, subtextIndex)}
+                          >
                             &times;
                           </Button>
                         </div>
                       ))}
-                    <Button variant="outline-primary" size="sm" className="mt-1" onClick={() => onAddSubtext(index)}>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="mt-1"
+                      onClick={() => onAddSubtext(index)}
+                    >
                       + Subtext
                     </Button>
                   </>
@@ -145,7 +162,8 @@ const GoodsTable = ({
                     }
                     placeholder="HSN/SAC"
                   />
-                )}              </td>
+                )}{" "}
+              </td>
               <td>
                 {!isEditing ? (
                   item.quantity || 0
@@ -692,7 +710,7 @@ export default function Quotations() {
       {
         srNo: quotationData.goods.length + 1,
         description: "",
-        subtexts: [], 
+        subtexts: [],
         hsnSacCode: "",
         quantity: 1,
         price: 0,
@@ -973,7 +991,6 @@ export default function Quotations() {
       goods: updatedGoods,
     }));
   };
-
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -2289,23 +2306,10 @@ export default function Quotations() {
         <ReusableModal
           show={showPdfModal}
           onHide={() => setShowPdfModal(false)}
-          title={`Quotation PDF - ${currentQuotation?.referenceNumber}`}
+          title={`Quotation - ${currentQuotation?.referenceNumber}`}
           footerContent={
             currentQuotation && (
-              <div className="d-flex justify-content-center gap-2">
-                <PDFDownloadLink
-                  document={<QuotationPDF quotation={currentQuotation} />}
-                  fileName={`quotation_${currentQuotation.referenceNumber}.pdf`}
-                >
-                  {(
-                    { loading: pdfLoading } // Renamed loading to pdfLoading to avoid conflict
-                  ) => (
-                    <Button variant="primary" disabled={pdfLoading}>
-                      {pdfLoading ? "Generating PDF..." : "Download PDF"}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
-              </div>
+              <QuotationActions quotation={currentQuotation} />
             )
           }
         >

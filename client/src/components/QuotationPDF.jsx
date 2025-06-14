@@ -6,7 +6,12 @@ import {
   View,
   StyleSheet,
   Image,
+  PDFDownloadLink
 } from "@react-pdf/renderer";
+import { generateQuotationDocx } from "../utils/generateQuotationDocx";
+import * as docx from "docx";
+import { saveAs } from "file-saver";
+import { Button } from "react-bootstrap"; 
 
 // Styles
 const styles = StyleSheet.create({
@@ -116,6 +121,37 @@ const styles = StyleSheet.create({
     // paddingVertical: 1, // Small padding
   },
 });
+
+export const QuotationActions = ({ quotation }) => {
+  const handleDownloadWord = async () => {
+    try {
+      const doc = generateQuotationDocx(quotation);
+      const blob = await docx.Packer.toBlob(doc);
+      saveAs(blob, `quotation_${quotation.referenceNumber}.docx`);
+    } catch (error) {
+      console.error("Error generating Word document:", error);
+      alert("Failed to generate Word document. Please try again.");
+    }
+  };
+
+  return (
+    <div className="d-flex justify-content-center gap-2">
+      <PDFDownloadLink
+        document={<QuotationPDF quotation={quotation} />}
+        fileName={`quotation_${quotation.referenceNumber}.pdf`}
+      >
+        {({ loading }) => (
+          <Button variant="primary" disabled={loading}>
+            {loading ? "Generating PDF..." : "Download PDF"}
+          </Button>
+        )}
+      </PDFDownloadLink>
+      <Button variant="success" onClick={handleDownloadWord}>
+        Download Word
+      </Button>
+    </div>
+  );
+};
 
 // Component
 const QuotationPDF = ({ quotation }) => (

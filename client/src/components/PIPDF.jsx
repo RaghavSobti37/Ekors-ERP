@@ -273,9 +273,9 @@ const toWords = (num) => {
   );
 };
 
-const PIPDF = ({ invoice }) => {
-  // Sample data matching the PDF
-  const invoiceData = {
+const PIPDF = ({ ticket }) => {
+  // Static company and bank details (can be made dynamic later if needed)
+  const ourCompany = {
     PI_NO: "PI 118",
     date: "09-06-2025",
     company: {
@@ -283,71 +283,6 @@ const PIPDF = ({ invoice }) => {
       address: "POLE NO-02., Sector-115, NOIDA",
       city: "Gautam Buddha Nagar, Uttar Pradesh, 201307",
       gstin: "09AAFCE8706R1ZV",
-    },
-    client: {
-      name: "M/s Kiranotics India Pvt Ltd",
-      address: "D15, Site C, Industrial Area",
-      city: "Sikandra",
-      pincode: "282007",
-      state: "Uttar Pradesh (09)",
-      gstin: "09AACCK868101ZK",
-      phone: "",
-    },
-    goods: [
-      {
-        sn: 1,
-        description: "Earthing Rod\nUI Rod 250 Micron 3 Mir",
-        hsnSacCode: "74071090",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 1000.00,
-        amount: 4000.00,
-      },
-      {
-        sn: 2,
-        description: "Clamp",
-        hsnSacCode: "85389000",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 150.00,
-        amount: 600.00,
-      },
-      {
-        sn: 3,
-        description: "Chemical Bag",
-        hsnSacCode: "73089090",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 200.00,
-        amount: 800.00,
-      },
-      {
-        sn: 4,
-        description: "ESE LA\n5 Mir Mast\nTaura",
-        hsnSacCode: "85354010",
-        quantity: 1.00,
-        unit: "NOS",
-        price: 11500.00,
-        amount: 11500.00,
-      },
-      {
-        sn: 5,
-        description: "Pit Cover\n6\"",
-        hsnSacCode: "73259910",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 150.00,
-        amount: 600.00,
-      },
-    ],
-    tax: {
-      taxableAmount: 17500.00,
-      cgstRate: 9,
-      cgstAmount: 1575.00,
-      sgstRate: 9,
-      sgstAmount: 1575.00,
-      totalTax: 3150.00,
-      grandTotal: 20650.00,
     },
     bankDetails: {
       bankName: "ICICI Bank",
@@ -357,7 +292,7 @@ const PIPDF = ({ invoice }) => {
   };
 
   // Calculate total quantity
-  const totalQuantity = invoiceData.goods.reduce(
+  const totalQuantity = (ticket.goods || []).reduce(
     (sum, item) => sum + Number(item.quantity),
     0
   );
@@ -367,22 +302,22 @@ const PIPDF = ({ invoice }) => {
       <Page size="A4" style={styles.page}>
         {/* Logo in top right corner */}
         <Image style={styles.logo} src="/src/assets/logo.png" />
-        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
-        <Text style={styles.companyName}>{invoiceData.company.name}</Text>
+        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text> 
+        <Text style={styles.companyName}>{ourCompany.company.name}</Text>
         <Text style={styles.subHeader}>
-          {invoiceData.company.address}{"\n"}{invoiceData.company.city}
+          {ourCompany.company.address}{"\n"}{ourCompany.company.city}
         </Text>
-        <Text style={styles.header}>GSTIN : {invoiceData.company.gstin}</Text>
+        <Text style={styles.header}>GSTIN : {ourCompany.company.gstin}</Text>
 
         {/* Quotation Header - Matches the image layout */}
         <View style={styles.quotationHeader}>
           <View style={styles.quotationHeaderCol}>
-            <Text style={styles.quotationHeaderLabel}>Quotation No.:</Text>
-            <Text>{invoiceData.quotationNo}</Text>
+            <Text style={styles.quotationHeaderLabel}>PI No.:</Text>
+            <Text>{ticket.piNumber || ticket.quotationNumber}</Text>
           </View>
           <View style={styles.quotationHeaderCol}>
             <Text style={styles.quotationHeaderLabel}>Date:</Text>
-            <Text>{invoiceData.date}</Text>
+            <Text>{new Date(ticket.piDate || ticket.createdAt || Date.now()).toLocaleDateString()}</Text>
           </View>
         </View>
 
@@ -390,55 +325,60 @@ const PIPDF = ({ invoice }) => {
         <View style={styles.clientDetailsTable}>
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Quotation to:</Text>
+              <Text style={styles.clientDetailsLabel}>Billed to:</Text>
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Shipped to:</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.name}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.name}</Text>
+              <Text style={styles.clientDetailsLabel}>Shipped to:</Text> 
             </View>
           </View>
 
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.address}</Text>
+              <Text>{ticket.clientName || ticket.companyName}</Text>
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.address}</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.city}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.city}</Text>
+              <Text>{ticket.shippingSameAsBilling ? (ticket.clientName || ticket.companyName) : (ticket.shippingAddressResolved?.companyName || ticket.clientName || ticket.companyName)}</Text>
             </View>
           </View>
 
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.pincode}</Text>
+              <Text>{ticket.billingAddressResolved?.address1}</Text>
+              {ticket.billingAddressResolved?.address2 && <Text>{ticket.billingAddressResolved.address2}</Text>}
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.pincode}</Text>
+              <Text>{ticket.shippingAddressResolved?.address1}</Text>
+              {ticket.shippingAddressResolved?.address2 && <Text>{ticket.shippingAddressResolved.address2}</Text>}
+            </View>
+          </View>
+
+          <View style={styles.clientDetailsRow}>
+            <View style={styles.clientDetailsCol}>
+              <Text>{ticket.billingAddressResolved?.city}</Text>
+            </View>
+            <View style={styles.clientDetailsCol}>
+              <Text>{ticket.shippingAddressResolved?.city}</Text>
+            </View>
+          </View>
+
+          <View style={styles.clientDetailsRow}>
+            <View style={styles.clientDetailsCol}>
+              <Text>{ticket.billingAddressResolved?.pincode}</Text>
+            </View>
+            <View style={styles.clientDetailsCol}>
+              <Text>{ticket.shippingAddressResolved?.pincode}</Text>
             </View>
           </View>
 
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
               <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
+              <Text>{ticket.clientPhoneNum || "N/A"}</Text>
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
+              {/* Intentionally left blank for shipping side as per common PI formats, or can mirror if needed */}
+               <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
+               <Text>{ticket.shippingSameAsBilling ? (ticket.clientPhoneNum || "N/A") : (ticket.shippingAddressResolved?.phone || "N/A")}</Text>
             </View>
           </View>
 
@@ -446,13 +386,13 @@ const PIPDF = ({ invoice }) => {
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>State: </Text>
-                {invoiceData.client.state}
+                {ticket.billingAddressResolved?.state}
               </Text>
             </View>
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>State:</Text>
-                {invoiceData.client.state}
+                {ticket.shippingAddressResolved?.state}
               </Text>
             </View>
           </View>
@@ -461,13 +401,13 @@ const PIPDF = ({ invoice }) => {
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {invoiceData.client.gstin}
+                {ticket.clientGst || "N/A"}
               </Text>
             </View>
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {invoiceData.client.gstin}
+                {ticket.shippingSameAsBilling ? (ticket.clientGst || "N/A") : (ticket.shippingAddressResolved?.gstin || "N/A")}
               </Text>
             </View>
           </View>
@@ -487,75 +427,92 @@ const PIPDF = ({ invoice }) => {
           </View>
 
           {/* Table Rows */}
-          {invoiceData.goods.map((item, i) => (
+          {(ticket.goods || []).map((item, i) => (
             <View style={styles.tableRow} key={i}>
-              <Text style={[styles.tableCell, { width: "5%" }]}>{item.sn}.</Text>
+              <Text style={[styles.tableCell, { width: "5%" }]}>{item.sn || (i + 1)}.</Text>
               <Text style={[styles.descriptionCell, { width: "35%" }]}>{item.description}</Text>
               <Text style={[styles.tableCell, { width: "12%" }]}>{item.hsnSacCode}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{item.quantity.toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{item.unit}</Text>
-              <Text style={[styles.tableCell, { width: "12%" }]}>{item.price.toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "12%", borderRight: 0 }]}>{item.amount.toFixed(2)}</Text>
+              <Text style={[styles.tableCell, { width: "8%" }]}>{(item.quantity || 0).toFixed(2)}</Text>
+              <Text style={[styles.tableCell, { width: "8%" }]}>{item.unit || "Nos"}</Text>
+              <Text style={[styles.tableCell, { width: "12%" }]}>{(item.price || 0).toFixed(2)}</Text>
+              <Text style={[styles.tableCell, { width: "12%", borderRight: 0 }]}>{(item.amount || 0).toFixed(2)}</Text>
             </View>
           ))}
         </View>
 
         {/* GST Calculation */}
-        <View style={styles.gstRow}>
-          <Text style={styles.gstCell}>Add: CGST</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>{invoiceData.tax.cgstRate.toFixed(2)} %</Text>
-          <Text style={[styles.gstCell, { width: "12%" }]}>{invoiceData.tax.cgstAmount.toFixed(2)}</Text>
-        </View>
-        <View style={styles.gstRow}>
-          <Text style={styles.gstCell}>Add: SGST</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>{invoiceData.tax.sgstRate.toFixed(2)} %</Text>
-          <Text style={[styles.gstCell, { width: "12%" }]}>{invoiceData.tax.sgstAmount.toFixed(2)}</Text>
-        </View>
+        {ticket.isSameState ? (
+          <>
+            <View style={styles.gstRow}>
+              <Text style={styles.gstCell}>Add: CGST</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
+              <Text style={[styles.gstCell, { width: "12%" }]}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+            </View>
+            <View style={styles.gstRow}>
+              <Text style={styles.gstCell}>Add: SGST</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
+              <Text style={[styles.gstCell, { width: "12%" }]}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.gstRow}>
+            <Text style={styles.gstCell}>Add: IGST</Text>
+            <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
+            <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
+            <Text style={[styles.gstCell, { width: "12%" }]}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
+          </View>
+        )}
 
         {/* Grand Total */}
         <View style={styles.grandTotal}>
           <Text style={styles.bold}>Grand Total</Text>
           <Text>
-            {totalQuantity.toFixed(2)} NOS {invoiceData.tax.grandTotal.toFixed(2)}
+            {totalQuantity.toFixed(2)} NOS {(ticket.grandTotal || 0).toFixed(2)}
           </Text>
         </View>
 
         {/* Tax Summary Table */}
         <View style={styles.taxTable}>
           <View style={styles.taxTableRow}>
-            <Text style={[styles.taxTableCell, styles.bold]}>Tax Rate</Text>
+            <Text style={[styles.taxTableCell, styles.bold]}>{ticket.isSameState ? "Tax Rate" : "IGST Rate"}</Text>
             <Text style={[styles.taxTableCell, styles.bold]}>Taxable Amt.</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>CGST Amt.</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>SGST Amt.</Text>
+            <Text style={[styles.taxTableCell, styles.bold]}>{ticket.isSameState ? "CGST Amt." : "IGST Amt."}</Text>
+            {ticket.isSameState && <Text style={[styles.taxTableCell, styles.bold]}>SGST Amt.</Text>}
             <Text style={[styles.taxTableLastCell, styles.bold]}>Total Tax</Text>
           </View>
           <View style={styles.taxTableRow}>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.cgstRate + invoiceData.tax.sgstRate}%</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.taxableAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.cgstAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.sgstAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableLastCell}>{invoiceData.tax.totalTax.toFixed(2)}</Text>
+            <Text style={styles.taxTableCell}>{ticket.isSameState ? `${(ticket.gstRate || 0) * 2}%` : `${ticket.gstRate || 0}%`}</Text>
+            <Text style={styles.taxTableCell}>{(ticket.totalAmount || 0).toFixed(2)}</Text>
+            {ticket.isSameState ? (
+              <>
+                <Text style={styles.taxTableCell}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+                <Text style={styles.taxTableCell}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+              </>
+            ) : (
+              <Text style={styles.taxTableCell}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
+            )}
+            <Text style={styles.taxTableLastCell}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
           </View>
         </View>
 
         {/* Amount in Words */}
         <Text style={styles.amountInWords}>
-          Rupees {toWords(invoiceData.tax.grandTotal)}
+          Rupees {toWords(ticket.grandTotal || 0)}
         </Text>
 
         {/* Bank Details */}
         <View style={styles.bankDetails}>
           <Text style={styles.bold}>
-            Bank Details : {invoiceData.bankDetails.bankName}{"\n"}
-            Bank Account No:-{invoiceData.bankDetails.accountNo}, IFSC CODE No.{invoiceData.bankDetails.ifsc}
+            Bank Details : {ourCompany.bankDetails.bankName}{"\n"}
+            Bank Account No:-{ourCompany.bankDetails.accountNo}, IFSC CODE No.{ourCompany.bankDetails.ifsc}
           </Text>
         </View>
 
         {/* Signature */}
         <View style={styles.signature}>
-          <Text>for {invoiceData.company.name}</Text>
+          <Text>for {ourCompany.company.name}</Text>
           <Text>Authorised Signatory</Text>
         </View>
       </Page>
