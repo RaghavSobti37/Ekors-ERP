@@ -1,35 +1,33 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/components/CreateTicketModal.jsx
 import React, { useState, useEffect , useCallback} from "react";
-import { Modal, Button, Form, Table, Spinner } from "react-bootstrap";
-import axios from "axios";
-import ReusableModal from "./ReusableModal.jsx"; // For PI Preview
+import { Button, Form, Table, Spinner, Alert } from "react-bootstrap"; // Modal removed, Alert added
+import axios from "axios"; // Keep axios if used for pincode or other direct calls
+import ReusablePageStructure from "./ReusablePageStructure.jsx"; // Corrected import for page structure
 import PIPDF from "./PIPDF.jsx"; // For PI Preview
 import { PDFViewer } from "@react-pdf/renderer"; // For PI Preview
 import ActionButtons from "./ActionButtons.jsx"; // Import ActionButtons
+import { useNavigate, useLocation } from "react-router-dom"; // For navigation and state
 
-const CreateTicketModal = ({
-  show,
-  onHide,
-  ticketData,
-  setTicketData,
-  handleTicketSubmit,
-  isLoading,
-  error,
-}) => {
+// This is now a Page component, e.g., rendered at /tickets/create-from-quotation
+// Props like 'show', 'onHide' are removed. Data is passed via route state.
+const CreateTicketPage = () => {
   const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
-const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
+  // const [showPIPreviewModal, setShowPIPreviewModal] = useState(false); // Replaced by navigation to a PI preview page
 
-  const fullScreenModalStyle = {
-    position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-    width: '95vw', height: '95vh', maxWidth: 'none', margin: 0, padding: 0,
-    overflow: 'auto', backgroundColor: 'white', border: '1px solid #dee2e6',
-    borderRadius: '0.3rem', boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)', zIndex: 1050
-  };
-  const modalBodyStyle = { maxHeight: 'calc(95vh - 120px)', overflowY: 'auto', padding: '20px' };
-  const modalFooterStyle = {
-    position: 'sticky', bottom: 0, zIndex: 1051, backgroundColor: 'white',
-    borderTop: '1px solid #dee2e6', padding: '15px'
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Initial ticket data would come from route state (passed from Quotations page when creating ticket from quotation)
+  const initialTicketDataFromState = location.state?.ticketDataForForm || { /* provide a default empty structure */ };
+  const [ticketData, setTicketData] = useState(initialTicketDataFromState);
+  const [isLoading, setIsLoading] = useState(false); // Page-level loading state
+  const [error, setError] = useState(null); // Page-level error state
+
+  // The handleTicketSubmit logic would be part of this page or passed if it's generic and reused
+  const handleTicketSubmit = async (event) => {
+    // ... (logic from Quotations.jsx's handleTicketSubmit, adapted for this page's context)
+    // On success, navigate (e.g., to /tickets or back to /quotations)
   };
 
   const calculateTaxes = useCallback(() => {
@@ -212,19 +210,20 @@ const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
             ticketData.shippingAddressObj?.pincode || "",
           ],
     };
-    // Now, you would set a state to show a modal containing PIPDF with ticketForPreview
-    setShowPIPreviewModal(true);
+    // Navigate to a PI Preview page, passing ticketForPreview in state
+    navigate("/tickets/pi-preview", { state: { ticketForPreview } });
   };
 
-  return (
-    <div style={{ display: show ? 'block' : 'none' }}>
-      <div style={fullScreenModalStyle}>
-        <Modal.Header closeButton onHide={onHide} style={{ borderBottom: '1px solid #dee2e6' }}>
-          <Modal.Title>Create Ticket from Quotation</Modal.Title>
-        </Modal.Header>
+  // useEffect to set ticketData if passed via state and not already set (e.g. on direct navigation/refresh if state is lost)
+  useEffect(() => {
+    if (location.state?.ticketDataForForm && Object.keys(ticketData).length === 0) { // Simple check
+      setTicketData(location.state.ticketDataForForm);
+    }
+  }, [location.state, ticketData]);
+
+  const pageContent = (
         <Form onSubmit={handleTicketSubmit}>
-          <Modal.Body style={modalBodyStyle}>
-            {error && <div className="alert alert-danger">{error}</div>}
+            {error && <Alert variant="danger">{error}</Alert>}
             <div className="row">
               <Form.Group className="mb-3 col-md-6"><Form.Label>Company Name <span className="text-danger">*</span></Form.Label><Form.Control required readOnly type="text" value={ticketData.companyName || ""} /></Form.Group>
               <Form.Group className="mb-3 col-md-6"><Form.Label>Ticket Number</Form.Label><Form.Control type="text" value={ticketData.ticketNumber || ""} readOnly disabled /></Form.Group>
@@ -295,39 +294,52 @@ const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
                 </div>
               </div>
             </div>
-          </Modal.Body>
-          <Modal.Footer style={modalFooterStyle}>
-                          <ActionButtons
+        </Form>
+  );
+
+  const pageFooter = (
+    <>
+      <ActionButtons
               item={ticketData} // Pass ticketData as the item
               onView={handlePreviewPI} // Use onView for "Preview PI", text will be "View"
               isLoading={isLoading || isFetchingAddress} // Pass combined loading state
               size="md" // Match typical modal button size
             />
-
-            <Button variant="secondary" onClick={onHide} disabled={isLoading || isFetchingAddress}>Cancel</Button>
-            <Button variant="primary" type="submit" disabled={isLoading || isFetchingAddress}>
+      <Button variant="secondary" onClick={() => navigate(-1)} disabled={isLoading || isFetchingAddress}>Cancel</Button>
+      <Button variant="primary" type="submit" form="create-ticket-form" disabled={isLoading || isFetchingAddress}> {/* Ensure your Form has an id="create-ticket-form" */}
               {isLoading ? "Creating..." : "Create Ticket"}
             </Button>
-          </Modal.Footer>
-        </Form>
-                {showPIPreviewModal && (
-          <ReusableModal
-            show={showPIPreviewModal}
-            onHide={() => setShowPIPreviewModal(false)}
+    </>
+  );
+
+  // The PI Preview modal is now a separate page.
+  // If you were to implement a PI Preview page, it would look something like this:
+  /*
+    const PIPreviewPage = () => {
+      const location = useLocation();
+      const ticketForPreview = location.state?.ticketForPreview;
+      const navigate = useNavigate();
+      if (!ticketForPreview) return <Alert variant="danger">No ticket data for preview.</Alert>;
+      return (
+        <ReusablePageStructure
             title={`PI Preview - ${ticketData.ticketNumber || ticketData.quotationNumber}`}
-            size="xl" // Or your preferred size
-          >
+            footerContent={<Button onClick={() => navigate(-1)}>Close</Button>}
+        >
             <div style={{ height: '80vh', overflowY: 'auto' }}>
               <PDFViewer width="100%" height="99%">
-                <PIPDF ticket={{...ticketData, shippingAddress: ticketData.shippingSameAsBilling ? [...ticketData.billingAddress] : [ticketData.shippingAddressObj?.address1 || "", ticketData.shippingAddressObj?.address2 || "", ticketData.shippingAddressObj?.state || "", ticketData.shippingAddressObj?.city || "", ticketData.shippingAddressObj?.pincode || ""]}} />
+                <PIPDF ticket={ticketForPreview} />
               </PDFViewer>
             </div>
-          </ReusableModal>
-        )}
+        </ReusablePageStructure>
+      );
+    }
+  */
 
-      </div>
-    </div>
+  return (
+    <ReusablePageStructure title="Create Ticket from Quotation" footerContent={pageFooter}>
+      {pageContent}
+    </ReusablePageStructure>
   );
 };
 
-export default CreateTicketModal;
+export default CreateTicketPage;

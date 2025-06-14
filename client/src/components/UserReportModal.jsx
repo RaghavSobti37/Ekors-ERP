@@ -5,8 +5,7 @@ import {
   Form,
   Spinner,
   Alert,
-  Tab,
-  Tabs,
+Nav , Row , Col
 } from "react-bootstrap";
 import { FaFilePdf, FaFileExcel, FaChartBar, FaTimes } from "react-icons/fa";
 import axios from "axios";
@@ -433,42 +432,48 @@ const UserReportModal = ({ show, onHide, user }) => {
         </Modal.Header>
         <Modal.Body>
           {error && <Alert variant="danger">{error}</Alert>}
-          <div className="report-controls mb-3">
-            <Form.Group controlId="periodSelect">
-              <Form.Label>Report Period</Form.Label>
-              <Form.Control
-                as="select"
-                value={period}
-                onChange={(e) => {
-                  console.log("[UserReportModal.jsx] Period dropdown CHANGED. New value:", e.target.value);
-                  setPeriod(e.target.value);
-                }}
-                disabled={loading}
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Form.Control>
-            </Form.Group>
+                   <Row className="mb-3 align-items-end">
+            <Col md={5} className="mb-3 mb-md-0">
+              <Form.Group controlId="periodSelectModal" className="mb-0">
+                <Form.Label>Report Period</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={period}
+                  onChange={(e) => {
+                    console.log("[UserReportModal.jsx] Period dropdown CHANGED. New value:", e.target.value);
+                    setPeriod(e.target.value);
+                  }}
+                  disabled={loading}
+                >
+                  {periodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+            </Col>
+            <Col md={7}>
+              <Nav variant="tabs" activeKey={activeTab} onSelect={(k) => {
+                console.log("[UserReportModal.jsx] Tab SELECTED. New activeKey:", k);
+                setActiveTab(k);
+              }} className="user-report-nav-tabs">
+                <Nav.Item>
+                  <Nav.Link eventKey="summary">Summary</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="charts" style={activeTab !== "charts" ? { color: "#0d6efd" } : {}}> {/* Highlight inactive Charts tab */}
+                    <FaChartBar className="me-1" />Charts
+                  </Nav.Link>
+                </Nav.Item>
+              </Nav>
+            </Col>
+          </Row>
+          <div className="mt-3"> {/* Content area for tabs */}
+            {activeTab === "summary" && renderSummaryTab()}
+            {activeTab === "charts" && renderChartsTab()}
           </div>
 
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(k) => {
-              console.log("[UserReportModal.jsx] Tab SELECTED. New activeKey:", k);
-              setActiveTab(k);
-            }}
-            className="mb-3"
-          >
-            <Tab eventKey="summary" title="Summary">
-              {renderSummaryTab()}
-            </Tab>
-            <Tab eventKey="charts" title="Charts">
-              {renderChartsTab()}
-            </Tab>
-          </Tabs>
         </Modal.Body>
         <Modal.Footer>
           <div className="d-flex justify-content-between w-100">

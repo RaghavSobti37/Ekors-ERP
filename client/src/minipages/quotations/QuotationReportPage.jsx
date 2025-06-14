@@ -1,15 +1,15 @@
+// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationReportPage.jsx
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   Button,
   Form,
   Spinner,
   Alert,
-  Tab,
-  Tabs,
   Table,
+  Row,
+  Col,
 } from "react-bootstrap";
-import { FaFilePdf, FaFileExcel, FaChartBar, FaTimes } from "react-icons/fa";
+import { FaFileExcel, FaChartBar } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,7 +21,9 @@ import {
   Legend,
 } from "chart.js";
 import axios from "axios";
-import { getAuthToken } from "../utils/authUtils";
+import { getAuthToken } from "../../utils/authUtils";
+import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
+import { useNavigate } from "react-router-dom";
 
 ChartJS.register(
   CategoryScale,
@@ -33,35 +35,17 @@ ChartJS.register(
 );
 
 const apiClient = axios.create({
-  // Ensure this matches your actual API base URL, or use a shared apiClient if available
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000", 
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
 });
 
-const fullScreenModalStyle = {
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '95vw',
-  height: '95vh',
-  maxWidth: 'none',
-  margin: 0,
-  padding: 0,
-  overflow: 'auto',
-  backgroundColor: 'white',
-  border: '1px solid #dee2e6',
-  borderRadius: '0.3rem',
-  boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.15)',
-  zIndex: 1050
-};
-
-const QuotationReportModal = ({ show, onHide }) => {
-  const [period, setPeriod] = useState("7days");
+const QuotationReportPage = () => {
+  const [period, setPeriod] = useState("");
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
+  const navigate = useNavigate();
 
   const periodOptions = [
     { value: "7days", label: "Last 7 Days" },
@@ -73,6 +57,8 @@ const QuotationReportModal = ({ show, onHide }) => {
   ];
 
   const fetchReport = async () => {
+    if (!period) return;
+
     setLoading(true);
     setError("");
     setReportData(null);
@@ -85,7 +71,7 @@ const QuotationReportModal = ({ show, onHide }) => {
         return;
       }
 
-      const response = await apiClient.get(`reports/quotations`, {
+      const response = await apiClient.get(`quotations/report/summary`, {
         params: { period },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -93,11 +79,11 @@ const QuotationReportModal = ({ show, onHide }) => {
     } catch (err) {
       let errorMessage = "Failed to fetch report. An unknown error occurred.";
       if (err.response) {
-        if (typeof err.response.data === 'string') {
+        if (typeof err.response.data === "string") {
           errorMessage = err.response.data;
-        } else if (err.response.data.error) {
+        } else if (err.response.data?.error) {
           errorMessage = err.response.data.error;
-        } else if (err.response.data.message) {
+        } else if (err.response.data?.message) {
           errorMessage = err.response.data.message;
         } else {
           errorMessage = `Server error: ${err.response.status}`;
@@ -116,7 +102,7 @@ const QuotationReportModal = ({ show, onHide }) => {
   const handleExportToExcel = async () => {
     setExportLoading(true);
     setError("");
-    
+
     try {
       const token = getAuthToken();
       if (!token) {
@@ -125,7 +111,7 @@ const QuotationReportModal = ({ show, onHide }) => {
         return;
       }
 
-      const response = await apiClient.get(`reports/quotations/export`, {
+      const response = await apiClient.get(`quotations/report/excel`, {
         params: { period },
         responseType: "blob",
         headers: { Authorization: `Bearer ${token}` },
@@ -140,9 +126,11 @@ const QuotationReportModal = ({ show, onHide }) => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      let errorMessage = "Failed to export report. An unknown error occurred.";
+      let errorMessage =
+        "Failed to export report. An unknown error occurred.";
       if (err.response) {
-        errorMessage = err.response.data?.message || `Server error: ${err.response.status}`;
+        errorMessage =
+          err.response.data?.message || `Server error: ${err.response.status}`;
       } else if (err.request) {
         errorMessage = "No response from server during export.";
       } else {
@@ -155,20 +143,17 @@ const QuotationReportModal = ({ show, onHide }) => {
   };
 
   useEffect(() => {
-    if (show) {
-      fetchReport();
-    }
-  }, [show, period]);
+    fetchReport();
+  }, [period]);
 
   const renderSummaryTab = () => (
     <div className="report-summary">
       {loading && !reportData ? (
         <div className="text-center p-5">
-          <Spinner animation="border" /> 
+          <Spinner animation="border" />
           <p>Loading report...</p>
         </div>
       ) : null}
-      
       {!loading && reportData && (
         <>
           <div className="report-header mb-4">
@@ -177,7 +162,6 @@ const QuotationReportModal = ({ show, onHide }) => {
               Period: {reportData.period} ({reportData.dateRange})
             </p>
           </div>
-
           <Table striped bordered hover size="sm" className="mt-3">
             <tbody>
               <tr>
@@ -217,7 +201,6 @@ const QuotationReportModal = ({ show, onHide }) => {
 
   const renderChartsTab = () => {
     if (!reportData) return null;
-
     const statusData = {
       labels: ["Open", "Running", "Hold", "Closed"],
       datasets: [
@@ -245,115 +228,98 @@ const QuotationReportModal = ({ show, onHide }) => {
         },
       ],
     };
-
     return (
       <div className="report-charts">
         <div className="chart-container mb-4">
           <h5>Quotation Status Distribution</h5>
           <Bar
             data={statusData}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  position: "top",
-                },
-              },
-            }}
+            options={{ responsive: true, plugins: { legend: { position: "top" } } }}
           />
         </div>
       </div>
     );
   };
 
-  return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
-      <div style={fullScreenModalStyle}>
-        <Modal.Header closeButton>
-          <Modal.Title>Quotation Activity Report</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          
-          <div className="report-controls mb-3">
-            <Form.Group controlId="periodSelect">
-              <Form.Label>Report Period</Form.Label>
-              <Form.Control
-                as="select"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                disabled={loading || exportLoading}
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Form.Control>
-            </Form.Group>
-          </div>
+  const pageContent = (
+    <>
+      {error && <Alert variant="danger">{error}</Alert>}
 
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(k) => setActiveTab(k)}
-            className="mb-3"
+      {/* Controls Row */}
+      <Row className="mb-4 gx-3">
+        <Col md={3}>
+          <Form.Select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            disabled={loading || exportLoading}
           >
-            <Tab eventKey="summary" title="Summary">
-              {renderSummaryTab()}
-            </Tab>
-            <Tab eventKey="charts" title="Charts">
-              {renderChartsTab()}
-            </Tab>
-          </Tabs>
-        </Modal.Body>
-        <Modal.Footer>
-          <div className="d-flex justify-content-between w-100">
-            <div>
-              <Button 
-                variant="outline-primary" 
-                onClick={fetchReport}
-                disabled={loading || exportLoading}
-              >
-                {loading ? (
-                  <>
-                    <Spinner as="span" size="sm" animation="border" /> Refreshing...
-                  </>
-                ) : (
-                  "Refresh"
-                )}
-              </Button>
-            </div>
-            <div>
-              <Button
-                variant="outline-success"
-                onClick={handleExportToExcel}
-                disabled={loading || exportLoading || !reportData || reportData.totalQuotations === 0}
-                className="me-2"
-              >
-                {exportLoading ? (
-                  <>
-                    <Spinner as="span" size="sm" animation="border" /> Exporting...
-                  </>
-                ) : (
-                  <>
-                    <FaFileExcel className="me-1" />
-                    Export Excel
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={onHide}
-                disabled={exportLoading}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal.Footer>
+            <option value="">Select Report Period</option>
+            {periodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+
+        <Col md={3}>
+          <Button
+            className="w-100"
+            variant={activeTab === "summary" ? "primary" : "outline-primary"}
+            onClick={() => setActiveTab("summary")}
+            disabled={loading || exportLoading}
+          >
+            Summary
+          </Button>
+        </Col>
+
+        <Col md={3}>
+          <Button
+            className="w-100"
+            variant={activeTab === "charts" ? "primary" : "outline-primary"}
+            onClick={() => setActiveTab("charts")}
+            disabled={loading || exportLoading}
+          >
+            <FaChartBar className="me-1" />
+            Charts
+          </Button>
+        </Col>
+
+        <Col md={3}>
+          <Button
+            className="w-100"
+            variant="outline-success"
+            onClick={handleExportToExcel}
+            disabled={
+              loading || exportLoading || !reportData || reportData.totalQuotations === 0
+            }
+          >
+            {exportLoading ? (
+              <>
+                <Spinner as="span" size="sm" animation="border" /> Exporting...
+              </>
+            ) : (
+              <>
+                <FaFileExcel className="me-1" />
+                Export Excel
+              </>
+            )}
+          </Button>
+        </Col>
+      </Row>
+
+      <div className="mt-3">
+        {activeTab === "summary" && renderSummaryTab()}
+        {activeTab === "charts" && renderChartsTab()}
       </div>
-    </Modal>
+    </>
+  );
+
+  return (
+    <ReusablePageStructure title="Quotation Activity Report" footerContent={null}>
+      {pageContent}
+    </ReusablePageStructure>
   );
 };
 
-export default QuotationReportModal;
+export default QuotationReportPage;
