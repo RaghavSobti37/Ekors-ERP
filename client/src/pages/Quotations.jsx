@@ -726,15 +726,15 @@ export default function Quotations() {
   };
 
   const handleAddItem = (item) => {
-    const itemExists = quotationData.goods.some(
-      (existingItem) => existingItem.description === item.name
-    );
+    // const itemExists = quotationData.goods.some(
+    //   (existingItem) => existingItem.description === item.name
+    // );
 
-    if (itemExists) {
-      setError("This item is already added to the quotation.");
-      toast.warn("This item is already added to the quotation.");
-      return;
-    }
+    // if (itemExists) {
+    //   setError("This item is already added to the quotation.");
+    //   toast.warn("This item is already added to the quotation.");
+    //   return;
+    // }
 
     const newGoods = [
       ...quotationData.goods,

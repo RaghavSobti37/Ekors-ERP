@@ -742,13 +742,13 @@ export default function Dashboard() {
 
   const handleAddItemToTicket = (item) => {
     // New handler for adding item in edit modal
-    const itemExists = ticketData.goods.some(
-      (existingItem) => existingItem.description === item.name
-    );
-    if (itemExists) {
-      toast.warn("This item is already added to the ticket.");
-      return;
-    }
+    // const itemExists = ticketData.goods.some(
+    //   (existingItem) => existingItem.description === item.name
+    // );
+    // if (itemExists) {
+    //   toast.warn("This item is already added to the ticket.");
+    //   return;
+    // }
     const newGoods = [
       ...ticketData.goods,
       {
