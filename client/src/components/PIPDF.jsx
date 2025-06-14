@@ -17,8 +17,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     position: "absolute",
-    left: 30,   // changed from 'right' to 'left'
-    top: 30,    // keep it at the top
+    left: 30, // changed from 'right' to 'left'
+    top: 30, // keep it at the top
     width: 80,
     height: "auto",
   },
@@ -302,10 +302,12 @@ const PIPDF = ({ ticket }) => {
       <Page size="A4" style={styles.page}>
         {/* Logo in top right corner */}
         <Image style={styles.logo} src="/src/assets/logo.png" />
-        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text> 
+        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
         <Text style={styles.companyName}>{ourCompany.company.name}</Text>
         <Text style={styles.subHeader}>
-          {ourCompany.company.address}{"\n"}{ourCompany.company.city}
+          {ourCompany.company.address}
+          {"\n"}
+          {ourCompany.company.city}
         </Text>
         <Text style={styles.header}>GSTIN : {ourCompany.company.gstin}</Text>
 
@@ -317,7 +319,11 @@ const PIPDF = ({ ticket }) => {
           </View>
           <View style={styles.quotationHeaderCol}>
             <Text style={styles.quotationHeaderLabel}>Date:</Text>
-            <Text>{new Date(ticket.piDate || ticket.createdAt || Date.now()).toLocaleDateString()}</Text>
+            <Text>
+              {new Date(
+                ticket.piDate || ticket.createdAt || Date.now()
+              ).toLocaleDateString()}
+            </Text>
           </View>
         </View>
 
@@ -328,7 +334,7 @@ const PIPDF = ({ ticket }) => {
               <Text style={styles.clientDetailsLabel}>Billed to:</Text>
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Shipped to:</Text> 
+              <Text style={styles.clientDetailsLabel}>Shipped to:</Text>
             </View>
           </View>
 
@@ -337,18 +343,28 @@ const PIPDF = ({ ticket }) => {
               <Text>{ticket.clientName || ticket.companyName}</Text>
             </View>
             <View style={styles.clientDetailsCol}>
-              <Text>{ticket.shippingSameAsBilling ? (ticket.clientName || ticket.companyName) : (ticket.shippingAddressResolved?.companyName || ticket.clientName || ticket.companyName)}</Text>
+              <Text>
+                {ticket.shippingSameAsBilling
+                  ? ticket.clientName || ticket.companyName
+                  : ticket.shippingAddressResolved?.companyName ||
+                    ticket.clientName ||
+                    ticket.companyName}
+              </Text>
             </View>
           </View>
 
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
               <Text>{ticket.billingAddressResolved?.address1}</Text>
-              {ticket.billingAddressResolved?.address2 && <Text>{ticket.billingAddressResolved.address2}</Text>}
+              {ticket.billingAddressResolved?.address2 && (
+                <Text>{ticket.billingAddressResolved.address2}</Text>
+              )}
             </View>
             <View style={styles.clientDetailsCol}>
               <Text>{ticket.shippingAddressResolved?.address1}</Text>
-              {ticket.shippingAddressResolved?.address2 && <Text>{ticket.shippingAddressResolved.address2}</Text>}
+              {ticket.shippingAddressResolved?.address2 && (
+                <Text>{ticket.shippingAddressResolved.address2}</Text>
+              )}
             </View>
           </View>
 
@@ -373,12 +389,18 @@ const PIPDF = ({ ticket }) => {
           <View style={styles.clientDetailsRow}>
             <View style={styles.clientDetailsCol}>
               <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
-              <Text>{ticket.clientPhoneNum || "N/A"}</Text>
+              <Text>
+                {ticket.clientPhoneNum || ticket.clientPhone || "N/A"}
+              </Text>
             </View>
             <View style={styles.clientDetailsCol}>
               {/* Intentionally left blank for shipping side as per common PI formats, or can mirror if needed */}
-               <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
-               <Text>{ticket.shippingSameAsBilling ? (ticket.clientPhoneNum || "N/A") : (ticket.shippingAddressResolved?.phone || "N/A")}</Text>
+              <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
+              <Text>
+                {ticket.shippingSameAsBilling
+                  ? ticket.clientPhoneNum || "N/A"
+                  : ticket.shippingAddressResolved?.phone || "N/A"}
+              </Text>
             </View>
           </View>
 
@@ -401,13 +423,15 @@ const PIPDF = ({ ticket }) => {
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {ticket.clientGst || "N/A"}
+                {ticket.clientGst || ticket.clientGstNumber || "N/A"}{" "}
               </Text>
             </View>
             <View style={styles.clientDetailsCol}>
               <Text>
                 <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {ticket.shippingSameAsBilling ? (ticket.clientGst || "N/A") : (ticket.shippingAddressResolved?.gstin || "N/A")}
+                {ticket.shippingSameAsBilling
+                  ? ticket.clientGst || "N/A"
+                  : ticket.shippingAddressResolved?.gstin || "N/A"}
               </Text>
             </View>
           </View>
@@ -418,24 +442,50 @@ const PIPDF = ({ ticket }) => {
           {/* Table Header */}
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, { width: "5%" }]}>S.N</Text>
-            <Text style={[styles.tableHeaderCell, { width: "35%" }]}>Description of Goods</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>HSN/SAC Code</Text>
+            <Text style={[styles.tableHeaderCell, { width: "35%" }]}>
+              Description of Goods
+            </Text>
+            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>
+              HSN/SAC Code
+            </Text>
             <Text style={[styles.tableHeaderCell, { width: "8%" }]}>Qty.</Text>
             <Text style={[styles.tableHeaderCell, { width: "8%" }]}>Unit</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>Price</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%", borderRight: 0 }]}>Amount( )</Text>
+            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>
+              Price
+            </Text>
+            <Text
+              style={[styles.tableHeaderCell, { width: "12%", borderRight: 0 }]}
+            >
+              Amount( )
+            </Text>
           </View>
 
           {/* Table Rows */}
           {(ticket.goods || []).map((item, i) => (
             <View style={styles.tableRow} key={i}>
-              <Text style={[styles.tableCell, { width: "5%" }]}>{item.sn || (i + 1)}.</Text>
-              <Text style={[styles.descriptionCell, { width: "35%" }]}>{item.description}</Text>
-              <Text style={[styles.tableCell, { width: "12%" }]}>{item.hsnSacCode}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{(item.quantity || 0).toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{item.unit || "Nos"}</Text>
-              <Text style={[styles.tableCell, { width: "12%" }]}>{(item.price || 0).toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "12%", borderRight: 0 }]}>{(item.amount || 0).toFixed(2)}</Text>
+              <Text style={[styles.tableCell, { width: "5%" }]}>
+                {item.sn || i + 1}.
+              </Text>
+              <Text style={[styles.descriptionCell, { width: "35%" }]}>
+                {item.description}
+              </Text>
+              <Text style={[styles.tableCell, { width: "12%" }]}>
+                {item.hsnSacCode}
+              </Text>
+              <Text style={[styles.tableCell, { width: "8%" }]}>
+                {(item.quantity || 0).toFixed(2)}
+              </Text>
+              <Text style={[styles.tableCell, { width: "8%" }]}>
+                {item.unit || "Nos"}
+              </Text>
+              <Text style={[styles.tableCell, { width: "12%" }]}>
+                {(item.price || 0).toFixed(2)}
+              </Text>
+              <Text
+                style={[styles.tableCell, { width: "12%", borderRight: 0 }]}
+              >
+                {(item.amount || 0).toFixed(2)}
+              </Text>
             </View>
           ))}
         </View>
@@ -446,22 +496,34 @@ const PIPDF = ({ ticket }) => {
             <View style={styles.gstRow}>
               <Text style={styles.gstCell}>Add: CGST</Text>
               <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-              <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
-              <Text style={[styles.gstCell, { width: "12%" }]}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>
+                {(ticket.gstRate || 0).toFixed(2)} %
+              </Text>
+              <Text style={[styles.gstCell, { width: "12%" }]}>
+                {((ticket.gstAmount || 0) / 2).toFixed(2)}
+              </Text>
             </View>
             <View style={styles.gstRow}>
               <Text style={styles.gstCell}>Add: SGST</Text>
               <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-              <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
-              <Text style={[styles.gstCell, { width: "12%" }]}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+              <Text style={[styles.gstCell, { width: "8%" }]}>
+                {(ticket.gstRate || 0).toFixed(2)} %
+              </Text>
+              <Text style={[styles.gstCell, { width: "12%" }]}>
+                {((ticket.gstAmount || 0) / 2).toFixed(2)}
+              </Text>
             </View>
           </>
         ) : (
           <View style={styles.gstRow}>
             <Text style={styles.gstCell}>Add: IGST</Text>
             <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-            <Text style={[styles.gstCell, { width: "8%" }]}>{(ticket.gstRate || 0).toFixed(2)} %</Text>
-            <Text style={[styles.gstCell, { width: "12%" }]}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
+            <Text style={[styles.gstCell, { width: "8%" }]}>
+              {(ticket.gstRate || 0).toFixed(2)} %
+            </Text>
+            <Text style={[styles.gstCell, { width: "12%" }]}>
+              {(ticket.gstAmount || 0).toFixed(2)}
+            </Text>
           </View>
         )}
 
@@ -476,24 +538,46 @@ const PIPDF = ({ ticket }) => {
         {/* Tax Summary Table */}
         <View style={styles.taxTable}>
           <View style={styles.taxTableRow}>
-            <Text style={[styles.taxTableCell, styles.bold]}>{ticket.isSameState ? "Tax Rate" : "IGST Rate"}</Text>
+            <Text style={[styles.taxTableCell, styles.bold]}>
+              {ticket.isSameState ? "Tax Rate" : "IGST Rate"}
+            </Text>
             <Text style={[styles.taxTableCell, styles.bold]}>Taxable Amt.</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>{ticket.isSameState ? "CGST Amt." : "IGST Amt."}</Text>
-            {ticket.isSameState && <Text style={[styles.taxTableCell, styles.bold]}>SGST Amt.</Text>}
-            <Text style={[styles.taxTableLastCell, styles.bold]}>Total Tax</Text>
+            <Text style={[styles.taxTableCell, styles.bold]}>
+              {ticket.isSameState ? "CGST Amt." : "IGST Amt."}
+            </Text>
+            {ticket.isSameState && (
+              <Text style={[styles.taxTableCell, styles.bold]}>SGST Amt.</Text>
+            )}
+            <Text style={[styles.taxTableLastCell, styles.bold]}>
+              Total Tax
+            </Text>
           </View>
           <View style={styles.taxTableRow}>
-            <Text style={styles.taxTableCell}>{ticket.isSameState ? `${(ticket.gstRate || 0) * 2}%` : `${ticket.gstRate || 0}%`}</Text>
-            <Text style={styles.taxTableCell}>{(ticket.totalAmount || 0).toFixed(2)}</Text>
+            <Text style={styles.taxTableCell}>
+              {ticket.isSameState
+                ? `${(ticket.gstRate || 0) * 2}%`
+                : `${ticket.gstRate || 0}%`}
+            </Text>
+            <Text style={styles.taxTableCell}>
+              {(ticket.totalAmount || 0).toFixed(2)}
+            </Text>
             {ticket.isSameState ? (
               <>
-                <Text style={styles.taxTableCell}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
-                <Text style={styles.taxTableCell}>{((ticket.gstAmount || 0) / 2).toFixed(2)}</Text>
+                <Text style={styles.taxTableCell}>
+                  {((ticket.gstAmount || 0) / 2).toFixed(2)}
+                </Text>
+                <Text style={styles.taxTableCell}>
+                  {((ticket.gstAmount || 0) / 2).toFixed(2)}
+                </Text>
               </>
             ) : (
-              <Text style={styles.taxTableCell}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
+              <Text style={styles.taxTableCell}>
+                {(ticket.gstAmount || 0).toFixed(2)}
+              </Text>
             )}
-            <Text style={styles.taxTableLastCell}>{(ticket.gstAmount || 0).toFixed(2)}</Text>
+            <Text style={styles.taxTableLastCell}>
+              {(ticket.gstAmount || 0).toFixed(2)}
+            </Text>
           </View>
         </View>
 
@@ -505,8 +589,10 @@ const PIPDF = ({ ticket }) => {
         {/* Bank Details */}
         <View style={styles.bankDetails}>
           <Text style={styles.bold}>
-            Bank Details : {ourCompany.bankDetails.bankName}{"\n"}
-            Bank Account No:-{ourCompany.bankDetails.accountNo}, IFSC CODE No.{ourCompany.bankDetails.ifsc}
+            Bank Details : {ourCompany.bankDetails.bankName}
+            {"\n"}
+            Bank Account No:-{ourCompany.bankDetails.accountNo}, IFSC CODE No.
+            {ourCompany.bankDetails.ifsc}
           </Text>
         </View>
 

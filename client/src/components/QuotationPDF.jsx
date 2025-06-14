@@ -6,12 +6,12 @@ import {
   View,
   StyleSheet,
   Image,
-  PDFDownloadLink
+  PDFDownloadLink,
 } from "@react-pdf/renderer";
 import { generateQuotationDocx } from "../utils/generateQuotationDocx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
-import { Button } from "react-bootstrap"; 
+import { Button } from "react-bootstrap";
 
 // Styles
 const styles = StyleSheet.create({
@@ -174,7 +174,9 @@ const QuotationPDF = ({ quotation }) => (
           <View style={styles.section}>
             <Text>To,</Text>
             <Text>{quotation.client.companyName}</Text>
-            <Text>Site: {quotation.client.siteLocation}</Text>
+            {/* <Text>Site: {quotation.client.siteLocation}</Text> */}
+            <Text>GSTIN: {quotation.client.gstNumber || "N/A"}</Text>
+            <Text>Phone: {quotation.client.phone || "N/A"}</Text>
           </View>
 
           <Text style={styles.heading}>
@@ -207,13 +209,14 @@ const QuotationPDF = ({ quotation }) => (
             {quotation.goods.map((item, index) => (
               <View style={styles.tableRow} key={index}>
                 <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
-                 <View style={[styles.tableCol, styles.col2]}>
+                <View style={[styles.tableCol, styles.col2]}>
                   <Text>{item.description}</Text>
-                  {item.subtexts && item.subtexts.map((sub, subIndex) => (
-                    <Text key={subIndex} style={styles.subtextItem}>
-                      - {sub}
-                    </Text>
-                  ))}
+                  {item.subtexts &&
+                    item.subtexts.map((sub, subIndex) => (
+                      <Text key={subIndex} style={styles.subtextItem}>
+                        - {sub}
+                      </Text>
+                    ))}
                 </View>
                 <Text style={[styles.tableCol, styles.col3]}>{item.unit}</Text>
                 <Text style={[styles.tableCol, styles.col4]}>

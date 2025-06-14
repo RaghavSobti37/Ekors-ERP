@@ -1265,6 +1265,7 @@ export default function Quotations() {
         quantity: Number(item.quantity),
         price: Number(item.price),
         amount: Number(item.amount),
+         gstRate: Number(item.gstRate || 0),
         subtexts: item.subtexts || [], // Pass subtexts
       })),
       totalQuantity: Number(quotation.totalQuantity),

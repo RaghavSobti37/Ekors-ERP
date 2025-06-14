@@ -992,12 +992,10 @@ export default function Dashboard() {
           ...g,
           originalPrice: g.originalPrice,
           maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
-          // Send null if gstRate is explicitly null in state,
-          // otherwise send the number (or 0 if it's falsy but not null, e.g. undefined)
           gstRate: g.gstRate === null ? null : Number(g.gstRate) || 0,
         })),
-         subtexts: g.subtexts || [],
       };
+       updateData.goods = updateData.goods.map(g => ({ ...g, subtexts: g.subtexts || [] }));
 
       const responseData = await apiClient(`/tickets/${editTicket._id}`, {
         // Use apiClient
