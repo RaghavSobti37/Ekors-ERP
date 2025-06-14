@@ -1035,6 +1035,9 @@ export default function Quotations() {
 
   const handleCreateTicket = async (quotation) => {
     setSourceQuotationForTicket(quotation); // Store the source quotation
+    const defaultDeadline = new Date();
+    defaultDeadline.setDate(defaultDeadline.getDate() + 10);
+
 
     const ticketNumber = await generateTicketNumber();
     const quotationBillingAddressObject = quotation.billingAddress || {};
@@ -1089,6 +1092,7 @@ export default function Quotations() {
       grandTotal: 0, // Will be calculated by CreateTicketModal
       isBillingStateSameAsCompany: false, // Will be calculated by CreateTicketModal
       status: "Quotation Sent",
+      deadline: defaultDeadline.toISOString().split("T")[0], // Set default deadline
       clientPhone: quotation.client?.phone || "",
       clientGstNumber: quotation.client?.gstNumber || "",
     });
