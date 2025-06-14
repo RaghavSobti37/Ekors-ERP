@@ -807,10 +807,10 @@ export default function Items() {
         console.warn("Excel Parsing Issues:", responseData.parsingErrors);
       }
       if (
-        response.databaseProcessingErrors &&
-        response.databaseProcessingErrors.length > 0
+        responseData.databaseProcessingErrors &&
+        responseData.databaseProcessingErrors.length > 0
       ) {
-        successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
+        successMessage += ` Encountered ${responseData.databaseProcessingErrors.length} database processing errors. Check console for details.`;
         console.warn(
           "Database Processing Errors:",
           responseData.databaseProcessingErrors

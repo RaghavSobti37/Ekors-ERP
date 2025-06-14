@@ -893,14 +893,13 @@ export default function Quotations() {
         const minAllowedPrice =
           item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100);
         if (parseFloat(item.price) < minAllowedPrice) {
-          const priceErrorMsg = `Price for ${item.description} below min allowed.`;
+          const priceErrorMsg = `Warning: Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below the minimum allowed (₹${minAllowedPrice.toFixed(2)}) due to discount limit of ${item.maxDiscountPercentage}%. You can still save.`;
           setError(priceErrorMsg);
-          toast.error(priceErrorMsg);
-          return;
+          toast.warn(priceErrorMsg); // Changed to warn as it's not blocking
+          // Removed return; to allow submission
         }
       }
     }
-    if (error && error.includes("exceeds the maximum allowed")) setError(null);
 
     setIsLoading(true);
     setError(null);

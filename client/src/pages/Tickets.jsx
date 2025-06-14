@@ -518,7 +518,7 @@ export default function Dashboard() {
         if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
             const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
             if (newPrice < minAllowedPrice) {
-                priceValidationError = `Discount for ${item.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
+                priceValidationError = `Warning: Discount for ${item.description} exceeds ${maxDiscountPerc}%. Min price is ₹${minAllowedPrice.toFixed(2)}. You can still save.`;
             }
         } else { // No discount applicable or maxDiscountPercentage is 0
             if (newPrice < originalPrice) {
@@ -528,13 +528,13 @@ export default function Dashboard() {
             }
         }
     } else if (String(item.price).trim() !== "" && isNaN(newPrice)) {
-        priceValidationError = `Invalid price entered for ${item.description}.`;
+        priceValidationError = `Error: Invalid price entered for ${item.description}.`; // This could still be a blocking error
     }
 
     if (priceValidationError) {
         setError(priceValidationError);
         toast.warn(priceValidationError);
-        return false;
+        // return false; // Do not return false for warnings, allow saving
     } else {
         // Clear error only if it was related to this specific item's price validation
         if (error && (error.includes(`Discount for ${item.description}`) || error.includes(`Price for ${item.description}`))) {
@@ -542,7 +542,8 @@ export default function Dashboard() {
         }
         return true;
     }
-  };
+    return true; // Always return true so save is not blocked by this validation
+};
 
 
   const handleAddItemToTicket = (item) => {
@@ -651,7 +652,12 @@ export default function Dashboard() {
   const handleUpdateTicket = async () => {
     setIsLoading(true); setError(null);
     try {
-      for (const item of ticketData.goods) { if (!validateItemPrice(item)) { setIsLoading(false); return; } }
+      // Validate item prices and show warnings, but don't block
+      let hasHardPriceError = false;
+      for (const item of ticketData.goods) {
+        validateItemPrice(item); // This will now show warnings but return true
+        // You might add a check here if validateItemPrice could distinguish between warnings and hard errors
+      }
       if (error && error.includes("exceeds the maximum allowed")) setError(null);
       if (editTicket && ticketData.status !== editTicket.status && !statusChangeComment.trim()) {
         toast.warn("Comment for status change is required."); setIsLoading(false); return;
