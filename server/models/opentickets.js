@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const goodsSchema = new mongoose.Schema({
   srNo: { type: Number, required: true },
   description: { type: String, required: true },
+    subtexts: { type: [String], default: [] }, 
   hsnSacCode: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
@@ -30,6 +31,7 @@ const ticketSchema = new mongoose.Schema({
     type: [String], 
     validate: [arrayLimit, 'Shipping address needs 5 fields']
   },
+  shippingSameAsBilling: { type: Boolean, default: false }, // New field
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
   totalAmount: { type: Number, required: true },

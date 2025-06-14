@@ -6,13 +6,18 @@ const { formatDateRange } = require("../utils/helpers");
 const logger = require("../utils/logger"); // Import logger
 const PDFDocument = require("pdfkit");
 const mongoose = require("mongoose");
+const xlsx = require("xlsx"); // For Excel export
+const excelJS = require('exceljs');
 
 // Helper function to calculate date ranges
 const getDateRange = (period) => {
   const now = new Date();
   let startDate;
+  let endDate = new Date(); // Initialize endDate to now
 
-  switch (period) {
+  switch (
+    period?.toLowerCase() // Handle potential null/undefined period
+  ) {
     case "7days":
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
@@ -22,54 +27,74 @@ const getDateRange = (period) => {
     case "90days":
       startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
       break;
-    case "150days":
-      startDate = new Date(now.getTime() - 150 * 24 * 60 * 60 * 1000);
-      break;
     case "1year":
       const oneYearAgo = new Date(now); // Create a new Date object to avoid modifying 'now'
-      startDate = new Date(oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1));
+      startDate = new Date(
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+      );
       break;
     case "financialYear":
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
-      startDate = currentMonth >= 3
-        ? new Date(currentYear, 3, 1)
-        : new Date(currentYear - 1, 3, 1);
+      startDate =
+        currentMonth >= 3
+          ? new Date(currentYear, 3, 1)
+          : new Date(currentYear - 1, 3, 1);
+      break;
+    case "all":
+      startDate = null; // No start date for "all"
+      endDate = null; // No end date for "all"
       break;
     default:
       startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // Default to 7 days
       break;
   }
 
-  const endDate = new Date();
+  // For periods other than 'all', set time to start/end of day
+  if (startDate) startDate.setHours(0, 0, 0, 0);
+  if (endDate) endDate.setHours(23, 59, 59, 999);
 
-  logger.debug('report-getDateRange', `Calculated date range for period: ${period}`, null, { start: startDate.toISOString(), end: endDate.toISOString() });
+  logger.debug(
+    "report-getDateRange",
+    `Calculated date range for period: ${period}`,
+    null,
+    { start: startDate?.toISOString(), end: endDate?.toISOString() }
+  );
 
   return { startDate, endDate };
 };
 
 // Helper to format Date object to "YYYY-MM-DD" string
 const formatDateToYYYYMMDD = (dateObj) => {
-  return dateObj.toISOString().split('T')[0];
+  return dateObj.toISOString().split("T")[0];
 };
 
 // Internal function to fetch and process report data
 async function getUserReportDataInternal(userId, period) {
-  logger.debug('report-internal', `Fetching data for userId: ${userId}, period: ${period}`);
+  logger.debug(
+    "report-internal",
+    `Fetching data for userId: ${userId}, period: ${period}`
+  );
   const { startDate, endDate } = getDateRange(period);
 
-  logger.debug('report-internal', `Date range - Start: ${startDate.toISOString()}, End: ${endDate.toISOString()}`);
+  logger.debug(
+    "report-internal",
+    `Date range - Start: ${startDate.toISOString()}, End: ${endDate.toISOString()}`
+  );
   const user = await User.findById(userId).select(
     "firstname lastname email role createdAt"
   );
 
   if (!user) {
-    logger.warn('report-internal', `User not found for ID: ${userId}`);
+    logger.warn("report-internal", `User not found for ID: ${userId}`);
     throw new Error("User not found");
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
-  logger.debug('report-internal', `User found: ${user._id}, Converted userId to ObjectId: ${userObjectId}`);
+  logger.debug(
+    "report-internal",
+    `User found: ${user._id}, Converted userId to ObjectId: ${userObjectId}`
+  );
 
   const quotations = await Quotation.aggregate([
     {
@@ -86,7 +111,10 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug('report-internal', `Quotations aggregated: ${quotations.length}`);
+  logger.debug(
+    "report-internal",
+    `Quotations aggregated: ${quotations.length}`
+  );
 
   const tickets = await Ticket.aggregate([
     {
@@ -103,7 +131,7 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug('report-internal', `Tickets aggregated: ${tickets.length}`);
+  logger.debug("report-internal", `Tickets aggregated: ${tickets.length}`);
 
   const startDateString = formatDateToYYYYMMDD(startDate);
   const endDateString = formatDateToYYYYMMDD(endDate);
@@ -113,7 +141,7 @@ async function getUserReportDataInternal(userId, period) {
       $match: {
         user: userObjectId,
         date: { $gte: startDateString, $lte: endDateString }, // Assuming LogTime.date is "YYYY-MM-DD" string
-        "logs.timeSpent": { $exists: true, $ne: null, $ne: "" } // Ensure timeSpent exists and is not empty
+        "logs.timeSpent": { $exists: true, $ne: null, $ne: "" }, // Ensure timeSpent exists and is not empty
       },
     },
     { $unwind: "$logs" }, // Consider { preserveNullAndEmptyArrays: true } if needed
@@ -123,7 +151,7 @@ async function getUserReportDataInternal(userId, period) {
         timeSpentMinutes: {
           $let: {
             vars: {
-              parts: { $split: ["$logs.timeSpent", ":"] }
+              parts: { $split: ["$logs.timeSpent", ":"] },
             },
             in: {
               $cond: {
@@ -133,43 +161,72 @@ async function getUserReportDataInternal(userId, period) {
                     if: { $eq: [{ $size: "$$parts" }, 2] }, // "HH:MM" format
                     then: {
                       $add: [
- {
+                        {
                           $multiply: [
-                            { $convert: { input: { $arrayElemAt: ["$$parts", 0] }, to: "int", onError: 0, onNull: 0 } },
-                            60
-                          ]
+                            {
+                              $convert: {
+                                input: { $arrayElemAt: ["$$parts", 0] },
+                                to: "int",
+                                onError: 0,
+                                onNull: 0,
+                              },
+                            },
+                            60,
+                          ],
                         }, // Hours to minutes
-                        { $convert: { input: { $arrayElemAt: ["$$parts", 1] }, to: "int", onError: 0, onNull: 0 } } // Minutes// Minutes
-                      ]
+                        {
+                          $convert: {
+                            input: { $arrayElemAt: ["$$parts", 1] },
+                            to: "int",
+                            onError: 0,
+                            onNull: 0,
+                          },
+                        }, // Minutes// Minutes
+                      ],
                     },
                     else: {
                       $cond: {
                         if: { $eq: [{ $size: "$$parts" }, 1] }, // "MM" format (just minutes)
-                         then: { $convert: { input: { $arrayElemAt: ["$$parts", 0] }, to: "int", onError: 0, onNull: 0 } },
-                        else: 0 // Default to 0 if format is unexpected or not a parsable number string
-                      }
-                    }
-                  }
+                        then: {
+                          $convert: {
+                            input: { $arrayElemAt: ["$$parts", 0] },
+                            to: "int",
+                            onError: 0,
+                            onNull: 0,
+                          },
+                        },
+                        else: 0, // Default to 0 if format is unexpected or not a parsable number string
+                      },
+                    },
+                  },
                 },
-                else: { // If logs.timeSpent is already a number, use it directly. Otherwise, 0.
-                                    $cond: {
+                else: {
+                  // If logs.timeSpent is already a number, use it directly. Otherwise, 0.
+                  $cond: {
                     if: { $isNumber: "$logs.timeSpent" },
                     then: "$logs.timeSpent",
                     else: {
                       // Attempt to convert if it's a string that's just a number, e.g., "120"
                       $cond: {
                         if: { $eq: [{ $type: "$logs.timeSpent" }, "string"] },
-                        then: { $convert: { input: "$logs.timeSpent", to: "int", onError: 0, onNull: 0 } },
-                        else: 0 // Default to 0 if not a number and not a string that can be converted
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                        then: {
+                          $convert: {
+                            input: "$logs.timeSpent",
+                            to: "int",
+                            onError: 0,
+                            onNull: 0,
+                          },
+                        },
+                        else: 0, // Default to 0 if not a number and not a string that can be converted
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     {
       $group: {
@@ -179,9 +236,20 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug('report-internal', `LogTimes aggregated: ${logTimes.length > 0 ? logTimes[0].totalTasks : 0} tasks, ${logTimes.length > 0 ? logTimes[0].totalTimeSpent : 0} minutes`);
+  logger.debug(
+    "report-internal",
+    `LogTimes aggregated: ${
+      logTimes.length > 0 ? logTimes[0].totalTasks : 0
+    } tasks, ${logTimes.length > 0 ? logTimes[0].totalTimeSpent : 0} minutes`
+  );
 
-  const quotationStats = { total: 0, open: 0, hold: 0, closed: 0, totalAmount: 0 };
+  const quotationStats = {
+    total: 0,
+    open: 0,
+    hold: 0,
+    closed: 0,
+    totalAmount: 0,
+  };
   quotations.forEach((item) => {
     quotationStats.total += item.count;
     if (item._id === "open") quotationStats.open = item.count;
@@ -195,9 +263,21 @@ async function getUserReportDataInternal(userId, period) {
   const ticketStats = { total: 0, open: 0, hold: 0, closed: 0, totalAmount: 0 };
   tickets.forEach((item) => {
     ticketStats.total += item.count;
-    if (item._id === "Closed") { ticketStats.closed = item.count; ticketStats.totalAmount = item.totalAmount || 0; }
-    else if (item._id === "Hold") ticketStats.hold = item.count;
-    else if (["Quotation Sent", "PO Received", "Payment Pending", "Inspection", "Packing List", "Invoice Sent"].includes(item._id)) ticketStats.open += item.count;
+    if (item._id === "Closed") {
+      ticketStats.closed = item.count;
+      ticketStats.totalAmount = item.totalAmount || 0;
+    } else if (item._id === "Hold") ticketStats.hold = item.count;
+    else if (
+      [
+        "Quotation Sent",
+        "PO Received",
+        "Payment Pending",
+        "Inspection",
+        "Packing List",
+        "Invoice Sent",
+      ].includes(item._id)
+    )
+      ticketStats.open += item.count;
   });
 
   const logTimeStats = {
@@ -221,10 +301,18 @@ exports.getUserReport = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info('report-getUserReport', `Received request for user report. UserId: ${userId}, Period: ${period}`, req.user);
+    logger.info(
+      "report-getUserReport",
+      `Received request for user report. UserId: ${userId}, Period: ${period}`,
+      req.user
+    );
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.warn('report-getUserReport', `Invalid user ID: ${userId}`, req.user);
+      logger.warn(
+        "report-getUserReport",
+        `Invalid user ID: ${userId}`,
+        req.user
+      );
       return res.status(400).json({ success: false, error: "Invalid user ID" });
     }
 
@@ -235,11 +323,22 @@ exports.getUserReport = async (req, res, next) => {
       data: reportPayload,
     });
   } catch (err) {
-    logger.error('report-getUserReport', `Error fetching user report for UserId: ${req.params.userId}`, err, req.user);
+    logger.error(
+      "report-getUserReport",
+      `Error fetching user report for UserId: ${req.params.userId}`,
+      err,
+      req.user
+    );
     if (err.message === "User not found") {
-        return res.status(404).json({ success: false, error: "User not found" });
+      return res.status(404).json({ success: false, error: "User not found" });
     }
-    res.status(500).json({ success: false, error: "Server Error while fetching user report.", details: err.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        error: "Server Error while fetching user report.",
+        details: err.message,
+      });
   }
 };
 
@@ -326,19 +425,32 @@ exports.generateUserReportPDF = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info('report-generatePDF', `Received request to generate PDF. UserId: ${userId}, Period: ${period}`, req.user);
+    logger.info(
+      "report-generatePDF",
+      `Received request to generate PDF. UserId: ${userId}, Period: ${period}`,
+      req.user
+    );
 
     // Add validation
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.error('report-generatePDF', `Invalid user ID: ${userId}`, req.user);
+      logger.error(
+        "report-generatePDF",
+        `Invalid user ID: ${userId}`,
+        req.user
+      );
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
     const reportData = await getUserReportDataInternal(userId, period); // Use the internal function
-    logger.debug('report-generatePDF', `Report data fetched for PDF for UserId: ${userId}`, req.user);
-    
+    logger.debug(
+      "report-generatePDF",
+      `Report data fetched for PDF for UserId: ${userId}`,
+      req.user
+    );
+
     // Before creating PDF, verify data exists
-    if (!reportData || !reportData.user) { // Check reportData itself first
+    if (!reportData || !reportData.user) {
+      // Check reportData itself first
       throw new Error("No user data found");
     }
 
@@ -358,13 +470,17 @@ exports.generateUserReportPDF = async (req, res, next) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-     `attachment; filename=user-report-${user.firstname}-${user.lastname}.pdf`
+      `attachment; filename=user-report-${user.firstname}-${user.lastname}.pdf`
     );
 
     // Pipe to response
     doc.pipe(res);
 
-    logger.debug('report-generatePDF', `Starting PDF content generation for UserId: ${userId}`, req.user);
+    logger.debug(
+      "report-generatePDF",
+      `Starting PDF content generation for UserId: ${userId}`,
+      req.user
+    );
     // Add content with error handling
     doc.fontSize(18).text("User Activity Report", { align: "center" });
     doc.moveDown();
@@ -378,43 +494,365 @@ exports.generateUserReportPDF = async (req, res, next) => {
 
     // Quotation Statistics
     doc.fontSize(14).text("Quotation Statistics:", { underline: true });
-    doc.fontSize(12)
+    doc
+      .fontSize(12)
       .text(`Total Quotations: ${quotationStats.total}`)
-      .text(`Open: ${quotationStats.open} | Hold: ${quotationStats.hold} | Closed: ${quotationStats.closed}`)
-      .text(`Total Amount (Closed): ₹${(quotationStats.totalAmount || 0).toFixed(2)}`);
+      .text(
+        `Open: ${quotationStats.open} | Hold: ${quotationStats.hold} | Closed: ${quotationStats.closed}`
+      )
+      .text(
+        `Total Amount (Closed): ₹${(quotationStats.totalAmount || 0).toFixed(
+          2
+        )}`
+      );
     doc.moveDown();
 
     // Ticket Statistics
     doc.fontSize(14).text("Ticket Statistics:", { underline: true });
-    doc.fontSize(12)
+    doc
+      .fontSize(12)
       .text(`Total Tickets: ${ticketStats.total}`)
-      .text(`Open: ${ticketStats.open} | Hold: ${ticketStats.hold} | Closed: ${ticketStats.closed}`)
-      .text(`Total Amount (Closed): ₹${(ticketStats.totalAmount || 0).toFixed(2)}`);
+      .text(
+        `Open: ${ticketStats.open} | Hold: ${ticketStats.hold} | Closed: ${ticketStats.closed}`
+      )
+      .text(
+        `Total Amount (Closed): ₹${(ticketStats.totalAmount || 0).toFixed(2)}`
+      );
     doc.moveDown();
 
     // Time Log Statistics
     doc.fontSize(14).text("Time Logs:", { underline: true });
-    doc.fontSize(12)
+    doc
+      .fontSize(12)
       .text(`Total Tasks: ${logTimeStats.totalTasks}`)
-      .text(`Total Hours: ${((logTimeStats.totalTimeSpent || 0) / 60).toFixed(2)}`);
+      .text(
+        `Total Hours: ${((logTimeStats.totalTimeSpent || 0) / 60).toFixed(2)}`
+      );
     doc.moveDown();
 
     // Footer
-    doc.fontSize(10)
-      .text(`Generated on ${new Date().toLocaleDateString()}`, { align: "right" });
+    doc
+      .fontSize(10)
+      .text(`Generated on ${new Date().toLocaleDateString()}`, {
+        align: "right",
+      });
 
     // Finalize PDF
     doc.end();
-    logger.info('report-generatePDF', `PDF generation complete and sent for UserId: ${userId}`, req.user);
+    logger.info(
+      "report-generatePDF",
+      `PDF generation complete and sent for UserId: ${userId}`,
+      req.user
+    );
   } catch (err) {
-    logger.error('report-generatePDF', `PDF Generation Error for UserId: ${req.params.userId}`, err, req.user);
-    if (err.message === "User not found") { // Handle specific error from getUserReportDataInternal
+    logger.error(
+      "report-generatePDF",
+      `PDF Generation Error for UserId: ${req.params.userId}`,
+      err,
+      req.user
+    );
+    if (err.message === "User not found") {
+      // Handle specific error from getUserReportDataInternal
       if (!res.headersSent) {
-        return res.status(404).json({ success: false, error: "User not found for PDF generation" });
+        return res
+          .status(404)
+          .json({ success: false, error: "User not found for PDF generation" });
       }
     }
     if (!res.headersSent) {
-      res.status(500).json({ success: false, error: "Failed to generate PDF", details: err.message });
+      res
+        .status(500)
+        .json({
+          success: false,
+          error: "Failed to generate PDF",
+          details: err.message,
+        });
     }
+  }
+};
+
+exports.generateQuotationsReport = async (req, res) => {
+  const { period = "7days" } = req.query;
+  const { exportToExcel } = req.query; // To distinguish between summary and excel export
+  const user = req.user;
+
+  try {
+    const { startDate, endDate } = getDateRange(period);
+
+    let dateQuery = {};
+    if (startDate && endDate) {
+      dateQuery = { date: { $gte: startDate, $lte: endDate } };
+    } else if (startDate) {
+      dateQuery = { date: { $gte: startDate } };
+    } else if (endDate) {
+      dateQuery = { date: { $lte: endDate } };
+    }
+
+    let userQuery = {};
+    if (user.role !== "super-admin") {
+      userQuery = { user: user._id };
+    }
+
+    const finalQuery = { ...dateQuery, ...userQuery };
+
+    const quotations = await Quotation.find(finalQuery)
+      .populate("client", "companyName gstNumber email phone")
+      .populate("user", "firstname lastname email")
+      .sort({ date: -1 })
+      .lean();
+
+    // Calculate Summary Statistics
+    const totalQuotations = quotations.length;
+    const statusCounts = { open: 0, running: 0, hold: 0, closed: 0, other: 0 };
+    let totalClosedValue = 0;
+    const clientIds = new Set();
+
+    quotations.forEach((q) => {
+      if (q.status && statusCounts.hasOwnProperty(q.status.toLowerCase())) {
+        statusCounts[q.status.toLowerCase()]++;
+      } else {
+        statusCounts.other++;
+      }
+      if (q.client?._id) {
+        clientIds.add(q.client._id.toString());
+      }
+      if (q.status === "closed") {
+        totalClosedValue += q.grandTotal || 0;
+      }
+    });
+
+    const uniqueClientsCount = clientIds.size;
+
+    const summary = {
+      period: period,
+      dateRange:
+        startDate && endDate
+          ? `${formatDateToYYYYMMDD(startDate)} to ${formatDateToYYYYMMDD(
+              endDate
+            )}`
+          : startDate
+          ? `From ${formatDateToYYYYMMDD(startDate)}`
+          : endDate
+          ? `Up to ${formatDateToYYYYMMDD(endDate)}`
+          : "All Time",
+      totalQuotations,
+      statusCounts,
+      uniqueClientsCount,
+      totalClosedValue: parseFloat(totalClosedValue.toFixed(2)),
+    };
+
+    if (exportToExcel !== "true") {
+        // Return summary JSON
+        return res.status(200).json({ success: true, data: summary });
+    } else { // exportToExcel === "true"
+        if (quotations.length === 0) {
+            return res.status(404).json({ message: "No quotations found..." });
+        }
+
+        // Create workbook and worksheet
+        const workbook = new excelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Quotations Report");
+
+        // Define columns
+        worksheet.columns = [
+            { header: "Ref Number", key: "referenceNumber", width: 20 },
+            { header: "Date", key: "date", width: 15 },
+            { header: "Client Company", key: "clientCompany", width: 30 },
+            { header: "Client GST", key: "gstNumber", width: 20 },
+            { header: "Status", key: "status", width: 15 },
+            { header: "Item Description", key: "description", width: 40 },
+            { header: "Qty", key: "quantity", width: 10 },
+            { header: "Unit", key: "unit", width: 10 },
+            { header: "Price", key: "price", width: 15 },
+            { header: "Amount", key: "amount", width: 15 },
+            { header: "Grand Total", key: "grandTotal", width: 15 },
+        ];
+
+        // Add data
+        quotations.forEach((q) => {
+            if (q.goods && q.goods.length > 0) {
+                q.goods.forEach((good) => {
+                    worksheet.addRow({
+                        referenceNumber: q.referenceNumber,
+                        date: q.date ? new Date(q.date).toLocaleDateString() : "N/A",
+                        clientCompany: q.client?.companyName || "N/A",
+                        gstNumber: q.client?.gstNumber || "N/A",
+                        status: q.status,
+                        description: good.description,
+                        quantity: good.quantity,
+                        unit: good.unit,
+                        price: good.price,
+                        amount: good.amount,
+                        grandTotal: q.grandTotal,
+                    });
+                });
+            }
+        });
+
+        // Set response headers
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=quotations_report_${period}.xlsx`
+        );
+
+        // Send the workbook
+        return workbook.xlsx.write(res).then(() => {
+            res.status(200).end();
+        });
+    }
+  } catch (error) {
+    logger.error(
+      "report-quotations",
+      `Failed to generate quotations report (period: ${period})`,
+      error,
+      user
+    );
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Error generating quotations report",
+        error: error.message,
+      });
+  }
+};
+
+exports.generateTicketsReport = async (req, res) => {
+  const { period = "7days" } = req.query;
+  const { exportToExcel } = req.query;
+  const user = req.user;
+
+  try {
+    const { startDate, endDate } = getDateRange(period);
+
+    let dateQuery = {};
+    if (startDate && endDate) {
+      dateQuery = { createdAt: { $gte: startDate, $lte: endDate } };
+    } else if (startDate) {
+      dateQuery = { createdAt: { $gte: startDate } };
+    } else if (endDate) {
+      dateQuery = { createdAt: { $lte: endDate } };
+    }
+
+    let userAccessQuery = {};
+    // If not super-admin, restrict to tickets created by or assigned to the user.
+    // For a "user's report", 'createdBy' is often the primary focus.
+    // You might adjust this logic based on your exact reporting needs (e.g., include currentAssignee).
+    if (user.role !== "super-admin") {
+      userAccessQuery = { createdBy: user._id };
+    }
+
+    const finalQuery = { ...dateQuery, ...userAccessQuery };
+
+    const tickets = await Ticket.find(finalQuery)
+      .populate("createdBy", "firstname lastname email")
+      .populate("currentAssignee", "firstname lastname email")
+      // .populate("client", "companyName") // If tickets have a direct client ref
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Calculate Summary Statistics
+    const totalTickets = tickets.length;
+    const ticketStatusTypes = [
+      "Quotation Sent", "PO Received", "Payment Pending", "Inspection",
+      "Packing List", "Invoice Sent", "Hold", "Closed"
+    ];
+    const statusCounts = ticketStatusTypes.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, { other: 0 });
+
+    let totalValueClosedTickets = 0;
+    const companyNames = new Set();
+
+    tickets.forEach((t) => {
+      if (t.status && statusCounts.hasOwnProperty(t.status)) {
+        statusCounts[t.status]++;
+      } else if (t.status) {
+        statusCounts.other++; // Count statuses not in the predefined list
+      }
+
+      if (t.companyName) {
+        companyNames.add(t.companyName);
+      }
+      if (t.status === "Closed") {
+        totalValueClosedTickets += t.grandTotal || 0;
+      }
+    });
+
+    const uniqueClientsCount = companyNames.size;
+
+    const summary = {
+      period: period,
+      dateRange:
+        startDate && endDate
+          ? `${formatDateToYYYYMMDD(startDate)} to ${formatDateToYYYYMMDD(endDate)}`
+          : startDate
+          ? `From ${formatDateToYYYYMMDD(startDate)}`
+          : endDate
+          ? `Up to ${formatDateToYYYYMMDD(endDate)}`
+          : "All Time",
+      totalTickets,
+      statusCounts,
+      uniqueClientsCount,
+      totalValueClosedTickets: parseFloat(totalValueClosedTickets.toFixed(2)),
+    };
+
+    if (exportToExcel !== "true") {
+      return res.status(200).json({ success: true, data: summary });
+    } else {
+      if (tickets.length === 0) {
+        return res.status(404).json({ message: "No tickets found for export." });
+      }
+
+      const workbook = new excelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Tickets Report");
+
+      worksheet.columns = [
+        { header: "Ticket Number", key: "ticketNumber", width: 20 },
+        { header: "Date", key: "date", width: 15 },
+        { header: "Company Name", key: "companyName", width: 30 },
+        { header: "Status", key: "status", width: 15 },
+        { header: "Created By", key: "createdBy", width: 25 },
+        { header: "Assigned To", key: "assignedTo", width: 25 },
+        { header: "Item Description", key: "itemDescription", width: 40 },
+        { header: "Item Qty", key: "itemQuantity", width: 10 },
+        { header: "Item Price", key: "itemPrice", width: 15 },
+        { header: "Item Amount", key: "itemAmount", width: 15 },
+        { header: "Ticket Grand Total", key: "grandTotal", width: 15 },
+      ];
+
+      tickets.forEach((t) => {
+        const createdByFullName = t.createdBy ? `${t.createdBy.firstname || ''} ${t.createdBy.lastname || ''}`.trim() : "N/A";
+        const assignedToFullName = t.currentAssignee ? `${t.currentAssignee.firstname || ''} ${t.currentAssignee.lastname || ''}`.trim() : "N/A";
+        if (t.goods && t.goods.length > 0) {
+          t.goods.forEach((good) => {
+            worksheet.addRow({
+              ticketNumber: t.ticketNumber, date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "N/A",
+              companyName: t.companyName || "N/A", status: t.status, createdBy: createdByFullName, assignedTo: assignedToFullName,
+              itemDescription: good.description, itemQuantity: good.quantity, itemPrice: good.price, itemAmount: good.amount,
+              grandTotal: t.grandTotal,
+            });
+          });
+        } else { // Add a row for tickets with no goods, if desired
+          worksheet.addRow({
+            ticketNumber: t.ticketNumber, date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "N/A",
+            companyName: t.companyName || "N/A", status: t.status, createdBy: createdByFullName, assignedTo: assignedToFullName,
+            grandTotal: t.grandTotal,
+          });
+        }
+      });
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename=tickets_report_${period}.xlsx`);
+      return workbook.xlsx.write(res).then(() => res.status(200).end());
+    }
+  } catch (error) {
+    logger.error(`report-tickets: Failed to generate tickets report (period: ${period})`, error, user);
+    res.status(500).json({ success: false, message: "Error generating tickets report", error: error.message });
   }
 };

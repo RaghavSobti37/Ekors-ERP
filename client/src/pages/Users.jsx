@@ -1,41 +1,41 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import {
   FaTimes,
   FaUserShield,
   FaChartBar,
 } from "react-icons/fa"; // FaChartBar is not used, consider removing
 import apiClient from "../utils/apiClient"; // Import apiClient
+=======
+import { FaTimes, FaUserShield } from "react-icons/fa";
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
 import Navbar from "../components/Navbar";
-import { Table, Button as BsButton, Alert, Form } from "react-bootstrap"; // Renamed Button to BsButton to avoid conflict
+import { Table, Button as BsButton, Alert, Form } from "react-bootstrap";
 import Pagination from "../components/Pagination";
+import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable";
-import SortIndicator from "../components/SortIndicator";
-import UserReportModal from "../components/UserReportModal";
-import "../css/Users.css";
-import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-import Unauthorized from "../components/Unauthorized"; // Import Unauthorized component
-import "../css/Style.css";
+import SearchBar from "../components/Searchbar";
+import Unauthorized from "../components/Unauthorized";
 import ActionButtons from "../components/ActionButtons";
 import { getAuthToken } from "../utils/authUtils";
-import {
-  Eye, // View
-  PencilSquare, // Edit
-  Trash, // Delete
-  BarChart, // Generate Report
-  PlusCircle, // For Add User button icon
-} from 'react-bootstrap-icons';
+import apiClient from "../utils/apiClient";
+import { toast } from "react-toastify";
+import { handleApiError } from "../utils/helpers";
+import { PlusCircle } from "react-bootstrap-icons";
+import ReusableModal from "../components/ReusableModal";
+import UserReportModal from "../components/UserReportModal";
+import "../css/Users.css";
+
+//to-do add getauth token
 
 const Users = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportUser, setReportUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isUnauthorized, setIsUnauthorized] = useState(false); // State for 403 error
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     firstname: "",
@@ -44,12 +44,18 @@ const Users = () => {
     phone: "",
     role: "user",
     password: "",
+    confirmPassword: "",
+    isActive: true,
   });
+  const [passwordError, setPasswordError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Hardcoded to 4
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const navigate = useNavigate();
+  const [showUserReportModal, setShowUserReportModal] = useState(false);
+  const [selectedUserForReport, setSelectedUserForReport] = useState(null);
 
+<<<<<<< HEAD
   const handleGenerateReport = (user) => {
     console.log("[Users.jsx] handleGenerateReport: Generating report for user:", user);
     setReportUser(user);
@@ -103,20 +109,33 @@ const Users = () => {
         setError("Authentication failed. Please log in again.");
         // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
         // navigate("/login");
+=======
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient("/users");
+      setUsers(response.data);
+      setError("");
+      setIsUnauthorized(false);
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to fetch users");
+      setError(errorMessage);
+
+      if (err.status === 403) {
+        setIsUnauthorized(true);
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
-      setUsers([]); // Ensure users is an empty array on error
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log("[Users.jsx] useEffect: Component mounted, calling fetchUsers.");
     fetchUsers();
   }, []);
 
   const handleView = (user) => {
     setSelectedUser(user);
-    console.log("[Users.jsx] handleView: Selected user for view:", user);
     setShowViewModal(true);
   };
 
@@ -129,12 +148,14 @@ const Users = () => {
       phone: user?.phone || "",
       role: user?.role || "user",
       password: "",
-      isActive: user ? user.isActive : true, 
+      confirmPassword: "",
+      isActive: user?.isActive ?? true,
     });
-    console.log("[Users.jsx] handleEdit: Selected user for edit:", user, "FormData initialized:", formData);
+    setPasswordError("");
     setShowEditModal(true);
   };
 
+<<<<<<< HEAD
   const handleToggleActiveStatus = async (userToToggle) => {
     const newStatus = !userToToggle.isActive;
 
@@ -167,12 +188,27 @@ const Users = () => {
       // unless the page is reloaded or state is manually reset.
       // To ensure UI consistency, one might refetch the specific user or the whole list,
       // or revert the optimistic update if one was made before await.
+=======
+  const handleDelete = async (userToDelete) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        await apiClient(`/users/${userToDelete._id}`, { method: "DELETE" });
+        toast.success("User deleted successfully");
+        fetchUsers();
+      } catch (err) {
+        toast.error(handleApiError(err, "Failed to delete user"));
+      }
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
     }
   };
 
-  const handleDelete = async (userArg) => { // userArg can be the user object or just the ID string
-    const userIdToDelete = typeof userArg === 'string' ? userArg : userArg?._id;
+  const handleToggleActiveStatus = async (user) => {
+    const newStatus = !user.isActive;
+    const confirmMessage = newStatus
+      ? `Enable user ${user.firstname} ${user.lastname}?`
+      : `Disable user ${user.firstname} ${user.lastname}?`;
 
+<<<<<<< HEAD
     if (!userIdToDelete) {
       console.error("[Users.jsx] handleDelete: Invalid user ID for deletion. Argument received:", userArg);
       alert("Cannot delete user: User ID is missing or invalid.");
@@ -192,9 +228,20 @@ const Users = () => {
 
         console.log(
           `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
+=======
+    if (window.confirm(confirmMessage)) {
+      try {
+        await apiClient(`/users/${user._id}/status`, {
+          method: "PATCH",
+          body: { isActive: newStatus },
+        });
+        toast.success(
+          `User ${newStatus ? "enabled" : "disabled"} successfully`
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
         );
-        setUsers(users.filter((user) => user._id !== userIdToDelete));
+        fetchUsers();
       } catch (err) {
+<<<<<<< HEAD
         console.error(
           "[Users.jsx] handleDelete: Error deleting user. Status:", // apiClient error structure
           err.status, "Message:", err.data?.message || err.message
@@ -202,6 +249,9 @@ const Users = () => {
         alert(err.data?.message || err.message || "Failed to delete user");
         if (err.status === 401) { // apiClient error structure
         }
+=======
+        toast.error(handleApiError(err, "Failed to update user status"));
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
     }
   };
@@ -209,8 +259,8 @@ const Users = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
+<<<<<<< HEAD
   const handleSave = async () => {
     try {
       const action = selectedUser ? "Updating" : "Adding new";
@@ -274,76 +324,138 @@ const Users = () => {
     } catch (err) {
       console.error("[Users.jsx] handleSave: Error saving user:", err.data || err); // apiClient error structure
       alert(err.data?.error || err.data?.message || err.message || "Failed to save user");
+=======
+    if (name === "password" || name === "confirmPassword") {
+      setPasswordError("");
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Never";
-    const date = new Date(dateString);
-    return date.toLocaleString();
+  const validatePassword = () => {
+    setPasswordError("");
+
+    // For new users, password is required
+    if (!selectedUser && !formData.password) {
+      setPasswordError("Password is required");
+      return false;
+    }
+
+    // If password is provided (for new or existing user)
+    if (formData.password) {
+      if (formData.password.length < 5) {
+        setPasswordError("Password must be at least 5 characters");
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setPasswordError("Passwords do not match");
+        return false;
+      }
+    }
+    return true;
   };
 
-  // console.log("[Users.jsx] Rendering. Current searchTerm:", searchTerm, "currentPage:", currentPage);
-  const filteredUsers = users.filter(
-    (user) =>
-      user.firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleSave = async () => {
+    if (!validatePassword()) return;
+
+    try {
+      let response;
+      const userData = {
+        firstname: formData.firstname,
+        lastname: formData.lastname,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        isActive: formData.isActive,
+      };
+
+      // Include password in the payload if it's provided
+      if (formData.password) {
+        userData.password = formData.password;
+      }
+
+      if (selectedUser) {
+        // For existing user - update
+        response = await apiClient(`/users/${selectedUser._id}`, {
+          method: "PUT",
+          body: userData,
+        });
+      } else {
+        // For new user - create
+        response = await apiClient("/users", {
+          method: "POST",
+          body: userData,
+        });
+      }
+
+      toast.success(
+        `User ${selectedUser ? "updated" : "created"} successfully` +
+          (formData.password ? " (password changed)" : "")
+      );
+      setShowEditModal(false);
+      fetchUsers();
+    } catch (err) {
+      toast.error(handleApiError(err, "Failed to save user"));
+    }
+  };
+
+  const handleOpenReportModal = (userToReport) => {
+    setSelectedUserForReport(userToReport);
+    setShowUserReportModal(true);
+  };
+
+  const filteredUsers = users.filter((user) =>
+    `${user.firstname} ${user.lastname} ${user.email} ${user.role}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
-  // console.log("[Users.jsx] Filtered users count:", filteredUsers.length);
-  // Pagination calculations
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  // if (error && !showViewModal && !showEditModal) return <div className="container mt-4"><Alert variant="danger">{error}</Alert></div>;
-  // console.log("[Users.jsx] Current items for page:", currentItems.length, "Total pages:", totalPages);
+
+  if (isUnauthorized) {
+    return <Unauthorized />;
+  }
 
   return (
     <>
-      {isUnauthorized ? (
-        <Unauthorized />
-      ) : (
-    <div>
       <Navbar />
-
       <div className="container mt-4">
-        {" "}
-        {/* Changed from users-page to container mt-4 */}
-        {error && !showViewModal && !showEditModal && (
+        {error && (
           <Alert variant="danger" onClose={() => setError("")} dismissible>
             {error}
           </Alert>
         )}
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          {" "}
-          {/* Standard header */}
-          <h2 style={{ color: "black" }}>User Management</h2>
-          <div className="d-flex align-items-center">
+
+        <div
+          className="d-flex justify-content-between align-items-center mb-4"
+          style={{ width: "100%", overflow: "hidden" }}
+        >
+          <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
+            User Management
+          </h2>
+          <div
+            className="d-flex align-items-center"
+            style={{ width: "60%", minWidth: "300px" }}
+          >
             <SearchBar
               searchTerm={searchTerm}
-              setSearchTerm={(value) => {
-                console.log("[Users.jsx] Search term changed to:", value);
-                setSearchTerm(value);
-                setCurrentPage(1); // Reset to first page on new search
-              }}
-              placeholder="Search users by name, email, role..."
+              setSearchTerm={setSearchTerm}
+              placeholder="Search users..."
               showButton={true}
               onAddNew={() => handleEdit(null)}
               buttonText="Add New User"
-              buttonIcon={<PlusCircle size={18}/>}
-              className="me-0" // No margin needed if SearchBar handles its own gap or parent does
+              buttonIcon={<PlusCircle size={18} />}
+              style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
             />
           </div>
         </div>
-        {/* users-table-container can be removed or kept if it adds specific styling not covered by Bootstrap */}
+
         <ReusableTable
           columns={[
             {
-              key: 'name',
-              header: 'Name',
+              key: "name",
+              header: "Name",
               renderCell: (user) => (
                 <div className="user-avatar">
                   <span>{user.firstname?.charAt(0).toUpperCase()}</span>
@@ -357,282 +469,257 @@ const Users = () => {
                 </div>
               ),
             },
-            { key: 'email', header: 'Email' },
-            // { key: 'phone', header: 'Phone', renderCell: (user) => user.phone || "-" },
+            { key: "email", header: "Email" },
             {
-              key: 'role',
-              header: 'Role',
+              key: "role",
+              header: "Role",
               renderCell: (user) => (
                 <span className={`role-badge ${user.role.toLowerCase()}`}>
                   {user.role}
                 </span>
               ),
             },
-            // { key: 'createdAt', header: 'Created At', renderCell: (user) => formatDate(user.createdAt) },
-                        {
-              key: 'isActive',
-              header: 'Status',
+            {
+              key: "status",
+              header: "Status",
               renderCell: (user) => (
                 <Form.Check
                   type="switch"
-                  id={`user-active-switch-${user._id}`}
                   checked={user.isActive}
                   onChange={() => handleToggleActiveStatus(user)}
-                  disabled={currentUser?.id === user._id && user.role === 'super-admin'} // Super-admin cannot toggle their own status via this switch
-                  title={currentUser?.id === user._id && user.role === 'super-admin' ? "Super-admins cannot change their own status here." : (user.isActive ? "User is Active (click to disable)" : "User is Inactive (click to enable)")}
                 />
               ),
             },
           ]}
           data={currentItems}
           keyField="_id"
-          isLoading={loading && currentItems.length === 0}
-          error={error && currentItems.length === 0 ? error : null}
-          // onSort={requestSort} // Add if sorting is needed for Users page
-          // sortConfig={sortConfig} // Add if sorting is needed
+          isLoading={loading}
+          error={error}
           renderActions={(user) => (
             <ActionButtons
               item={user}
               onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onGenerateReport={handleGenerateReport}
-              isLoading={loading}
-              disabled={{ delete: user.role === "super-admin" }}
+              onGenerateReport={handleOpenReportModal}
             />
           )}
           noDataMessage="No users found"
-          tableClassName="mt-3"
-          theadClassName="table-dark"
-          tbodyClassName="text-center"
         />
+
         {filteredUsers.length > 0 && (
           <Pagination
             currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => {
-              if (page >= 1 && page <= totalPages) setCurrentPage(page);
-              console.log("[Users.jsx] Page changed to:", page);
-            }}
-            onGoToFirst={() => {setCurrentPage(1); console.log("[Users.jsx] Go to first page.");}}
-            onGoToLast={() => {setCurrentPage(totalPages); console.log("[Users.jsx] Go to last page.");
-            }}
+            totalItems={filteredUsers.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
           />
         )}
+
         {/* View Modal */}
         {showViewModal && selectedUser && (
-          <div
-            className="popup-overlay"
-            onClick={() => setShowViewModal(false)}
+          <ReusableModal
+            show={showViewModal}
+            onHide={() => setShowViewModal(false)}
+            title="User Details"
+            footerContent={
+              <BsButton
+                variant="secondary"
+                onClick={() => setShowViewModal(false)}
+              >
+                Close
+              </BsButton>
+            }
           >
-            <div
-              className="popup-form ninety-five-percent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <h2>User Details</h2>
-                <button
-                  className="close-btn"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  {" "}
-                  {/* Using existing close-btn class for '✖' */}
-                  <FaTimes />
-                </button>
+            <div className="user-profile">
+              <div className="avatar-large">
+                {selectedUser.firstname?.charAt(0).toUpperCase()}
               </div>
-              <div className="form-content">
-                {" "}
-                {/* Use form-content for padding */}
-                <div className="user-profile">
-                  <div className="avatar-large">
-                    {selectedUser.firstname?.charAt(0).toUpperCase()}
-                    {selectedUser.role === "super-admin" && (
-                      <FaUserShield
-                        className="super-admin-badge"
-                        title="Super Admin"
-                      />
-                    )}
-                  </div>
-                  <h3>
-                    {selectedUser.firstname} {selectedUser.lastname}
-                  </h3>
-                  <p className="user-email">{selectedUser.email}</p>
-                </div>
-                <div className="user-details-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Phone:</span>
-                    <span className="detail-value">
-                      {selectedUser.phone || "-"}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Role:</span>
-                    <span
-                      className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}
-                    >
-                      {selectedUser.role}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Created At:</span>
-                    <span className="detail-value">
-                      {formatDate(selectedUser.createdAt)}
-                    </span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Last Updated:</span>
-                    <span className="detail-value">
-                      {formatDate(selectedUser.updatedAt)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <h3>
+                {selectedUser.firstname} {selectedUser.lastname}
+              </h3>
+              <p className="user-email">{selectedUser.email}</p>
 
-              <div className="form-actions">
-                {" "}
-                {/* Use form-actions for consistency */}
-                <BsButton
-                  variant="secondary"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </BsButton>
+              <div className="user-details-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Phone:</span>
+                  <span className="detail-value">
+                    {selectedUser.phone || "-"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Role:</span>
+                  <span
+                    className={`detail-value role-badge ${selectedUser.role.toLowerCase()}`}
+                  >
+                    {selectedUser.role}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Status:</span>
+                  <span className="detail-value">
+                    {selectedUser.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </ReusableModal>
         )}
+
         {/* Edit Modal */}
         {showEditModal && (
-          <div
-            className="popup-overlay"
-            onClick={() => {
-              setShowEditModal(false);
-              setSelectedUser(null);
-            }}
-          >
-            <div
-              className="popup-form ninety-five-percent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <h2>{selectedUser ? "Edit User" : "Add New User"}</h2>
-                <button
-                  className="close-btn"
-                  onClick={() => {
-                    /* Using existing close-btn class for '✖' */
-                    setShowEditModal(false);
-                    setSelectedUser(null);
-                  }}
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <div className="form-content">
-                {" "}
-                {/* Use form-content for padding */}
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>First Name *</label>
-                    <input
-                      type="text"
-                      name="firstname"
-                      value={formData.firstname}
-                      onChange={handleInputChange}
-                      placeholder="Enter First Name"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Last Name *</label>
-                    <input
-                      type="text"
-                      name="lastname"
-                      value={formData.lastname}
-                      onChange={handleInputChange}
-                      placeholder="Enter Last Name"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Email *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter email"
-                      required
-                      disabled={!!selectedUser}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Phone</label>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Role *</label>
-                    <select
-                      name="role"
-                      value={formData.role}
-                      onChange={handleInputChange}
-                      disabled={selectedUser?.role === "super-admin"}
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                      {!selectedUser && (
-                        <option value="super-admin">Super Admin</option>
-                      )}
-                    </select>
-                  </div>
-                  {!selectedUser && (
-                    <div className="form-group">
-                      <label>Password *</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        placeholder="Enter password"
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="form-actions">
-                {" "}
-                {/* Use form-actions for consistency */}
+          <ReusableModal
+            show={showEditModal}
+            onHide={() => setShowEditModal(false)}
+            title={selectedUser ? "Edit User" : "Add New User"}
+            footerContent={
+              <>
                 <BsButton
                   variant="secondary"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedUser(null);
-                  }}
+                  onClick={() => setShowEditModal(false)}
                 >
                   Cancel
                 </BsButton>
-                <BsButton variant="success" onClick={handleSave}>
-                  {selectedUser ? "Update User" : "Create User"}
+                <BsButton variant="primary" onClick={handleSave}>
+                  {selectedUser ? "Update" : "Create"}
                 </BsButton>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <UserReportModal
-                  show={showReportModal}
-                  onHide={() => setShowReportModal(false)}
-                  user={reportUser} // This should be the full user object
+              </>
+            }
+          >
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>First Name <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  name="firstname"
+                  value={formData.firstname}
+                  onChange={handleInputChange}
+                  required
                 />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Last Name <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  name="lastname"
+                  value={formData.lastname}
+                  onChange={handleInputChange}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Email <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  disabled={!!selectedUser}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Phone</Form.Label>
+                <Form.Control
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Role <span className="text-danger">*</span></Form.Label>
+                <Form.Select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="super-admin">Super Admin</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Status</Form.Label>
+                <Form.Check
+                  type="switch"
+                  name="isActive"
+                  label={formData.isActive ? "Active" : "Inactive"}
+                  checked={formData.isActive}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
+                  }
+                />
+              </Form.Group>
+
+              <hr />
+              <h5>Password {selectedUser ? "Change" : ""}</h5>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  {selectedUser ? "New Password" : "Password *"}
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required={!selectedUser} // Required only for new users
+                  placeholder={
+                    selectedUser
+                      ? "Enter new password to change"
+                      : "Enter password"
+                  }
+                />
+                <Form.Text className="text-muted">
+                  Must be at least 5 characters.
+                </Form.Text>
+              </Form.Group>
+
+              {(formData.password || !selectedUser) && (
+                <Form.Group className="mb-3">
+                  <Form.Label>
+                    {selectedUser
+                      ? "Confirm New Password"
+                      : "Confirm Password *"}
+                  </Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required={!selectedUser || formData.password}
+                    placeholder={
+                      selectedUser ? "Confirm new password" : "Confirm password"
+                    }
+                  />
+                </Form.Group>
+              )}
+
+              {passwordError && (
+                <Alert variant="danger" className="mt-2">
+                  {passwordError}
+                </Alert>
+              )}
+            </Form>
+          </ReusableModal>
+        )}
       </div>
-    </div>
+
+      {/* User Report Modal */}
+      {showUserReportModal && selectedUserForReport && (
+        <UserReportModal
+          show={showUserReportModal}
+          onHide={() => {
+            setShowUserReportModal(false);
+            setSelectedUserForReport(null);
+          }}
+          user={selectedUserForReport}
+        />
       )}
+      <Footer />
     </>
   );
 };

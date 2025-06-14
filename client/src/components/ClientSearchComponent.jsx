@@ -1,25 +1,19 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
-import { Form, ListGroup, Spinner } from 'react-bootstrap';
+import React, { useState, useCallback, useEffect } from "react";
+import { Form, ListGroup, Spinner } from "react-bootstrap";
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
 
-const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const ClientSearchComponent = ({
+  onClientSelect,
+  placeholder,
+  currentClientId,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showResults, setShowResults] = useState(false);
-
-    const getAuthToken = () => {
-    try {
-      const token = localStorage.getItem("erp-user");
-    console.log("[DEBUG Client Quotations.jsx] getAuthToken retrieved:", token ? "Token present" : "No token");
-    return token || null;
-    } catch (e) {
-      console.error("Failed to parse user data:", e);
-      return null;
-    }
-  };
-  
 
   const fetchClients = useCallback(async (term) => {
     if (!term || term.trim().length < 2) {
@@ -28,19 +22,18 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
       return;
     }
     setIsLoading(true);
-    setError('');
+    setError("");
     try {
       const token = getAuthToken();
-      if (!token) throw new Error("Authentication token not found.");
-      
-      const response = await axios.get(`http://localhost:3000/api/clients/search?q=${term}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setResults(response.data);
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
+      // Use apiClient for the request
+      const data = await apiClient(`/clients/search?q=${term}`);
+      setResults(data);
       setShowResults(true);
     } catch (err) {
-      console.error('Error fetching clients:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to search clients.');
+      setError(handleApiError(err, "Failed to search clients."));
       setResults([]);
       setShowResults(false);
     } finally {
@@ -56,8 +49,8 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
 
   const handleSelectClient = (client) => {
     onClientSelect(client);
-    setSearchTerm(''); 
-    setResults([]);   
+    setSearchTerm("");
+    setResults([]);
     setShowResults(false);
   };
 
@@ -74,7 +67,10 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
       {isLoading && <Spinner animation="border" size="sm" className="mt-2" />}
       {error && <p className="text-danger small mt-1">{error}</p>}
       {showResults && results.length > 0 && (
-        <ListGroup className="position-absolute w-100" style={{ zIndex: 1051 /* Higher than modal */ }}>
+        <ListGroup
+          className="position-absolute w-100"
+          style={{ zIndex: 1051 /* Higher than modal */ }}
+        >
           {results.map((client) => (
             <ListGroup.Item
               key={client._id}
@@ -82,12 +78,17 @@ const ClientSearchComponent = ({ onClientSelect, placeholder, currentClientId })
               onClick={() => handleSelectClient(client)}
               disabled={currentClientId === client._id}
             >
-              {client.companyName} ({client.email})
+              {client.companyName}
+              {client.clientName && ` - ${client.clientName}`} ({client.email})
+              {client.gstNumber && ` / ${client.gstNumber}`}
             </ListGroup.Item>
           ))}
         </ListGroup>
       )}
-       {showResults && results.length === 0 && searchTerm.length >=2 && !isLoading && <p className="small mt-1">No clients found.</p>}
+      {showResults &&
+        results.length === 0 &&
+        searchTerm.length >= 2 &&
+        !isLoading && <p className="small mt-1">No clients found.</p>}
     </div>
   );
 };

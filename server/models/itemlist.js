@@ -16,9 +16,15 @@ const purchaseItemSchema = new mongoose.Schema({
     min: 0.01
   },
   price: {
-    type: Number,
+       type: Number, // Price at which this item was purchased in this transaction
     required: true,
     min: 0
+  },
+  sellingPriceAtPurchase: { // Optional: if you want to record what the item's selling price was at time of this purchase
+    type: Number,
+    required: false,
+    min: 0,
+    default: 0
   },
   gstRate: {
     type: Number,
@@ -94,9 +100,14 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  price: {
+   sellingPrice: { // Renamed from price
     type: Number,
     required: true,
+    min: 0
+  },
+  buyingPrice: { // New field for buying price
+    type: Number,
+    default: 0, // Default to 0, can be updated
     min: 0
   },
   unit: {
@@ -137,9 +148,20 @@ const itemSchema = new mongoose.Schema({
     max: 100,
     default: 0
   },
-    needsRestock: { type: Boolean, default: false },
-    lowStockThreshold: { type: Number, default: 5 } // Default low stock threshold
-,
+  needsRestock: { type: Boolean, default: false },
+  lowStockThreshold: { type: Number, default: 5 }, // Default low stock threshold
+  excelImportHistory: [{
+    action: { type: String, enum: ['created', 'updated'], required: true },
+    importedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // User who performed the import
+    importedAt: { type: Date, default: Date.now },
+    fileName: { type: String }, // Name of the Excel file
+    changes: [{ // For 'updated' action: logs specific field changes
+      field: String,
+      oldValue: mongoose.Schema.Types.Mixed,
+      newValue: mongoose.Schema.Types.Mixed,
+    }],
+    snapshot: mongoose.Schema.Types.Mixed // For 'created' action: stores the initial state of the item
+  }],
   // Reference to purchases instead of embedding them
   lastPurchaseDate: {
     type: Date,

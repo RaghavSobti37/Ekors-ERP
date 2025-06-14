@@ -62,6 +62,5 @@ const purchaseBackupSchema = new mongoose.Schema({
 });
 
 purchaseBackupSchema.index({ deletedAt: -1 });
-purchaseBackupSchema.index({ originalId: 1 });
 
 module.exports = mongoose.model('PurchaseBackup', purchaseBackupSchema);

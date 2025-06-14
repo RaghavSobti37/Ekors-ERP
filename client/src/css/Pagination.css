@@ -73,3 +73,16 @@
     color: #333;
     min-width: auto; /* Dots don't need fixed width */
   }
+
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Allows items to wrap on smaller screens */
+    gap: 1rem; /* Provides space if items wrap */
+    padding: 0.5rem 0; /* Optional: Add some vertical padding */
+  }
+  .pagination-left-slot, .pagination-right-slot {
+    display: flex; 
+    align-items: center;
+  }

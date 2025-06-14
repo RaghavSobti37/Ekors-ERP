@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    avatarUrl: { // Field to store the path to the avatar
+        type: String,
+        trim: true
+    },
     lastLogin: {
         type: Date
     }

@@ -7,6 +7,7 @@ import {
   PlusSquare, // Create Ticket
   ArrowLeftRight, // Transfer
   BarChart, // Generate Report
+  FileEarmarkExcel, // For Generic Excel Report
 } from 'react-bootstrap-icons';
 
 /**
@@ -21,6 +22,7 @@ import {
  * @param {function} [props.onCreateTicket] - Handler for the Create Ticket action (Quotations).
  * @param {function} [props.onTransfer] - Handler for the Transfer action (Tickets).
  * @param {function} [props.onGenerateReport] - Handler for the Generate Report action (Users).
+ * @param {function} [props.onGenerateExcelReport] - Handler for the generic Excel report action.
  * @param {boolean} [props.isLoading=false] - If true, all buttons are disabled.
  * @param {object|boolean} [props.disabled={}] - Allows specific buttons to be disabled. Can be a boolean to disable all, or an object like `{ edit: true, delete: false }`. Keys match action types ('view', 'edit', 'delete', etc.).
  * @param {string} [props.size='sm'] - Bootstrap button size ('sm', 'lg'). Defaults to 'sm'.
@@ -33,6 +35,7 @@ const ActionButtons = ({
   onCreateTicket,
   onTransfer,
   onGenerateReport,
+  onGenerateExcelReport,
   isLoading = false,
   disabled = {},
   size = 'sm',
@@ -114,6 +117,17 @@ const ActionButtons = ({
           title="Generate Report"
         >
           <BarChart />
+        </Button>
+      )}
+      {onGenerateExcelReport && (
+        <Button
+          variant="outline-success" // Or another appropriate variant
+          size={size}
+          onClick={() => onGenerateExcelReport(item)} // item might not be needed if it's a general report
+          disabled={isActionDisabled('generateExcelReport')}
+          title="Generate Excel Report"
+        >
+          <FileEarmarkExcel />
         </Button>
       )}
     </div>

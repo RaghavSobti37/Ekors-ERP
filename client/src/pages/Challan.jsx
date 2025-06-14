@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from "react";
-import Navbar from "../components/Navbar";
-import "../css/Style.css";
-import ActionButtons from "../components/ActionButtons";
-import {
-  Eye, // View
-  PencilSquare, // Edit
-  Trash, // Delete
-  BarChart, // Generate Report
-} from 'react-bootstrap-icons';
-import "../css/Challan.css";
-import Pagination from '../components/Pagination';
-import ReusableTable from '../components/ReusableTable'; // No SortIndicator needed as no sorting is implemented
+import Navbar from "../components/Navbar"; // Navigation bar component
+import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
+import Pagination from "../components/Pagination"; // Component for table pagination
+import Footer from "../components/Footer";
+import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Table, Button, Form, Alert } from "react-bootstrap";
+<<<<<<< HEAD
 import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
 
+=======
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import "react-toastify/dist/ReactToastify.css";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
+import { useAuth } from "../context/AuthContext"; // Authentication context
+import apiClient from "../utils/apiClient"; // Import apiClient
+import ClientSearchComponent from "../components/ClientSearchComponent"; // Import ClientSearchComponent
+import ReusableModal from "../components/ReusableModal.jsx"; // Import ReusableModal
+import "../css/Style.css"; // General styles
+import "../css/Challan.css"; // Specific styles for Challan page
+
+const CHALLANS_API_PATH = "/challans"; // Use a relative path for apiClient
+
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
 export default function Challan() {
+  const { user } = useAuth();
   const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
@@ -25,7 +34,7 @@ export default function Challan() {
     billNumber: "",
     media: null,
   });
-  const itemsPerPage = 4; // Hardcoded to 4
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [allChallans, setAllChallans] = useState([]);
   const [viewMode, setViewMode] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -35,10 +44,15 @@ export default function Challan() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [notification, setNotification] = useState(null);
-  const [documentPreview, setDocumentPreview] = useState({ url: null, type: null });
+  const [documentPreview, setDocumentPreview] = useState({
+    url: null,
+    type: null,
+  });
+  const challanFormId = "challan-form";
 
   // Show notification
-  const showNotification = (message, isSuccess) => {    showToast(message, isSuccess);
+  const showNotification = (message, isSuccess) => {
+    showToast(message, isSuccess);
   };
 
   // Fetch all challans on component mount
@@ -49,6 +63,7 @@ export default function Challan() {
   const fetchChallans = async () => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const responseData = await apiClient("challans"); // Use apiClient
         setAllChallans(responseData);
         setError(null);
@@ -56,22 +71,37 @@ export default function Challan() {
         const errorMessage = handleApiError(err, "Failed to load challans.");
         setError(errorMessage);
         console.error("Error fetching challans:", err);
+=======
+      const data = await apiClient(CHALLANS_API_PATH); // Use apiClient
+      setAllChallans(data); // Assuming apiClient returns parsed data (e.g., from response.json())
+      setError(null);
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to load challans.");
+      setError(errorMessage);
+      console.error("Error fetching challans:", err);
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
     } finally {
       setLoading(false);
-      }
+    }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this challan?")) {
       try {
         setLoading(true);
+<<<<<<< HEAD
         await apiClient(`challans/${id}`, { method: "DELETE" }); // Use apiClient
+=======
+        await apiClient(`${CHALLANS_API_PATH}/${id}`, { // Use apiClient
+          method: 'DELETE',
+        });
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
         showNotification("Challan deleted successfully!");
-          fetchChallans(); // Refreshes the list
-        } catch (err) {
-          const errorMessage = handleApiError(err, "Failed to delete challan.");
-          setError(errorMessage);
-          console.error("Error deleting challan:", err);
+        fetchChallans(); // Refreshes the list
+      } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to delete challan.");
+        setError(errorMessage);
+        console.error("Error deleting challan:", err);
       } finally {
         setLoading(false);
       }
@@ -105,12 +135,14 @@ export default function Challan() {
       submitData.append("email", formData.email);
       submitData.append("totalBilling", formData.totalBilling);
       submitData.append("billNumber", formData.billNumber || "");
-
+      // REMOVED: createdBy and updatedBy should be handled by the backend
+      // based on the authenticated user (req.user)
       if (formData.media) {
         submitData.append("media", formData.media);
       }
 
       if (editMode && editId) {
+<<<<<<< HEAD
         await apiClient(`challans/${editId}`, { // Use apiClient
           method: "PUT",
           body: submitData,
@@ -122,15 +154,31 @@ export default function Challan() {
           method: "POST",
           body: submitData,
           // apiClient handles FormData Content-Type
+=======
+        // Use apiClient; Content-Type for FormData is typically handled automatically
+        await apiClient(`${CHALLANS_API_PATH}/${editId}`, {
+          method: 'PUT',
+          body: submitData,
+        });
+        showNotification("Challan updated successfully!");
+      } else {
+        // Use apiClient; Content-Type for FormData is typically handled automatically
+        await apiClient(CHALLANS_API_PATH, {
+          method: 'POST',
+          body: submitData,
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
         });
         showNotification("Challan submitted successfully!");
       }
       fetchChallans();
-        resetForm();
-      } catch (err) {
-        console.error("Error submitting challan:", err);        
-          const errorMessage = handleApiError(err, "Failed to submit challan.");
-      setError(err.response?.data?.error || "Failed to submit challan. Please try again.");
+      resetForm();
+    } catch (err) {
+      console.error("Error submitting challan:", err);
+      const errorMessage = handleApiError(err, "Failed to submit challan.");
+      setError(
+        err.data?.error || err.message || // Adjusted for typical apiClient error structure
+          "Failed to submit challan. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -153,18 +201,36 @@ export default function Challan() {
     });
   };
 
+  const handleClientSelect = (client) => {
+    setFormData(prev => ({
+      ...prev,
+      companyName: client.companyName || "",
+      phone: client.phone || "",
+      email: client.email || "",
+      // Do not set client._id here as Challan model doesn't store it directly
+    }));
+  };
+
   const openViewPopup = async (challan) => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
       setViewData(responseData);
+=======
+      const data = await apiClient(`${CHALLANS_API_PATH}/${challan._id}`); // Use apiClient
+      setViewData(data); // Assuming apiClient returns parsed data
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
       setViewMode(true);
       setEditMode(false);
-        setShowPopup(true);
-      } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to fetch challan details.");
-          setError(errorMessage);
-          console.error("Error fetching challan details:", err);
+      setShowPopup(true);
+    } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Failed to fetch challan details."
+      );
+      setError(errorMessage);
+      console.error("Error fetching challan details:", err);
     } finally {
       setLoading(false);
     }
@@ -173,8 +239,13 @@ export default function Challan() {
   const openEditPopup = async (challan) => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
       const challanDataFromServer = responseData;
+=======
+      // Use apiClient and assume it returns parsed data
+      const challanDataFromServer = await apiClient(`${CHALLANS_API_PATH}/${challan._id}`);
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
 
       setFormData({
         companyName: challanDataFromServer.companyName,
@@ -190,10 +261,12 @@ export default function Challan() {
       setEditMode(true);
       setViewMode(false);
       setShowPopup(true);
-      } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to fetch challan details for editing");
-          setError(errorMessage);
-      setError("Failed to fetch challan details for editing");
+    } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Failed to fetch challan details for editing"
+      );
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -204,6 +277,7 @@ export default function Challan() {
       setLoading(true);
       // Clear previous errors before attempting fetch
       setError(null);
+<<<<<<< HEAD
       const blob = await apiClient(`challans/${challanId}/document`, { // Use apiClient
         responseType: 'blob', // Tell apiClient to expect a blob
       });
@@ -213,11 +287,40 @@ export default function Challan() {
       const contentType = blob.type; // Blob object has a 'type' property
       const url = window.URL.createObjectURL(blob);
       setDocumentPreview({ url, type: contentType });
+=======
+
+      // Assuming apiClient is fetch-like and returns a Response object for document requests
+      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`, {
+        rawResponse: true, // Indicate that we want the raw response object
+      });
+
+      if (!response.ok) {
+        let errorResponseMessage = `Failed to retrieve document. Status: ${response.status}`;
+        try {
+            // Attempt to parse a JSON error message from the response body
+            const errorData = await response.json();
+            errorResponseMessage = errorData.error || errorData.message || errorResponseMessage;
+        } catch (e) {
+            // If response body is not JSON or parsing fails, use status text or default message
+            errorResponseMessage = response.statusText || errorResponseMessage;
+        }
+        // Throw an error that handleApiError might be able to process
+        throw { response: { data: { error: errorResponseMessage } }, message: errorResponseMessage };
+      }
+
+      const contentTypeHeader = response.headers.get("content-type"); // Get header using Fetch API
+      const blobData = await response.blob(); // Get blob data using Fetch API
+      const objectURL = window.URL.createObjectURL(blobData);
+      setDocumentPreview({ url: objectURL, type: contentTypeHeader });
+>>>>>>> e24766db557916714610528af9dff9872e3a0639
     } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to load document. Please check the server.");
-          setError(errorMessage);
+      const errorMessage = handleApiError(
+        err,
+        "Failed to load document. Please check the server."
+      );
+      setError(errorMessage);
       // Ensure preview state is cleared on error
-      setDocumentPreview({ url: null, type: null });
+      setDocumentPreview({ url: null, type: null }); 
     } finally {
       setLoading(false);
     }
@@ -234,15 +337,28 @@ export default function Challan() {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = allChallans.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(allChallans.length / itemsPerPage);
 
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to the first page
+  };
+  
   const renderForm = () => {
     return (
-      <form onSubmit={handleSubmit} className="fullscreen-form">
+      <Form id={challanFormId} onSubmit={handleSubmit}> {/* Changed form to Form and added id */}
         <div className="form-content">
+          {!viewMode && ( // Only show client search in create/edit mode
+            <div className="form-group">
+              <label htmlFor="clientSearch">Search and Select Client</label>
+              <ClientSearchComponent
+                onClientSelect={handleClientSelect}
+                placeholder="Search client by Name, Email, GST..."
+              />
+            </div>
+          )}
           <div className="form-group">
-            <label htmlFor="companyName">Company Name</label>
-            <input
+            <Form.Label htmlFor="companyName">Company Name</Form.Label> {/* Changed to Form.Label */}
+            <Form.Control // Changed to Form.Control
               id="companyName"
               type="text"
               name="companyName"
@@ -255,8 +371,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="phone">Phone</label>
-            <input
+            <Form.Label htmlFor="phone">Phone</Form.Label>
+            <Form.Control
               id="phone"
               type="text"
               name="phone"
@@ -269,8 +385,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
+            <Form.Label htmlFor="email">Email</Form.Label>
+            <Form.Control
               id="email"
               type="email"
               name="email"
@@ -283,8 +399,8 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="totalBilling">Total Billing</label>
-            <input
+            <Form.Label htmlFor="totalBilling">Total Billing</Form.Label>
+            <Form.Control
               id="totalBilling"
               type="text"
               name="totalBilling"
@@ -297,13 +413,13 @@ export default function Challan() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="billNumber">Bill Number</label>
-            <input
+            <Form.Label htmlFor="billNumber">Bill Number</Form.Label>
+            <Form.Control
               id="billNumber"
               type="text"
               name="billNumber"
               placeholder="BILL NUMBER (NOT REQUIRED UNTIL CLOSING)"
-              value={viewMode ? (viewData.billNumber || "") : formData.billNumber}
+              value={viewMode ? viewData.billNumber || "" : formData.billNumber}
               onChange={handleInputChange}
               readOnly={viewMode}
             />
@@ -311,11 +427,13 @@ export default function Challan() {
 
           {viewMode ? (
             <div className="form-group">
-              <label>Document</label>
+              <Form.Label>Document</Form.Label>
               <div className="document-list">
                 {viewData.document ? (
                   <div className="document-item">
-                    <span className="document-name">{viewData.document.originalName}</span>
+                    <span className="document-name">
+                      {viewData.document.originalName}
+                    </span>
                     <Button
                       variant="info" // Using Bootstrap button
                       size="sm"
@@ -332,52 +450,67 @@ export default function Challan() {
             </div>
           ) : (
             <div className="form-group file-input-container">
-              <label htmlFor="mediaUpload">
+              <Form.Label htmlFor="mediaUpload">
                 Upload Documents {!editMode && "*"}
-              </label>
-              <input
+              </Form.Label>
+              <Form.Control
                 id="mediaUpload"
                 type="file"
                 name="media"
                 accept="image/*,application/pdf"
                 onChange={handleFileChange}
-                required={!editMode && !formData.media} 
+                required={!editMode && !formData.media}
               />
-              
+
               {formData.media && (
                 <div className="uploaded-files">
                   <p>Selected file: {formData.media.name}</p>
                 </div>
               )}
-              
+
               {editMode && viewData?.document && !formData.media && (
                 <div className="uploaded-files">
                   <p>Current file: {viewData.document.originalName}</p>
-                  <p className="note">Upload a new file to replace the existing one</p>
+                  <p className="note">
+                    Upload a new file to replace the existing one
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          <div className="form-actions">
-            {!viewMode && (
-              <Button type="submit" variant="success" disabled={loading}>
-                {loading ? "Processing..." : (editMode ? "UPDATE" : "SUBMIT")}
-              </Button>
-            )}
+           {viewMode && (
+          <>
+            <div className="form-group">
+              <Form.Label>Created By</Form.Label>
+              <Form.Control
+                type="text"
+                readOnly
+                value={`${viewData.createdBy?.firstname || ''} ${viewData.createdBy?.lastname || ''} (System if blank) on ${new Date(viewData.createdAt).toLocaleString()}`}
+              />
+            </div>
+            
+            {/* Removed UpdatedBy display as per request */}
+            {/* {viewData.updatedBy && (
+              <div className="form-group">
+                <Form.Label>Last Updated By</Form.Label>
+                <Form.Control
+                  type="text"
+                  readOnly
+                  value={`${viewData.updatedBy.firstname} ${viewData.updatedBy.lastname} on ${new Date(viewData.updatedAt).toLocaleString()}`}
+                />
+              </div>
+            )} */}
+          </>
+        )}
 
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={resetForm}
-            >
-              CANCEL
-            </Button>
-          </div>
-
-          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+          {error && (
+            <Alert variant="danger" className="mt-3">
+              {error}
+            </Alert>
+          )}
         </div>
-      </form>
+      </Form>
     );
   };
 
@@ -386,11 +519,14 @@ export default function Challan() {
       <Navbar />
       <div className="container mt-4">
         {notification && (
-          <Alert variant={notification.isSuccess ? 'success' : 'danger'} className="mb-3">
+          <Alert
+            variant={notification.isSuccess ? "success" : "danger"}
+            className="mb-3"
+          >
             {notification.message}
           </Alert>
         )}
-        
+
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2 style={{ color: "black" }}>Challan Records</h2>
           <Button
@@ -404,22 +540,38 @@ export default function Challan() {
           </Button>
         </div>
 
-        {loading && !showPopup && <div className="text-center my-3">Loading...</div>}
+        {loading && !showPopup && (
+          <div className="text-center my-3">Loading...</div>
+        )}
         {/* Display main error state here */}
         {error && !showPopup && <Alert variant="danger">{error}</Alert>}
 
         <ReusableTable
           columns={[
-            { key: 'companyName', header: 'Company Name' },
-            { key: 'phone', header: 'Phone' },
-            { key: 'email', header: 'Email' },
-            { key: 'totalBilling', header: 'Total Bill (₹)' },
-            { key: 'billNumber', header: 'Bill Number', renderCell: (item) => item.billNumber || "-" },
-            // { key: 'document', header: 'Document', renderCell: (item) => item.document ? (
-            //   <Button variant="link" size="sm" onClick={() => previewDocument(item._id)}>
-            //     View Document
-            //   </Button>
-            // ) : "No Document" },
+            { key: "companyName", header: "Company Name" },
+            { key: "phone", header: "Phone" },
+            { key: "email", header: "Email" },
+            { key: "totalBilling", header: "Total Bill (₹)" },
+            {
+              key: "billNumber",
+              header: "Bill Number",
+              renderCell: (item) => item.billNumber || "-",
+            },
+            {
+              key: "createdBy",
+              header: "Created By",
+              renderCell: (item) => (
+                <div>
+                  <div>{`${item.createdBy?.firstname || ''} ${item.createdBy?.lastname || ''}`.trim() || "System"}</div>
+                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                </div>
+              ),
+            },
+            // { // "Last Updated" column removed as per request
+            //   key: "updatedInfo",
+            //   header: "Last Updated",
+            //   renderCell: (item) => ( ... )
+            // },
           ]}
           data={currentItems}
           keyField="_id"
@@ -430,7 +582,7 @@ export default function Challan() {
               item={challan}
               onView={openViewPopup}
               onEdit={openEditPopup}
-              onDelete={handleDelete}
+              onDelete={user?.role === 'super-admin' ? () => handleDelete(challan._id) : undefined}
               isLoading={loading}
             />
           )}
@@ -440,56 +592,72 @@ export default function Challan() {
         />
 
         {showPopup && (
-          <div className="popup-overlay" onClick={resetForm}>
-            <div className="popup-form ninety-five-percent" onClick={(e) => e.stopPropagation()}>
-              <div className="popup-header">
-                <h3>{viewMode ? "View Challan" : (editMode ? "Edit Challan" : "Create New Challan")}</h3>
-                <button
-                  className="close-btn"
-                  onClick={resetForm}
-                >
-                  ✖
-                </button>
-              </div>
-              {renderForm()}
-            </div>
-          </div>
+          <ReusableModal
+            show={showPopup}
+            onHide={resetForm}
+            title={
+              viewMode
+                ? "View Challan"
+                : editMode
+                ? "Edit Challan"
+                : "Create New Challan"
+            }
+            footerContent={
+              <>
+                {!viewMode && (
+                  <Button type="submit" form={challanFormId} variant="success" disabled={loading}>
+                    {loading ? "Processing..." : editMode ? "UPDATE" : "SUBMIT"}
+                  </Button>
+                )}
+                <Button type="button" variant="secondary" onClick={resetForm}>
+                  CANCEL
+                </Button>
+              </>
+            }
+          >
+            {renderForm()}
+          </ReusableModal>
         )}
 
         {/* This modal shows when documentPreview.url is set */}
         {documentPreview && documentPreview.url && (
-          <div className="document-preview-overlay" onClick={closePreview}>
-            <div className="document-preview-container" onClick={(e) => e.stopPropagation()}>
-              <button className="close-preview-btn" onClick={closePreview}>✖</button>
-              {/* Check if type is PDF to use iframe, otherwise use img */}
-              { documentPreview.type && documentPreview.type.includes('application/pdf') ? (
-                <iframe 
-                  src={documentPreview.url}
-                  title="Document Preview" 
-                  className="document-preview"
-                  // Add sandbox attribute for security if needed, depending on source
-                  // sandbox="allow-scripts allow-same-origin" 
-                />
-              ) : (
-                // Assume other types are images
-                <img 
-                  src={documentPreview.url}
-                  alt="Document Preview" 
-                  className="document-preview"
-                />
-              )}
-            </div>
-          </div>
+          <ReusableModal
+            show={!!documentPreview.url}
+            onHide={closePreview}
+            title="Document Preview"
+            // Default ReusableModal close button in footer is fine here
+          >
+            {documentPreview.type &&
+            documentPreview.type.includes("application/pdf") ? (
+              <iframe
+                src={documentPreview.url}
+                title="Document Preview"
+                style={{ width: "100%", height: "75vh", border: "none" }}
+              />
+            ) : (
+              <img
+                src={documentPreview.url}
+                alt="Document Preview"
+                style={{ maxWidth: "100%", maxHeight: "75vh", display: "block", margin: "auto" }}
+              />
+            )}
+          </ReusableModal>
         )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => {
-            if (page >= 1 && page <= totalPages) setCurrentPage(page);
-          }}
-        />
+        {allChallans.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={allChallans.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(page) => {
+              const totalPages = Math.ceil(allChallans.length / itemsPerPage);
+              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+            }}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
+      <Footer />
     </div>
   );
 }

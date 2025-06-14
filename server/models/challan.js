@@ -11,6 +11,16 @@ const challanSchema = new mongoose.Schema({
     contentType: String,
     originalName: String,
   },
+  // Add user tracking fields
+  createdBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  updatedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Challan", challanSchema);

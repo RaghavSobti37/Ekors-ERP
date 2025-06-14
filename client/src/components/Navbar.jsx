@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import "../css/Navbar.css";
+import "../css/Navbar.css"; // Main Navbar styles
 import {
   FaUser,
   FaFileInvoice,
@@ -9,19 +9,32 @@ import {
   FaBoxOpen,
   FaUsers,
   FaExclamationTriangle, // For restock alerts
-  FaExclamationCircle,   // For low quantity warnings
+  FaExclamationCircle, // For low quantity warnings
 } from "react-icons/fa";
-import { Navbar as BootstrapNavbar, Nav, NavDropdown, Button } from "react-bootstrap";
+import {
+  Navbar as BootstrapNavbar,
+  Nav,
+  NavDropdown,
+  Button,
+} from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import apiClient from "../utils/apiClient"; // Assuming you have this
 import { getAuthToken } from "../utils/authUtils"; // Assuming you have this
-
-// import AddNewItem from '../pages/AddNewItem';
+import {
+  Form,
+  Button as BsButton,
+  Alert,
+  Row,
+  Col,
+  // Image, // Image component might no longer be needed if only icons are used. Let's check usage.
+} from "react-bootstrap"; // For Edit Profile Modal
+import ReusableModal from "./ReusableModal.jsx"; // Import ReusableModal
+import { showToast, handleApiError } from "../utils/helpers"; // For toasts and error handling
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY = 'globalLowStockThresholdSetting';
+const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -31,7 +44,16 @@ export default function Navbar({ showPurchaseModal }) {
   const navigate = useNavigate();
   const [restockAlertCount, setRestockAlertCount] = useState(0);
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserContext } = useAuth(); // Added updateUserContext
+  const [profileFormData, setProfileFormData] = useState({
+    firstname: "", // Added firstname
+    lastname: "",  // Added lastname
+    phone: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [profileError, setProfileError] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
@@ -40,11 +62,15 @@ export default function Navbar({ showPurchaseModal }) {
     if (!user) return; // Don't fetch if not logged in
 
     const fetchRestockData = async () => {
-      const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
+      const currentThreshold =
+        parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
+        DEFAULT_LOW_QUANTITY_THRESHOLD;
       try {
         const token = getAuthToken();
         if (!token) return;
-        const response = await apiClient(`/items/restock-summary?lowGlobalThreshold=${currentThreshold}`);
+        const response = await apiClient(
+          `/items/restock-summary?lowGlobalThreshold=${currentThreshold}`
+        );
         setRestockAlertCount(response.restockNeededCount || 0);
         setLowStockWarningCount(response.lowStockWarningCount || 0);
       } catch (error) {
@@ -56,8 +82,21 @@ export default function Navbar({ showPurchaseModal }) {
     fetchRestockData();
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
-    return () => clearInterval(intervalId); 
-  }, [user]); // Re-fetch if user logs in/out. Threshold changes will be picked up on next interval or page load.
+    return () => clearInterval(intervalId);
+  }, [user]); 
+
+  useEffect(() => {
+    if (user) {
+      setProfileFormData((prev) => ({
+        ...prev,
+        firstname: user.firstname || "",
+        lastname: user.lastname || "",
+        phone: user.phone || "",
+      }));
+    } else {
+      setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
+    }
+  }, [user]);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -95,8 +134,60 @@ export default function Navbar({ showPurchaseModal }) {
   };
 
   const handleStockAlertClick = () => {
-    const currentThreshold = parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
-    navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`);
+    const currentThreshold =
+      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
+      DEFAULT_LOW_QUANTITY_THRESHOLD;
+    navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`); // Corrected path
+  };
+
+  const handleProfileInputChange = (e) => {
+    setProfileFormData({ ...profileFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleProfileSave = async () => {
+    setProfileError("");
+    if (
+      profileFormData.newPassword &&
+      profileFormData.newPassword !== profileFormData.confirmPassword
+    ) {
+      setProfileError("New passwords do not match.");
+      return;
+    }
+    if (profileFormData.newPassword && profileFormData.newPassword.length < 5) {
+      setProfileError("New password must be at least 5 characters long.");
+      return;
+    }
+
+    setProfileLoading(true);
+    try {
+      const payload = {
+        firstname: profileFormData.firstname,
+        lastname: profileFormData.lastname,
+        phone: profileFormData.phone
+      };
+      if (profileFormData.newPassword) {
+        payload.password = profileFormData.newPassword;
+      }
+      const updatedUser = await apiClient("/users/profile", {
+        method: "PATCH",
+        body: payload,
+      });
+      updateUserContext(updatedUser.data); // Assuming API returns { data: userObject }
+      // Update local form state for firstname and lastname as well, as they are now editable
+      setProfileFormData(prev => ({ ...prev, firstname: updatedUser.data.firstname, lastname: updatedUser.data.lastname, phone: updatedUser.data.phone }));
+      showToast("Profile updated successfully!", true);
+      setShowEditModal(false);
+      setProfileFormData({
+        ...profileFormData,
+        newPassword: "",
+        confirmPassword: "",
+      }); // Clear password fields
+    } catch (err) {
+      const errorMsg = handleApiError(err, "Failed to update profile.");
+      setProfileError(errorMsg);
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   return (
@@ -104,8 +195,7 @@ export default function Navbar({ showPurchaseModal }) {
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo">
-            <img src="/src/assets/logo.png" alt="E-KORS" className="logo-img" />
-            {/* <span>E-KORS</span> */}
+            <img src="/logo.png" alt="E-KORS" className="logo-img" />
           </div>
 
           <div className="nav-links">
@@ -143,67 +233,72 @@ export default function Navbar({ showPurchaseModal }) {
               <FaClipboardList /> Challan
             </NavLink>
 
-            <div
-              className="dropdown-wrapper"
-              onMouseEnter={handleMouseEnterDropdown}
-              onMouseLeave={handleMouseLeaveDropdown}
-            >
+            {user && user.role !== "user" && (
+              <div
+                className="dropdown-wrapper"
+                onMouseEnter={handleMouseEnterDropdown}
+                onMouseLeave={handleMouseLeaveDropdown}
+              >
+                <NavLink
+                  to="/itemslist"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  <FaBoxOpen /> Items List
+                </NavLink>
+                {showItemsDropdown && (
+                  <div className="dropdown-menu">
+                    <div
+                      onClick={handleViewAllItems}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      View All Items
+                    </div>
+                    <div
+                      onClick={showPurchaseModal}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Update Stock
+                    </div>
+                    <div
+                      onClick={handlePurchaseHistoryClick}
+                      style={{ cursor: "pointer", padding: "10px 15px" }}
+                    >
+                      Purchase History
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {user && user.role !== "user" && (
               <NavLink
-                to="/itemslist"
+                to="/users"
                 className={({ isActive }) =>
                   isActive ? "nav-link active" : "nav-link"
                 }
               >
-                <FaBoxOpen /> Items List
+                <FaUsers /> Users
               </NavLink>
-              {showItemsDropdown && (
-                <div className="dropdown-menu">
-                  <div
-                    onClick={handleViewAllItems}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    View All Items
-                  </div>
-                  <div
-                    onClick={showPurchaseModal}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Update Stock
-                  </div>
-                  <div
-                    onClick={handlePurchaseHistoryClick}
-                    style={{ cursor: "pointer", padding: "10px 15px" }}
-                  >
-                    Purchase History
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <NavLink
-              to="/users"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <FaUsers /> Users
-            </NavLink>
+            )}
 
             {/* Stock Alert Notification Area */}
-          {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && (
-            <div
-              className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
-              onClick={handleStockAlertClick}
-              title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
-                localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) || DEFAULT_LOW_QUANTITY_THRESHOLD
-              }): ${lowStockWarningCount} items. Click to view.`}
-            >
-              <FaExclamationTriangle className="icon-restock" />
-              <span className="alert-count">{restockAlertCount}</span>
-              <FaExclamationCircle className="icon-low-stock" />
-              <span className="alert-count">{lowStockWarningCount}</span>
-            </div>
-          )}
+            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && user.role !== "user" && (
+              <div
+                className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
+                onClick={handleStockAlertClick}
+                title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
+                  localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
+                  DEFAULT_LOW_QUANTITY_THRESHOLD
+                }): ${lowStockWarningCount} items. Click to view.`}
+              >
+                <FaExclamationTriangle className="icon-low-stock" />
+                <span className="alert-count">{restockAlertCount}</span>
+                <FaExclamationCircle className="icon-restock" />
+                <span className="alert-count">{lowStockWarningCount}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -213,10 +308,11 @@ export default function Navbar({ showPurchaseModal }) {
           onMouseLeave={handleMouseLeaveProfile}
         >
           <div className="profile-section">
+            {/* Always show placeholder */}
             <div className="profile-icon">
               <FaUser />
             </div>
-            <span>{user?.firstname || "User"}</span>
+            <span className="navbar-username">{user?.firstname || "User"}</span>
           </div>
 
           {showProfilePopup && (
@@ -227,6 +323,12 @@ export default function Navbar({ showPurchaseModal }) {
                 className="profile-pic"
               /> */}
               <div className="profile-details">
+                <div className="profile-avatar-large-container">
+                  {/* Always show placeholder */}
+                  <div className="profile-avatar-large-placeholder">
+                    <FaUser size={40} />
+                  </div>
+                </div>
                 <p>
                   <strong>
                     {user?.firstname} {user?.lastname}
@@ -238,9 +340,9 @@ export default function Navbar({ showPurchaseModal }) {
                 <p>
                   <strong>Phone:</strong> {user?.phone || "N/A"}
                 </p>
-                <p>
+                {/* <p>
                   <strong>Role:</strong> {user?.role || "N/A"}
-                </p>
+                </p> */}
               </div>
               <button
                 className="edit-btn"
@@ -256,55 +358,128 @@ export default function Navbar({ showPurchaseModal }) {
         </div>
       </nav>
 
-      {showEditModal && (
-        <div className="edit-modal-overlay">
-          <div className="edit-modal">
-            <h2>Edit Profile</h2>
-            <div className="form-group">
-              <label>First Name</label>
-              <input type="text" defaultValue={user?.firstname || ""} />
-            </div>
-            <div className="form-group">
-              <label>Last Name</label>
-              <input type="text" defaultValue={user?.lastname || ""} />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" defaultValue={user?.email || ""} />
-            </div>
-            <div className="form-group">
-              <label>Mobile Number</label>
-              <input type="text" defaultValue={user?.phone || ""} />
-            </div>
-            <div className="form-group">
-              <label>Role</label>
-              <input type="text" defaultValue={user?.role || ""} />
-            </div>
-            <div className="form-group">
-              <label>Change Password</label>
-              <input type="password" placeholder="Enter new password" />
-            </div>
-            <div className="modal-buttons">
-              <button
-                className="save-btn"
-                onClick={() => setShowEditModal(false)}
-              >
-                Save
-              </button>
-              <button
-                className="cancel-btn"
-                onClick={() => setShowEditModal(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* {showNewItemModal && (
-        <AddNewItem onClose={() => setShowNewItemModal(false)} />
-      )} */}
+      {/* Edit Profile Modal */}
+      <ReusableModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        title="Edit Profile"
+        footerContent={
+          <>
+            <BsButton
+              variant="secondary"
+              onClick={() => setShowEditModal(false)}
+              disabled={profileLoading}
+            >
+              Cancel
+            </BsButton>
+            <BsButton
+              variant="primary"
+              onClick={handleProfileSave}
+              disabled={profileLoading}
+            >
+              {profileLoading ? "Saving..." : "Save Changes"}
+            </BsButton>
+          </>
+        }
+        // size="xl" // Or rely on ReusableModal's default fullScreenModalStyle
+        isLoading={profileLoading}
+      >
+        {profileError && <Alert variant="danger">{profileError}</Alert>}
+
+        <Form>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>First Name</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="firstname" // Add name attribute
+                  value={profileFormData.firstname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Last Name</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="lastname" // Add name attribute
+                  value={profileFormData.lastname} // Bind to profileFormData
+                  onChange={handleProfileInputChange}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Email</Form.Label>
+                <Form.Control
+                  type="email"
+                  value={user?.email || ""}
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Role</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={user?.role || ""}
+                  readOnly
+                  disabled
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Phone</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="phone"
+                  value={profileFormData.phone}
+                  onChange={handleProfileInputChange}
+                  placeholder="Enter phone number"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+          <hr />
+          <h5 className="mb-3">Change Password (optional)</h5>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>New Password</Form.Label>
+                <Form.Control
+                  type="password"
+                  name="newPassword"
+                  value={profileFormData.newPassword}
+                  onChange={handleProfileInputChange}
+                  placeholder="Enter new password"
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Confirm New Password</Form.Label>
+                <Form.Control
+                  type="password"
+                  name="confirmPassword"
+                  value={profileFormData.confirmPassword}
+                  onChange={handleProfileInputChange}
+                  placeholder="Confirm new password"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+        </Form>
+      </ReusableModal>
     </>
   );
 }

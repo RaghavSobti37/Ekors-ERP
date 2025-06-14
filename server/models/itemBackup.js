@@ -12,9 +12,15 @@ const itemBackupSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  price: {
+  sellingPrice: { // Changed from price
     type: Number,
     required: true,
+    min: 0
+  },
+  buyingPrice: { // Added buyingPrice
+    type: Number,
+    // required: false, // Or true if you want to enforce it in backups
+    default: 0,
     min: 0
   },
   unit: {
