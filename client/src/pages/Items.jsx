@@ -5,11 +5,11 @@ import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
-// import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token - Not directly used here
+
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
-import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-// import * as XLSX from "xlsx"; // Library for Excel file operations - Not directly used here
-// ActionButtons is not directly used in the main table here, but could be if edit functionality was present
+import SearchBar from "../components/Searchbar.jsx"; 
+import ActionButtons from "../components/ActionButtons.jsx"; 
+
 import Footer from "../components/Footer";
 import {
   Eye, // View
@@ -1175,38 +1175,22 @@ export default function Items() {
                           : "-"}
                       </td>
                       <td>
-                        <div className="d-flex gap-1">
-                          <button
-                            onClick={() => toggleExpandedRow(item._id)}
-                            className="btn btn-info btn-sm"
-                            disabled={anyLoading}
-                            title="View Details"
-                          >
-                            <Eye size={16} />
-                          </button>
+                        <div className="d-flex gap-1 justify-content-center">
+                          <ActionButtons
+                            item={item}
+                            onView={(currentItem) => toggleExpandedRow(currentItem._id)}
+                            onEdit={handleEditItem}
+                            onDelete={(currentItem) => handleDelete(currentItem._id)}
+                            isLoading={anyLoading}
+                            size="sm"
+                          />
                           <button
                             onClick={() => handleShowItemHistoryModal(item)}
                             className="btn btn-secondary btn-sm"
                             disabled={anyLoading}
                             title="View Item History"
                           >
-                            <ClockHistory size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger btn-sm"
-                            disabled={anyLoading}
-                            title="Delete Item"
-                          >
-                            <Trash size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleEditItem(item)}
-                            className="btn btn-warning btn-sm"
-                            disabled={anyLoading}
-                            title="Edit Item"
-                          >
-                            <i className="bi bi-pencil-square"></i>
+                            <ClockHistory /> 
                           </button>
                         </div>
                       </td>

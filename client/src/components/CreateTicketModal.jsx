@@ -5,6 +5,7 @@ import axios from "axios";
 import ReusableModal from "./ReusableModal.jsx"; // For PI Preview
 import PIPDF from "./PIPDF.jsx"; // For PI Preview
 import { PDFViewer } from "@react-pdf/renderer"; // For PI Preview
+import ActionButtons from "./ActionButtons.jsx"; // Import ActionButtons
 
 const CreateTicketModal = ({
   show,
@@ -296,9 +297,13 @@ const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
             </div>
           </Modal.Body>
           <Modal.Footer style={modalFooterStyle}>
-              <Button variant="info" onClick={handlePreviewPI} disabled={isLoading || isFetchingAddress}>
-              Preview PI
-            </Button>
+                          <ActionButtons
+              item={ticketData} // Pass ticketData as the item
+              onView={handlePreviewPI} // Use onView for "Preview PI", text will be "View"
+              isLoading={isLoading || isFetchingAddress} // Pass combined loading state
+              size="md" // Match typical modal button size
+            />
+
             <Button variant="secondary" onClick={onHide} disabled={isLoading || isFetchingAddress}>Cancel</Button>
             <Button variant="primary" type="submit" disabled={isLoading || isFetchingAddress}>
               {isLoading ? "Creating..." : "Create Ticket"}

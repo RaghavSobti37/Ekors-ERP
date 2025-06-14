@@ -33,8 +33,8 @@ import ItemSearchComponent from "../components/ItemSearch.jsx";
 import apiClient from "../utils/apiClient"; // Utility for making API requests
 import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
-import TicketReportModal from "../components/TicketReportModal.jsx"; // Import the new report modal
-// Import docx and saveAs for PI Word download
+import TicketReportModal from "../components/TicketReportModal.jsx"; 
+import ActionButtons from "../components/ActionButtons.jsx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
 import { generatePIDocx } from "../utils/generatePIDocx";
@@ -200,20 +200,20 @@ export const PIActions = ({ ticket }) => {
     }
   };
 
+    const pdfButtonProps = {
+    document: <PIPDF ticket={ticket} />,
+    fileName: `PI_${ticket.ticketNumber || ticket.quotationNumber}.pdf`,
+  };
+
+
   return (
-    <div className="d-flex justify-content-center gap-2">
-      <PDFDownloadLink
-        document={<PIPDF ticket={ticket} />}
-        fileName={`PI_${ticket.ticketNumber || ticket.quotationNumber}.pdf`}
-      >
-        {({ loading }) => (
-          <Button variant="primary" disabled={loading}>
-            {loading ? "Generating PDF..." : "Download PI PDF"}
-          </Button>
-        )}
-      </PDFDownloadLink>
-      <Button variant="success" onClick={handleDownloadWord}>Download PI Word</Button>
-    </div>
+    <ActionButtons
+      item={ticket} // Pass the ticket item
+      pdfProps={pdfButtonProps}
+      onDownloadWord={handleDownloadWord}
+      size="md" // Standard modal button size
+    />
+
   );
 };
 
@@ -1102,11 +1102,23 @@ export default function Dashboard() {
             const canModifyTicket = authUser?.role === "admin" || authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
             const canTransferThisTicket = authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
             return (
-              <div className="d-flex gap-2">
-                <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} disabled={!canModifyTicket || isLoading} title={!canModifyTicket ? "Only admin, super-admin, or current assignee can edit" : "Edit Ticket"}><i className="bi bi-pencil-square"></i></Button>
-                {authUser?.role === "super-admin" && (<Button variant="danger" size="sm" onClick={() => handleDelete(ticket)} disabled={isLoading} title="Delete Ticket"><i className="bi bi-trash"></i></Button>)}
-                <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} disabled={!canTransferThisTicket || isLoading} title={!canTransferThisTicket ? "Only super-admin or current assignee can transfer" : "Transfer Ticket"}><i className="bi bi-arrow-left-right"></i></Button>
-              </div>
+                           <ActionButtons
+                item={ticket}
+                onEdit={canModifyTicket ? handleEdit : undefined}
+                onDelete={authUser?.role === "super-admin" ? handleDelete : undefined}
+                onTransfer={canTransferThisTicket ? handleTransfer : undefined}
+                isLoading={isLoading}
+                disabled={{
+                  edit: !canModifyTicket,
+                  transfer: !canTransferThisTicket,
+                }}
+                size="sm"
+                // Titles for individual buttons can be managed by ActionButtons or passed if needed
+                // For simplicity, relying on ActionButtons' default titles or general understanding.
+                // If specific dynamic titles are needed, ActionButtons might need an enhancement or titles passed per action.
+                // title={!canModifyTicket ? "Only admin, super-admin, or current assignee can edit" : "Edit Ticket"} // This was for the old button
+              />
+
             );
           }}
           noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
