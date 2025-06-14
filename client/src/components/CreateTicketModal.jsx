@@ -11,6 +11,9 @@ const CreateTicketModal = ({
   isLoading,
   error,
 }) => {
+    // Define the company's reference state (e.g., based on a known pincode or configuration)
+  // For '201301' (Noida), the state is Uttar Pradesh.
+  const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [sameAsBilling, setSameAsBilling] = useState(false);
   const [isSameState, setIsSameState] = useState(true); // Track if billing and shipping states are same
@@ -53,13 +56,11 @@ const CreateTicketModal = ({
 
   // Check if states are same whenever billing or shipping state changes
   useEffect(() => {
-    const billingState = ticketData.billingAddress[2] || "";
-    const shippingState = ticketData.shippingAddress[2] || "";
-    setIsSameState(billingState === shippingState);
-
-    // Recalculate taxes when state comparison changes
-    calculateTaxes(billingState === shippingState);
-  }, [ticketData.billingAddress[2], ticketData.shippingAddress[2]]);
+    calculateTaxes();
+  }, [      ticketData.billingAddress, // For billing state
+      ticketData.goods, // For item amounts and their individual GST rates
+      ticketData.totalAmount,    // Sum of item.amount (pre-GST)
+      ]);
 
   // Update shipping address when billing address changes and sameAsBilling is checked
   useEffect(() => {
@@ -74,19 +75,86 @@ const CreateTicketModal = ({
   }, [sameAsBilling, ticketData.billingAddress]);
 
   // Function to calculate taxes based on whether states are same
-  const calculateTaxes = (sameState) => {
-    const gstRate = sameState ? 9 : 18; // 9% CGST+SGST for same state, 18% IGST for different states
+const calculateTaxes = () => {
+    if (!ticketData.goods || !ticketData.billingAddress) {
+      setTicketData(prev => ({
+        ...prev,
+        gstBreakdown: [],
+        totalCgstAmount: 0,
+        totalSgstAmount: 0,
+        totalIgstAmount: 0,
+        finalGstAmount: 0,
+        grandTotal: prev.totalAmount || 0, // totalAmount is sum of item.amount before GST
+        isBillingStateSameAsCompany: false,
+      }));
+      return;
+    }
 
-    const totalAmount = ticketData.totalAmount || 0;
-    const gstAmount = (totalAmount * gstRate) / 100;
-    const grandTotal = totalAmount + gstAmount;
+    const billingState = (ticketData.billingAddress[2] || "").toUpperCase().trim();
+    const isBillingStateSameAsCompany = billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+
+    const gstGroups = {}; // Group items by their GST rate
+
+    (ticketData.goods || []).forEach(item => {
+      const itemGstRate = parseFloat(item.gstRate); // Each item should have a gstRate
+      if (itemGstRate > 0 && item.amount > 0) {
+        if (!gstGroups[itemGstRate]) {
+          gstGroups[itemGstRate] = { taxableAmount: 0 };
+        }
+        gstGroups[itemGstRate].taxableAmount += (item.amount || 0);
+      }
+    });
+
+    const newGstBreakdown = [];
+    let runningTotalCgst = 0;
+    let runningTotalSgst = 0;
+    let runningTotalIgst = 0;
+
+    for (const rateKey in gstGroups) {
+      const group = gstGroups[rateKey];
+      const itemGstRate = parseFloat(rateKey);
+      const taxableAmount = group.taxableAmount;
+      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+      let cgstRate = 0, sgstRate = 0, igstRate = 0;
+
+      if (isBillingStateSameAsCompany) {
+        cgstRate = itemGstRate / 2;
+        sgstRate = itemGstRate / 2;
+        cgstAmount = (taxableAmount * cgstRate) / 100;
+        sgstAmount = (taxableAmount * sgstRate) / 100;
+        runningTotalCgst += cgstAmount;
+        runningTotalSgst += sgstAmount;
+      } else {
+        igstRate = itemGstRate;
+        igstAmount = (taxableAmount * igstRate) / 100;
+        runningTotalIgst += igstAmount;
+      }
+
+      newGstBreakdown.push({
+        itemGstRate: itemGstRate,
+        taxableAmount: taxableAmount,
+        cgstRate: cgstRate,
+        cgstAmount: cgstAmount,
+        sgstRate: sgstRate,
+        sgstAmount: sgstAmount,
+        igstRate: igstRate,
+        igstAmount: igstAmount,
+      });
+    }
+
+    const finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+    const currentTotalAmount = ticketData.totalAmount || 0; // Sum of item.amount (pre-GST)
+    const grandTotal = currentTotalAmount + finalGstAmount;
 
     setTicketData(prev => ({
       ...prev,
-      gstRate,
-      gstAmount,
+  gstBreakdown: newGstBreakdown,
+      totalCgstAmount: runningTotalCgst,
+      totalSgstAmount: runningTotalSgst,
+      totalIgstAmount: runningTotalIgst,
+      finalGstAmount: finalGstAmount,
       grandTotal,
-      isSameState: sameState
+        isBillingStateSameAsCompany: isBillingStateSameAsCompany
     }));
   };
 
@@ -418,26 +486,37 @@ const CreateTicketModal = ({
                           </tr>
                         </thead> */}
                         <tbody>
-                          {isSameState ? (
+                           {(ticketData.gstBreakdown || []).map((gstGroup, index) => (
+                        <React.Fragment key={index}>
+                          {ticketData.isBillingStateSameAsCompany ? (
                             <>
                               <tr>
-                                <td>CGST (9%)</td>
-                                <td className="text-end">₹{(ticketData.gstAmount / 2).toFixed(2)}</td>
+                                <td>CGST ({gstGroup.cgstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td>
+                                <td className="text-end">₹{(gstGroup.cgstAmount || 0).toFixed(2)}</td>
                               </tr>
                               <tr>
-                                <td>SGST (9%)</td>
-                                <td className="text-end">₹{(ticketData.gstAmount / 2).toFixed(2)}</td>
+                                <td>SGST ({gstGroup.sgstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td>
+                                <td className="text-end">₹{(gstGroup.sgstAmount || 0).toFixed(2)}</td>
                               </tr>
                             </>
                           ) : (
                             <tr>
-                              <td>IGST (18%)</td>
-                              <td className="text-end">₹{ticketData.gstAmount.toFixed(2)}</td>
+                              <td>IGST ({gstGroup.igstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td>
+                              <td className="text-end">₹{(gstGroup.igstAmount || 0).toFixed(2)}</td>
                             </tr>
                           )}
+                        </React.Fragment>
+                      ))}
                           <tr className="table-active">
                             <td><strong>Total Tax</strong></td>
-                            <td className="text-end"><strong>₹{ticketData.gstAmount.toFixed(2)}</strong></td>
+                            <td className="text-end">
+                          <strong>
+                            ₹
+                            {ticketData.isBillingStateSameAsCompany
+                              ? ((ticketData.totalCgstAmount || 0) + (ticketData.totalSgstAmount || 0)).toFixed(2)
+                              : (ticketData.totalIgstAmount || 0).toFixed(2)}
+                          </strong>
+                        </td>
                           </tr>
                           <tr className="table-success">
                             <td><strong>Grand Total</strong></td>

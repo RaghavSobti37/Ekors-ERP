@@ -211,6 +211,13 @@ export default function Dashboard() {
     totalQuantity: 0,
     totalAmount: 0,
     gstAmount: 0,
+        gstBreakdown: [],
+    totalCgstAmount: 0,
+    totalSgstAmount: 0,
+    totalIgstAmount: 0,
+    finalGstAmount: 0,
+    isBillingStateSameAsCompany: false,
+
     grandTotal: 0,
     status: "Quotation Sent",
     documents: {
@@ -232,6 +239,7 @@ export default function Dashboard() {
     key: null,
     direction: "ascending",
   });
+    const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
   const [transferHistoryDisplay, setTransferHistoryDisplay] = useState([]);
 
   const statusStages = [
@@ -706,6 +714,13 @@ setTransferHistoryDisplay(history);
           maxDiscountPercentage: g.maxDiscountPercentage,
         })) || [],
       totalQuantity: selectedTicketToEdit.totalQuantity || 0,
+         gstBreakdown: selectedTicketToEdit.gstBreakdown || [],
+      totalCgstAmount: selectedTicketToEdit.totalCgstAmount || 0,
+      totalSgstAmount: selectedTicketToEdit.totalSgstAmount || 0,
+      totalIgstAmount: selectedTicketToEdit.totalIgstAmount || 0,
+      finalGstAmount: selectedTicketToEdit.finalGstAmount || 0, // Old gstAmount is now finalGstAmount
+      isBillingStateSameAsCompany: selectedTicketToEdit.isBillingStateSameAsCompany || false,
+      // grandTotal: selectedTicketToEdit.grandTotal || 0,
       totalAmount: selectedTicketToEdit.totalAmount || 0,
       gstAmount: selectedTicketToEdit.gstAmount || 0,
       grandTotal: selectedTicketToEdit.grandTotal || 0,
@@ -796,11 +811,19 @@ setTransferHistoryDisplay(history);
         ],
         goods: ticketData.goods.map((g) => ({
           ...g,
+          gstRate: parseFloat(g.gstRate) || 0, 
           originalPrice: g.originalPrice,
           // discountAvailable: g.discountAvailable, // Removed
           maxDiscountPercentage: g.maxDiscountPercentage,
         })),
       };
+
+      updateData.gstBreakdown = ticketData.gstBreakdown;
+      updateData.totalCgstAmount = ticketData.totalCgstAmount;
+      updateData.totalSgstAmount = ticketData.totalSgstAmount;
+      updateData.totalIgstAmount = ticketData.totalIgstAmount;
+      updateData.finalGstAmount = ticketData.finalGstAmount;
+      updateData.isBillingStateSameAsCompany = ticketData.isBillingStateSameAsCompany;
 
       const responseData = await apiClient(
         `http://localhost:3000/api/tickets/${editTicket._id}`,
@@ -1889,15 +1912,34 @@ setTransferHistoryDisplay(history);
                   </p>
                 </Col>
                 <Col md={4}>
-                  <p>
-                    GST (18%):{" "}
-                    <strong>₹{ticketData.gstAmount.toFixed(2)}</strong>
-                  </p>
-                </Col>
+ {ticketData.isBillingStateSameAsCompany ? (
+                    <>
+                      <p>Total CGST: <strong>₹{(ticketData.totalCgstAmount || 0).toFixed(2)}</strong></p>
+                      <p>Total SGST: <strong>₹{(ticketData.totalSgstAmount || 0).toFixed(2)}</strong></p>
+                    </>
+                  ) : (
+                    <p>Total IGST: <strong>₹{(ticketData.totalIgstAmount || 0).toFixed(2)}</strong></p>
+                  )}                </Col>
               </Row>
               <Row>
                 <Col md={12} className="text-end">
                   <h4>Grand Total: ₹{ticketData.grandTotal.toFixed(2)}</h4>
+                </Col>
+                              </Row>
+              {/* Optional: Display detailed GST breakdown if needed in edit modal */}
+              <Row className="mt-2">
+                <Col>
+                  <h6>GST Breakdown:</h6>
+                  {(ticketData.gstBreakdown || []).map((group, index) => (
+                    <div key={index} className="small">
+                      Items @ {group.itemGstRate}% (Taxable: ₹{group.taxableAmount.toFixed(2)}):
+                      {ticketData.isBillingStateSameAsCompany ?
+                        ` CGST ₹${group.cgstAmount.toFixed(2)} (${group.cgstRate}%) + SGST ₹${group.sgstAmount.toFixed(2)} (${group.sgstRate}%)` :
+                        ` IGST ₹${group.igstAmount.toFixed(2)} (${group.igstRate}%)`
+                      }
+                      = Total Tax ₹{(group.cgstAmount + group.sgstAmount + group.igstAmount).toFixed(2)}
+                    </div>
+                  ))}
                 </Col>
               </Row>
             </div>

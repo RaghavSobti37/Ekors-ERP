@@ -68,7 +68,21 @@ const styles = StyleSheet.create({
     top: 30,
     width: 80,
     height: 'auto'
-  }
+  },
+    taxBreakdownTable: { // New style for the detailed GST breakdown table
+    width: "100%",
+    marginTop: 10,
+    border: "1px solid #000",
+  },
+  taxBreakdownRow: {
+    flexDirection: "row",
+    borderBottom: "1px solid #000",
+  },
+  taxBreakdownCell: {
+    padding: 5,
+    borderRight: "1px solid #000",
+    textAlign: "center",
+  },
 });
 
 // Helper function to get parts of an address, handling both object and array formats

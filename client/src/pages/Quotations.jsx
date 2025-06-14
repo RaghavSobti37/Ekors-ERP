@@ -998,7 +998,15 @@ export default function Quotations() {
       companyName: quotation.client?.companyName || "",
       quotationNumber: quotation.referenceNumber,
       billingAddress: billingAddressArray,
-      shippingAddress: shippingAddressArray,
+      // shippingAddress: shippingAddressArray, // Old array format
+      shippingAddressObj: { // New object format for CreateTicketModal
+        address1: clientShippingAddress.address1 || "",
+        address2: clientShippingAddress.address2 || "",
+        city: clientShippingAddress.city || "",
+        state: clientShippingAddress.state || "",
+        pincode: clientShippingAddress.pincode || "",
+      },
+      shippingSameAsBilling: false, 
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity),
@@ -1006,10 +1014,16 @@ export default function Quotations() {
         amount: Number(item.amount),
       })),
       totalQuantity: Number(quotation.totalQuantity),
-      totalAmount: Number(quotation.totalAmount),
-      gstAmount: Number(quotation.gstAmount),
-      grandTotal: Number(quotation.grandTotal),
-      status: "Quotation Sent",
+      totalAmount: Number(quotation.totalAmount), // This is pre-GST total
+      // GST fields will be calculated by CreateTicketModal's useEffect
+      // Initialize new GST fields for CreateTicketModal
+      gstBreakdown: [],
+      totalCgstAmount: 0,
+      totalSgstAmount: 0,
+      totalIgstAmount: 0,
+      finalGstAmount: 0,
+      // grandTotal will be calculated by CreateTicketModal
+      // isBillingStateSameAsCompany will be calculated by CreateTicketModal      status: "Quotation Sent",
     });
 
     setShowTicketModal(true);
