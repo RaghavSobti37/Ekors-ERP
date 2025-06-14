@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-import {
-  FaTimes,
-  FaUserShield,
-  FaChartBar,
-} from "react-icons/fa"; // FaChartBar is not used, consider removing
-import apiClient from "../utils/apiClient"; // Import apiClient
-=======
 import { FaTimes, FaUserShield } from "react-icons/fa";
->>>>>>> e24766db557916714610528af9dff9872e3a0639
 import Navbar from "../components/Navbar";
 import { Table, Button as BsButton, Alert, Form } from "react-bootstrap";
 import Pagination from "../components/Pagination";
@@ -55,61 +46,6 @@ const Users = () => {
   const [showUserReportModal, setShowUserReportModal] = useState(false);
   const [selectedUserForReport, setSelectedUserForReport] = useState(null);
 
-<<<<<<< HEAD
-  const handleGenerateReport = (user) => {
-    console.log("[Users.jsx] handleGenerateReport: Generating report for user:", user);
-    setReportUser(user);
-    setShowReportModal(true);
-  };
-
-
-  // Fetch users from backend
-  const fetchUsers = async () => {
-    try {
-      console.log("[Users.jsx] fetchUsers: Attempting to fetch users.");      
-      const authTokenString = getAuthToken();
-      // apiClient handles token internally, but we can check here for early exit if needed
-      // if (!authTokenString) { ... } 
-
-      setLoading(true);
-      setError(""); // Clear previous errors
-      setIsUnauthorized(false); // Reset unauthorized state
-
-      // Use apiClient - endpoint is "users" relative to API_BASE_URL (which includes /api)
-      const responseData = await apiClient("users"); 
-
-      console.log(
-        "[Users.jsx] fetchUsers: Raw response from /api/users:",
-        responseData
-      );
-      if (responseData && Array.isArray(responseData.data)) {
-        setUsers(responseData.data);
-      } else {
-        console.warn("[Users.jsx] fetchUsers: responseData.data is not an array or is missing. Setting users to [].", responseData);
-        setUsers([]); // Ensure users is an array
-        setError("Received unexpected data format from server.");
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error(
-        "[Users.jsx] fetchUsers: Error fetching users:",
-        err.data || err // apiClient error structure
-      );
-      setError(err.data?.error || err.data?.message || "Failed to fetch users");
-      if (err.status === 403) { // apiClient error structure
-        console.error(
-          "[Users.jsx] fetchUsers: Received 403 Forbidden. User is not authorized."
-        );
-        setError("You are not authorized to view this page. Only super-admins can access this.");
-        setIsUnauthorized(true);
-      } else if (err.status === 401) { // apiClient error structure
-        console.error(
-          "[Users.jsx] fetchUsers: Received 401 Unauthorized. Token might be invalid or expired."
-        );
-        setError("Authentication failed. Please log in again.");
-        // localStorage.removeItem("erp-user"); // Consider if you want to auto-logout
-        // navigate("/login");
-=======
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -123,7 +59,6 @@ const Users = () => {
 
       if (err.status === 403) {
         setIsUnauthorized(true);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
     } finally {
       setLoading(false);
@@ -155,40 +90,6 @@ const Users = () => {
     setShowEditModal(true);
   };
 
-<<<<<<< HEAD
-  const handleToggleActiveStatus = async (userToToggle) => {
-    const newStatus = !userToToggle.isActive;
-
-    if (!newStatus && !window.confirm(`Are you sure you want to disable user ${userToToggle.firstname} ${userToToggle.lastname}? They will not be able to log in.`)) {
-      return;
-    }
-    if (newStatus && !window.confirm(`Are you sure you want to enable user ${userToToggle.firstname} ${userToToggle.lastname}?`)) {
-      return;
-    }
-
-    // apiClient handles token
-    // const authTokenString = getAuthToken();
-    // if (!authTokenString) { ... }
-
-    try {
-      const responseData = await apiClient(`users/${userToToggle._id}/status`, { // Use apiClient
-        method: "PATCH",
-        body: { isActive: newStatus },
-      });
-
-      setUsers(users.map(u => u._id === userToToggle._id ? responseData.data : u));
-      alert(`User ${userToToggle.firstname} ${newStatus ? 'enabled' : 'disabled'} successfully.`);
-
-    } catch (err) {
-      console.error("[Users.jsx] handleToggleActiveStatus: Error toggling user status:", err.response || err);
-      alert(err.response?.data?.error || err.response?.data?.message || "Failed to update user status.");
-      // If the API call fails, we might want to revert the UI,
-      // but for now, the user state won't be changed if an error occurs,
-      // and an alert will be shown. The checkbox will remain in its original state
-      // unless the page is reloaded or state is manually reset.
-      // To ensure UI consistency, one might refetch the specific user or the whole list,
-      // or revert the optimistic update if one was made before await.
-=======
   const handleDelete = async (userToDelete) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
@@ -198,7 +99,6 @@ const Users = () => {
       } catch (err) {
         toast.error(handleApiError(err, "Failed to delete user"));
       }
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     }
   };
 
@@ -208,27 +108,6 @@ const Users = () => {
       ? `Enable user ${user.firstname} ${user.lastname}?`
       : `Disable user ${user.firstname} ${user.lastname}?`;
 
-<<<<<<< HEAD
-    if (!userIdToDelete) {
-      console.error("[Users.jsx] handleDelete: Invalid user ID for deletion. Argument received:", userArg);
-      alert("Cannot delete user: User ID is missing or invalid.");
-      return;
-    }
-
-    // Improved confirmation message
-    if (window.confirm(`Are you sure you want to delete user ${userArg?.firstname || 'this user'} (ID: ${userIdToDelete})?`)) {
-      console.log(
-        `[Users.jsx] handleDelete: Attempting to delete user ${userIdToDelete}`
-      );
-      // apiClient handles token
-      // const authTokenString = getAuthToken();
-      // if (!authTokenString) { ... }
-      try {
-        await apiClient(`users/${userIdToDelete}`, { method: "DELETE" }); // Use apiClient
-
-        console.log(
-          `[Users.jsx] handleDelete: Successfully deleted user ${userIdToDelete}`
-=======
     if (window.confirm(confirmMessage)) {
       try {
         await apiClient(`/users/${user._id}/status`, {
@@ -237,21 +116,10 @@ const Users = () => {
         });
         toast.success(
           `User ${newStatus ? "enabled" : "disabled"} successfully`
->>>>>>> e24766db557916714610528af9dff9872e3a0639
         );
         fetchUsers();
       } catch (err) {
-<<<<<<< HEAD
-        console.error(
-          "[Users.jsx] handleDelete: Error deleting user. Status:", // apiClient error structure
-          err.status, "Message:", err.data?.message || err.message
-        );
-        alert(err.data?.message || err.message || "Failed to delete user");
-        if (err.status === 401) { // apiClient error structure
-        }
-=======
         toast.error(handleApiError(err, "Failed to update user status"));
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
     }
   };
@@ -260,74 +128,8 @@ const Users = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-<<<<<<< HEAD
-  const handleSave = async () => {
-    try {
-      const action = selectedUser ? "Updating" : "Adding new";
-      console.log(
-        "[Users.jsx] handleSave: Attempting to save user. SelectedUser:",
-        selectedUser,
-        "FormData:",
-        formData
-      );
-      // apiClient handles token
-      // const authTokenString = getAuthToken();
-      // if (!authTokenString) { ... }
-
-      if (!formData.firstname || !formData.lastname || !formData.email) {
-        throw new Error("First name, last name and email are required");
-      }
-
-      if (!selectedUser && !formData.password) {
-        throw new Error("Password is required for new users");
-      }
-
-      if (selectedUser) {
-        // Update existing user
-        const responseData = await apiClient(`users/${selectedUser._id}`, { // Use apiClient
-          method: "PUT",
-          body: formData,
-        });
-        setUsers(
-          users.map((user) =>
-            user._id === selectedUser._id ? responseData : user // apiClient returns data directly
-          )
-        );
-      } else {
-        // Add new user - ensure password is included
-        const userData = {
-          ...formData,
-          isActive: true, // Ensure new users are active
-        };
-        const responseData = await apiClient("users", { // Use apiClient
-          method: "POST",
-          body: userData,
-        });
-        setUsers([...users, responseData]); // apiClient returns data directly
-      }
-      console.log(`[Users.jsx] handleSave: Successfully ${action} user.`);
-
-      // Reset form and close modal
-      setFormData({
-        firstname: "",
-        lastname: "",
-        email: "",
-        phone: "",
-        role: "user",
-        password: "",
-      });
-      setShowEditModal(false);
-      setSelectedUser(null);
-
-      // Refresh the list
-      fetchUsers();
-    } catch (err) {
-      console.error("[Users.jsx] handleSave: Error saving user:", err.data || err); // apiClient error structure
-      alert(err.data?.error || err.data?.message || err.message || "Failed to save user");
-=======
     if (name === "password" || name === "confirmPassword") {
       setPasswordError("");
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     }
   };
 

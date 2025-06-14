@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
-<<<<<<< HEAD
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx"; // Added .jsx
-=======
-import Navbar from "../components/Navbar.jsx"; // Navigation bar component
-import Pagination from "../components/Pagination"; // Component for table pagination
-import Footer from "../components/Footer";
->>>>>>> e24766db557916714610528af9dff9872e3a0639
 import { saveAs } from "file-saver"; // For downloading files
 // import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token - Not directly used here
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
@@ -748,7 +742,6 @@ export default function Items() {
       return;
     }
     try {
-<<<<<<< HEAD
       // Use apiClient for blob response
       const blob = await apiClient("items/export-excel", { // Endpoint relative to API_BASE_URL
         method: "GET",
@@ -759,13 +752,6 @@ export default function Items() {
         throw new Error("Failed to export Excel: No data received.");
       }
 
-=======
-      const response = await apiClient("/items/export-excel", {
-        method: "GET",
-        rawResponse: true,
-      });
-      const blob = await response.blob();
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({
         error: null,
@@ -775,23 +761,9 @@ export default function Items() {
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
       console.error("Error exporting to Excel:", err);
-<<<<<<< HEAD
       const message = err.data?.message || err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
       setError(message); // Show error in the main error display
-=======
-      const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to export items. ${
-        err.status ? `Status: ${err.status}.` : ""
-      } ${specificMessage || "Please try again."}`;
-      setExcelUpdateStatus({
-        error: displayMessage,
-        success: null,
-        details: [],
-      });
-      setError(displayMessage);
-      showToast(displayMessage, false);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     } finally {
       setIsExportingExcel(false);
     }
@@ -817,7 +789,6 @@ export default function Items() {
     const formData = new FormData();
     formData.append("excelFile", file);
     try {
-<<<<<<< HEAD
       // Use apiClient for FormData upload
       const responseData = await apiClient("items/import-uploaded-excel", { // Endpoint relative to API_BASE_URL
         method: "POST",
@@ -833,22 +804,6 @@ export default function Items() {
       if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
         successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
         console.warn("Excel Parsing Issues:", responseData.parsingErrors);
-=======
-      const responseData = await apiClient("/items/import-uploaded-excel", {
-        method: "POST",
-        body: formData,
-        isFormData: true,
-      });
-      const response = responseData;
-      let successMessage = `Excel sync complete: ${
-        response.itemsCreated || 0
-      } created, ${response.itemsUpdated || 0} updated, ${
-        response.itemsDeleted || 0
-      } deleted.`;
-      if (response.parsingErrors && response.parsingErrors.length > 0) {
-        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
-        console.warn("Excel Parsing Issues:", response.parsingErrors);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
       if (
         response.databaseProcessingErrors &&
@@ -869,25 +824,11 @@ export default function Items() {
       fetchItems();
     } catch (err) {
       console.error("Error updating from Excel:", err);
-<<<<<<< HEAD
       const message = err.data?.message || // apiClient error structure
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
       setError(message); // Show error in the main error display
-=======
-      const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to update from Excel. ${
-        err.status ? `Status: ${err.status}.` : ""
-      } ${specificMessage || "Please check the file and try again."}`;
-      setExcelUpdateStatus({
-        error: displayMessage,
-        success: null,
-        details: [],
-      });
-      setError(displayMessage);
-      showToast(displayMessage, false);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;

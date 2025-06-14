@@ -5,9 +5,13 @@ const goodsSchema = new mongoose.Schema({
   description: { type: String, required: true },
     subtexts: { type: [String], default: [] }, 
   hsnSacCode: { type: String, required: true },
+    unit: { type: String, default: "Nos" }, // Added unit
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
-  amount: { type: Number, required: true }
+  amount: { type: Number, required: true },
+  originalPrice: { type: Number }, // For discount tracking
+  maxDiscountPercentage: { type: Number, default: 0 },
+  gstRate: { type: Number, required: true, min: 0, default: 0 } 
 }, { _id: false });
 
 const documentSubSchema = new mongoose.Schema({
@@ -21,22 +25,38 @@ const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
   companyName: { type: String, required: true },
   quotationNumber: { type: String, required: true },
+    client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' }, // If you have a Client model
+  clientPhone: { type: String },
+  clientGstNumber: { type: String },
+
   billingAddress: {
     // Changed to array to match frontend implementation
     type: [String],
-    validate: [arrayLimit, 'Billing address needs 5 fields']
+    validate: [val => val.length === 5, 'Billing address needs 5 fields: [address1, address2, state, city, pincode]']
   },
   shippingAddress: {
     // Changed to array to match frontend implementation
     type: [String], 
-    validate: [arrayLimit, 'Shipping address needs 5 fields']
+ validate: [val => val.length === 5, 'Shipping address needs 5 fields: [address1, address2, state, city, pincode]']
   },
   shippingSameAsBilling: { type: Boolean, default: false }, // New field
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
-  totalAmount: { type: Number, required: true },
-  gstAmount: { type: Number, required: true },
-  grandTotal: { type: Number, required: true },
+ totalAmount: { type: Number, required: true }, // Pre-GST total
+  // Detailed GST fields
+  gstBreakdown: [{
+    itemGstRate: Number, taxableAmount: Number,
+    cgstRate: Number, cgstAmount: Number,
+    sgstRate: Number, sgstAmount: Number,
+    igstRate: Number, igstAmount: Number,
+  }],
+  totalCgstAmount: { type: Number, default: 0 },
+  totalSgstAmount: { type: Number, default: 0 },
+  totalIgstAmount: { type: Number, default: 0 },
+  finalGstAmount: { type: Number, required: true, default: 0 }, // Total GST
+  grandTotal: { type: Number, required: true, default: 0 }, // Total Amount + Total GST
+  isBillingStateSameAsCompany: { type: Boolean, default: false },
+
   status: { 
     type: String, 
     required: true,
@@ -96,10 +116,8 @@ const ticketSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Validation function for address arrays
-function arrayLimit(val) {
-  return val.length === 5;  // Expecting [address1, address2, state, city, pincode]
-}
+// Removed gstAmount as it's superseded by detailed GST fields
++// Removed arrayLimit function as validation is inline
 
 // Add a pre-save hook to automatically populate the status history
 // Removing this pre-save hook. Status history should be managed explicitly

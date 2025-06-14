@@ -5,24 +5,9 @@ import Pagination from "../components/Pagination"; // Component for table pagina
 import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Table, Button, Form, Alert } from "react-bootstrap";
-<<<<<<< HEAD
 import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
 
-=======
-import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
-import "react-toastify/dist/ReactToastify.css";
-import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
-import { useAuth } from "../context/AuthContext"; // Authentication context
-import apiClient from "../utils/apiClient"; // Import apiClient
-import ClientSearchComponent from "../components/ClientSearchComponent"; // Import ClientSearchComponent
-import ReusableModal from "../components/ReusableModal.jsx"; // Import ReusableModal
-import "../css/Style.css"; // General styles
-import "../css/Challan.css"; // Specific styles for Challan page
-
-const CHALLANS_API_PATH = "/challans"; // Use a relative path for apiClient
-
->>>>>>> e24766db557916714610528af9dff9872e3a0639
 export default function Challan() {
   const { user } = useAuth();
   const [showPopup, setShowPopup] = useState(false);
@@ -63,7 +48,6 @@ export default function Challan() {
   const fetchChallans = async () => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       const responseData = await apiClient("challans"); // Use apiClient
         setAllChallans(responseData);
         setError(null);
@@ -71,15 +55,6 @@ export default function Challan() {
         const errorMessage = handleApiError(err, "Failed to load challans.");
         setError(errorMessage);
         console.error("Error fetching challans:", err);
-=======
-      const data = await apiClient(CHALLANS_API_PATH); // Use apiClient
-      setAllChallans(data); // Assuming apiClient returns parsed data (e.g., from response.json())
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load challans.");
-      setError(errorMessage);
-      console.error("Error fetching challans:", err);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     } finally {
       setLoading(false);
     }
@@ -89,13 +64,7 @@ export default function Challan() {
     if (window.confirm("Are you sure you want to delete this challan?")) {
       try {
         setLoading(true);
-<<<<<<< HEAD
         await apiClient(`challans/${id}`, { method: "DELETE" }); // Use apiClient
-=======
-        await apiClient(`${CHALLANS_API_PATH}/${id}`, { // Use apiClient
-          method: 'DELETE',
-        });
->>>>>>> e24766db557916714610528af9dff9872e3a0639
         showNotification("Challan deleted successfully!");
         fetchChallans(); // Refreshes the list
       } catch (err) {
@@ -142,7 +111,6 @@ export default function Challan() {
       }
 
       if (editMode && editId) {
-<<<<<<< HEAD
         await apiClient(`challans/${editId}`, { // Use apiClient
           method: "PUT",
           body: submitData,
@@ -154,19 +122,6 @@ export default function Challan() {
           method: "POST",
           body: submitData,
           // apiClient handles FormData Content-Type
-=======
-        // Use apiClient; Content-Type for FormData is typically handled automatically
-        await apiClient(`${CHALLANS_API_PATH}/${editId}`, {
-          method: 'PUT',
-          body: submitData,
-        });
-        showNotification("Challan updated successfully!");
-      } else {
-        // Use apiClient; Content-Type for FormData is typically handled automatically
-        await apiClient(CHALLANS_API_PATH, {
-          method: 'POST',
-          body: submitData,
->>>>>>> e24766db557916714610528af9dff9872e3a0639
         });
         showNotification("Challan submitted successfully!");
       }
@@ -214,13 +169,8 @@ export default function Challan() {
   const openViewPopup = async (challan) => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
       setViewData(responseData);
-=======
-      const data = await apiClient(`${CHALLANS_API_PATH}/${challan._id}`); // Use apiClient
-      setViewData(data); // Assuming apiClient returns parsed data
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       setViewMode(true);
       setEditMode(false);
       setShowPopup(true);
@@ -239,13 +189,8 @@ export default function Challan() {
   const openEditPopup = async (challan) => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       const responseData = await apiClient(`challans/${challan._id}`); // Use apiClient
       const challanDataFromServer = responseData;
-=======
-      // Use apiClient and assume it returns parsed data
-      const challanDataFromServer = await apiClient(`${CHALLANS_API_PATH}/${challan._id}`);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
 
       setFormData({
         companyName: challanDataFromServer.companyName,
@@ -277,7 +222,6 @@ export default function Challan() {
       setLoading(true);
       // Clear previous errors before attempting fetch
       setError(null);
-<<<<<<< HEAD
       const blob = await apiClient(`challans/${challanId}/document`, { // Use apiClient
         responseType: 'blob', // Tell apiClient to expect a blob
       });
@@ -287,32 +231,6 @@ export default function Challan() {
       const contentType = blob.type; // Blob object has a 'type' property
       const url = window.URL.createObjectURL(blob);
       setDocumentPreview({ url, type: contentType });
-=======
-
-      // Assuming apiClient is fetch-like and returns a Response object for document requests
-      const response = await apiClient(`${CHALLANS_API_PATH}/${challanId}/document`, {
-        rawResponse: true, // Indicate that we want the raw response object
-      });
-
-      if (!response.ok) {
-        let errorResponseMessage = `Failed to retrieve document. Status: ${response.status}`;
-        try {
-            // Attempt to parse a JSON error message from the response body
-            const errorData = await response.json();
-            errorResponseMessage = errorData.error || errorData.message || errorResponseMessage;
-        } catch (e) {
-            // If response body is not JSON or parsing fails, use status text or default message
-            errorResponseMessage = response.statusText || errorResponseMessage;
-        }
-        // Throw an error that handleApiError might be able to process
-        throw { response: { data: { error: errorResponseMessage } }, message: errorResponseMessage };
-      }
-
-      const contentTypeHeader = response.headers.get("content-type"); // Get header using Fetch API
-      const blobData = await response.blob(); // Get blob data using Fetch API
-      const objectURL = window.URL.createObjectURL(blobData);
-      setDocumentPreview({ url: objectURL, type: contentTypeHeader });
->>>>>>> e24766db557916714610528af9dff9872e3a0639
     } catch (err) {
       const errorMessage = handleApiError(
         err,

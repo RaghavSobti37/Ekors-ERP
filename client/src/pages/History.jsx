@@ -13,29 +13,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LogtimeModal from "../components/LogtimeModal";
 import { Table, Button, Alert } from "react-bootstrap";
-<<<<<<< HEAD
-import Pagination from '../components/Pagination';
-import apiClient from "../utils/apiClient"; // Import apiClient
-import ReusableTable from "../components/ReusableTable";
-import SortIndicator from "../components/SortIndicator";
-
-const formatDisplayDate = (dateString) => {
-  const date = new Date(dateString);
-  const day = date.getDate();
-  const month = date.toLocaleString("default", { month: "long" });
-  const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
-};
-
-// Removed local getAuthToken, apiClient will handle token internally via authUtils
-=======
 import Pagination from "../components/Pagination";
 import ReusableTable from "../components/ReusableTable";
 import apiClient from "../utils/apiClient";
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
 import "../css/Style.css";
->>>>>>> e24766db557916714610528af9dff9872e3a0639
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -56,17 +39,10 @@ export default function History() {
     setIsLoading(true);
     setError(null);
     try {
-<<<<<<< HEAD
-      // apiClient handles token and base URL
-      const data = await apiClient("logtime/all");
-
-      showToast("History fetched successfully", true);
-=======
       const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
       const data = await apiClient("/logtime/all");
 
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       const withTotal = data.map((entry) => {
         let totalMinutes = 0;
         entry.logs?.forEach((log) => {
@@ -83,22 +59,12 @@ export default function History() {
       });
 
       setHistoryData(withTotal);
-<<<<<<< HEAD
-        setError(null);
-      } catch (error) {
-      const errorMessage = handleApiError(error, "Failed to fetch history"); // handleApiError might need adjustment for apiClient's error structure
-      showToast(error.data?.message || error.message || "Failed to fetch history", false);
-      setError(error.data?.message || error.message || "Failed to fetch history");
-      if (error.message.includes('authentication')) {
-        navigate('/login');
-=======
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
       showToast(errorMessage, false);
       if (error.message.includes("authentication")) {
         navigate("/login");
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
     } finally {
       setIsLoading(false);
@@ -141,18 +107,6 @@ export default function History() {
       }
 
       try {
-<<<<<<< HEAD
-        // apiClient handles token, base URL, and method
-        await apiClient(`logtime/${entryId}`, { method: 'DELETE' });
-
-        // Refresh the history after deletion
-        await fetchHistory();
-        showToast("Entry deleted successfully!", true);
-      } catch (error) {
-        console.error("Error deleting entry:", error);
-        setError(error.message || "Failed to delete entry");
-        showToast(error.data?.message || error.message || "Failed to delete entry", false);
-=======
         setIsLoading(true); // Set loading after token check
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
 
@@ -167,7 +121,6 @@ export default function History() {
         setError(errorMessage);
       } finally {
         setIsLoading(false);
->>>>>>> e24766db557916714610528af9dff9872e3a0639
       }
     }
   };

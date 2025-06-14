@@ -240,6 +240,7 @@ export default function Quotations() {
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
   const [showQuotationReportModal, setShowQuotationReportModal] = useState(false);
+  const [sourceQuotationForTicket, setSourceQuotationForTicket] = useState(null); // To store the quotation being used to create a ticket
   const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] = useState(false);
   const quotationFormId = "quotation-form";
 
@@ -704,6 +705,21 @@ export default function Quotations() {
     }
   };
 
+  const updateLinkedTickets = async (quotation) => {
+  await Ticket.updateMany(
+    { quotationNumber: quotation.referenceNumber },
+    { 
+      $set: {
+        companyName: quotation.client.companyName,
+        goods: quotation.goods,
+        billingAddress: quotation.billingAddress,
+        clientPhone: quotation.client.phone,
+        clientGstNumber: quotation.client.gstNumber
+      }
+    }
+  );
+};
+
   const resetForm = () => {
     setQuotationData(initialQuotationData); setFormValidated(false);
     setSelectedClientIdForForm(null); setError(null); setIsReplicating(false);
@@ -721,6 +737,8 @@ export default function Quotations() {
   };
 
   const handleCreateTicket = async (quotation) => {
+    setSourceQuotationForTicket(quotation); // Store the source quotation
+
     const ticketNumber = await generateTicketNumber();
     const quotationBillingAddressObject = quotation.billingAddress || {};
     const ticketBillingAddressArrayFromQuotation = [
@@ -731,6 +749,7 @@ export default function Quotations() {
       quotationBillingAddressObject.pincode || "",
     ];
 
+  const clientData = quotation.client || {};
     setTicketData({
       ticketNumber,
       companyName: quotation.client?.companyName || "",
@@ -746,8 +765,14 @@ export default function Quotations() {
         gstRate: parseFloat(item.gstRate || 0), // Ensure gstRate is a number
         subtexts: item.subtexts || [],
       })),
+       clientPhone: clientData.phone || "",
+    clientGstNumber: clientData.gstNumber || "",
       totalQuantity: Number(quotation.totalQuantity),
       totalAmount: Number(quotation.totalAmount), // This is pre-GST total
+      // Ensure all potentially required fields for a Ticket are present
+      dispatchDays: quotation.dispatchDays || "7-10 working days", // Default if not on quotation
+      validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // Default or from quotation
+      termsAndConditions: quotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.", // Default if not on quotation
       // Initialize new GST fields for CreateTicketModal
       gstBreakdown: [],
       totalCgstAmount: 0,
@@ -798,13 +823,19 @@ export default function Quotations() {
 
       // shippingAddress (array) is now constructed in backend based on shippingAddressObj and shippingSameAsBilling
       completeTicketData = {
-        ...ticketData, // This includes all new GST fields calculated by CreateTicketModal
-        createdBy: auth.user.id,
-        currentAssignee: auth.user.id,
-        statusHistory: [{ status: ticketData.status, changedAt: new Date(), changedBy: auth.user.id }],
-        // shippingAddressObj and shippingSameAsBilling are sent; backend resolves shippingAddress array
-        documents: { quotation: null, po: null, pi: null, challan: null, packingList: null, feedback: null, other: [] },
+        newTicketDetails: { // Encapsulate new ticket data
+          ...ticketData, // This includes all new GST fields calculated by CreateTicketModal
+          createdBy: auth.user.id,
+          currentAssignee: auth.user.id,
+          statusHistory: [{ status: ticketData.status, changedAt: new Date(), changedBy: auth.user.id }],
+          // shippingAddressObj and shippingSameAsBilling are sent; backend resolves shippingAddress array
+          documents: { quotation: null, po: null, pi: null, challan: null, packingList: null, feedback: null, other: [] },
+        },
+        sourceQuotationData: sourceQuotationForTicket, // Send the source quotation data
       };
+      // Clear the stored source quotation after use
+      setSourceQuotationForTicket(null);
+
 
       const responseData = await apiClient("/tickets", { method: "POST", body: completeTicketData });
       if (responseData) {
@@ -831,7 +862,7 @@ export default function Quotations() {
     }
   };
 
-  const handleEdit = (quotation) => {
+  const handleEdit = async (quotation) => {
     setCurrentQuotation(quotation);
     let orderIssuedByIdToSet = quotation.orderIssuedBy?._id || quotation.orderIssuedBy || quotation.user?._id || quotation.user || user?.id;
     if (typeof orderIssuedByIdToSet === "object" && orderIssuedByIdToSet !== null) orderIssuedByIdToSet = orderIssuedByIdToSet._id;

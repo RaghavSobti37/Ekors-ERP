@@ -1,31 +1,48 @@
-// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/Tickets.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Pagination from "../components/Pagination";
 import Footer from "../components/Footer";
-import { Modal, Button, Form, Table, ProgressBar, Alert, Dropdown, Badge, Card, Row, Col } from "react-bootstrap";
-import { FaChartBar } from "react-icons/fa";
-import Navbar from "../components/Navbar.jsx";
+import {
+  Modal,
+  Button,
+  Form,
+  Table,
+  ProgressBar,
+  Alert,
+  Dropdown,
+  Badge,
+  Card,
+  Row,
+  Col,
+} from "react-bootstrap";
+import { FaChartBar } from "react-icons/fa"; // Import icon for report button
+import Navbar from "../components/Navbar.jsx"; // Navigation bar component
 import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
 // import SortIndicator from "../components/SortIndicator.jsx"; // Not directly used, ReusableTable might
-import QuotationPDF from "../components/QuotationPDF.jsx";
-import PIPDF from "../components/PIPDF.jsx";
-import { useAuth } from "../context/AuthContext";
+import QuotationPDF from "../components/QuotationPDF.jsx"; // Component for rendering Quotation PDF
+import PIPDF from "../components/PIPDF.jsx"; // Component for rendering PI PDF
+import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import "react-toastify/dist/ReactToastify.css";
-import { handleApiError, showToast } from "../utils/helpers";
-import frontendLogger from "../utils/frontendLogger.js";
-import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
-import ReusableTable from "../components/ReusableTable.jsx";
-import SearchBar from "../components/Searchbar.jsx";
+import { handleApiError, showToast } from "../utils/helpers"; // Utility functions
+import frontendLogger from "../utils/frontendLogger.js"; // Utility for frontend logging
+import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils"; // Utility for retrieving auth token
+import ReusableTable from "../components/ReusableTable.jsx"; // Component for displaying data in a table
+import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 import ItemSearchComponent from "../components/ItemSearch.jsx";
-import apiClient from "../utils/apiClient";
-import "../css/Style.css";
+import apiClient from "../utils/apiClient"; // Utility for making API requests
+import "../css/Style.css"; // General styles
 import ReusableModal from "../components/ReusableModal.jsx";
-import TicketReportModal from "../components/TicketReportModal.jsx";
+import TicketReportModal from "../components/TicketReportModal.jsx"; // Import the new report modal
+// Import docx and saveAs for PI Word download
+import * as docx from "docx";
+import { saveAs } from "file-saver";
+import { generatePIDocx } from "../utils/generatePIDocx";
+import axios from "axios"; // For pincode API in edit modal
 
-// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic if needed here
+// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
+
 
 const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,60 +50,173 @@ const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null); // Local error
 
   const fetchUsers = useCallback(async () => {
     try {
-      setLoading(true); setError(null);
-      const data = await apiClient("/tickets/transfer-candidates");
+      setLoading(true);
+      setError(null);
+      // const token = getAuthTokenUtil(); // No need to pass authContext.user if getAuthTokenUtil doesn't use it
+      // if (!token) {
+      //   throw new Error("Authentication token not found for fetching users.");
+      // }
+
+      const data = await apiClient("/tickets/transfer-candidates"); // Use apiClient
       setUsers(data);
     } catch (err) {
-      let specificMessage = "Error loading users for search.";
-      if (err.status === 403) specificMessage = err.data?.message || "Permission denied to view users.";
-      else if (err.data?.message) specificMessage = err.data.message;
-      else if (err.message) specificMessage = `Failed to load users: ${err.message}`;
+      let specificMessage =
+        "An unexpected error occurred while trying to load users for search."; // Default generic message
+      if (err.status) {
+        if (err.status === 403) {
+          specificMessage =
+            err.data?.message ||
+            "You do not have permission to view the list of users. This action may be restricted to certain roles (e.g., super-administrators).";
+        } else if (err.data && err.data.message) {
+          specificMessage = err.data.message;
+        } else if (err.message) {
+          specificMessage = `Failed to load users: ${err.message}`;
+        }
+      } else if (err.message) {
+        specificMessage = `Failed to load users: ${err.message}`;
+      }
       setError(specificMessage);
-      frontendLogger.error("userSearch", "Failed to fetch users", authContext?.user, { errorMessage: err.message, specificMessageDisplayed: specificMessage, stack: err.stack });
-    } finally { setLoading(false); }
+
+      if (authContext?.user) {
+        frontendLogger.error(
+          "userSearch",
+          "Failed to fetch users",
+          authContext.user,
+          {
+            errorMessage: err.message,
+            specificMessageDisplayed: specificMessage,
+            stack: err.stack,
+          }
+        );
+      } else {
+        frontendLogger.error(
+          "userSearch",
+          "Failed to fetch users (user context unavailable)",
+          null,
+          {
+            errorMessage: err.message,
+            specificMessageDisplayed: specificMessage,
+            stack: err.stack,
+          }
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [authContext]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   useEffect(() => {
     if (searchTerm.trim() !== "") {
-      const filtered = users.filter(user =>
-        user.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = users.filter(
+        (user) =>
+          user.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.lastname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredUsers(filtered); setShowDropdown(true);
-    } else { setFilteredUsers([]); setShowDropdown(false); }
+      setFilteredUsers(filtered);
+      setShowDropdown(true);
+    } else {
+      setFilteredUsers([]);
+      setShowDropdown(false);
+    }
   }, [searchTerm, users]);
 
-  const handleUserClick = (user) => { onUserSelect(user); setSearchTerm(""); setShowDropdown(false); };
-  const handleSearchChange = (e) => { setSearchTerm(e.target.value); };
-  const handleBlur = () => { setTimeout(() => setShowDropdown(false), 200); };
+  const handleUserClick = (user) => {
+    onUserSelect(user);
+    setSearchTerm("");
+    setShowDropdown(false);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowDropdown(false), 200);
+  };
 
   return (
     <div className="user-search-component">
       {error && <div className="search-error text-danger small">{error}</div>}
+
       <div className="search-input-container">
-        <input type="text" className="form-control" placeholder="Search user by name or email..." value={searchTerm} onChange={handleSearchChange} onFocus={() => setShowDropdown(true)} onBlur={handleBlur} disabled={loading} />
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search user by name or email..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          onFocus={() => setShowDropdown(true)}
+          onBlur={handleBlur}
+          disabled={loading}
+        />
         {loading && <div className="search-loading">Loading...</div>}
       </div>
+
       {showDropdown && filteredUsers.length > 0 && (
         <div className="search-suggestions-dropdown">
           {filteredUsers.map((user) => (
-            <div key={user._id} className="search-suggestion-item" onClick={() => handleUserClick(user)}>
-              <strong>{user.firstname} {user.lastname}</strong><span className="text-muted"> - {user.email}</span><br /><small>Role: {user.role}</small>
+            <div
+              key={user._id}
+              className="search-suggestion-item"
+              onClick={() => handleUserClick(user)}
+            >
+              <strong>
+                {user.firstname} {user.lastname}
+              </strong>
+              <span className="text-muted"> - {user.email}</span>
+              <br />
+              <small>Role: {user.role}</small>
             </div>
           ))}
         </div>
       )}
-      {showDropdown && searchTerm && filteredUsers.length === 0 && <div className="search-no-results">No users found</div>}
+
+      {showDropdown && searchTerm && filteredUsers.length === 0 && (
+        <div className="search-no-results">No users found</div>
+      )}
     </div>
   );
 };
+
+export const PIActions = ({ ticket }) => {
+  const handleDownloadWord = async () => {
+    try {
+      const doc = generatePIDocx(ticket); // We'll create this utility
+      const blob = await docx.Packer.toBlob(doc);
+      saveAs(blob, `PI_${ticket.ticketNumber || ticket.quotationNumber}.docx`);
+    } catch (error) {
+      console.error("Error generating PI Word document:", error);
+      toast.error("Failed to generate PI Word document. Please try again.");
+      frontendLogger.error("piGeneration", "Failed to generate PI DOCX", { ticketId: ticket?._id, error: error.message });
+    }
+  };
+
+  return (
+    <div className="d-flex justify-content-center gap-2">
+      <PDFDownloadLink
+        document={<PIPDF ticket={ticket} />}
+        fileName={`PI_${ticket.ticketNumber || ticket.quotationNumber}.pdf`}
+      >
+        {({ loading }) => (
+          <Button variant="primary" disabled={loading}>
+            {loading ? "Generating PDF..." : "Download PI PDF"}
+          </Button>
+        )}
+      </PDFDownloadLink>
+      <Button variant="success" onClick={handleDownloadWord}>Download PI Word</Button>
+    </div>
+  );
+};
+
 
 export default function Dashboard() {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -100,7 +230,7 @@ export default function Dashboard() {
   const [editTicket, setEditTicket] = useState(null); // Stores the full ticket object being edited
   const [transferTicket, setTransferTicket] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null); // For payment modal
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null); // For transfer modal
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -117,8 +247,8 @@ export default function Dashboard() {
   // ticketData state for the edit modal
   const [ticketData, setTicketData] = useState({
     companyName: "", quotationNumber: "",
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Object form
-    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Object form
+    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Object form for edit modal
+    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Object form for edit modal
     shippingSameAsBilling: false,
     goods: [], totalQuantity: 0, totalAmount: 0, // Pre-GST total
     // New GST fields
@@ -133,11 +263,12 @@ export default function Dashboard() {
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "descending" });
   const [isItemSearchDropdownOpenInEditModal, setIsItemSearchDropdownOpenInEditModal] = useState(false);
   const [transferHistoryDisplay, setTransferHistoryDisplay] = useState([]);
+  const [isFetchingAddressInEdit, setIsFetchingAddressInEdit] = useState(false);
+
 
   const statusStages = ["Quotation Sent", "PO Received", "Payment Pending", "Inspection", "Packing List", "Invoice Sent", "Hold", "Closed"];
 
   const calculateTaxesForEditModal = useCallback(() => {
-    // This function is similar to the one in CreateTicketModal but operates on `ticketData` state of Tickets.jsx
     if (!ticketData.goods || !ticketData.billingAddress || !ticketData.billingAddress.state) {
         setTicketData(prev => ({
             ...prev, gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
@@ -151,7 +282,7 @@ export default function Dashboard() {
     const gstGroups = {};
 
     (ticketData.goods || []).forEach(item => {
-        const itemGstRate = parseFloat(item.gstRate);
+        const itemGstRate = parseFloat(item.gstRate); // gstRate is expected on each item
         if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
             if (!gstGroups[itemGstRate]) gstGroups[itemGstRate] = { taxableAmount: 0 };
             gstGroups[itemGstRate].taxableAmount += (item.amount || 0);
@@ -193,11 +324,11 @@ export default function Dashboard() {
         totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst,
         finalGstAmount, grandTotal, isBillingStateSameAsCompany,
     }));
-  }, [ticketData.goods, ticketData.billingAddress, ticketData.totalAmount, setTicketData]);
+  }, [ticketData.goods, ticketData.billingAddress.state, ticketData.totalAmount, setTicketData]); // Added .state dependency
 
   // Recalculate taxes in edit modal when relevant fields change
   useEffect(() => {
-    if (showEditModal) {
+    if (showEditModal) { // Only calculate if the edit modal is open
         calculateTaxesForEditModal();
     }
   }, [showEditModal, ticketData.goods, ticketData.billingAddress.state, ticketData.totalAmount, calculateTaxesForEditModal]);
@@ -207,8 +338,13 @@ export default function Dashboard() {
     if (!authUser) return;
     setIsLoading(true); setError(null);
     try {
+      // const token = getAuthTokenUtil(); // No need to pass auth.user if getAuthTokenUtil doesn't use it
+      // if (!token) {
+      //   toast.error("Authentication required to fetch tickets. Please log in.");
+      //   throw new Error("No authentication token found");
+      // }
       const data = await apiClient("/tickets", {
-        params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+              params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
       });
       setTickets(data);
     } catch (error) {
@@ -252,6 +388,11 @@ export default function Dashboard() {
     if (window.confirm(`Delete ticket ${ticketToDelete.ticketNumber}?`)) {
       setIsLoading(true);
       try {
+        // const token = getAuthTokenUtil();
+        // if (!token) {
+        //   toast.error("Authentication required for delete operation.");
+        //   throw new Error("Authentication token not found for delete operation.");
+        // }
         await apiClient(`/tickets/admin/${ticketToDelete._id}`, { method: "DELETE" });
         fetchTickets(); setError(null); const successMsg = `Ticket ${ticketToDelete.ticketNumber} deleted.`; toast.success(successMsg);
         frontendLogger.info("ticketActivity", successMsg, auth.user, { ticketId: ticketToDelete._id, action: "DELETE_TICKET_SUCCESS" });
@@ -272,6 +413,11 @@ export default function Dashboard() {
   const handlePaymentSubmit = async () => {
     setIsLoading(true); setError(null);
     try {
+      // const token = getAuthTokenUtil();
+      // if (!token) {
+      //   toast.error("Authentication required to record payment.");
+      //   throw new Error("No authentication token found");
+      // }
       const responseData = await apiClient(`/tickets/${selectedTicket?._id}/payments`, {
         method: "POST", body: { amount: paymentAmount, date: paymentDate, reference: paymentReference },
       });
@@ -290,7 +436,7 @@ export default function Dashboard() {
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
     return [...tickets].sort((a, b) => {
-      if (sortConfig.key === "createdAt") { // Assuming 'date' was meant to be 'createdAt'
+      if (sortConfig.key === "createdAt") {
         const dateA = new Date(a.createdAt); const dateB = new Date(b.createdAt);
         return sortConfig.direction === "ascending" ? dateA - dateB : dateB - dateA;
       }
@@ -316,7 +462,7 @@ export default function Dashboard() {
         if (statusFilter === "open") return ticket.status !== "Closed" && ticket.status !== "Hold";
         if (statusFilter === "closed") return ticket.status === "Closed";
         if (statusFilter === "hold") return ticket.status === "Hold";
-        if (statusFilter === "Running") return ticket.status === "Running"; // Added for "Running" filter
+        if (statusFilter === "Running") return ticket.status === "Running";
         return true;
       });
     }
@@ -333,15 +479,49 @@ export default function Dashboard() {
     setSortConfig({ key, direction });
   };
 
-  const updateTotalsAndRecalculateTaxes = (goods) => {
+  const updateTotalsAndRecalculateTaxesInEditModal = (goods) => {
     const totalQuantity = goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const totalAmount = goods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    // Set totalAmount first, then trigger tax recalculation which depends on it
     setTicketData(prev => ({ ...prev, goods, totalQuantity, totalAmount }));
-    // calculateTaxesForEditModal will be called by its own useEffect dependency on totalAmount or goods
+    // calculateTaxesForEditModal will be called by its own useEffect dependency
   };
 
-  const validateItemPrice = (item) => { /* ... same as before ... */ return true; };
+  const validateItemPrice = (item) => {
+    const newPrice = parseFloat(item.price);
+    const originalPrice = parseFloat(item.originalPrice || item.price); // Fallback to current price if originalPrice is not set
+    const maxDiscountPerc = parseFloat(item.maxDiscountPercentage);
+    let priceValidationError = null;
+
+    if (!isNaN(newPrice) && !isNaN(originalPrice)) {
+        if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
+            const minAllowedPrice = originalPrice * (1 - maxDiscountPerc / 100);
+            if (newPrice < minAllowedPrice) {
+                priceValidationError = `Discount for ${item.description} exceeds the maximum allowed ${maxDiscountPerc}%. Minimum price is ₹${minAllowedPrice.toFixed(2)}.`;
+            }
+        } else { // No discount applicable or maxDiscountPercentage is 0
+            if (newPrice < originalPrice) {
+                // priceValidationError = `Price for ${item.description} (₹${newPrice.toFixed(2)}) cannot be lower than the original price (₹${originalPrice.toFixed(2)}) as no discount is applicable.`;
+                // Allow price to be lower than original if no discount % is set, but log it or handle as per business rule.
+                // For now, let's not throw an error here, but you might want to.
+            }
+        }
+    } else if (String(item.price).trim() !== "" && isNaN(newPrice)) {
+        priceValidationError = `Invalid price entered for ${item.description}.`;
+    }
+
+    if (priceValidationError) {
+        setError(priceValidationError);
+        toast.warn(priceValidationError);
+        return false;
+    } else {
+        // Clear error only if it was related to this specific item's price validation
+        if (error && (error.includes(`Discount for ${item.description}`) || error.includes(`Price for ${item.description}`))) {
+            setError(null);
+        }
+        return true;
+    }
+  };
+
 
   const handleAddItemToTicket = (item) => {
     const newGoods = [
@@ -351,23 +531,26 @@ export default function Dashboard() {
         quantity: 1, unit: item.unit || "Nos", price: Number(item.sellingPrice) || 0,
         amount: (Number(item.sellingPrice) || 0) * 1, originalPrice: Number(item.sellingPrice) || 0,
         maxDiscountPercentage: Number(item.maxDiscountPercentage) || 0,
-        gstRate: parseFloat(item.gstRate || 0), // Ensure gstRate is a number
+        gstRate: parseFloat(item.gstRate || 0),
         subtexts: [],
       },
     ];
-    updateTotalsAndRecalculateTaxes(newGoods);
+    updateTotalsAndRecalculateTaxesInEditModal(newGoods);
   };
 
   const handleEdit = (selectedTicketToEdit) => {
-    setEditTicket(selectedTicketToEdit); // Store the original ticket for reference
-    // Convert address arrays from DB to objects for form state
+    setEditTicket(selectedTicketToEdit);
     const billingAddressObj = Array.isArray(selectedTicketToEdit.billingAddress) && selectedTicketToEdit.billingAddress.length === 5
       ? { address1: selectedTicketToEdit.billingAddress[0] || "", address2: selectedTicketToEdit.billingAddress[1] || "", state: selectedTicketToEdit.billingAddress[2] || "", city: selectedTicketToEdit.billingAddress[3] || "", pincode: selectedTicketToEdit.billingAddress[4] || "" }
-      : selectedTicketToEdit.billingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+      : (typeof selectedTicketToEdit.billingAddress === 'object' && selectedTicketToEdit.billingAddress !== null)
+        ? selectedTicketToEdit.billingAddress
+        : { address1: "", address2: "", city: "", state: "", pincode: "" };
 
     const shippingAddressObj = Array.isArray(selectedTicketToEdit.shippingAddress) && selectedTicketToEdit.shippingAddress.length === 5
       ? { address1: selectedTicketToEdit.shippingAddress[0] || "", address2: selectedTicketToEdit.shippingAddress[1] || "", state: selectedTicketToEdit.shippingAddress[2] || "", city: selectedTicketToEdit.shippingAddress[3] || "", pincode: selectedTicketToEdit.shippingAddress[4] || "" }
-      : selectedTicketToEdit.shippingAddress || { address1: "", address2: "", city: "", state: "", pincode: "" };
+      : (typeof selectedTicketToEdit.shippingAddress === 'object' && selectedTicketToEdit.shippingAddress !== null)
+        ? selectedTicketToEdit.shippingAddress
+        : { address1: "", address2: "", city: "", state: "", pincode: "" };
 
     setTicketData({
       companyName: selectedTicketToEdit.companyName || "",
@@ -378,12 +561,11 @@ export default function Dashboard() {
       goods: (selectedTicketToEdit.goods || []).map(g => ({
         ...g, originalPrice: g.originalPrice || g.price,
         maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
-        gstRate: parseFloat(g.gstRate || 0), // Ensure gstRate is a number
+        gstRate: parseFloat(g.gstRate || 0),
         subtexts: g.subtexts || [],
       })),
       totalQuantity: selectedTicketToEdit.totalQuantity || 0,
-      totalAmount: selectedTicketToEdit.totalAmount || 0, // Pre-GST total
-      // GST fields from selectedTicketToEdit
+      totalAmount: selectedTicketToEdit.totalAmount || 0,
       gstBreakdown: selectedTicketToEdit.gstBreakdown || [],
       totalCgstAmount: selectedTicketToEdit.totalCgstAmount || 0,
       totalSgstAmount: selectedTicketToEdit.totalSgstAmount || 0,
@@ -405,7 +587,7 @@ export default function Dashboard() {
   const handleDeleteItemFromTicket = (indexToDelete) => {
     const updatedGoods = ticketData.goods.filter((_, index) => index !== indexToDelete)
       .map((item, index) => ({ ...item, srNo: index + 1 }));
-    updateTotalsAndRecalculateTaxes(updatedGoods);
+    updateTotalsAndRecalculateTaxesInEditModal(updatedGoods);
   };
 
   const handleAddSubtextToTicketItem = (itemIndex) => {
@@ -427,14 +609,14 @@ export default function Dashboard() {
       if (!updatedGoods[index].subtexts) updatedGoods[index].subtexts = [];
       updatedGoods[index].subtexts[subtextIndex] = value;
     } else if (field === "gstRate") {
-        updatedGoods[index][field] = value === "" ? null : parseFloat(value); // Allow empty for null GST
+        updatedGoods[index][field] = value === "" ? null : parseFloat(value);
     } else {
       updatedGoods[index][field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
     }
     if (field === "quantity" || field === "price") {
       updatedGoods[index].amount = (Number(updatedGoods[index].quantity) || 0) * (Number(updatedGoods[index].price) || 0);
     }
-    updateTotalsAndRecalculateTaxes(updatedGoods);
+    updateTotalsAndRecalculateTaxesInEditModal(updatedGoods);
   };
 
   const handleTransfer = (ticketToTransfer) => { setTransferTicket(ticketToTransfer); setSelectedUser(null); setError(null); setShowTransferModal(true); };
@@ -453,11 +635,15 @@ export default function Dashboard() {
         toast.warn("Comment for status change is required."); setIsLoading(false); return;
       }
 
-      // Prepare data for backend, converting address objects back to arrays
+      // const token = getAuthTokenUtil();
+      // if (!token) {
+      //   toast.error("Authentication required to update ticket.");
+      //   throw new Error("Authentication token not found");
+      // }
+
       const updatePayload = {
-        ...ticketData, // Includes all new GST fields
+        ...ticketData,
         statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
-        // Backend expects billingAddress and shippingAddress as arrays of 5 strings
         billingAddress: [
           ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
           ticketData.billingAddress.state || "", ticketData.billingAddress.city || "",
@@ -471,12 +657,11 @@ export default function Dashboard() {
               ticketData.shippingAddress.state || "", ticketData.shippingAddress.city || "",
               ticketData.shippingAddress.pincode || "" ],
         goods: ticketData.goods.map(g => ({
-          ...g, gstRate: parseFloat(g.gstRate || 0), // Ensure gstRate is a number
+          ...g, gstRate: parseFloat(g.gstRate || 0),
           originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
       };
-      // Remove fields not expected by backend or that shouldn't be directly updated
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
 
       const responseData = await apiClient(`/tickets/${editTicket._id}`, { method: "PUT", body: updatePayload });
@@ -496,6 +681,11 @@ export default function Dashboard() {
     if (!userToTransferTo) { setError("Select user to transfer to."); toast.warn("Select user."); return; }
     setIsLoading(true); setError(null);
     try {
+      // const token = getAuthTokenUtil();
+      // if (!token) {
+      //   toast.error("Authentication required to transfer ticket.");
+      //   throw new Error("Authentication token not found");
+      // }
       const responseData = await apiClient(`/tickets/${transferTicket._id}/transfer`, {
         method: "POST", body: { userId: userToTransferTo._id, note },
       });
@@ -513,58 +703,316 @@ export default function Dashboard() {
     } finally { setIsLoading(false); }
   };
 
-  const renderPdfPreview = (previewType, ticketForPdf) => { /* ... same as before ... */ };
-  const handleSpecificDocumentUpload = async (file, docType, ticketIdForUpload = null) => { /* ... same as before ... */ };
-  const handleDocumentDelete = async (docTypeToDelete, documentPathToDelete, ticketIdForDelete = null) => { /* ... same as before ... */ };
+  const renderPdfPreview = (previewType, ticketForPdf) => {
+    if (!previewType || !ticketForPdf) return null;
+
+    let pdfDataToUse = null;
+
+    if (previewType === "quotation") {
+        // Map ticket data to what QuotationPDF expects
+        pdfDataToUse = {
+            referenceNumber: ticketForPdf.quotationNumber,
+            date: ticketForPdf.createdAt, // Or a specific quotation date if available on ticket
+            client: {
+                companyName: ticketForPdf.companyName || "N/A",
+                gstNumber: ticketForPdf.clientGstNumber || "N/A",
+                phone: ticketForPdf.clientPhone || "N/A",
+                // siteLocation: "N/A" // QuotationPDF expects this, but not on ticket
+            },
+            goods: (ticketForPdf.goods || []).map(item => ({
+                ...item,
+                unit: item.unit || "Nos", // Ensure unit is present
+                // QuotationPDF doesn't use gstRate directly in item display but has a general GST term
+            })),
+            totalAmount: ticketForPdf.totalAmount, // Pre-GST total
+            dispatchDays: ticketForPdf.dispatchDays || "7-10 working",
+            validityDate: ticketForPdf.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+            // Other fields QuotationPDF might expect, like terms, might need to be hardcoded or mapped
+        };
+    } else if (previewType === "pi") {
+        // PIPDF expects a ticket object directly. Ensure addresses are arrays.
+        // The selectedTicket/editTicket should already have addresses as arrays from backend.
+        pdfDataToUse = { ...ticketForPdf };
+    }
+
+
+    if (!pdfDataToUse) return <Alert variant="warning">Could not load data for PDF preview.</Alert>;
+
+    return (
+        <div className="mt-4 p-3 border rounded bg-light">
+            <h5 className="mb-3">
+                <i className={`bi ${previewType === "quotation" ? "bi-file-earmark-text" : "bi-file-earmark-medical"}`}></i>{" "}
+                {previewType.toUpperCase()} Preview
+            </h5>
+            <div className="document-preview-container" style={{ height: '70vh', overflowY: 'auto' }}>
+                <PDFViewer width="100%" height="100%" className="mb-3">
+                    {previewType === "quotation" ? (
+                        <QuotationPDF quotation={pdfDataToUse} />
+                    ) : (
+                        <PIPDF ticket={pdfDataToUse} />
+                    )}
+                </PDFViewer>
+            </div>
+             {/* Actions are now part of ReusableModal footer for PI */}
+        </div>
+    );
+  };
+
+  const handleSpecificDocumentUpload = async (file, docType, ticketIdForUpload = null) => {
+    if (!file) { toast.warn("Please select a file to upload"); return false; }
+    if (file.size > 5 * 1024 * 1024) { toast.warn("File size should be less than 5MB"); return false; }
+
+    const targetTicketId = ticketIdForUpload || editTicket?._id || selectedTicket?._id;
+    if (!targetTicketId) { toast.error("Target ticket ID not found."); return false; }
+
+
+    setIsLoading(true); setError(null);
+    try {
+      // const token = getAuthTokenUtil();
+      // if (!token) {
+      //   toast.error("Authentication required to upload document.");
+      //   throw new Error("Authentication token not found");
+      // }
+      const formData = new FormData();
+      formData.append("document", file);
+      formData.append("documentType", docType);
+
+      const responseData = await apiClient(`/tickets/${targetTicketId}/documents`, { method: "POST", body: formData }); // apiClient handles FormData
+      if (!responseData || !responseData.documents) { throw new Error("Invalid response from server after document upload"); }
+
+      await fetchTickets();
+      if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" } });
+        setSelectedTicket(updatedSingleTicket);
+      }
+      if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" } });
+        setEditTicket(updatedSingleTicket); // Also update editTicket if it's the one being modified
+         // And update ticketData to reflect changes in the form
+        setTicketData(prev => ({ ...prev, documents: updatedSingleTicket.documents }));
+      }
+
+
+      const successMsg = `${docType.toUpperCase()} document uploaded successfully.`;
+      toast.success(successMsg);
+      frontendLogger.info("documentActivity", successMsg, auth.user, { action: "UPLOAD_DOCUMENT_SUCCESS" });
+      return true;
+    } catch (error) {
+      const errorMsg = handleApiError(error, "Failed to upload document", auth.user, "documentActivity");
+      setError(errorMsg); toast.error(errorMsg);
+      frontendLogger.error("documentActivity", `Failed to upload document (${docType}) for ticket ${targetTicketId}`, auth.user, { ticketId: targetTicketId, action: "UPLOAD_DOCUMENT_FAILURE" });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDocumentDelete = async (docTypeToDelete, documentPathToDelete, ticketIdForDelete = null) => {
+    setIsLoading(true); setError(null);
+    const targetTicketId = ticketIdForDelete || editTicket?._id || selectedTicket?._id;
+    if (!targetTicketId) { toast.error("Target ticket ID not found for deletion."); setIsLoading(false); return; }
+
+
+    try {
+      // const token = getAuthTokenUtil();
+      // if (!token) {
+      //   toast.error("Authentication required to delete document.");
+      //   throw new Error("No authentication token found");
+      // }
+      if (!documentPathToDelete) { toast.warn("Document path not found for deletion."); setIsLoading(false); return; }
+
+      await apiClient(`/tickets/${targetTicketId}/documents`, { method: "DELETE", body: { documentType: docTypeToDelete, documentPath: documentPathToDelete } });
+
+      await fetchTickets();
+      if (showPaymentModal && selectedTicket && selectedTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" } });
+        setSelectedTicket(updatedSingleTicket);
+      }
+       if (showEditModal && editTicket && editTicket?._id === targetTicketId) {
+        const updatedSingleTicket = await apiClient(`/tickets/${targetTicketId}`, { params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" } });
+        setEditTicket(updatedSingleTicket);
+        setTicketData(prev => ({ ...prev, documents: updatedSingleTicket.documents }));
+      }
+
+
+      const successMsg = `${docTypeToDelete.toUpperCase()} document deleted successfully.`;
+      toast.success(successMsg);
+      frontendLogger.info("documentActivity", successMsg, auth.user, { deletedPath: documentPathToDelete, action: "DELETE_DOCUMENT_SUCCESS" });
+    } catch (error) {
+      const errorMsg = handleApiError(error, "Failed to delete document", auth.user, "documentActivity");
+      setError(errorMsg); toast.error(errorMsg);
+      frontendLogger.error("documentActivity", `Failed to delete document (${docTypeToDelete}) for ticket ${targetTicketId}`, auth.user, { ticketId: targetTicketId, action: "DELETE_DOCUMENT_FAILURE" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const renderAddressFields = (type, isDisabled = false) => {
     const addressKey = type; // 'billingAddress' or 'shippingAddress' (object keys in ticketData)
     const address = ticketData[addressKey] || {};
+
     const handleChange = (field, value) => {
-      setTicketData((prev) => ({ ...prev, [addressKey]: { ...(prev[addressKey] || {}), [field]: value } }));
-      if (type === 'billingAddress') { // If billing address state changes, trigger tax recalc
-          calculateTaxesForEditModal();
-      }
+      setTicketData((prev) => {
+        const newAddressData = { ...prev, [addressKey]: { ...(prev[addressKey] || {}), [field]: value } };
+        // If billing address state changes, trigger tax recalc
+        if (type === 'billingAddress' && field === 'state') {
+            // The calculateTaxesForEditModal useEffect will pick this up
+        }
+        return newAddressData;
+      });
     };
+
     const handlePincodeChangeForAddress = async (pincode) => {
-        handleChange('pincode', pincode);
+        handleChange('pincode', pincode); // Update pincode in state first
         if (pincode.length === 6) {
-            setIsLoading(true); // Or a specific loading state for pincode fetch
+            setIsFetchingAddressInEdit(true);
             try {
                 const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
                 const data = response.data[0];
                 if (data.Status === "Success") {
                     const postOffice = data.PostOffice[0];
-                    setTicketData(prev => ({
-                        ...prev,
-                        [addressKey]: {
+                    setTicketData(prev => {
+                        const updatedAddress = {
                             ...prev[addressKey],
                             city: postOffice.District,
                             state: postOffice.State,
+                            pincode: pincode // ensure pincode is also set from input
+                        };
+                        const newTicketData = { ...prev, [addressKey]: updatedAddress };
+                        // If shipping is same as billing and billing address is being changed, update shipping too
+                        if (type === 'billingAddress' && prev.shippingSameAsBilling) {
+                            newTicketData.shippingAddress = { ...updatedAddress };
                         }
-                    }));
-                    if (type === 'billingAddress') calculateTaxesForEditModal(); // Recalculate if billing state changed
+                        return newTicketData;
+                    });
+                    // Tax recalculation will be triggered by useEffect watching billingAddress.state
+                } else {
+                    toast.warn(`Pincode ${pincode} not found or invalid.`);
                 }
-            } catch (err) { console.error("Pincode fetch error:", err); }
-            finally { setIsLoading(false); }
+            } catch (err) {
+                console.error("Pincode fetch error:", err);
+                toast.error("Error fetching address from pincode.");
+            }
+            finally { setIsFetchingAddressInEdit(false); }
         }
     };
     return (
       <div className="mb-3">
         <div className="row g-2">
-          <Form.Group className="col-md-6"><Form.Control placeholder="Address Line 1" value={address.address1 || ""} onChange={(e) => handleChange("address1", e.target.value)} disabled={isDisabled} /></Form.Group>
-          <Form.Group className="col-md-6"><Form.Control placeholder="Address Line 2" value={address.address2 || ""} onChange={(e) => handleChange("address2", e.target.value)} disabled={isDisabled} /></Form.Group>
-          <Form.Group className="col-md-4"><Form.Control placeholder="Pincode" value={address.pincode || ""} onChange={(e) => handlePincodeChangeForAddress(e.target.value)} disabled={isDisabled} /></Form.Group>
-          <Form.Group className="col-md-4"><Form.Control placeholder="City" value={address.city || ""} onChange={(e) => handleChange("city", e.target.value)} disabled={isDisabled} readOnly={!!address.city && !isDisabled} /></Form.Group>
-          <Form.Group className="col-md-4"><Form.Control placeholder="State" value={address.state || ""} onChange={(e) => handleChange("state", e.target.value)} disabled={isDisabled} readOnly={!!address.state && !isDisabled} /></Form.Group>
+          <Form.Group className="col-md-6"><Form.Label>Address Line 1</Form.Label><Form.Control placeholder="Address Line 1" value={address.address1 || ""} onChange={(e) => handleChange("address1", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} /></Form.Group>
+          <Form.Group className="col-md-6"><Form.Label>Address Line 2</Form.Label><Form.Control placeholder="Address Line 2" value={address.address2 || ""} onChange={(e) => handleChange("address2", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} /></Form.Group>
+          <Form.Group className="col-md-4"><Form.Label>Pincode</Form.Label><Form.Control placeholder="Pincode" value={address.pincode || ""} onChange={(e) => handlePincodeChangeForAddress(e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} pattern="[0-9]{6}" /><Form.Text className="text-muted">6-digit pincode</Form.Text></Form.Group>
+          <Form.Group className="col-md-4"><Form.Label>City</Form.Label><Form.Control placeholder="City" value={address.city || ""} onChange={(e) => handleChange("city", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} readOnly={!!address.city && !isDisabled && !isFetchingAddressInEdit && !!address.pincode && address.pincode.length === 6} /></Form.Group>
+          <Form.Group className="col-md-4"><Form.Label>State</Form.Label><Form.Control placeholder="State" value={address.state || ""} onChange={(e) => handleChange("state", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} readOnly={!!address.state && !isDisabled && !isFetchingAddressInEdit && !!address.pincode && address.pincode.length === 6} /></Form.Group>
         </div>
       </div>
     );
   };
 
-  const getStatusBadgeColor = (status) => { /* ... same as before ... */ };
-  const ProgressBarWithStages = () => { /* ... same as before ... */ };
-  const TransferModal = () => { /* ... same as before ... */ };
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case "Quotation Sent": return "info";
+      case "PO Received": return "primary";
+      case "Payment Pending": return "warning";
+      case "Inspection": return "secondary";
+      case "Packing List": return "dark";
+      case "Invoice Sent": return "success";
+      case "Hold": return "danger";
+      case "Closed": return "success";
+      default: return "dark";
+    }
+  };
+  const ProgressBarWithStages = () => (
+    <div className="mb-4">
+      <ProgressBar style={{ height: "30px" }}>
+        {statusStages.map((stage, index) => {
+          const currentStatusIndex = statusStages.indexOf(ticketData.status);
+          const isCompleted = currentStatusIndex >= index;
+          const isCurrent = ticketData.status === stage;
+          return (
+            <ProgressBar
+              key={stage}
+              now={100 / statusStages.length}
+              variant={isCompleted ? getStatusBadgeColor(stage) : "secondary"}
+              label={isCurrent ? stage : ""}
+              animated={isCurrent}
+              onClick={() => handleStatusChange(stage)}
+              style={{ cursor: "pointer", transition: "background-color 0.3s ease" }}
+              title={`Set status to: ${stage}`}
+            />
+          );
+        })}
+      </ProgressBar>
+      <div className="d-flex justify-content-between mt-2">
+        {statusStages.map((stage) => (
+          <small
+            key={stage}
+            className={`text-center ${ticketData.status === stage ? `fw-bold text-${getStatusBadgeColor(stage)}` : "text-muted"}`}
+            style={{ width: `${100 / statusStages.length}%`, cursor: "pointer", transition: "color 0.3s ease, font-weight 0.3s ease" }}
+            onClick={() => handleStatusChange(stage)}
+            title={`Set status to: ${stage}`}
+          >
+            {stage.split(" ")[0]}
+          </small>
+        ))}
+      </div>
+    </div>
+  );
+  const TransferModal = () => {
+    const [transferNote, setTransferNote] = useState("");
+
+    const transferModalFooter = (
+      <>
+        <Button variant="outline-secondary" onClick={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); setTransferNote(""); }} disabled={isLoading}>Cancel</Button>
+        <Button variant="primary" onClick={() => handleTransferTicket(selectedUser, transferNote)} disabled={!selectedUser || isLoading} className="px-4">
+          {isLoading ? "Transferring..." : "Confirm Transfer"}
+        </Button>
+      </>
+    );
+
+    return (
+      <ReusableModal
+        show={showTransferModal}
+        onHide={() => { setShowTransferModal(false); setError(null); setSelectedUser(null); setTransferNote(""); }}
+        title={<><i className="bi bi-arrow-left-right me-2"></i>Transfer Ticket - {transferTicket?.ticketNumber}</>}
+        footerContent={transferModalFooter}
+        isLoading={isLoading}
+      >
+        <div className="mb-4">
+          <h5 className="mb-3" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem" }}>
+            <i className="bi bi-search me-2"></i>Search User to Transfer To
+          </h5>
+          <UserSearchComponent onUserSelect={handleUserSelect} authContext={auth} />
+          <div style={{ position: "relative", zIndex: 1050 }}></div>
+        </div>
+        {selectedUser && (
+          <>
+            <div className="selected-user-info p-4 border rounded bg-light">
+              <h6 className="mb-3"><i className="bi bi-person-circle me-2"></i>Selected User Details:</h6>
+              <div className="row">
+                <div className="col-md-6"><p><i className="bi bi-person me-2"></i><strong>Name:</strong> {selectedUser.firstname} {selectedUser.lastname}</p><p><i className="bi bi-envelope me-2"></i><strong>Email:</strong> {selectedUser.email}</p></div>
+                <div className="col-md-6"><p><i className="bi bi-person-badge me-2"></i><strong>Role:</strong> <Badge bg="info">{selectedUser.role}</Badge></p></div>
+              </div>
+            </div>
+            <Form.Group className="mt-3">
+              <Form.Label>Transfer Note (Optional)</Form.Label>
+              <Form.Control as="textarea" rows={2} value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="Add any notes about this transfer..." />
+            </Form.Group>
+          </>
+        )}
+        {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+        {transferTicket && (
+          <div className="ticket-summary mt-4 p-3 border rounded">
+            <h5 className="mb-3" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem" }}>Ticket Summary</h5>
+            <div className="row">
+              <div className="col-md-6"><p><strong>Company:</strong> {transferTicket.companyName}</p><p><strong>Quotation:</strong> {transferTicket.quotationNumber}</p><p><strong>Current Assignee:</strong> {transferTicket.currentAssignee?.firstname} {transferTicket.currentAssignee?.lastname || "N/A"}</p></div>
+              <div className="col-md-6"><p><strong>Status:</strong> <Badge bg={getStatusBadgeColor(transferTicket.status)}>{transferTicket.status}</Badge></p><p><strong>Amount:</strong> ₹{transferTicket.grandTotal?.toFixed(2)}</p><p><strong>Created By:</strong> {transferTicket.createdBy?.firstname} {transferTicket.createdBy?.lastname || "N/A"}</p></div>
+            </div>
+          </div>
+        )}
+      </ReusableModal>
+    );
+  };
 
   return (
     <div>
@@ -576,8 +1024,8 @@ export default function Dashboard() {
             <SearchBar value={searchTerm} setSearchTerm={(value) => { setSearchTerm(value); setCurrentPage(1); }} placeholder="Search tickets..." className="w-100" />
           </div>
           <div className="filter-radio-group d-flex align-items-center flex-wrap" style={{ gap: "0.5rem" }}>
-            {["all", "open", "Running", "closed", "hold"].map(s => ( // Note: "Running" capitalized
-                <Form.Check type="radio" inline key={s} id={`filter-${s.toLowerCase()}`} label={s} name="statusFilter"
+            {["all", "open", "Running", "closed", "hold"].map(s => (
+                <Form.Check type="radio" inline key={s} id={`filter-${s.toLowerCase()}`} label={s.charAt(0).toUpperCase() + s.slice(1)} name="statusFilter"
                     checked={statusFilter === s} onChange={() => { setStatusFilter(s); setCurrentPage(1); }} className="radio-option" />
             ))}
           </div>
@@ -594,11 +1042,35 @@ export default function Dashboard() {
             { key: "assignedTo", header: "Assigned To", renderCell: (ticket) => ticket.currentAssignee ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}` : ticket.createdBy?.firstname ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}` : "N/A" },
             { key: "companyName", header: "Company Name", sortable: true },
             { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
-            { key: "progress", header: "Progress", renderCell: (ticket) => { /* ... same as before ... */ } },
+            {
+              key: "progress", header: "Progress",
+              renderCell: (ticket) => {
+                const currentStatusIndex = statusStages.indexOf(ticket.status);
+                const progressPercentage = currentStatusIndex !== -1 ? Math.round(((currentStatusIndex + 1) / statusStages.length) * 100) : 0;
+                return (
+                  <>
+                    <Badge bg={getStatusBadgeColor(ticket.status)} className="mb-1 d-block text-center">{ticket.status}</Badge>
+                    <div className="d-flex flex-column clickable-progress" onClick={(e) => { e.stopPropagation(); handleProgressClick(ticket); }} style={{ cursor: "pointer" }} title="View Payment Details & History">
+                      <ProgressBar now={progressPercentage} label={`${progressPercentage}%`} variant={getProgressBarVariant(progressPercentage)} style={{ height: "15px" }} />
+                    </div>
+                  </>
+                );
+              },
+            },
           ]}
           data={currentItems} keyField="_id" isLoading={isLoading && currentItems.length === 0}
           error={error && currentItems.length === 0 ? error : null} onSort={requestSort} sortConfig={sortConfig}
-          renderActions={(ticket) => { /* ... same as before ... */ }}
+          renderActions={(ticket) => {
+            const canModifyTicket = authUser?.role === "admin" || authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+            const canTransferThisTicket = authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+            return (
+              <div className="d-flex gap-2">
+                <Button variant="primary" size="sm" onClick={() => handleEdit(ticket)} disabled={!canModifyTicket || isLoading} title={!canModifyTicket ? "Only admin, super-admin, or current assignee can edit" : "Edit Ticket"}><i className="bi bi-pencil-square"></i></Button>
+                {authUser?.role === "super-admin" && (<Button variant="danger" size="sm" onClick={() => handleDelete(ticket)} disabled={isLoading} title="Delete Ticket"><i className="bi bi-trash"></i></Button>)}
+                <Button variant="warning" size="sm" onClick={() => handleTransfer(ticket)} disabled={!canTransferThisTicket || isLoading} title={!canTransferThisTicket ? "Only super-admin or current assignee can transfer" : "Transfer Ticket"}><i className="bi bi-arrow-left-right"></i></Button>
+              </div>
+            );
+          }}
           noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
         />
         <ReusableModal show={showEditModal} onHide={() => { setShowEditModal(false); setError(null); }}
@@ -620,7 +1092,7 @@ export default function Dashboard() {
               <Table striped bordered hover size="sm" responsive><thead className="table-light"><tr><th>Changed By</th><th>Date</th><th>Status Changed To</th><th>Note</th></tr></thead><tbody>
                 {editTicket.statusHistory.slice().reverse().map((historyItem, index) => (
                   <tr key={index}><td>{historyItem.changedBy ? `${historyItem.changedBy.firstname || ""} ${historyItem.changedBy.lastname || ""}`.trim() || historyItem.changedBy.email || "Unknown" : "N/A"}</td><td>{new Date(historyItem.changedAt).toLocaleString()}</td><td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td><td title={historyItem.note || "No note"}>{(historyItem.note || "N/A").substring(0, 50) + (historyItem.note && historyItem.note.length > 50 ? "..." : "")}</td></tr>
-                ))}</tbody></Table>
+                ))}</tbody   ></Table>
             </div>
           )}
           <hr />
@@ -632,13 +1104,13 @@ export default function Dashboard() {
           <Row>
             <Col md={6}><h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-building me-1"></i>Billing Address</h5>{renderAddressFields("billingAddress", true)}</Col>
             <Col md={6}><h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-truck me-1"></i>Shipping Address</h5>
-              {renderAddressFields("shippingAddress", ticketData.shippingSameAsBilling)}
+              {renderAddressFields("shippingAddress", ticketData.shippingSameAsBilling || isFetchingAddressInEdit)}
               <Form.Check type="checkbox" label="Shipping same as billing" checked={ticketData.shippingSameAsBilling}
-                onChange={(e) => { const isChecked = e.target.checked; setTicketData((prev) => ({ ...prev, shippingSameAsBilling: isChecked, shippingAddress: isChecked ? { ...prev.billingAddress } : { ...prev.shippingAddress } })); }} />
+                onChange={(e) => { const isChecked = e.target.checked; setTicketData((prev) => ({ ...prev, shippingSameAsBilling: isChecked, shippingAddress: isChecked ? { ...prev.billingAddress } : { address1: "", address2: "", city: "", state: "", pincode: "" } })); }} disabled={isFetchingAddressInEdit} />
             </Col>
           </Row>
           <h5 className="mt-4" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-box-seam me-1"></i>Goods Details*</h5>
-          <div className="table-responsive"><Table bordered className="mb-3"><thead><tr className="text-center"><th>Sr No.</th><th>Description*</th><th>HSN/SAC*</th><th>Qty*</th><th>GST%*</th><th>Price*</th><th>Amount</th><th>Delete</th></tr></thead><tbody>
+          <div className="table-responsive"><Table bordered className="mb-3"><thead ><tr className="text-center"><th>Sr No.</th><th>Description*</th><th>HSN/SAC*</th><th>Qty*</th><th>GST%*</th><th>Price*</th><th>Amount</th><th>Delete</th></tr></thead><tbody>
             {ticketData.goods.map((item, index) => (
               <tr key={index}>
                 <td className="align-middle text-center">{item.srNo}</td>
@@ -649,16 +1121,18 @@ export default function Dashboard() {
                 </td>
                 <td><Form.Control type="text" value={item.hsnSacCode || ""} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} required placeholder="HSN/SAC" /></td>
                 <td><Form.Control required type="number" min="1" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} /></td>
-                <td><Form.Control required type="number" min="0" step="0.1" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} /></td>
-                <td><Form.Control type="number" min="0" value={item.price || 0} onChange={(e) => handleTicketGoodsChange(index, "price", e.target.value)} /></td>
+                <td><Form.Control required type="number" min="0" step="0.01" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} /></td>
+                <td><Form.Control type="number" min="0" step="0.01" value={item.price || 0} onChange={(e) => handleTicketGoodsChange(index, "price", e.target.value)} /></td>
                 <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
                 <td className="text-center align-middle"><Button variant="danger" size="sm" onClick={() => handleDeleteItemFromTicket(index)}><i className="bi bi-trash"></i></Button></td>
               </tr>))}
           </tbody></Table></div>
-          <div className="my-3"><h6>Add New Item to Ticket</h6><ItemSearchComponent onItemSelect={handleAddItemToTicket} placeholder="Search and select item..." onDropdownToggle={setIsItemSearchDropdownOpenInEditModal} /></div>
+          <div className="my-3"><h6 >Add New Item to Ticket</h6><ItemSearchComponent onItemSelect={handleAddItemToTicket} placeholder="Search and select item..." onDropdownToggle={setIsItemSearchDropdownOpenInEditModal} /></div>
           {isItemSearchDropdownOpenInEditModal && <div style={{ height: "300px" }}></div>}
-          <div className="bg-light p-3 rounded mt-3">
-            <h5 className="text-center mb-3">Ticket Summary</h5>
+          {/* Ticket Financial Summary Section */}
+          <div className="bg-light p-3 rounded mt-4">
+            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#e9ecef", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+                <i className="bi bi-calculator me-1"></i>Ticket Financial Summary</h5>
             <Row>
                 <Col md={4}><Table bordered size="sm"><tbody>
                     <tr><td>Total Quantity</td><td className="text-end"><strong>{ticketData.totalQuantity || 0}</strong></td></tr>
@@ -670,11 +1144,11 @@ export default function Dashboard() {
                         {gstGroup.itemGstRate > 0 && (
                             ticketData.isBillingStateSameAsCompany ? (
                             <>
-                                <tr><td>CGST ({gstGroup.cgstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td><td className="text-end">₹{(gstGroup.cgstAmount || 0).toFixed(2)}</td></tr>
-                                <tr><td>SGST ({gstGroup.sgstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td><td className="text-end">₹{(gstGroup.sgstAmount || 0).toFixed(2)}</td></tr>
+                                <tr><td>CGST ({gstGroup.cgstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.cgstAmount || 0).toFixed(2)}</td></tr>
+                                <tr><td>SGST ({gstGroup.sgstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.sgstAmount || 0).toFixed(2)}</td></tr>
                             </>
                             ) : (
-                            <tr><td>IGST ({gstGroup.igstRate.toFixed(2)}% on ₹{gstGroup.taxableAmount.toFixed(2)})</td><td className="text-end">₹{(gstGroup.igstAmount || 0).toFixed(2)}</td></tr>
+                            <tr><td>IGST ({gstGroup.igstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.igstAmount || 0).toFixed(2)}</td></tr>
                             )
                         )}
                         </React.Fragment>
@@ -687,11 +1161,60 @@ export default function Dashboard() {
           <div className="mt-4"><h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-file-text me-1"></i>Terms & Conditions</h5><Form.Control as="textarea" rows={4} value={ticketData.termsAndConditions} onChange={(e) => setTicketData({ ...ticketData, termsAndConditions: e.target.value })} placeholder="Enter terms for PI..." /></div>
         </ReusableModal>
         <TransferModal />
-        <ReusableModal show={showPdfPreviewModal} onHide={() => setShowPdfPreviewModal(false)} title={`${pdfPreviewConfig.type?.toUpperCase()} Preview`}>
-          {pdfPreviewConfig.type && pdfPreviewConfig.data && renderPdfPreview(pdfPreviewConfig.type, pdfPreviewConfig.data)}
+        <ReusableModal
+          show={showPdfPreviewModal}
+          onHide={() => setShowPdfPreviewModal(false)}
+          title={`${pdfPreviewConfig.type?.toUpperCase()} Preview - ${selectedTicket?.ticketNumber || editTicket?.ticketNumber || ""}`}
+          footerContent={pdfPreviewConfig.type === "PI" && (selectedTicket || editTicket) ? <PIActions ticket={selectedTicket || editTicket} /> : null}
+        >
+          {pdfPreviewConfig.type && (selectedTicket || editTicket) && renderPdfPreview(pdfPreviewConfig.type, selectedTicket || editTicket)}
         </ReusableModal>
-        <ReusableModal show={showPaymentModal} onHide={() => { setShowPaymentModal(false); setError(null); }} title={<><i className="bi bi-credit-card-2-front me-2"></i>Payment Details - {selectedTicket?.ticketNumber}</>} footerContent={<Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>}>
-          {/* Payment Modal Content: Error, Documents, Transfer History */}
+        <ReusableModal show={showPaymentModal} onHide={() => { setShowPaymentModal(false); setError(null); }} title={<><i className="bi bi-credit-card-2-front me-2"></i>Document Details - {selectedTicket?.ticketNumber}</>}
+          footerContent={<Button variant="secondary" onClick={() => { setShowPaymentModal(false); setError(null); }} disabled={isLoading}>Close</Button>}>
+            {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
+            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-files me-2"></i>Ticket Documents</h5>
+            <Row className="mb-4 text-center">
+            {[ { name: "Quotation", docType: "quotation", icon: "bi-file-earmark-text", generate: true }, { name: "PI", docType: "pi", icon: "bi-file-earmark-medical", generate: true }, { name: "PO", docType: "po", icon: "bi-file-earmark-check" }, { name: "Dispatch", docType: "challan", icon: "bi-truck" }, { name: "Packing List", docType: "packingList", icon: "bi-list-ul" }, { name: "Feedback", docType: "feedback", icon: "bi-chat-square-text" } ].map((docDef) => {
+              const docData = selectedTicket?.documents?.[docDef.docType];
+              return (
+                <Col key={docDef.docType} md={4} className="mb-3">
+                  <Card className="h-100 shadow-sm"><Card.Body className="d-flex flex-column">
+                    <Card.Title className="d-flex align-items-center"><i className={`bi ${docDef.icon} me-2 fs-4`}></i>{docDef.name}</Card.Title>
+                    {docData && docData.path ? (
+                      <>
+                        <small className="text-muted">Uploaded by: {docData.uploadedBy && docData.uploadedBy.firstname ? `${docData.uploadedBy.firstname} ${docData.uploadedBy.lastname || ""}`.trim() : "N/A"}<br />On: {new Date(docData.uploadedAt).toLocaleDateString()}</small>
+                        <Button variant="outline-info" size="sm" className="mt-2" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${docData.path}`, "_blank")}><i className="bi bi-eye me-1"></i>View Uploaded</Button>
+                        <Button variant="outline-danger" size="sm" className="mt-1" onClick={() => handleDocumentDelete(docDef.docType, docData.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash me-1"></i>Delete</Button>
+                      </>
+                    ) : (<p className="text-muted small mt-1">Not uploaded yet.</p>)}
+                    {docDef.generate && (<Button variant="primary" size="sm" className="mt-auto" onClick={() => { setPdfPreviewConfig({ type: docDef.docType, data: selectedTicket }); setShowPdfPreviewModal(true); }}><i className="bi bi-gear me-1"></i>Generate & View</Button>)}
+                    <Button variant={docData && docData.path ? "outline-warning" : "outline-success"} size="sm" className="mt-1" onClick={() => { setUploadingDocType(docDef.docType); document.getElementById(`file-upload-${docDef.docType}-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className={`bi ${docData && docData.path ? "bi-arrow-repeat" : "bi-upload"} me-1`}></i>{docData && docData.path ? "Replace" : "Upload"} {docDef.name}</Button>
+                    <input type="file" id={`file-upload-${docDef.docType}-${selectedTicket?._id}`} style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], uploadingDocType, selectedTicket?._id); e.target.value = ""; setUploadingDocType(null); } }} />
+                  </Card.Body></Card>
+                </Col>
+              );})}
+            </Row>
+            <hr />
+            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-paperclip me-2"></i>Other Uploaded Documents</h5>
+            {selectedTicket?.documents?.other && selectedTicket.documents.other.length > 0 ? (
+              <Table striped bordered hover size="sm" className="mt-2">
+                <thead><tr><th>File Name</th><th>Uploaded By</th><th>Date</th><th>Actions</th></tr></thead>
+                <tbody>{selectedTicket.documents.other.map((doc, index) => (
+                  <tr key={doc.path || index}><td>{doc.originalName}</td><td>{doc.uploadedBy && doc.uploadedBy.firstname ? `${doc.uploadedBy.firstname} ${doc.uploadedBy.lastname || ""}`.trim() : "N/A"}</td><td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
+                  <td><Button variant="info" size="sm" className="me-1" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}/uploads/${selectedTicket?._id}/${doc.path}`, "_blank")}><i className="bi bi-eye"></i></Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDocumentDelete("other", doc.path, selectedTicket?._id)} disabled={isLoading}><i className="bi bi-trash"></i></Button></td></tr>))}
+                </tbody></Table>
+            ) : (<p className="text-muted">No other documents uploaded.</p>)}
+            <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => { setUploadingDocType("other"); document.getElementById(`file-upload-other-${selectedTicket?._id}`)?.click(); }} disabled={isLoading}><i className="bi bi-plus-circle"></i> Upload Other Document</Button>
+            <input type="file" id={`file-upload-other-${selectedTicket?._id}`} style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files.length > 0) { handleSpecificDocumentUpload(e.target.files[0], "other", selectedTicket?._id); e.target.value = null; setUploadingDocType(null); } }} />
+            <hr />
+            <Row><Col md={12}>
+              <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-arrow-repeat me-1"></i>Transfer History</h5>
+              {selectedTicket && transferHistoryDisplay && transferHistoryDisplay.length > 0 ? (
+                <Table bordered responsive className="mt-2 transfer-history-table table-sm"><thead className="table-light"><tr><th>Name</th><th>Date</th><th>Note</th></tr></thead>
+                <tbody>{transferHistoryDisplay.map((entry, index) => (<tr key={index}><td>{entry.name}</td><td>{new Date(entry.date).toLocaleString()}</td><td title={entry.note}>{entry.note ? entry.note.substring(0, 50) + (entry.note.length > 50 ? "..." : "") : "N/A"}</td></tr>))}</tbody></Table>
+              ) : (<div className="text-muted mt-2">No transfer history available.</div>)}
+            </Col></Row>
         </ReusableModal>
         {filteredTickets.length > 0 && <Pagination currentPage={currentPage} totalItems={filteredTickets.length} itemsPerPage={itemsPerPage} onPageChange={(page) => { const currentTotalPages = Math.ceil(filteredTickets.length / itemsPerPage); if (page >= 1 && page <= currentTotalPages) setCurrentPage(page); }} onItemsPerPageChange={handleItemsPerPageChange} />}
       </div>
@@ -701,4 +1224,8 @@ export default function Dashboard() {
   );
 }
 
-function getProgressBarVariant(percentage) { /* ... same as before ... */ }
+function getProgressBarVariant(percentage) {
+  if (percentage < 30) return "danger";
+  if (percentage < 70) return "warning";
+  return "success";
+}

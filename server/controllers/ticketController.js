@@ -10,12 +10,9 @@ const path = require("path");
 const asyncHandler = require("express-async-handler");
 
 exports.createTicket = asyncHandler(async (req, res) => {
-  const user = req.user || null;
-  // Ensure ticketData is a fresh object to avoid modifying req.body directly
-  const ticketInputData = { ...req.body }; // Use a new variable for input
+ const user = req.user; // Auth middleware should ensure req.user exists
 
-  if (!user) {
-    logger.error(
+  if (!user || !user.id) {    logger.error(
       "ticket-create",
       "User not found in request. Auth middleware might not be working correctly."
     );
@@ -23,75 +20,104 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .status(401)
       .json({ error: "Unauthorized: User not authenticated." });
   }
+    const { newTicketDetails, sourceQuotationData } = req.body;
 
-  // --- Billing Address from Quotation ---
-  let quotationBillingAddressArray = ["", "", "", "", ""]; // Default empty address
-  if (ticketInputData.quotationNumber) {
-    const quotation = await Quotation.findOne({
-      referenceNumber: ticketInputData.quotationNumber,
-      // user: user.id // Assuming quotation is user-specific or accessible
-    }).select("billingAddress"); // Only select billingAddress
+  if (!newTicketDetails) {
+    logger.error("ticket-create", "Missing newTicketDetails in request body.", user);
+    return res.status(400).json({ error: "Missing newTicketDetails in request body." });
+  }
 
-    if (quotation && quotation.billingAddress) {
-      const ba = quotation.billingAddress;
-      // Frontend Tickets.jsx handleUpdateTicket converts object to [add1, add2, state, city, pincode]
-      // So, the mapping from quotation object to ticket array should be:
-      quotationBillingAddressArray = [
-        ba.address1 || "",
-        ba.address2 || "",
-        ba.state || "", // state is 3rd element
-        ba.city || "", // city is 4th element
-        ba.pincode || "",
+  // 1. Logic to update existing tickets linked to the source quotation (if sourceQuotationData is provided)
+  if (sourceQuotationData && sourceQuotationData.referenceNumber) {
+    try {
+      const quotationBillingAddress = sourceQuotationData.billingAddress || {};
+      const ticketBillingAddressArray = [
+        quotationBillingAddress.address1 || "",
+        quotationBillingAddress.address2 || "",
+        quotationBillingAddress.state || "",
+        quotationBillingAddress.city || "",
+        quotationBillingAddress.pincode || "",
       ];
-    } else {
-      logger.warn(
-        "ticket-create",
-        `Quotation ${ticketInputData.quotationNumber} not found or has no billing address. Using default empty for ticket.`,
-        user
+      const clientData = sourceQuotationData.client || {};
+
+      await Ticket.updateMany(
+        { quotationNumber: sourceQuotationData.referenceNumber },
+        {
+          $set: {
+            companyName: clientData.companyName,
+            // goods: sourceQuotationData.goods, // Be cautious: ensure Quotation goods schema matches Ticket goods schema or transform as needed
+            billingAddress: ticketBillingAddressArray,
+            clientPhone: clientData.phone,
+            clientGstNumber: clientData.gstNumber,
+            ...(clientData._id && { client: clientData._id }) // Link client if ID exists
+          },
+        }
       );
+      logger.info("ticket-sync", `Successfully synced existing tickets linked to quotation ${sourceQuotationData.referenceNumber}`, user);
+    } catch (syncError) {
+      logger.error("ticket-sync", `Error syncing tickets for quotation ${sourceQuotationData.referenceNumber}: ${syncError.message}`, user, { error: syncError });
+      // Decide if this error should prevent ticket creation or just be logged. For now, logging.
     }
   }
 
-  const finalTicketData = { ...ticketInputData }; // Start with input data
-  finalTicketData.createdBy = user.id;
-  finalTicketData.currentAssignee = user.id; // Set currentAssignee to creator by default
-  finalTicketData.billingAddress = quotationBillingAddressArray; // Set billing address from quotation
+  /// Prepare finalTicketData, trusting frontend for address arrays and GST calculations
+  const finalTicketData = {
+    ...newTicketDetails,
+    createdBy: user.id,
+    currentAssignee: user.id,
+    assignedTo: user.id, // Default assignedTo to creator
 
-  // --- Shipping Address Logic ---
-  if (ticketInputData.shippingSameAsBilling === true) {
-    finalTicketData.shippingAddress = quotationBillingAddressArray; // Copy from billing
+  };
+  // Set client ObjectId if available from sourceQuotationData
+  if (sourceQuotationData && sourceQuotationData.client && sourceQuotationData.client._id) {
+    finalTicketData.client = sourceQuotationData.client._id;
+  } else if (newTicketDetails.client && newTicketDetails.client._id) { // Or if frontend sent it directly
+    finalTicketData.client = newTicketDetails.client._id;
+  }
+
+  // Ensure statusHistory is correctly formatted
+  if (Array.isArray(finalTicketData.statusHistory) && finalTicketData.statusHistory.length > 0) {
+    finalTicketData.statusHistory = finalTicketData.statusHistory.map(entry => ({
+      ...entry,
+      changedBy: entry.changedBy || user.id, // Ensure changedBy is set by backend
+      changedAt: entry.changedAt || new Date(),
+    }));
   } else {
-    // Ensure shippingAddress from req.body is an array of 5 strings
-    // The frontend should send it in the correct array format if not shippingSameAsBilling
-    if (
-      Array.isArray(ticketInputData.shippingAddress) &&
-      ticketInputData.shippingAddress.length === 5
-    ) {
-      finalTicketData.shippingAddress = ticketInputData.shippingAddress;
-    } else if (
-      typeof ticketInputData.shippingAddress === "object" &&
-      ticketInputData.shippingAddress !== null
-    ) {
-      // If frontend sends an object, convert it
-      const sa = ticketInputData.shippingAddress;
-      finalTicketData.shippingAddress = [
-        sa.address1 || "",
-        sa.address2 || "",
-        sa.state || "",
-        sa.city || "",
-        sa.pincode || "",
-      ];
-    } else {
-      finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default empty if not provided correctly
-      logger.warn(
-        "ticket-create",
-        `Shipping address not provided correctly and not same as billing. Using default empty.`,
-        user
-      );
-    }
+    finalTicketData.statusHistory = [{
+      status: finalTicketData.status || "Quotation Sent", // Default from schema
+      changedAt: new Date(),
+      changedBy: user.id,
+      note: "Ticket created from quotation."
+    }];
   }
-  finalTicketData.shippingSameAsBilling =
-    ticketInputData.shippingSameAsBilling || false;
+   if (!finalTicketData.status) {
+      finalTicketData.status = "Quotation Sent"; // Ensure status is set
+  }
+
+  // Construct shippingAddress array
+  if (finalTicketData.shippingSameAsBilling === true) {
+    finalTicketData.shippingAddress = [...(finalTicketData.billingAddress || ["", "", "", "", ""])];
+  } else if (finalTicketData.shippingAddressObj) {
+    const saObj = finalTicketData.shippingAddressObj;
+    finalTicketData.shippingAddress = [saObj.address1 || "", saObj.address2 || "", saObj.state || "", saObj.city || "", saObj.pincode || ""];
+  } else if (!Array.isArray(finalTicketData.shippingAddress) || finalTicketData.shippingAddress.length !== 5) {
+    finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default if not properly provided
+  }
+  delete finalTicketData.shippingAddressObj; // Remove if not part of schema
+  if (!Array.isArray(finalTicketData.billingAddress) || finalTicketData.billingAddress.length !== 5) {
+    logger.error("ticket-create", "Billing address is not in the expected array format.", user, { billingAddress: finalTicketData.billingAddress });
+    return res.status(400).json({ error: "Invalid billing address format." });
+  }
+  if (!Array.isArray(finalTicketData.shippingAddress) || finalTicketData.shippingAddress.length !== 5) {
+ logger.error("ticket-create", "Shipping address is not in the expected array format after construction.", user, { shippingAddress: finalTicketData.shippingAddress });    return res.status(400).json({ error: "Invalid shipping address format." });
+  }
+
+  // Ensure all required GST fields are present if your logic depends on them
+  // (e.g., gstBreakdown, finalGstAmount, grandTotal)
+  // This step assumes the frontend calculates and sends these accurately.
+  // The model schema will validate their presence if marked as 'required'.
+  // finalTicketData.shippingSameAsBilling =
+  //   ticketInputData.shippingSameAsBilling || false;
 
   // Ensure subtexts are copied from input goods to final goods
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
@@ -110,11 +136,10 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
 
-  if (!finalTicketData.ticketNumber) {
-    // Use finalTicketData
+  if (!finalTicketData.ticketNumber) { 
     finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     logger.warn(
-      "ticket",
+      "ticket-create ",
       `Generated fallback ticket number: ${finalTicketData.ticketNumber}`,
       user
     );
@@ -122,8 +147,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
   // --- Inventory Deduction Logic ---
   if (finalTicketData.goods && finalTicketData.goods.length > 0) {
     // Use finalTicketData
-    for (const good of finalTicketData.goods) {
-      if (!good.description || !(Number(good.quantity) > 0)) {
+    for (const good of finalTicketData.goods) {       if (!good.description || !(Number(good.quantity) > 0)) {
         logger.warn(
           "inventory",
           `Skipping item with missing description or invalid quantity: ${JSON.stringify(
@@ -221,9 +245,12 @@ exports.createTicket = asyncHandler(async (req, res) => {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
             referenceNumber: ticket.quotationNumber,
-            user: user.id,
+                 // Prefer original quotation user if available, fallback to ticket creator
+            ...(sourceQuotationData && sourceQuotationData.user && { user: sourceQuotationData.user._id || sourceQuotationData.user }),
+            ...(!(sourceQuotationData && sourceQuotationData.user) && { user: finalTicketData.createdBy })
+
           },
-          { status: "running" },
+          { status: "running", $addToSet: { linkedTickets: ticket._id } }, // Link ticket to quotation
           { new: true }
         );
 
@@ -248,9 +275,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(201).json(ticket);
   } catch (error) {
     logger.error("ticket", `Failed to create ticket`, error, user, {
-      requestBody: req.body,
-    }); // Log original req.body for debugging
-    return res
+   finalTicketDataAttempted: finalTicketData, // Log the data that was attempted to be saved
+    });
+    if (error.name === 'ValidationError') {
+        return res.status(400).json({ error: "Validation failed", details: error.message, errors: error.errors });
+    }    return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
   }

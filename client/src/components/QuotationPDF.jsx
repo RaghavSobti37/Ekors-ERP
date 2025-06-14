@@ -120,6 +120,20 @@ const styles = StyleSheet.create({
     marginLeft: 10, // Indent subtext
     // paddingVertical: 1, // Small padding
   },
+    headerSection: {
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  gstinHeader: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  companyNameHeader: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
 });
 
 export const QuotationActions = ({ quotation }) => {
@@ -157,6 +171,13 @@ export const QuotationActions = ({ quotation }) => {
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
+         <View style={styles.headerSection}>
+              <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
+              <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+              <Text style={styles.companyAddressHeader}>
+                PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
+              </Text>
+            </View>
       <View style={styles.document}>
         <View style={styles.pageContent}>
           <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
