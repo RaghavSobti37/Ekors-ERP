@@ -379,12 +379,12 @@ const PIPDF = ({ ticket }) => {
         </View>
         <View style={styles.addressRow}>
            <Text style={[styles.addressCellHeader, styles.bold]}>GSTIN / UIN:</Text>
-      <Text style={styles.addressCell}>{clientGstNumber}</Text>
+      {/* <Text style={styles.addressCell}>{clientGstNumber}</Text> */}
       <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>{clientGstNumber}</Text>
         </View>
         <View style={[styles.addressRow, { borderBottomWidth: 0 }]}>
  <Text style={[styles.addressCellHeader, styles.bold]}>Contact No.:</Text>
-      <Text style={styles.addressCell}>{clientPhone}</Text>
+      {/* <Text style={styles.addressCell}>{clientPhone}</Text> */}
       <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>{clientPhone}</Text>
         </View>
       </View>

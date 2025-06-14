@@ -7,6 +7,7 @@ import ReusableTable from "../components/ReusableTable"; // Component for displa
 import { Table, Button, Form, Alert } from "react-bootstrap";
 import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
+import { useAuth } from "../context/AuthContext";
 
 export default function Challan() {
   const { user } = useAuth();

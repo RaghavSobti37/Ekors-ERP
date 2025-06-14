@@ -10,6 +10,7 @@ import { showToast, handleApiError } from "../utils/helpers"; // Utility functio
 import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
 // import * as XLSX from "xlsx"; // Library for Excel file operations - Not directly used here
 // ActionButtons is not directly used in the main table here, but could be if edit functionality was present
+import Footer from "../components/Footer";
 import {
   Eye, // View
   Trash, // Delete

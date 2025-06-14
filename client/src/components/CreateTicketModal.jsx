@@ -1,7 +1,10 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/components/CreateTicketModal.jsx
 import React, { useState, useEffect , useCallback} from "react";
-import { Modal, Button, Form, Table } from "react-bootstrap";
+import { Modal, Button, Form, Table, Spinner } from "react-bootstrap";
 import axios from "axios";
+import ReusableModal from "./ReusableModal.jsx"; // For PI Preview
+import PIPDF from "./PIPDF.jsx"; // For PI Preview
+import { PDFViewer } from "@react-pdf/renderer"; // For PI Preview
 
 const CreateTicketModal = ({
   show,
@@ -14,6 +17,7 @@ const CreateTicketModal = ({
 }) => {
   const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
 
   const fullScreenModalStyle = {
     position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -189,6 +193,28 @@ const CreateTicketModal = ({
     });
   };
 
+   const handlePreviewPI = () => {
+    // Construct the ticket object exactly as PIPDF expects it
+    // This ensures that what PIPDF gets is consistent.
+    // billingAddress is already an array in ticketData.
+    // shippingAddress needs to be constructed from shippingAddressObj if not same as billing.
+    const ticketForPreview = {
+      ...ticketData, // All fields from ticketData (companyName, quotationNumber, goods, all tax fields, etc.)
+      // Ensure shippingAddress is an array for PIPDF
+      shippingAddress: ticketData.shippingSameAsBilling
+        ? [...ticketData.billingAddress] // A copy of the billingAddress array
+        : [ // Construct from shippingAddressObj
+            ticketData.shippingAddressObj?.address1 || "",
+            ticketData.shippingAddressObj?.address2 || "",
+            ticketData.shippingAddressObj?.state || "",
+            ticketData.shippingAddressObj?.city || "",
+            ticketData.shippingAddressObj?.pincode || "",
+          ],
+    };
+    // Now, you would set a state to show a modal containing PIPDF with ticketForPreview
+    setShowPIPreviewModal(true);
+  };
+
   return (
     <div style={{ display: show ? 'block' : 'none' }}>
       <div style={fullScreenModalStyle}>
@@ -270,12 +296,30 @@ const CreateTicketModal = ({
             </div>
           </Modal.Body>
           <Modal.Footer style={modalFooterStyle}>
+              <Button variant="info" onClick={handlePreviewPI} disabled={isLoading || isFetchingAddress}>
+              Preview PI
+            </Button>
             <Button variant="secondary" onClick={onHide} disabled={isLoading || isFetchingAddress}>Cancel</Button>
             <Button variant="primary" type="submit" disabled={isLoading || isFetchingAddress}>
               {isLoading ? "Creating..." : "Create Ticket"}
             </Button>
           </Modal.Footer>
         </Form>
+                {showPIPreviewModal && (
+          <ReusableModal
+            show={showPIPreviewModal}
+            onHide={() => setShowPIPreviewModal(false)}
+            title={`PI Preview - ${ticketData.ticketNumber || ticketData.quotationNumber}`}
+            size="xl" // Or your preferred size
+          >
+            <div style={{ height: '80vh', overflowY: 'auto' }}>
+              <PDFViewer width="100%" height="99%">
+                <PIPDF ticket={{...ticketData, shippingAddress: ticketData.shippingSameAsBilling ? [...ticketData.billingAddress] : [ticketData.shippingAddressObj?.address1 || "", ticketData.shippingAddressObj?.address2 || "", ticketData.shippingAddressObj?.state || "", ticketData.shippingAddressObj?.city || "", ticketData.shippingAddressObj?.pincode || ""]}} />
+              </PDFViewer>
+            </div>
+          </ReusableModal>
+        )}
+
       </div>
     </div>
   );

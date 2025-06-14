@@ -576,8 +576,7 @@ export default function Dashboard() {
       status: selectedTicketToEdit.status || statusStages[0],
       documents: selectedTicketToEdit.documents || ticketData.documents,
       dispatchDays: selectedTicketToEdit.dispatchDays || "7-10 working",
-      validityDate: selectedTicketToEdit.validityDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-      clientPhone: selectedTicketToEdit.clientPhone || "",
+  validityDate: selectedTicketToEdit.validityDate ? new Date(selectedTicketToEdit.validityDate).toISOString().split('T')[0] : new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0],      clientPhone: selectedTicketToEdit.clientPhone || "",
       clientGstNumber: selectedTicketToEdit.clientGstNumber || "",
       termsAndConditions: selectedTicketToEdit.termsAndConditions || ticketData.termsAndConditions,
     });

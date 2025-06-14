@@ -10,9 +10,10 @@ const path = require("path");
 const asyncHandler = require("express-async-handler");
 
 exports.createTicket = asyncHandler(async (req, res) => {
- const user = req.user; // Auth middleware should ensure req.user exists
+  const user = req.user; // Auth middleware should ensure req.user exists
 
-  if (!user || !user.id) {    logger.error(
+  if (!user || !user.id) {
+    logger.error(
       "ticket-create",
       "User not found in request. Auth middleware might not be working correctly."
     );
@@ -20,11 +21,17 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .status(401)
       .json({ error: "Unauthorized: User not authenticated." });
   }
-    const { newTicketDetails, sourceQuotationData } = req.body;
+  const { newTicketDetails, sourceQuotationData } = req.body;
 
   if (!newTicketDetails) {
-    logger.error("ticket-create", "Missing newTicketDetails in request body.", user);
-    return res.status(400).json({ error: "Missing newTicketDetails in request body." });
+    logger.error(
+      "ticket-create",
+      "Missing newTicketDetails in request body.",
+      user
+    );
+    return res
+      .status(400)
+      .json({ error: "Missing newTicketDetails in request body." });
   }
 
   // 1. Logic to update existing tickets linked to the source quotation (if sourceQuotationData is provided)
@@ -49,13 +56,22 @@ exports.createTicket = asyncHandler(async (req, res) => {
             billingAddress: ticketBillingAddressArray,
             clientPhone: clientData.phone,
             clientGstNumber: clientData.gstNumber,
-            ...(clientData._id && { client: clientData._id }) // Link client if ID exists
+            ...(clientData._id && { client: clientData._id }), // Link client if ID exists
           },
         }
       );
-      logger.info("ticket-sync", `Successfully synced existing tickets linked to quotation ${sourceQuotationData.referenceNumber}`, user);
+      logger.info(
+        "ticket-sync",
+        `Successfully synced existing tickets linked to quotation ${sourceQuotationData.referenceNumber}`,
+        user
+      );
     } catch (syncError) {
-      logger.error("ticket-sync", `Error syncing tickets for quotation ${sourceQuotationData.referenceNumber}: ${syncError.message}`, user, { error: syncError });
+      logger.error(
+        "ticket-sync",
+        `Error syncing tickets for quotation ${sourceQuotationData.referenceNumber}: ${syncError.message}`,
+        user,
+        { error: syncError }
+      );
       // Decide if this error should prevent ticket creation or just be logged. For now, logging.
     }
   }
@@ -66,50 +82,89 @@ exports.createTicket = asyncHandler(async (req, res) => {
     createdBy: user.id,
     currentAssignee: user.id,
     assignedTo: user.id, // Default assignedTo to creator
-
   };
   // Set client ObjectId if available from sourceQuotationData
-  if (sourceQuotationData && sourceQuotationData.client && sourceQuotationData.client._id) {
+  if (
+    sourceQuotationData &&
+    sourceQuotationData.client &&
+    sourceQuotationData.client._id
+  ) {
     finalTicketData.client = sourceQuotationData.client._id;
-  } else if (newTicketDetails.client && newTicketDetails.client._id) { // Or if frontend sent it directly
+  } else if (newTicketDetails.client && newTicketDetails.client._id) {
+    // Or if frontend sent it directly
     finalTicketData.client = newTicketDetails.client._id;
   }
 
   // Ensure statusHistory is correctly formatted
-  if (Array.isArray(finalTicketData.statusHistory) && finalTicketData.statusHistory.length > 0) {
-    finalTicketData.statusHistory = finalTicketData.statusHistory.map(entry => ({
-      ...entry,
-      changedBy: entry.changedBy || user.id, // Ensure changedBy is set by backend
-      changedAt: entry.changedAt || new Date(),
-    }));
+  if (
+    Array.isArray(finalTicketData.statusHistory) &&
+    finalTicketData.statusHistory.length > 0
+  ) {
+    finalTicketData.statusHistory = finalTicketData.statusHistory.map(
+      (entry) => ({
+        ...entry,
+        changedBy: entry.changedBy || user.id, // Ensure changedBy is set by backend
+        changedAt: entry.changedAt || new Date(),
+      })
+    );
   } else {
-    finalTicketData.statusHistory = [{
-      status: finalTicketData.status || "Quotation Sent", // Default from schema
-      changedAt: new Date(),
-      changedBy: user.id,
-      note: "Ticket created from quotation."
-    }];
+    finalTicketData.statusHistory = [
+      {
+        status: finalTicketData.status || "Quotation Sent", // Default from schema
+        changedAt: new Date(),
+        changedBy: user.id,
+        note: "Ticket created from quotation.",
+      },
+    ];
   }
-   if (!finalTicketData.status) {
-      finalTicketData.status = "Quotation Sent"; // Ensure status is set
+  if (!finalTicketData.status) {
+    finalTicketData.status = "Quotation Sent"; // Ensure status is set
   }
 
   // Construct shippingAddress array
   if (finalTicketData.shippingSameAsBilling === true) {
-    finalTicketData.shippingAddress = [...(finalTicketData.billingAddress || ["", "", "", "", ""])];
+    finalTicketData.shippingAddress = [
+      ...(finalTicketData.billingAddress || ["", "", "", "", ""]),
+    ];
   } else if (finalTicketData.shippingAddressObj) {
     const saObj = finalTicketData.shippingAddressObj;
-    finalTicketData.shippingAddress = [saObj.address1 || "", saObj.address2 || "", saObj.state || "", saObj.city || "", saObj.pincode || ""];
-  } else if (!Array.isArray(finalTicketData.shippingAddress) || finalTicketData.shippingAddress.length !== 5) {
+    finalTicketData.shippingAddress = [
+      saObj.address1 || "",
+      saObj.address2 || "",
+      saObj.state || "",
+      saObj.city || "",
+      saObj.pincode || "",
+    ];
+  } else if (
+    !Array.isArray(finalTicketData.shippingAddress) ||
+    finalTicketData.shippingAddress.length !== 5
+  ) {
     finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default if not properly provided
   }
   delete finalTicketData.shippingAddressObj; // Remove if not part of schema
-  if (!Array.isArray(finalTicketData.billingAddress) || finalTicketData.billingAddress.length !== 5) {
-    logger.error("ticket-create", "Billing address is not in the expected array format.", user, { billingAddress: finalTicketData.billingAddress });
+  if (
+    !Array.isArray(finalTicketData.billingAddress) ||
+    finalTicketData.billingAddress.length !== 5
+  ) {
+    logger.error(
+      "ticket-create",
+      "Billing address is not in the expected array format.",
+      user,
+      { billingAddress: finalTicketData.billingAddress }
+    );
     return res.status(400).json({ error: "Invalid billing address format." });
   }
-  if (!Array.isArray(finalTicketData.shippingAddress) || finalTicketData.shippingAddress.length !== 5) {
- logger.error("ticket-create", "Shipping address is not in the expected array format after construction.", user, { shippingAddress: finalTicketData.shippingAddress });    return res.status(400).json({ error: "Invalid shipping address format." });
+  if (
+    !Array.isArray(finalTicketData.shippingAddress) ||
+    finalTicketData.shippingAddress.length !== 5
+  ) {
+    logger.error(
+      "ticket-create",
+      "Shipping address is not in the expected array format after construction.",
+      user,
+      { shippingAddress: finalTicketData.shippingAddress }
+    );
+    return res.status(400).json({ error: "Invalid shipping address format." });
   }
 
   // Ensure all required GST fields are present if your logic depends on them
@@ -136,7 +191,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
 
-  if (!finalTicketData.ticketNumber) { 
+  if (!finalTicketData.ticketNumber) {
     finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     logger.warn(
       "ticket-create ",
@@ -147,7 +202,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
   // --- Inventory Deduction Logic ---
   if (finalTicketData.goods && finalTicketData.goods.length > 0) {
     // Use finalTicketData
-    for (const good of finalTicketData.goods) {       if (!good.description || !(Number(good.quantity) > 0)) {
+    for (const good of finalTicketData.goods) {
+      if (!good.description || !(Number(good.quantity) > 0)) {
         logger.warn(
           "inventory",
           `Skipping item with missing description or invalid quantity: ${JSON.stringify(
@@ -220,6 +276,15 @@ exports.createTicket = asyncHandler(async (req, res) => {
   try {
     // Use finalTicketData for creating the ticket
     const ticket = new Ticket(finalTicketData);
+    console.log(
+      "Received newTicketDetails in backend:",
+      JSON.stringify(newTicketDetails, null, 2)
+    );
+    console.log(
+      "Final ticketData before save:",
+      JSON.stringify(finalTicketData, null, 2)
+    );
+
     await ticket.save();
 
     logger.info(
@@ -245,10 +310,14 @@ exports.createTicket = asyncHandler(async (req, res) => {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
             referenceNumber: ticket.quotationNumber,
-                 // Prefer original quotation user if available, fallback to ticket creator
-            ...(sourceQuotationData && sourceQuotationData.user && { user: sourceQuotationData.user._id || sourceQuotationData.user }),
-            ...(!(sourceQuotationData && sourceQuotationData.user) && { user: finalTicketData.createdBy })
-
+            // Prefer original quotation user if available, fallback to ticket creator
+            ...(sourceQuotationData &&
+              sourceQuotationData.user && {
+                user: sourceQuotationData.user._id || sourceQuotationData.user,
+              }),
+            ...(!(sourceQuotationData && sourceQuotationData.user) && {
+              user: finalTicketData.createdBy,
+            }),
           },
           { status: "running", $addToSet: { linkedTickets: ticket._id } }, // Link ticket to quotation
           { new: true }
@@ -275,11 +344,18 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(201).json(ticket);
   } catch (error) {
     logger.error("ticket", `Failed to create ticket`, error, user, {
-   finalTicketDataAttempted: finalTicketData, // Log the data that was attempted to be saved
+      finalTicketDataAttempted: finalTicketData, // Log the data that was attempted to be saved
     });
-    if (error.name === 'ValidationError') {
-        return res.status(400).json({ error: "Validation failed", details: error.message, errors: error.errors });
-    }    return res
+    if (error.name === "ValidationError") {
+      return res
+        .status(400)
+        .json({
+          error: "Validation failed",
+          details: error.message,
+          errors: error.errors,
+        });
+    }
+    return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
   }
@@ -1055,12 +1131,10 @@ exports.transferTicket = async (req, res) => {
       initiator,
       logContext
     );
-    res
-      .status(500)
-      .json({
-        message: "Server error during ticket transfer.",
-        details: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during ticket transfer.",
+      details: error.message,
+    });
   }
 };
 
@@ -1118,12 +1192,10 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       requestingUser,
       { ...logContext, errorMessage: error.message, stack: error.stack }
     );
-    res
-      .status(500)
-      .json({
-        message: "Failed to load users for transfer.",
-        details: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to load users for transfer.",
+      details: error.message,
+    });
   }
 });
 
