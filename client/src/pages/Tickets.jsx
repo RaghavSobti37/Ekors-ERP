@@ -253,6 +253,7 @@ export default function Dashboard() {
     goods: [], totalQuantity: 0, totalAmount: 0, // Pre-GST total
     // New GST fields
     gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
+    deadline: null, // Added deadline field
     finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
     status: "Quotation Sent",
     documents: { quotation: null, po: null, pi: null, challan: null, packingList: null, feedback: null, other: [] },
@@ -264,6 +265,16 @@ export default function Dashboard() {
   const [isItemSearchDropdownOpenInEditModal, setIsItemSearchDropdownOpenInEditModal] = useState(false);
   const [transferHistoryDisplay, setTransferHistoryDisplay] = useState([]);
   const [isFetchingAddressInEdit, setIsFetchingAddressInEdit] = useState(false);
+
+  // Helper function to check if a ticket is overdue
+  const isTicketOverdue = (ticket) => {
+    if (!ticket.deadline || ticket.status === "Closed" || ticket.status === "Hold") {
+      return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Compare dates only
+    return new Date(ticket.deadline) < today;
+  };
 
 
   const statusStages = ["Quotation Sent", "PO Received", "Payment Pending", "Inspection", "Packing List", "Invoice Sent", "Hold", "Closed"];
@@ -436,9 +447,20 @@ export default function Dashboard() {
   const sortedTickets = useMemo(() => {
     if (!sortConfig.key) return tickets;
     return [...tickets].sort((a, b) => {
-      if (sortConfig.key === "createdAt") {
-        const dateA = new Date(a.createdAt); const dateB = new Date(b.createdAt);
-        return sortConfig.direction === "ascending" ? dateA - dateB : dateB - dateA;
+      const aOverdue = isTicketOverdue(a);
+      const bOverdue = isTicketOverdue(b);
+
+      if (aOverdue && !bOverdue) return -1; // a (overdue) comes first
+      if (!aOverdue && bOverdue) return 1;  // b (overdue) comes first
+
+      // If both are overdue or both not overdue, then apply user's sortConfig
+      if (sortConfig.key === "createdAt" || sortConfig.key === "deadline") {
+        const valA = a[sortConfig.key] ? new Date(a[sortConfig.key]) : null;
+        const valB = b[sortConfig.key] ? new Date(b[sortConfig.key]) : null;
+        if (!valA && valB) return sortConfig.direction === "ascending" ? 1 : -1; // Sort nulls to the end
+        if (valA && !valB) return sortConfig.direction === "ascending" ? -1 : 1;
+        if (!valA && !valB) return 0;
+        return sortConfig.direction === "ascending" ? valA - valB : valB - valA;
       }
       if (sortConfig.key === "grandTotal") return sortConfig.direction === "ascending" ? a.grandTotal - b.grandTotal : b.grandTotal - a.grandTotal;
       if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "ascending" ? -1 : 1;
@@ -571,6 +593,7 @@ export default function Dashboard() {
       totalSgstAmount: selectedTicketToEdit.totalSgstAmount || 0,
       totalIgstAmount: selectedTicketToEdit.totalIgstAmount || 0,
       finalGstAmount: selectedTicketToEdit.finalGstAmount || 0,
+      deadline: selectedTicketToEdit.deadline ? new Date(selectedTicketToEdit.deadline).toISOString().split('T')[0] : null,
       grandTotal: selectedTicketToEdit.grandTotal || 0,
       isBillingStateSameAsCompany: selectedTicketToEdit.isBillingStateSameAsCompany || false,
       status: selectedTicketToEdit.status || statusStages[0],
@@ -642,6 +665,7 @@ export default function Dashboard() {
 
       const updatePayload = {
         ...ticketData,
+        deadline: ticketData.deadline ? new Date(ticketData.deadline).toISOString() : null,
         statusChangeComment: ticketData.status !== editTicket?.status ? statusChangeComment : undefined,
         billingAddress: [
           ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
@@ -1042,6 +1066,15 @@ export default function Dashboard() {
             { key: "companyName", header: "Company Name", sortable: true },
             { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
             {
+              key: "deadline",
+              header: "Deadline",
+              sortable: true,
+              renderCell: (ticket) => {
+                const overdue = isTicketOverdue(ticket);
+                return ticket.deadline ? (<span className={overdue ? "text-danger fw-bold" : ""}>{new Date(ticket.deadline).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}{overdue && <Badge bg="danger" className="ms-2">Overdue</Badge>}</span>) : ("N/A");
+              },
+            },
+            {
               key: "progress", header: "Progress",
               renderCell: (ticket) => {
                 const currentStatusIndex = statusStages.indexOf(ticket.status);
@@ -1099,6 +1132,11 @@ export default function Dashboard() {
             <Col md={4}><Form.Group><Form.Label>Ticket Date</Form.Label><Form.Control type="text" value={editTicket?.createdAt ? new Date(editTicket.createdAt).toLocaleDateString() : ""} readOnly disabled /></Form.Group></Col>
             <Col md={4}><Form.Group><Form.Label>Company Name*</Form.Label><Form.Control required readOnly type="text" value={ticketData.companyName} /></Form.Group></Col>
             <Col md={4}><Form.Group><Form.Label>Quotation Number*</Form.Label><Form.Control required type="text" value={ticketData.quotationNumber} readOnly disabled /></Form.Group></Col>
+          </Row>
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Group><Form.Label>Deadline</Form.Label><Form.Control type="date" value={ticketData.deadline || ""} onChange={(e) => setTicketData({ ...ticketData, deadline: e.target.value })} /></Form.Group>
+            </Col>
           </Row>
           <Row>
             <Col md={6}><h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}><i className="bi bi-building me-1"></i>Billing Address</h5>{renderAddressFields("billingAddress", true)}</Col>

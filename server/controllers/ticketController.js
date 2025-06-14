@@ -82,6 +82,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
     createdBy: user.id,
     currentAssignee: user.id,
     assignedTo: user.id, // Default assignedTo to creator
+      };
+
+  // Ensure deadline is null if an empty string is passed, otherwise Mongoose handles valid date strings/null.
+  if (finalTicketData.hasOwnProperty('deadline') && finalTicketData.deadline === "") {
+    finalTicketData.deadline = null;
   };
   // Set client ObjectId if available from sourceQuotationData
   if (
@@ -412,6 +417,12 @@ exports.updateTicket = async (req, res) => {
     ...updatedTicketPayload
   } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
+
+  // Ensure deadline is null if an empty string is passed.
+  // Frontend should send ISOString or null, but this is a safeguard.
+  if (ticketDataForUpdate.hasOwnProperty('deadline') && ticketDataForUpdate.deadline === "") {
+    ticketDataForUpdate.deadline = null;
+  }
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
 

@@ -97,6 +97,11 @@ const ticketSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+    deadline: {
+    type: Date,
+    required: true // Or true, depending on your requirements
+  },
+
    assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User' // No longer strictly required, will default to createdBy if not provided
