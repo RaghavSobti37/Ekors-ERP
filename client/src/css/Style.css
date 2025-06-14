@@ -32,6 +32,11 @@
   --info-bg: #d1ecf1;
   --danger-bg: #f8d7da;
 
+    --card-bg: rgba(255, 255, 255, 0.1);
+  --card-hover-bg: rgba(255, 255, 255, 0.25);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --card-border: rgba(255, 255, 255, 0.3);
+
   /* Typography */
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --font-size-base: 16px;
@@ -2029,5 +2034,30 @@ p {
 .user-search-component .search-input-container {
   position: relative; /* For positioning the dropdown relative to the input */
 }
+
+/* Card grid layout */
+.card-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Card styles for each point */
+.info-card {
+  background-color: var(--card-bg);
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  color: var(--text-light);
+  font-size: 1rem;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.info-card:hover {
+  background-color: var(--card-hover-bg);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
 
 
