@@ -43,6 +43,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
     createdBy: user.id,
     currentAssignee: user.id,
     assignedTo: user.id, // Default assignedTo to creator
+      dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+
       };
 
      // If creating from a quotation, prioritize sourceQuotationData
@@ -86,7 +88,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
       dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
 
       deadline: determinedDeadline, // Use the determined deadline
-      // validityDate is not directly on ticket schema, deadline is used.
+        dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+
     };
   }   
 

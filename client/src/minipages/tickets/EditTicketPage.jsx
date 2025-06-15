@@ -479,7 +479,7 @@ const EditTicketPage = () => {
                 </div>
               </Form.Group>
             </Col>
-             <Col md={4}><Form.Group className="mb-3"><Form.Label>Dispatch Days</Form.Label><Form.Control type="text" value={ticketData.dispatchDays || ""} onChange={(e) => setTicketData({ ...ticketData, dispatchDays: e.target.value })} placeholder="e.g. 7-10 working days" /></Form.Group></Col>
+             <Col md={4}><Form.Group className="mb-3"><Form.Label>Dispatch Days</Form.Label><Form.Control type="text" name="dispatchDays" value={ticketData.dispatchDays || ""} onChange={(e) => setTicketData(prev => ({ ...prev, dispatchDays: e.target.value }))} placeholder="e.g. 7-10 working days" /></Form.Group></Col>
             
         </Row>
         <Row className="mb-3">

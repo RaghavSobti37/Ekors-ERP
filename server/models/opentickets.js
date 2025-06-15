@@ -118,7 +118,9 @@ const ticketSchema = new mongoose.Schema({
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedAt: { type: Date, default: Date.now },
     action: String // 'created', 'transferred', etc.
-  }]
+  }],
+dispatchDays: { type: String, default: "7-10 working days" } // Add this line
+
 }, { timestamps: true });
 
 // Removed gstAmount as it's superseded by detailed GST fields
