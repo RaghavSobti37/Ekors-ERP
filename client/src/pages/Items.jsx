@@ -152,7 +152,6 @@ export default function Items() {
       const response = await apiClient("/items"); // Use apiClient
       setItems(response);
       setError(null);
-      showSuccess("Items Fetched Successfully");
     } catch (err) {
       const errorMessage = handleApiError(
         err,
