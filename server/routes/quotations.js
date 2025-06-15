@@ -7,6 +7,7 @@ const auth = require("../middleware/auth");
 const logger = require("../utils/logger");
 const { generateQuotationsReport } = require("../controllers/reportController");
 const excelJS = require("exceljs");
+const Ticket = require("../models/opentickets"); // Import Ticket model
 
 const handleQuotationUpsert = async (req, res) => {
   let operation;
@@ -394,6 +395,54 @@ const handleQuotationUpsert = async (req, res) => {
         );
       }
     }
+        // If quotation was updated, sync relevant data to linked tickets
+    if (id && quotation) {
+      try {
+        const linkedTickets = await Ticket.find({ quotationNumber: quotation.referenceNumber });
+        if (linkedTickets.length > 0) {
+          logger.info("quotation-ticket-sync", `Found ${linkedTickets.length} tickets linked to quotation ${quotation.referenceNumber} for syncing.`, user, { quotationId: quotation._id });
+          
+          const quotationClient = quotation.client; // Assuming client is populated or is an ID
+          const quotationBillingAddress = quotation.billingAddress || {};
+
+          for (const ticket of linkedTickets) {
+            const ticketUpdatePayload = {
+              companyName: quotationClient?.companyName || ticket.companyName,
+              client: quotationClient?._id || ticket.client,
+              clientPhone: quotationClient?.phone || ticket.clientPhone,
+              clientGstNumber: quotationClient?.gstNumber || ticket.clientGstNumber,
+              billingAddress: [
+                quotationBillingAddress.address1 || "",
+                quotationBillingAddress.address2 || "",
+                quotationBillingAddress.state || "",
+                quotationBillingAddress.city || "",
+                quotationBillingAddress.pincode || "",
+              ],
+              // Goods sync: This is a direct overwrite. Consider conditional logic if needed.
+              goods: quotation.goods.map(g => ({...g, _id: undefined})), // Ensure goods don't carry over old _id if schema differs
+              totalQuantity: quotation.totalQuantity,
+              totalAmount: quotation.totalAmount,
+              // Assuming ticket's GST/grandTotal will be recalculated based on new goods/amounts
+              // or you can explicitly set them if quotation has final calculated values.
+              // For simplicity, let's assume ticket recalculates.
+              termsAndConditions: quotation.termsAndConditions || ticket.termsAndConditions,
+              dispatchDays: quotation.dispatchDays || ticket.dispatchDays,
+              validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : ticket.validityDate,
+            };
+
+            // If shippingSameAsBilling is true on the ticket, update its shippingAddress too
+            if (ticket.shippingSameAsBilling) {
+                ticketUpdatePayload.shippingAddress = [...ticketUpdatePayload.billingAddress];
+            }
+
+            await Ticket.findByIdAndUpdate(ticket._id, { $set: ticketUpdatePayload });
+            logger.info("quotation-ticket-sync", `Synced ticket ${ticket.ticketNumber} with updated quotation ${quotation.referenceNumber}.`, user, { ticketId: ticket._id });
+          }
+        }
+      } catch (syncError) {
+        logger.error("quotation-ticket-sync", `Error syncing tickets for quotation ${quotation.referenceNumber}: ${syncError.message}`, user, { quotationId: quotation._id, error: syncError });
+      }
+    }
     res.status(id ? 200 : 201).json(populatedQuotation);
   } catch (error) {
     logger.error(
@@ -690,6 +739,39 @@ router.get("/report/summary", auth, generateQuotationsReport);
 router.get("/report/excel", auth, (req, res, next) => {
   req.query.exportToExcel = "true";
   generateQuotationsReport(req, res, next);
+});
+
+// GET a quotation by its reference number
+router.get("/by-reference/:refNumber", auth, async (req, res) => {
+  try {
+    const { refNumber } = req.params;
+    const user = req.user; // For user context in query if needed
+
+    // Find the quotation.
+    // If quotations are user-specific, you might need to include user in the query:
+    // const quotation = await Quotation.findOne({ referenceNumber: refNumber, user: user._id });
+    // If referenceNumbers are globally unique or accessible by users who can see the ticket:
+    const quotation = await Quotation.findOne({
+      referenceNumber: refNumber,
+    });
+
+    if (!quotation) {
+      logger.warn("quotation", `Quotation not found by reference: ${refNumber}`, user);
+      return res.status(404).json({ message: "Quotation not found." });
+    }
+
+    // Optionally populate client or other details if needed by the QuotationFormPage
+    // For this use case, just returning the quotation with its _id is sufficient
+    // as the QuotationFormPage will fetch full details if it navigates there.
+    // const populatedQuotation = await Quotation.findById(quotation._id).populate('client');
+    // res.json(populatedQuotation);
+
+    res.json(quotation); // Send back the quotation object (must include _id)
+
+  } catch (error) {
+    logger.error("quotation", `Error fetching quotation by reference: ${req.params.refNumber}`, error, req.user);
+    res.status(500).json({ message: "Failed to fetch quotation details.", error: error.message });
+  }
 });
 
 module.exports = router;

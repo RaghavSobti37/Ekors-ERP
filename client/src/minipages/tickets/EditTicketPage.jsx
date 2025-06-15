@@ -48,6 +48,7 @@ const EditTicketPage = () => {
   const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [formValidated, setFormValidated] = useState(false);
+  const [isFetchingQuotation, setIsFetchingQuotation] = useState(false);
 
   const fetchTicketDetails = useCallback(async () => {
     if (!ticketIdFromParams) return;
@@ -329,6 +330,29 @@ const EditTicketPage = () => {
     } finally { setIsLoading(false); }
   };
 
+  const handleQuotationNumberClick = async () => {
+    if (!ticketData.quotationNumber) {
+      toast.info("No quotation number associated with this ticket.");
+      return;
+    }
+    setIsFetchingQuotation(true);
+    try {
+      // Assuming an endpoint to fetch quotation by reference number
+      // This endpoint should return the quotation object including its _id
+      const response = await apiClient(`/quotations/by-reference/${ticketData.quotationNumber}`);
+      if (response && response._id) {
+        navigate(`/quotations/form/${response._id}`);
+      } else {
+        toast.error("Could not find the corresponding quotation.");
+      }
+    } catch (err) {
+      handleApiError(err, "Failed to fetch quotation details.", authUser, "fetchQuotationForEdit");
+      toast.error("Error navigating to quotation.");
+    } finally {
+      setIsFetchingQuotation(false);
+    }
+  };
+
   const getStatusBadgeColor = (status) => {
     // Implementation based on your Tickets.jsx logic
     switch (status) {
@@ -438,8 +462,25 @@ const EditTicketPage = () => {
             <i className="bi bi-info-circle-fill me-1"></i>Ticket & Client Information
         </h5>
         <Row className="mb-3">
-            <Col md={6}><Form.Group><Form.Label>Company Name <span className="text-danger">*</span></Form.Label><Form.Control required type="text" value={ticketData.companyName || ""} onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })} /></Form.Group></Col>
-            <Col md={6}><Form.Group><Form.Label>Quotation Number</Form.Label><Form.Control type="text" value={ticketData.quotationNumber || ""} onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })} /></Form.Group></Col>
+            <Col md={4}><Form.Group><Form.Label>Company Name <span className="text-danger">*</span></Form.Label><Form.Control required type="text" value={ticketData.companyName || ""} onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })} /></Form.Group></Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label>Quotation Number</Form.Label>
+                <div className="d-flex align-items-center">
+                  <Form.Control 
+                    type="text" 
+                    value={ticketData.quotationNumber || ""} 
+                    readOnly 
+                    onClick={handleQuotationNumberClick}
+                    style={{cursor: ticketData.quotationNumber ? 'pointer' : 'default', textDecoration: ticketData.quotationNumber ? 'underline' : 'none', color: ticketData.quotationNumber ? 'blue' : 'inherit'}}
+                    title={ticketData.quotationNumber ? "Click to view/edit quotation" : "No quotation linked"}
+                  />
+                  {isFetchingQuotation && <Spinner animation="border" size="sm" className="ms-2" />}
+                </div>
+              </Form.Group>
+            </Col>
+             <Col md={4}><Form.Group className="mb-3"><Form.Label>Dispatch Days</Form.Label><Form.Control type="text" value={ticketData.dispatchDays || ""} onChange={(e) => setTicketData({ ...ticketData, dispatchDays: e.target.value })} placeholder="e.g. 7-10 working days" /></Form.Group></Col>
+            
         </Row>
         <Row className="mb-3">
             <Col md={4}>
@@ -570,12 +611,12 @@ const EditTicketPage = () => {
         </Card>
 
         <Form.Group className="mb-3">
-            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+            {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
                 <i className="bi bi-card-checklist me-1"></i>Other Details
-            </h5>
+            </h5> */}
             <Row>
-              <Col md={6}><Form.Group className="mb-3"><Form.Label>Dispatch Days</Form.Label><Form.Control type="text" value={ticketData.dispatchDays || ""} onChange={(e) => setTicketData({ ...ticketData, dispatchDays: e.target.value })} placeholder="e.g. 7-10 working days" /></Form.Group></Col>
-              <Col md={6}><Form.Group className="mb-3"><Form.Label>Validity Date (Quotation)</Form.Label><Form.Control type="date" value={ticketData.validityDate || ""} onChange={(e) => setTicketData({ ...ticketData, validityDate: e.target.value })} /></Form.Group></Col>
+             
+              {/* <Col md={6}><Form.Group className="mb-3"><Form.Label>Validity Date (Quotation)</Form.Label><Form.Control type="date" value={ticketData.validityDate || ""} onChange={(e) => setTicketData({ ...ticketData, validityDate: e.target.value })} /></Form.Group></Col> */}
             </Row>
             <hr/>
             <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
