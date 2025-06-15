@@ -11,7 +11,7 @@ import {
 import { generateQuotationDocx } from "../utils/generateQuotationDocx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
-import { Button } from "react-bootstrap";
+import ActionButtons from "./ActionButtons"; // Import ActionButtons
 
 // Styles
 const styles = StyleSheet.create({
@@ -148,22 +148,18 @@ export const QuotationActions = ({ quotation }) => {
     }
   };
 
+    // Props for the PDF button in ActionButtons
+  const pdfButtonProps = {
+    document: <QuotationPDF quotation={quotation} />,
+    fileName: `quotation_${quotation.referenceNumber}.pdf`,
+  };
+
   return (
-    <div className="d-flex justify-content-center gap-2">
-      <PDFDownloadLink
-        document={<QuotationPDF quotation={quotation} />}
-        fileName={`quotation_${quotation.referenceNumber}.pdf`}
-      >
-        {({ loading }) => (
-          <Button variant="primary" disabled={loading}>
-            {loading ? "Generating PDF..." : "Download PDF"}
-          </Button>
-        )}
-      </PDFDownloadLink>
-      <Button variant="success" onClick={handleDownloadWord}>
-        Download Word
-      </Button>
-    </div>
+    <ActionButtons
+      item={quotation} // Pass the quotation item
+      pdfProps={pdfButtonProps}
+      onDownloadWord={handleDownloadWord}
+    />
   );
 };
 

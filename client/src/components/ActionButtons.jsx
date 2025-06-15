@@ -7,8 +7,11 @@ import {
   PlusSquare, // Create Ticket
   ArrowLeftRight, // Transfer
   BarChart, // Generate Report
+    CloudDownload, // For PDF Download
+  FileEarmarkWord, // For Word Download
   FileEarmarkExcel, // For Generic Excel Report
 } from 'react-bootstrap-icons';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 
 /**
  * Reusable component for rendering a set of common action buttons.
@@ -22,7 +25,9 @@ import {
  * @param {function} [props.onCreateTicket] - Handler for the Create Ticket action (Quotations).
  * @param {function} [props.onTransfer] - Handler for the Transfer action (Tickets).
  * @param {function} [props.onGenerateReport] - Handler for the Generate Report action (Users).
- * @param {function} [props.onGenerateExcelReport] - Handler for the generic Excel report action.
+  * @param {object} [props.pdfProps] - Object containing `document` (React PDF component) and `fileName` for PDFDownloadLink. If provided, PDF button is shown.
+ * @param {function} [props.onDownloadWord] - Handler for Word download. If provided, Word button is shown.
+ * @param {function} [props.onGenerateExcelReport] - Handler for the generic Excel report action. If provided, Excel button is shown.
  * @param {boolean} [props.isLoading=false] - If true, all buttons are disabled.
  * @param {object|boolean} [props.disabled={}] - Allows specific buttons to be disabled. Can be a boolean to disable all, or an object like `{ edit: true, delete: false }`. Keys match action types ('view', 'edit', 'delete', etc.).
  * @param {string} [props.size='sm'] - Bootstrap button size ('sm', 'lg'). Defaults to 'sm'.
@@ -35,6 +40,8 @@ const ActionButtons = ({
   onCreateTicket,
   onTransfer,
   onGenerateReport,
+    pdfProps,
+  onDownloadWord,
   onGenerateExcelReport,
   isLoading = false,
   disabled = {},
@@ -61,7 +68,7 @@ const ActionButtons = ({
           disabled={isActionDisabled('view')}
           title="View"
         >
-          <Eye />
+          <Eye /> 
         </Button>
       )}
       {onEdit && (
@@ -72,7 +79,7 @@ const ActionButtons = ({
           disabled={isActionDisabled('edit')}
           title="Edit"
         >
-          <PencilSquare />
+          <PencilSquare /> 
         </Button>
       )}
       {onDelete && (
@@ -83,7 +90,7 @@ const ActionButtons = ({
           disabled={isActionDisabled('delete')}
           title="Delete"
         >
-          <Trash />
+          <Trash /> 
         </Button>
       )}
       {onCreateTicket && (
@@ -94,18 +101,18 @@ const ActionButtons = ({
           disabled={isActionDisabled('createTicket')}
           title="Create Ticket"
         >
-          <PlusSquare />
+          <PlusSquare /> 
         </Button>
       )}
       {onTransfer && (
         <Button
-          variant="warning"
+          variant="info"
           size={size}
           onClick={() => onTransfer(item)}
           disabled={isActionDisabled('transfer')}
           title="Transfer Ticket"
         >
-          <ArrowLeftRight />
+          <ArrowLeftRight /> 
         </Button>
       )}
        {onGenerateReport && (
@@ -116,7 +123,32 @@ const ActionButtons = ({
           disabled={isActionDisabled('generateReport')}
           title="Generate Report"
         >
-          <BarChart />
+                   <BarChart /> 
+        </Button>
+      )}
+      {pdfProps && pdfProps.document && pdfProps.fileName && (
+        <PDFDownloadLink document={pdfProps.document} fileName={pdfProps.fileName}>
+          {({ loading: pdfLoading }) => (
+            <Button
+              variant="primary"
+              size={size}
+              disabled={isLoading || pdfLoading || isActionDisabled('downloadPdf')}
+              title="Download PDF"
+            >
+              <CloudDownload /> {pdfLoading ? '...' : 'PDF'}
+            </Button>
+          )}
+        </PDFDownloadLink> 
+      )}
+      {onDownloadWord && (
+        <Button
+          variant="success"
+          size={size}
+          onClick={() => onDownloadWord(item)}
+          disabled={isLoading || isActionDisabled('downloadWord')}
+          title="Download Word"
+        >
+          <FileEarmarkWord /> Word
         </Button>
       )}
       {onGenerateExcelReport && (
@@ -127,7 +159,7 @@ const ActionButtons = ({
           disabled={isActionDisabled('generateExcelReport')}
           title="Generate Excel Report"
         >
-          <FileEarmarkExcel />
+          <FileEarmarkExcel /> EXCEL
         </Button>
       )}
     </div>
