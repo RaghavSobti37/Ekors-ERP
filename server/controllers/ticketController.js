@@ -875,8 +875,43 @@ exports.deleteTicket = async (req, res) => {
 
     const backupData = ticketToBackup.toObject();
     const newBackupEntry = new TicketBackup({
-      ...backupData,
       originalId: ticketToBackup._id,
+            ticketNumber: ticketToBackup.ticketNumber,
+      companyName: ticketToBackup.companyName,
+      quotationNumber: ticketToBackup.quotationNumber,
+      client: ticketToBackup.client,
+      clientPhone: ticketToBackup.clientPhone,
+      clientGstNumber: ticketToBackup.clientGstNumber,
+      billingAddress: ticketToBackup.billingAddress,
+      shippingAddress: ticketToBackup.shippingAddress,
+      shippingSameAsBilling: ticketToBackup.shippingSameAsBilling,
+      goods: ticketToBackup.goods.map(g => ({ // Ensure all required fields for backup's goodsSchema are mapped
+        srNo: g.srNo,
+        description: g.description,
+        hsnSacCode: g.hsnSacCode,
+        quantity: g.quantity,
+        price: g.price,
+        amount: g.amount,
+      })),
+      totalQuantity: ticketToBackup.totalQuantity,
+      totalAmount: ticketToBackup.totalAmount, // Pre-GST total
+      gstAmount: ticketToBackup.finalGstAmount, // Crucial: Map finalGstAmount to gstAmount
+      grandTotal: ticketToBackup.grandTotal,
+      isBillingStateSameAsCompany: ticketToBackup.isBillingStateSameAsCompany,
+      status: ticketToBackup.status,
+      documents: ticketToBackup.documents, // Assuming sub-schemas are compatible
+      statusHistory: ticketToBackup.statusHistory.map(sh => ({
+        status: sh.status,
+        changedAt: sh.changedAt,
+        changedBy: sh.changedBy,
+      })),
+      createdBy: ticketToBackup.createdBy,
+      currentAssignee: ticketToBackup.currentAssignee,
+      deadline: ticketToBackup.deadline,
+      assignedTo: ticketToBackup.assignedTo,
+      transferHistory: ticketToBackup.transferHistory,
+      assignmentLog: ticketToBackup.assignmentLog,
+      dispatchDays: ticketToBackup.dispatchDays,
       deletedBy: userId, // User performing the delete
       deletedAt: new Date(),
       originalCreatedAt: ticketToBackup.createdAt,
