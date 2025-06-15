@@ -20,7 +20,7 @@ import "react-toastify/dist/ReactToastify.css"; // Import CSS for react-toastify
 
 // Import new page components
 import QuotationFormPage from "./minipages/quotations/QuotationFormPage.jsx";
-import QuotationPreviewPage from "./minipages/quotations/QuotationPreviewPage.jsx"; 
+import QuotationPreviewPage from "./minipages/quotations/QuotationPreviewPage.jsx";
 import QuotationReportPage from "./minipages/quotations/QuotationReportPage.jsx"; // Assuming QuotationReportModal.jsx was refactored to QuotationReportPage
 import CreateTicketPage from "./components/CreateTicketModal.jsx"; // Assuming CreateTicketModal.jsx was refactored to CreateTicketPage
 import PIPreviewPage from "./minipages/quotations/PIPreviewPage.jsx"; // Assuming you create this for PI Previews
@@ -29,6 +29,9 @@ import EditTicketPage from "./minipages/tickets/EditTicketPage.jsx";
 import TransferTicketPage from "./minipages/tickets/TransferTicketPage.jsx";
 import TicketDetailsPage from "./minipages/tickets/TicketDetailsPage.jsx";
 import TicketReportPage from "./minipages/tickets/TicketReportPage.jsx";
+import CreateChallanPage from "./minipages/challans/CreateChallanPage";
+import EditChallanPage from "./minipages/challans/EditChallanPage";
+import ViewChallanPage from "./minipages/challans/ViewChallanPage";
 
 function App() {
   return (
@@ -156,6 +159,38 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
                 <Challan />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challans"
+            element={
+              <ProtectedRoute>
+                <Challan />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challans/create"
+            element={
+              <ProtectedRoute>
+                <CreateChallanPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challans/edit/:id"
+            element={
+              <ProtectedRoute>
+                <EditChallanPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challans/view/:id"
+            element={
+              <ProtectedRoute>
+                <ViewChallanPage />
               </ProtectedRoute>
             }
           />
