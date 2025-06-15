@@ -35,7 +35,7 @@ export default function Quotations() {
   // State related to modals and forms are removed or moved to respective page components
   const [quotations, setQuotations] = useState([]);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false); // Local isLoading can be removed or used for more granular control
   // const [currentQuotation, setCurrentQuotation] = useState(null); // Only needed if passing to PDF preview page via state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -45,7 +45,7 @@ export default function Quotations() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const { user, loading: authLoading } = useAuth(); // Renamed loading to authLoading to avoid conflict
-  const auth = useAuth();
+  const { showPageLoader, hidePageLoader, user: authUserFromContext } = useAuth(); // Get loader functions
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
   // const [showQuotationReportModal, setShowQuotationReportModal] = useState(false); // Replaced by navigation
@@ -85,7 +85,7 @@ export default function Quotations() {
 
   const fetchQuotations = useCallback(async () => {
     if (authLoading || !user) return;
-    setIsLoading(true);
+    showPageLoader(); // Show global loader
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
@@ -100,16 +100,16 @@ export default function Quotations() {
       const errorMessage = handleApiError(
         error,
         "Failed to load quotations. Please try again.",
-        auth.user,
+        authUserFromContext, // Use user from context
         "quotationActivity"
       );
       setError(errorMessage);
       showToast(errorMessage, false); // Assuming showToast is a helper you have
-      if (auth.user) {
+      if (authUserFromContext) { // Use user from context
         frontendLogger.error(
           "quotationActivity",
           "Failed to fetch quotations",
-          auth.user,
+          authUserFromContext,
           {
             errorMessage: error.response?.data?.message || error.message,
             statusFilter,
@@ -122,9 +122,9 @@ export default function Quotations() {
         navigate("/login", { state: { from: "/quotations" } });
       }
     } finally {
-      setIsLoading(false);
+      hidePageLoader(); // Hide global loader
     }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, auth]); // Added searchTerm
+  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, showPageLoader, hidePageLoader]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -218,7 +218,7 @@ export default function Quotations() {
     <Button
       variant="info"
       onClick={() => navigate("/quotations/report")}
-      disabled={isLoading}
+      // disabled={isLoading} // Global loader handles this, or use local isLoading if still needed
       title="View Quotation Reports"
       size="sm" // To match items per page selector style
     >
@@ -345,7 +345,7 @@ export default function Quotations() {
     }
     if (!window.confirm(`Delete quotation ${quotation.referenceNumber}?`)) return;
 
-    setIsLoading(true);
+    showPageLoader();
     setError(null);
     try {
       await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" });
@@ -356,7 +356,7 @@ export default function Quotations() {
         frontendLogger.info(
           "quotationActivity",
           `Quotation ${quotation.referenceNumber} deleted`,
-          auth.user,
+          authUserFromContext,
           {
             quotationId: quotation._id,
             referenceNumber: quotation.referenceNumber,
@@ -366,18 +366,18 @@ export default function Quotations() {
       }
     } catch (error) {
       const errorMessage = handleApiError(
-        error, "Failed to delete quotation.", auth.user, "quotationActivity"
+        error, "Failed to delete quotation.", authUserFromContext, "quotationActivity"
       );
       if (error.status === 401) {
         navigate("/login", { state: { from: "/quotations" } });
-        setIsLoading(false);
+        hidePageLoader();
         return;
       }
       setError(errorMessage); // Set local error state
       toast.error(errorMessage);
-      if (auth.user) {
+      if (authUserFromContext) {
         frontendLogger.error(
-          "quotationActivity", "Failed to delete quotation", auth.user,
+          "quotationActivity", "Failed to delete quotation", authUserFromContext,
           {
             quotationId: quotation._id, referenceNumber: quotation.referenceNumber,
             action: "DELETE_QUOTATION_FAILURE",
@@ -385,7 +385,7 @@ export default function Quotations() {
         );
       }
     } finally {
-      setIsLoading(false);
+      hidePageLoader();
     }
   };
 
@@ -433,12 +433,7 @@ export default function Quotations() {
           
         </div>
 
-        {error && !isLoading && <Alert variant="danger">{error}</Alert>}
-        {isLoading && currentItems.length === 0 && ( // Show loading only if no items are displayed yet
-          <div className="text-center my-3">
-            <Spinner animation="border" /> <p>Loading quotations...</p>
-          </div>
-        )}
+        {error && <Alert variant="danger">{error}</Alert>}
 
         <ReusableTable
           columns={[
@@ -460,8 +455,7 @@ export default function Quotations() {
           ]}
           data={currentItems}
           keyField="_id"
-          isLoading={isLoading && currentItems.length === 0} // Show loading indicator on table if actively loading and no items yet
-          error={error && currentItems.length === 0 && !isLoading ? error : null} // Show error in table if no items and not loading
+          // isLoading and error props for ReusableTable might not be needed if global spinner covers it
           onSort={requestSort}
           sortConfig={sortConfig}
           renderActions={(quotation) => (
@@ -471,7 +465,7 @@ export default function Quotations() {
               onCreateTicket={quotation.status !== "closed" && quotation.status !== "running" ? handleCreateTicket : undefined}
               onView={() => navigate(`/quotations/preview/${quotation._id}`, { state: { quotationToPreview: quotation } })}
               onDelete={user?.role === "super-admin" ? handleDeleteQuotation : undefined}
-              isLoading={isLoading} // General loading state for all buttons
+              // isLoading={isLoading} // Can be removed if global loader is sufficient
               disabled={{ // Specific disable conditions
                 createTicket: quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold",
                 // Add other specific disables if needed, e.g., edit: quotation.status === 'closed'
