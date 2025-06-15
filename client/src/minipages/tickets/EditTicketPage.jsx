@@ -1,6 +1,6 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/EditTicketPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, ProgressBar, Badge } from "react-bootstrap";
+import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Badge, Card } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
@@ -47,6 +47,7 @@ const EditTicketPage = () => {
   const [error, setError] = useState(null);
   const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const [formValidated, setFormValidated] = useState(false);
 
   const fetchTicketDetails = useCallback(async () => {
     if (!ticketIdFromParams) return;
@@ -235,10 +236,10 @@ const EditTicketPage = () => {
   };
 
   const handleAddressChange = (type, field, value) => {
-    setTicketData(prev => ({
-      ...prev,
-      [type]: { ...(prev[type] || {}), [field]: value }
-    }));
+    setTicketData(prev => {
+      const newAddress = { ...(prev[type] || initialTicketData[type]), [field]: value };
+      return { ...prev, [type]: newAddress };
+    });
     if (type === 'billingAddress' && field === 'state') {
         // calculateTaxes will pick this up
     }
@@ -253,7 +254,7 @@ const EditTicketPage = () => {
             const data = response.data[0];
             if (data.Status === "Success") {
                 const postOffice = data.PostOffice[0];
-                setTicketData(prev => {
+                setTicketData(prev => { // Ensure prev[type] is not null
                     const updatedAddress = { ...prev[type], city: postOffice.District, state: postOffice.State, pincode };
                     const newTicketData = { ...prev, [type]: updatedAddress };
                     if (type === 'billingAddress' && prev.shippingSameAsBilling) {
@@ -273,6 +274,12 @@ const EditTicketPage = () => {
   };
 
   const handleUpdateTicket = async () => {
+    setFormValidated(true);
+    // Basic form validation (can be expanded)
+    if (!ticketData.companyName || !ticketData.billingAddress.address1 || !ticketData.billingAddress.pincode || !ticketData.billingAddress.city || !ticketData.billingAddress.state) {
+        toast.error("Please fill all required fields (Company Name, Billing Address details).");
+        return;
+    }
     setIsLoading(true); setError(null);
     if (ticketData.status !== originalStatus && !statusChangeComment.trim()) {
       toast.warn("Comment for status change is required."); setIsLoading(false); return;
@@ -318,10 +325,11 @@ const EditTicketPage = () => {
     } finally { setIsLoading(false); }
   };
 
-  const getStatusBadgeColor = (status) => { /* ... same as in Tickets.jsx ... */ return "secondary"; }; // Placeholder
+  // Placeholder - actual implementation in Tickets.jsx
+  const getStatusBadgeColor = (status) => "secondary"; 
 
-  if (authLoading || (isLoading && !ticketData.ticketNumber)) {
-    return <ReusablePageStructure title="Loading Ticket..."><div className="text-center"><Spinner animation="border" /></div></ReusablePageStructure>;
+  if (authLoading || (isLoading && !ticketData._id && ticketIdFromParams)) { // Check if loading initial data for an existing ticket
+    return <ReusablePageStructure title="Loading Ticket..."><Spinner animation="border" /></ReusablePageStructure>;
   }
 
   return (
@@ -330,7 +338,7 @@ const EditTicketPage = () => {
       footerContent={
         <>
           <BsButton variant="secondary" onClick={() => navigate("/tickets")} disabled={isLoading}>Cancel</BsButton>
-          <BsButton variant="primary" onClick={handleUpdateTicket} disabled={isLoading}>
+          <BsButton variant="primary" onClick={handleUpdateTicket} disabled={isLoading || isFetchingAddress}>
             {isLoading ? "Updating..." : "Update Ticket"}
           </BsButton>
         </>

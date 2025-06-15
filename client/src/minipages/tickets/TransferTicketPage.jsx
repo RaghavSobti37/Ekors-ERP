@@ -1,10 +1,10 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/TransferTicketPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button as BsButton, Alert, Spinner, Badge, Row, Col } from "react-bootstrap";
+import { Form, Button as BsButton, Alert, Spinner, Badge, Row, Col, Table } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-// import UserSearchComponent from "../../components/UserSearchComponent.jsx"; // Assuming this is a generic user search
+import UserSearchComponent from "../../pages/Tickets.jsx"; 
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError } from "../../utils/helpers";
@@ -28,7 +28,7 @@ const TransferTicketPage = () => {
     setIsLoading(true);
     try {
       const data = await apiClient(`/tickets/${ticketIdFromParams}`, {
-         params: { populate: "currentAssignee,createdBy" } // Populate necessary fields
+         params: { populate: "currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy" } 
       });
       setTicketToTransfer(data);
     } catch (err) {
@@ -76,6 +76,33 @@ const TransferTicketPage = () => {
     return <ReusablePageStructure title="Error"><Alert variant="danger">Ticket data not found.</Alert></ReusablePageStructure>;
   }
 
+  const renderTransferHistory = () => {
+    if (!ticketToTransfer.transferHistory || ticketToTransfer.transferHistory.length === 0) {
+      return <p>No transfer history for this ticket.</p>;
+    }
+    return (
+      <div className="mt-4 p-3 border rounded">
+        <h5>Transfer History</h5>
+        <Table striped bordered hover responsive size="sm">
+          <thead>
+            <tr><th>Date</th><th>From</th><th>To</th><th>Transferred By</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {ticketToTransfer.transferHistory.map((entry, index) => (
+              <tr key={index}>
+                <td>{new Date(entry.timestamp || entry.createdAt).toLocaleString()}</td>
+                <td>{entry.from ? `${entry.from.firstname} ${entry.from.lastname}` : 'System/Initial'}</td>
+                <td>{entry.to ? `${entry.to.firstname} ${entry.to.lastname}` : 'N/A'}</td>
+                <td>{entry.transferredBy ? `${entry.transferredBy.firstname} ${entry.transferredBy.lastname}` : 'System'}</td>
+                <td>{entry.note || 'N/A'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    );
+  };
+
   return (
     <ReusablePageStructure
       title={`Transfer Ticket - ${ticketToTransfer.ticketNumber}`}
@@ -115,6 +142,8 @@ const TransferTicketPage = () => {
         <p><strong>Current Assignee:</strong> {ticketToTransfer.currentAssignee?.firstname} {ticketToTransfer.currentAssignee?.lastname || "N/A"}</p>
         <p><strong>Status:</strong> <Badge bg="secondary">{ticketToTransfer.status}</Badge></p>
       </div>
+
+      {renderTransferHistory()}
     </ReusablePageStructure>
   );
 };

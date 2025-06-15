@@ -7,6 +7,9 @@ import PIPDF from "./PIPDF.jsx"; // For PI Preview
 import { PDFViewer } from "@react-pdf/renderer"; // For PI Preview
 import ActionButtons from "./ActionButtons.jsx"; // Import ActionButtons
 import { useNavigate, useLocation } from "react-router-dom"; // For navigation and state
+import apiClient from "../utils/apiClient.js"; // For API calls
+import { useAuth } from "../context/AuthContext.jsx"; // For user context
+import { handleApiError, showToast } from "../utils/helpers.js";
 
 // This is now a Page component, e.g., rendered at /tickets/create-from-quotation
 // Props like 'show', 'onHide' are removed. Data is passed via route state.
@@ -17,17 +20,71 @@ const CreateTicketPage = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: authUser } = useAuth();
+
 
   // Initial ticket data would come from route state (passed from Quotations page when creating ticket from quotation)
-  const initialTicketDataFromState = location.state?.ticketDataForForm || { /* provide a default empty structure */ };
+    const initialTicketDataFromState = location.state?.ticketDataForForm || {
+    billingAddress: ["", "", "", "", ""], // Ensure array structure
+    shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" },
+    goods: [],
+    // Add other necessary default fields if not always provided by location.state
+  };
   const [ticketData, setTicketData] = useState(initialTicketDataFromState);
   const [isLoading, setIsLoading] = useState(false); // Page-level loading state
   const [error, setError] = useState(null); // Page-level error state
+    const sourceQuotationData = location.state?.sourceQuotationData || null;
+
 
   // The handleTicketSubmit logic would be part of this page or passed if it's generic and reused
   const handleTicketSubmit = async (event) => {
-    // ... (logic from Quotations.jsx's handleTicketSubmit, adapted for this page's context)
-    // On success, navigate (e.g., to /tickets or back to /quotations)
+    event.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    // Prepare newTicketDetails part of the payload
+    const newTicketDetailsPayload = {
+        ...ticketData, // Contains most ticket fields like companyName, quotationNumber, goods, etc.
+        billingAddress: ticketData.billingAddress, // Already an array
+        shippingAddress: ticketData.shippingSameAsBilling
+            ? [...ticketData.billingAddress] // Copy if same
+            : [ // Construct from shippingAddressObj if different
+                ticketData.shippingAddressObj?.address1 || "",
+                ticketData.shippingAddressObj?.address2 || "",
+                ticketData.shippingAddressObj?.state || "",
+                ticketData.shippingAddressObj?.city || "",
+                ticketData.shippingAddressObj?.pincode || "",
+              ],
+        goods: ticketData.goods.map(g => ({ ...g, gstRate: parseFloat(g.gstRate || 0) })),
+        deadline: ticketData.deadline ? new Date(ticketData.deadline).toISOString() : null,
+        validityDate: ticketData.validityDate ? new Date(ticketData.validityDate).toISOString() : null,
+        // createdBy will be set by backend based on authenticated user
+    };
+    delete newTicketDetailsPayload.shippingAddressObj; // Not part of ticket schema, was for form handling
+    // sourceQuotationId was previously here, but backend expects sourceQuotationData object
+
+    const finalPayload = {
+        newTicketDetails: newTicketDetailsPayload,
+        sourceQuotationData: sourceQuotationData ? { // Pass the whole sourceQuotationData object if available
+            _id: sourceQuotationData._id,
+            referenceNumber: sourceQuotationData.referenceNumber,
+            billingAddress: sourceQuotationData.billingAddress, // Object form
+            client: sourceQuotationData.client, // Object form
+            user: sourceQuotationData.user // User who created quotation
+        } : null,
+    };
+
+    try {
+const response = await apiClient("/tickets", { method: "POST", body: finalPayload });
+      showToast(`Ticket ${response.ticketNumber || payload.ticketNumber} created successfully!`, true);
+      // Optionally, log this event
+      navigate("/tickets"); // Navigate to tickets list or details page
+    } catch (err) {
+      const errorMsg = handleApiError(err, "Failed to create ticket.", authUser, "createTicketActivity");
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateTaxes = useCallback(() => {
@@ -222,7 +279,7 @@ const CreateTicketPage = () => {
   }, [location.state, ticketData]);
 
   const pageContent = (
-        <Form onSubmit={handleTicketSubmit}>
+                <Form id="create-ticket-form" onSubmit={handleTicketSubmit}>
             {error && <Alert variant="danger">{error}</Alert>}
             <div className="row">
               <Form.Group className="mb-3 col-md-6"><Form.Label>Company Name <span className="text-danger">*</span></Form.Label><Form.Control required readOnly type="text" value={ticketData.companyName || ""} /></Form.Group>

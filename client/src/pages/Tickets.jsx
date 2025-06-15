@@ -39,7 +39,7 @@ import { Button } from "react-bootstrap";
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 
-const UserSearchComponent = ({ onUserSelect, authContext }) => {
+export const UserSearchComponent = ({ onUserSelect, authContext }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -232,7 +232,6 @@ export default function Dashboard() {
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "descending" });
   const [showTicketReportModal, setShowTicketReportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editTicket, setEditTicket] = useState(null);
   const [isFetchingAddressInEdit, setIsFetchingAddressInEdit] = useState(false);
 
   const { user: authUser, loading: authLoading } = useAuth();
@@ -353,51 +352,8 @@ export default function Dashboard() {
   };
 
   const handleEdit = (selectedTicketToEdit) => {
-    setEditTicket(selectedTicketToEdit);
-    const billingAddressObj = Array.isArray(selectedTicketToEdit.billingAddress) && selectedTicketToEdit.billingAddress.length === 5
-      ? { address1: selectedTicketToEdit.billingAddress[0] || "", address2: selectedTicketToEdit.billingAddress[1] || "", state: selectedTicketToEdit.billingAddress[2] || "", city: selectedTicketToEdit.billingAddress[3] || "", pincode: selectedTicketToEdit.billingAddress[4] || "" }
-      : (typeof selectedTicketToEdit.billingAddress === 'object' && selectedTicketToEdit.billingAddress !== null)
-        ? selectedTicketToEdit.billingAddress
-        : { address1: "", address2: "", city: "", state: "", pincode: "" };
-
-    const shippingAddressObj = Array.isArray(selectedTicketToEdit.shippingAddress) && selectedTicketToEdit.shippingAddress.length === 5
-      ? { address1: selectedTicketToEdit.shippingAddress[0] || "", address2: selectedTicketToEdit.shippingAddress[1] || "", state: selectedTicketToEdit.shippingAddress[2] || "", city: selectedTicketToEdit.shippingAddress[3] || "", pincode: selectedTicketToEdit.shippingAddress[4] || "" }
-      : (typeof selectedTicketToEdit.shippingAddress === 'object' && selectedTicketToEdit.shippingAddress !== null)
-        ? selectedTicketToEdit.shippingAddress
-        : { address1: "", address2: "", city: "", state: "", pincode: "" };
-    
-    setTicketData({
-      companyName: selectedTicketToEdit.companyName || "",
-      quotationNumber: selectedTicketToEdit.quotationNumber || "",
-      billingAddress: billingAddressObj,
-      shippingAddress: shippingAddressObj,
-      shippingSameAsBilling: selectedTicketToEdit.shippingSameAsBilling || false,
-      goods: (selectedTicketToEdit.goods || []).map(g => ({
-        ...g, originalPrice: g.originalPrice || g.price,
-        maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
-        gstRate: parseFloat(g.gstRate || 0),
-        subtexts: g.subtexts || [],
-      })),
-      totalQuantity: selectedTicketToEdit.totalQuantity || 0,
-      totalAmount: selectedTicketToEdit.totalAmount || 0,
-      gstBreakdown: selectedTicketToEdit.gstBreakdown || [],
-      totalCgstAmount: selectedTicketToEdit.totalCgstAmount || 0,
-      totalSgstAmount: selectedTicketToEdit.totalSgstAmount || 0,
-      totalIgstAmount: selectedTicketToEdit.totalIgstAmount || 0,
-      finalGstAmount: selectedTicketToEdit.finalGstAmount || 0,
-      deadline: selectedTicketToEdit.deadline ? new Date(selectedTicketToEdit.deadline).toISOString().split('T')[0] : null,
-      grandTotal: selectedTicketToEdit.grandTotal || 0,
-      isBillingStateSameAsCompany: selectedTicketToEdit.isBillingStateSameAsCompany || false,
-      status: selectedTicketToEdit.status || statusStages[0],
-      documents: selectedTicketToEdit.documents || ticketData.documents,
-      dispatchDays: selectedTicketToEdit.dispatchDays || "7-10 working",
-      validityDate: selectedTicketToEdit.validityDate ? new Date(selectedTicketToEdit.validityDate).toISOString().split('T')[0] : new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0],
-      clientPhone: selectedTicketToEdit.clientPhone || "",
-      clientGstNumber: selectedTicketToEdit.clientGstNumber || "",
-      termsAndConditions: selectedTicketToEdit.termsAndConditions || ticketData.termsAndConditions,
-    });
-    setShowEditModal(true);
-    setError(null);
+    // Navigate to the EditTicketPage, passing the ticket data in state
+    navigate(`/tickets/edit/${selectedTicketToEdit._id}`, { state: { ticketDataForForm: selectedTicketToEdit } });
   };
 
   const handleTransfer = (ticketToTransfer) => { 
@@ -556,10 +512,10 @@ export default function Dashboard() {
             show={showEditModal}
             onHide={() => { setShowEditModal(false); setError(null); }}
             title={`Edit Ticket - ${editTicket?.ticketNumber || editTicket?.quotationNumber || 'N/A'}`}
-            footerContent={
+            footerContent={ // This ReusableModal and its content will be removed as we navigate to a page
               <>
                 <Button variant="outline-secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={() => {}} disabled={isLoading}>
+                <Button variant="primary" onClick={() => { /* This onClick would be the submit handler on EditTicketPage */ }} disabled={isLoading}>
                   {isLoading ? "Saving..." : "Save Changes"}
                 </Button>
               </>
@@ -567,7 +523,7 @@ export default function Dashboard() {
             isLoading={isLoading}
           >
             {editTicket && (
-              <div>
+              <div> {/* This form structure is now in EditTicketPage.jsx */}
                 <Form>
                   <Form.Group className="mb-3">
                     <Form.Label>Company Name</Form.Label>
