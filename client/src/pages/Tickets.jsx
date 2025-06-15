@@ -245,6 +245,22 @@ export default function Dashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return new Date(ticket.deadline) < today;
+      };
+
+  const ticketStatusFilterOptions = [
+    { value: "all", label: "Sort By Status" },
+    { value: "open", label: "Open (Active)" }, // "open" means not Closed and not Hold
+    { value: "Running", label: "Running" },
+    { value: "closed", label: "Closed" },
+    { value: "hold", label: "Hold" },
+  ];
+
+  const handleSort = (key) => {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
   };
 
   const fetchTickets = useCallback(async () => {
@@ -358,6 +374,19 @@ export default function Dashboard() {
     navigate(`/tickets/transfer/${ticketToTransfer._id}`, { state: { ticketDataForTransfer: ticketToTransfer } });
   };
 
+    // Prepare the Report button element to pass to Pagination
+  const reportButtonElement = (authUser?.role === "admin" || authUser?.role === "super-admin") && (
+    <Button
+      variant="info"
+      onClick={() => navigate("/tickets/report")} // Navigate to the report page
+      disabled={isLoading}
+      title="View Ticket Reports"
+      size="sm" // To match items per page selector style
+    >
+      <FaChartBar className="me-1" /> Report
+    </Button>
+  );
+
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Quotation Sent": return "info";
@@ -378,20 +407,31 @@ export default function Dashboard() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
           <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Tickets Overview</h2>
-          <div className="d-flex align-items-center" style={{ minWidth: "200px", flexGrow: 1, maxWidth: "350px" }}>
-            <SearchBar value={searchTerm} setSearchTerm={(value) => { setSearchTerm(value); setCurrentPage(1); }} placeholder="Search tickets..." className="w-100" />
+          {/* Status Filter Dropdown */}
+          <div className="filter-dropdown-group">
+            <Form.Select
+              aria-label="Status filter"
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="form-select-sm"
+              style={{ width: 'auto', minWidth: '200px' }}
+            >
+              {ticketStatusFilterOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Form.Select>
           </div>
-          <div className="filter-radio-group d-flex align-items-center flex-wrap" style={{ gap: "0.5rem" }}>
-            {["all", "open", "Running", "closed", "hold"].map(s => (
-                <Form.Check type="radio" inline key={s} id={`filter-${s.toLowerCase()}`} label={s.charAt(0).toUpperCase() + s.slice(1)} name="statusFilter"
-                    checked={statusFilter === s} onChange={() => { setStatusFilter(s); setCurrentPage(1); }} className="radio-option" />
-            ))}
+
+          {/* Search Bar - takes available space */}
+          <div className="d-flex align-items-center" style={{ minWidth: "200px", flexGrow: 1, maxWidth: "400px" }}>
+            <SearchBar 
+              value={searchTerm} 
+              setSearchTerm={(value) => { setSearchTerm(value); setCurrentPage(1); }} 
+              placeholder="Search tickets..." 
+              className="w-100" />
           </div>
-          {(authUser?.role === "admin" || authUser?.role === "super-admin") && (
-            <Button variant="info" onClick={() => setShowTicketReportModal(true)} title="View Ticket Reports" style={{ whiteSpace: "nowrap" }}>
-              <FaChartBar className="me-1" /> Report
-            </Button>
-          )}
         </div>
         {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
         <ReusableTable
@@ -448,13 +488,6 @@ export default function Dashboard() {
           noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
         />
 
-        {showTicketReportModal && (
-          <TicketReportModal
-            show={showTicketReportModal}
-            onHide={() => setShowTicketReportModal(false)}
-            tickets={tickets}
-          />
-        )}
 
         {filteredTickets.length > 0 && (
           <Pagination 
@@ -466,6 +499,7 @@ export default function Dashboard() {
               if (page >= 1 && page <= currentTotalPages) setCurrentPage(page); 
             }} 
             onItemsPerPageChange={handleItemsPerPageChange} 
+            reportButton={reportButtonElement} 
           />
         )}
       </div>

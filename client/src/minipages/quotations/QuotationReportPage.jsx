@@ -1,5 +1,5 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationReportPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Form,
@@ -56,8 +56,12 @@ const QuotationReportPage = () => {
     { value: "all", label: "All Time" },
   ];
 
-  const fetchReport = async () => {
-    if (!period) return;
+  const fetchReport = useCallback(async () => {
+    if (!period) {
+      setReportData(null);
+      setError("");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -97,9 +101,10 @@ const QuotationReportPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
   const handleExportToExcel = async () => {
+    if (!period || !reportData) return;
     setExportLoading(true);
     setError("");
 
@@ -144,63 +149,50 @@ const QuotationReportPage = () => {
 
   useEffect(() => {
     fetchReport();
-  }, [period]);
+  }, [fetchReport]); // fetchReport is memoized with useCallback and depends on period
 
-  const renderSummaryTab = () => (
-    <div className="report-summary">
-      {loading && !reportData ? (
-        <div className="text-center p-5">
-          <Spinner animation="border" />
-          <p>Loading report...</p>
-        </div>
-      ) : null}
-      {!loading && reportData && (
-        <>
-          <div className="report-header mb-4">
-            <h4>Quotation Activity Report</h4>
-            <p className="text-muted">
-              Period: {reportData.period} ({reportData.dateRange})
-            </p>
-          </div>
-          <Table striped bordered hover size="sm" className="mt-3">
-            <tbody>
-              <tr>
-                <td>Total Quotations Created</td>
-                <td>{reportData.totalQuotations}</td>
-              </tr>
-              <tr>
-                <td>Open Quotations</td>
-                <td>{reportData.statusCounts?.open || 0}</td>
-              </tr>
-              <tr>
-                <td>Running Quotations</td>
-                <td>{reportData.statusCounts?.running || 0}</td>
-              </tr>
-              <tr>
-                <td>Hold Quotations</td>
-                <td>{reportData.statusCounts?.hold || 0}</td>
-              </tr>
-              <tr>
-                <td>Closed Quotations</td>
-                <td>{reportData.statusCounts?.closed || 0}</td>
-              </tr>
-              <tr>
-                <td>Unique Clients</td>
-                <td>{reportData.uniqueClientsCount}</td>
-              </tr>
-              <tr>
-                <td>Total Value of Closed Quotations</td>
-                <td>₹{reportData.totalClosedValue?.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      )}
-    </div>
-  );
+  const renderSummaryTab = () => {
+    if (!reportData) return null; // Data presence checked before rendering tabs
+    return (
+      <div className="report-summary">
+        <Table striped bordered hover size="sm" className="mt-3">
+          <tbody>
+            <tr>
+              <td>Total Quotations Created</td>
+              <td>{reportData.totalQuotations}</td>
+            </tr>
+            <tr>
+              <td>Open Quotations</td>
+              <td>{reportData.statusCounts?.open || 0}</td>
+            </tr>
+            <tr>
+              <td>Running Quotations</td>
+              <td>{reportData.statusCounts?.running || 0}</td>
+            </tr>
+            <tr>
+              <td>Hold Quotations</td>
+              <td>{reportData.statusCounts?.hold || 0}</td>
+            </tr>
+            <tr>
+              <td>Closed Quotations</td>
+              <td>{reportData.statusCounts?.closed || 0}</td>
+            </tr>
+            <tr>
+              <td>Unique Clients</td>
+              <td>{reportData.uniqueClientsCount}</td>
+            </tr>
+            <tr>
+              <td>Total Value of Closed Quotations</td>
+              <td>₹{(reportData.totalClosedValue || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </Table>
+      </div>
+    );
+  };
 
   const renderChartsTab = () => {
-    if (!reportData) return null;
+    if (!reportData || !reportData.statusCounts) return <Alert variant="info" className="mt-3">Chart data is not available.</Alert>;
     const statusData = {
       labels: ["Open", "Running", "Hold", "Closed"],
       datasets: [
@@ -240,11 +232,20 @@ const QuotationReportPage = () => {
       </div>
     );
   };
+  
+  const reportPageTitle = (
+    <div>
+      Quotation Activity Report
+      {reportData && !loading && reportData.period && reportData.dateRange && (
+        <div style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.9 }}>
+          Period: {periodOptions.find(p => p.value === reportData.period)?.label || reportData.period} ({reportData.dateRange})
+        </div>
+      )}
+    </div>
+  );
 
   const pageContent = (
     <>
-      {error && <Alert variant="danger">{error}</Alert>}
-
       {/* Controls Row */}
       <Row className="mb-4 gx-3">
         <Col md={3}>
@@ -261,37 +262,34 @@ const QuotationReportPage = () => {
             ))}
           </Form.Select>
         </Col>
-
         <Col md={3}>
           <Button
             className="w-100"
             variant={activeTab === "summary" ? "primary" : "outline-primary"}
             onClick={() => setActiveTab("summary")}
-            disabled={loading || exportLoading}
+            disabled={loading || exportLoading || !period}
           >
             Summary
           </Button>
         </Col>
-
         <Col md={3}>
           <Button
             className="w-100"
             variant={activeTab === "charts" ? "primary" : "outline-primary"}
             onClick={() => setActiveTab("charts")}
-            disabled={loading || exportLoading}
+            disabled={loading || exportLoading || !period}
           >
             <FaChartBar className="me-1" />
             Charts
           </Button>
         </Col>
-
         <Col md={3}>
           <Button
             className="w-100"
             variant="outline-success"
             onClick={handleExportToExcel}
             disabled={
-              loading || exportLoading || !reportData || reportData.totalQuotations === 0
+              loading || exportLoading || !reportData || !period || reportData.totalQuotations === 0
             }
           >
             {exportLoading ? (
@@ -307,16 +305,24 @@ const QuotationReportPage = () => {
           </Button>
         </Col>
       </Row>
-
-      <div className="mt-3">
-        {activeTab === "summary" && renderSummaryTab()}
-        {activeTab === "charts" && renderChartsTab()}
-      </div>
+      
+      {/* Content Display Area */}
+      {loading && <div className="text-center p-5"><Spinner animation="border" /><p>Loading report data...</p></div>}
+      {!loading && error && <Alert variant="danger">{error}</Alert>}
+      {!loading && !error && !period && <Alert variant="info" className="text-center">Please select a report period to view data.</Alert>}
+      {!loading && !error && period && !reportData && <Alert variant="info" className="text-center">No data found for the selected period, or an error occurred.</Alert>}
+      
+      {!loading && !error && period && reportData && (
+        <div className="mt-3">
+          {activeTab === "summary" && renderSummaryTab()}
+          {activeTab === "charts" && renderChartsTab()}
+        </div>
+      )}
     </>
   );
 
   return (
-    <ReusablePageStructure title="Quotation Activity Report" footerContent={null}>
+    <ReusablePageStructure title={reportPageTitle} footerContent={null}>
       {pageContent}
     </ReusablePageStructure>
   );

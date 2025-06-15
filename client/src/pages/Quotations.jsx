@@ -213,6 +213,19 @@ export default function Quotations() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
+  // Prepare the Report button element to pass to Pagination
+  const reportButtonElement = (user?.role === "admin" || user?.role === "super-admin") && (
+    <Button
+      variant="info"
+      onClick={() => navigate("/quotations/report")}
+      disabled={isLoading}
+      title="View Quotation Reports"
+      size="sm" // To match items per page selector style
+    >
+      <FaChartBar className="me-1" /> Report
+    </Button>
+  );
+
 
   const resetForm = () => { // This is less relevant now as form is on a separate page
     // setQuotationData(initialQuotationData); // Form state is in QuotationFormPage
@@ -381,37 +394,43 @@ export default function Quotations() {
     <div>
       <Navbar />
       <div className="container mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{gap: "1rem"}}>
+        {/* Header Section: Title, Add Button, Search, and Status Filter Dropdown */}
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
           <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Quotations</h2>
-          <div className="d-flex align-items-center" style={{ minWidth: "200px", flexGrow: 1, maxWidth: "450px" }}>
-             <SearchBar
+
+          <div className="filter-dropdown-group">
+            <Form.Select
+              aria-label="Status filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="form-select-sm"
+              style={{ width: 'auto', minWidth: '200px' }}
+            >
+              <option value="all">Sort By Status</option>
+              {["open", "running", "closed", "hold"].map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
+
+          {/* Search Bar - takes available space */}
+          <div className="d-flex align-items-center" style={{ minWidth: "200px", flexGrow: 1, maxWidth: "400px" }}>
+            <SearchBar
                 value={searchTerm}
                 setSearchTerm={(value) => setSearchTerm(value)} // Pass setSearchTerm directly
                 placeholder="Search quotations..."
                 className="w-100"
             />
           </div>
-          <div className="filter-radio-group d-flex align-items-center flex-wrap" style={{gap: "0.5rem"}}>
-            {["all", "open", "running", "closed", "hold"].map((s) => (
-              <Form.Check
-                inline key={s} type="radio" id={`status-${s}`}
-                label={s.charAt(0).toUpperCase() + s.slice(1)}
-                name="statusFilter" checked={statusFilter === s}
-                onChange={() => setStatusFilter(s)}
-                className="radio-option"
-              />
-            ))}
-          </div>
-          <div className="d-flex gap-2">
-            <Button variant="primary" onClick={openCreateModal} title="Create New Quotation">
-              ➕ Quotation
-            </Button>
-            {(user?.role === "admin" || user?.role === "super-admin") && (
-              <Button variant="info" onClick={() => navigate("/quotations/report")} disabled={isLoading} title="View Quotation Reports">
-                <FaChartBar className="me-1" /> Report
-              </Button>
-            )}
-          </div>
+
+                    <Button variant="primary" onClick={openCreateModal} title="Create New Quotation" style={{ whiteSpace: "nowrap" }}>
+            ➕ Quotation
+          </Button>
+
+          {/* Status Filter Dropdown */}
+          
         </div>
 
         {error && !isLoading && <Alert variant="danger">{error}</Alert>}
@@ -477,6 +496,7 @@ export default function Quotations() {
               if (page >= 1 && page <= totalPages) setCurrentPage(page);
             }}
             onItemsPerPageChange={handleItemsPerPageChange}
+            reportButton={reportButtonElement} // Pass the report button here
           />
         )}
       </div>

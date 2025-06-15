@@ -1,5 +1,5 @@
-// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/TicketReportPage.jsx
-import React, { useState, useEffect } from "react";
+// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/tickets/TicketReportPage.jsx
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Form,
@@ -7,7 +7,7 @@ import {
   Alert,
   Row,
   Col,
-  Nav,
+  // Nav, // Nav was unused
   Table,
 } from "react-bootstrap";
 import { FaFileExcel, FaChartBar } from "react-icons/fa";
@@ -21,11 +21,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-// import apiClient from "../utils/apiClient"; // No longer using shared apiClient directly here to ensure consistency
-import axios from "axios"; // Import axios
+import axios from "axios";
 import { getAuthToken } from "../../utils/authUtils";
-import ReusablePageStructure from "../../components/ReusablePageStructure.jsx"; // Import page structure
-import { useNavigate } from "react-router-dom"; // For navigation
+import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
+import { useNavigate } from "react-router-dom";
 
 ChartJS.register(
   CategoryScale,
@@ -36,20 +35,18 @@ ChartJS.register(
   Legend
 );
 
-// Create a local apiClient instance, similar to QuotationReportModal.jsx
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000", // This should point to your API base, e.g., http://localhost:3000/api
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
 });
 
-// This is now TicketReportPage
 const TicketReportPage = () => {
-  const [period, setPeriod] = useState("7days");
+  const [period, setPeriod] = useState("");
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // useNavigate was unused, but good to keep if needed later
 
   const periodOptions = [
     { value: "7days", label: "Last 7 Days" },
@@ -71,7 +68,12 @@ const TicketReportPage = () => {
     "Closed",
   ];
 
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
+    if (!period) {
+      setReportData(null);
+      setError("");
+      return;
+    }
     setLoading(true);
     setError("");
     setReportData(null);
@@ -84,10 +86,7 @@ const TicketReportPage = () => {
         return;
       }
 
-      // Ensure your apiClient is configured for the correct base URL
-      // The path should be relative to the baseURL, e.g., 'reports/tickets' if baseURL includes '/api'
       const response = await apiClient.get(`reports/tickets`, {
-        // Changed path
         params: { period },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -109,9 +108,10 @@ const TicketReportPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
 
   const handleExportToExcel = async () => {
+    if (!period || !reportData) return;
     setExportLoading(true);
     setError("");
 
@@ -124,8 +124,7 @@ const TicketReportPage = () => {
       }
 
       const response = await apiClient.get(`reports/tickets`, {
-        // Changed path
-        params: { period, exportToExcel: "true" }, // Add exportToExcel param
+        params: { period, exportToExcel: "true" },
         responseType: "blob",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -142,17 +141,20 @@ const TicketReportPage = () => {
       let errorMessage =
         "Failed to export ticket report. An unknown error occurred.";
       if (err.response) {
-        // Try to parse error from blob if it's a JSON error response
         if (
           err.response.data instanceof Blob &&
           err.response.data.type === "application/json"
         ) {
-          const errorJson = await err.response.data.text();
-          const parsedError = JSON.parse(errorJson);
-          errorMessage =
-            parsedError.message ||
-            parsedError.error ||
-            `Server error: ${err.response.status}`;
+          try {
+            const errorJson = await err.response.data.text();
+            const parsedError = JSON.parse(errorJson);
+            errorMessage =
+              parsedError.message ||
+              parsedError.error ||
+              `Server error: ${err.response.status}`;
+          } catch (parseError) {
+             errorMessage = `Server error: ${err.response.status} (Could not parse error response)`;
+          }
         } else {
           errorMessage =
             err.response.data?.message ||
@@ -171,62 +173,47 @@ const TicketReportPage = () => {
   };
 
   useEffect(() => {
-    fetchReport(); // Fetch on mount and when period changes
-  }, [period]);
+    fetchReport();
+  }, [fetchReport]);
 
-  const renderSummaryTab = () => (
-    <div className="report-summary">
-      {loading && !reportData && (
-        <div className="text-center p-5">
-          <Spinner animation="border" />
-          <p>Loading ticket report...</p>
-        </div>
-      )}
-
-      {!loading && reportData && (
-        <>
-          <div className="report-header mb-4">
-            <h4>Ticket Activity Report</h4>
-            <p className="text-muted">
-              Period: {reportData.period} ({reportData.dateRange})
-            </p>
-          </div>
-
-          <Table striped bordered hover size="sm" className="mt-3">
-            <tbody>
-              <tr>
-                <td>Total Tickets Created</td>
-                <td>{reportData.totalTickets}</td>
+  const renderSummaryTab = () => {
+    if (!reportData) return null;
+    return (
+      <div className="report-summary">
+        <Table striped bordered hover size="sm" className="mt-3">
+          <tbody>
+            <tr>
+              <td>Total Tickets Created</td>
+              <td>{reportData.totalTickets}</td>
+            </tr>
+            {ticketStatusOrder.map((status) => (
+              <tr key={status}>
+                <td>{status} Tickets</td>
+                <td>{reportData.statusCounts?.[status] || 0}</td>
               </tr>
-              {ticketStatusOrder.map((status) => (
-                <tr key={status}>
-                  <td>{status} Tickets</td>
-                  <td>{reportData.statusCounts?.[status] || 0}</td>
-                </tr>
-              ))}
-              {reportData.statusCounts?.other > 0 && (
-                <tr>
-                  <td>Other Status Tickets</td>
-                  <td>{reportData.statusCounts.other}</td>
-                </tr>
-              )}
+            ))}
+            {reportData.statusCounts?.other > 0 && (
               <tr>
-                <td>Unique Clients (based on Company Name)</td>
-                <td>{reportData.uniqueClientsCount}</td>
+                <td>Other Status Tickets</td>
+                <td>{reportData.statusCounts.other}</td>
               </tr>
-              <tr>
-                <td>Total Value of Closed Tickets</td>
-                <td>₹{reportData.totalValueClosedTickets?.toFixed(2)}</td>
-              </tr>
-            </tbody>
-          </Table>
-        </>
-      )}
-    </div>
-  );
+            )}
+            <tr>
+              <td>Unique Clients (based on Company Name)</td>
+              <td>{reportData.uniqueClientsCount}</td>
+            </tr>
+            <tr>
+              <td>Total Value of Closed Tickets</td>
+              <td>₹{(reportData.totalValueClosedTickets || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </Table>
+      </div>
+    );
+  };
 
   const renderChartsTab = () => {
-    if (!reportData || !reportData.statusCounts) return null;
+    if (!reportData || !reportData.statusCounts) return <Alert variant="info" className="mt-3">Chart data is not available.</Alert>;
 
     const chartData = {
       labels: ticketStatusOrder,
@@ -237,25 +224,16 @@ const TicketReportPage = () => {
             (status) => reportData.statusCounts?.[status] || 0
           ),
           backgroundColor: [
-            // Add more colors if needed
-            "rgba(75, 192, 192, 0.6)",
-            "rgba(54, 162, 235, 0.6)",
-            "rgba(255, 206, 86, 0.6)",
-            "rgba(153, 102, 255, 0.6)",
-            "rgba(255, 159, 64, 0.6)",
-            "rgba(201, 203, 207, 0.6)",
-            "rgba(255, 99, 132, 0.6)",
-            "rgba(100, 255, 100, 0.6)",
+            "rgba(75, 192, 192, 0.6)", "rgba(54, 162, 235, 0.6)",
+            "rgba(255, 206, 86, 0.6)", "rgba(153, 102, 255, 0.6)",
+            "rgba(255, 159, 64, 0.6)", "rgba(201, 203, 207, 0.6)",
+            "rgba(255, 99, 132, 0.6)", "rgba(100, 255, 100, 0.6)",
           ],
           borderColor: [
-            "rgba(75, 192, 192, 1)",
-            "rgba(54, 162, 235, 1)",
-            "rgba(255, 206, 86, 1)",
-            "rgba(153, 102, 255, 1)",
-            "rgba(255, 159, 64, 1)",
-            "rgba(201, 203, 207, 1)",
-            "rgba(255, 99, 132, 1)",
-            "rgba(100, 255, 100, 1)",
+            "rgba(75, 192, 192, 1)", "rgba(54, 162, 235, 1)",
+            "rgba(255, 206, 86, 1)", "rgba(153, 102, 255, 1)",
+            "rgba(255, 159, 64, 1)", "rgba(201, 203, 207, 1)",
+            "rgba(255, 99, 132, 1)", "rgba(100, 255, 100, 1)",
           ],
           borderWidth: 1,
         },
@@ -278,9 +256,19 @@ const TicketReportPage = () => {
     );
   };
 
+  const reportPageTitle = (
+    <div>
+      Ticket Activity Report
+      {reportData && !loading && reportData.period && reportData.dateRange && (
+        <div style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.9 }}>
+          Period: {periodOptions.find(p => p.value === reportData.period)?.label || reportData.period} ({reportData.dateRange})
+        </div>
+      )}
+    </div>
+  );
+
   const pageContent = (
     <>
-      {error && <Alert variant="danger">{error}</Alert>}
       {/* Controls Row */}
       <Row className="mb-4 gx-3">
         <Col md={3}>
@@ -295,26 +283,24 @@ const TicketReportPage = () => {
                 {option.label}
               </option>
             ))}
-          </Form.Select>{" "}
+          </Form.Select>
         </Col>
-
         <Col md={3}>
           <Button
             className="w-100"
             variant={activeTab === "summary" ? "primary" : "outline-primary"}
             onClick={() => setActiveTab("summary")}
-            disabled={loading || exportLoading}
+            disabled={loading || exportLoading || !period}
           >
             Summary
           </Button>
         </Col>
-
         <Col md={3}>
           <Button
             className="w-100"
             variant={activeTab === "charts" ? "primary" : "outline-primary"}
             onClick={() => setActiveTab("charts")}
-            disabled={loading || exportLoading}
+            disabled={loading || exportLoading || !period}
           >
             <FaChartBar className="me-1" />
             Charts
@@ -326,40 +312,37 @@ const TicketReportPage = () => {
             variant="outline-success"
             onClick={handleExportToExcel}
             disabled={
-              loading ||
-              exportLoading ||
-              !reportData ||
-              reportData.totalTickets === 0
+              loading || exportLoading || !reportData || !period || reportData.totalTickets === 0
             }
           >
             {exportLoading ? (
-              <>
-                <Spinner as="span" size="sm" animation="border" /> Exporting...
-              </>
+              <><Spinner as="span" size="sm" animation="border" /> Exporting...</>
             ) : (
-              <>
-                <FaFileExcel className="me-1" />
-                Export Excel
-              </>
+              <><FaFileExcel className="me-1" />Export Excel</>
             )}
           </Button>
         </Col>
       </Row>
-      <div className="mt-3">
-        {" "}
-        {activeTab === "summary" && renderSummaryTab()}
-        {activeTab === "charts" && renderChartsTab()}
-      </div>
+      
+      {/* Content Display Area */}
+      {loading && <div className="text-center p-5"><Spinner animation="border" /><p>Loading report data...</p></div>}
+      {!loading && error && <Alert variant="danger">{error}</Alert>}
+      {!loading && !error && !period && <Alert variant="info" className="text-center">Please select a report period to view data.</Alert>}
+      {!loading && !error && period && !reportData && <Alert variant="info" className="text-center">No data found for the selected period, or an error occurred.</Alert>}
+      
+      {!loading && !error && period && reportData && (
+        <div className="mt-3">
+          {activeTab === "summary" && renderSummaryTab()}
+          {activeTab === "charts" && renderChartsTab()}
+        </div>
+      )}
     </>
   );
-
-  const pageFooter = null;
+  
+  const pageFooter = null; // Unused, but kept for consistency if needed later
 
   return (
-    <ReusablePageStructure
-      title="Ticket Activity Report"
-      footerContent={pageFooter}
-    >
+    <ReusablePageStructure title={reportPageTitle} footerContent={pageFooter}>
       {pageContent}
     </ReusablePageStructure>
   );
