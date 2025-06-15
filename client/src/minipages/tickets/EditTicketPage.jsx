@@ -1,6 +1,6 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/EditTicketPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Badge, Card } from "react-bootstrap";
+import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Badge, Card, ProgressBar } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
@@ -73,6 +73,8 @@ const EditTicketPage = () => {
         ...data,
         billingAddress: billingAddressObj,
         shippingAddress: shippingAddressObj,
+        clientPhone: data.clientPhone || data.client?.phone || "", // Prioritize direct field, fallback to populated client
+        clientGstNumber: data.clientGstNumber || data.client?.gstNumber || "", // Prioritize direct field
         deadline: data.deadline ? formatDateForInput(data.deadline) : null,
         validityDate: data.validityDate ? formatDateForInput(data.validityDate) : initialTicketData.validityDate,
         goods: (data.goods || []).map(g => ({
@@ -106,6 +108,8 @@ const EditTicketPage = () => {
             ...initialTicketData,
             ...initialData,
             billingAddress: billingAddressObj,
+            clientPhone: initialData.clientPhone || initialData.client?.phone || "",
+            clientGstNumber: initialData.clientGstNumber || initialData.client?.gstNumber || "",
             shippingAddress: shippingAddressObj,
             deadline: initialData.deadline ? formatDateForInput(initialData.deadline) : null,
             validityDate: initialData.validityDate ? formatDateForInput(initialData.validityDate) : initialTicketData.validityDate,
@@ -325,8 +329,20 @@ const EditTicketPage = () => {
     } finally { setIsLoading(false); }
   };
 
-  // Placeholder - actual implementation in Tickets.jsx
-  const getStatusBadgeColor = (status) => "secondary"; 
+  const getStatusBadgeColor = (status) => {
+    // Implementation based on your Tickets.jsx logic
+    switch (status) {
+      case "Quotation Sent": return "info";
+      case "PO Received": return "primary";
+      case "Payment Pending": return "warning";
+      case "Inspection": return "secondary";
+      case "Packing List": return "dark";
+      case "Invoice Sent": return "success";
+      case "Hold": return "danger";
+      case "Closed": return "success";
+      default: return "dark";
+    }
+  };
 
   if (authLoading || (isLoading && !ticketData._id && ticketIdFromParams)) { // Check if loading initial data for an existing ticket
     return <ReusablePageStructure title="Loading Ticket..."><Spinner animation="border" /></ReusablePageStructure>;
@@ -345,18 +361,228 @@ const EditTicketPage = () => {
       }
     >
       {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-      {/* ProgressBarWithStages and StatusHistory would be here */}
-      {/* Form fields for company, quotation, deadline, addresses, goods, summary, terms */}
-      <Form>
-        {/* ... Form structure similar to the modal in Tickets.jsx ... */}
-        {/* Example: Status Change Comment */}
+
+      {/* Progress Bar With Stages */}
+      <div className="mb-4">
+        <ProgressBar style={{ height: "30px" }}>
+          {statusStages.map((stage, index) => {
+            const currentStatusIndex = statusStages.indexOf(ticketData.status);
+            const isCompleted = currentStatusIndex >= index;
+            const isCurrent = ticketData.status === stage;
+            return (
+              <ProgressBar
+                key={stage}
+                now={100 / statusStages.length}
+                variant={isCompleted ? getStatusBadgeColor(stage) : "secondary"}
+                label={isCurrent ? stage : ""}
+                animated={isCurrent}
+                onClick={() => handleStatusChange(stage)}
+                style={{ cursor: "pointer", transition: "background-color 0.3s ease" }}
+                title={`Set status to: ${stage}`}
+              />
+            );
+          })}
+        </ProgressBar>
+        <div className="d-flex justify-content-between mt-2">
+          {statusStages.map((stage) => (
+            <small
+              key={stage}
+              className={`text-center ${ticketData.status === stage ? `fw-bold text-${getStatusBadgeColor(stage)}` : "text-muted"}`}
+              style={{ width: `${100 / statusStages.length}%`, cursor: "pointer", transition: "color 0.3s ease, font-weight 0.3s ease" }}
+              onClick={() => handleStatusChange(stage)}
+              title={`Set status to: ${stage}`}
+            >
+              {stage.split(" ")[0]} {/* Show only first word for brevity if needed */}
+            </small>
+          ))}
+        </div>
+      </div>
+
+      {/* Status Change Comment */}
         {ticketData.status !== originalStatus && (
             <Form.Group className="my-3">
               <Form.Label htmlFor="statusChangeCommentInput" className="fw-bold">Comment for Status Change (Required)</Form.Label>
               <Form.Control as="textarea" id="statusChangeCommentInput" rows={2} value={statusChangeComment} onChange={(e) => setStatusChangeComment(e.target.value)} placeholder={`Explain why status is changing to "${ticketData.status}"...`} maxLength={200} required />
+              <Form.Text muted>Max 200 characters.</Form.Text>
             </Form.Group>
         )}
-        {/* ... Other form fields ... */}
+
+      {/* Status History Table */}
+      {ticketData.statusHistory && ticketData.statusHistory.length > 0 && (
+        <div className="mt-4">
+          <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+            <i className="bi bi-card-list me-1"></i>Status Change History
+          </h5>
+          <Table striped bordered hover size="sm" responsive>
+            <thead className="table-light">
+              <tr><th>Changed By</th><th>Date</th><th>Status Changed To</th><th>Comment</th></tr>
+            </thead>
+            <tbody>
+              {ticketData.statusHistory.slice().reverse().map((historyItem, index) => (
+                <tr key={historyItem._id || index}>
+                  <td>{historyItem.changedBy ? `${historyItem.changedBy.firstname || ""} ${historyItem.changedBy.lastname || ""}`.trim() || historyItem.changedBy.email || "Unknown" : "N/A"}</td>
+                  <td>{historyItem.changedAt ? new Date(historyItem.changedAt).toLocaleString() : 'N/A'}</td>
+                  <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
+                  <td title={historyItem.note || "No comment"}>{(historyItem.note || "N/A").substring(0, 50) + (historyItem.note && historyItem.note.length > 50 ? "..." : "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+      <hr />
+
+      {/* Main Form Content */}
+      <Form noValidate validated={formValidated} onSubmit={(e) => { e.preventDefault(); handleUpdateTicket(); }}>
+        <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+            <i className="bi bi-info-circle-fill me-1"></i>Ticket & Client Information
+        </h5>
+        <Row className="mb-3">
+            <Col md={6}><Form.Group><Form.Label>Company Name <span className="text-danger">*</span></Form.Label><Form.Control required type="text" value={ticketData.companyName || ""} onChange={(e) => setTicketData({ ...ticketData, companyName: e.target.value })} /></Form.Group></Col>
+            <Col md={6}><Form.Group><Form.Label>Quotation Number</Form.Label><Form.Control type="text" value={ticketData.quotationNumber || ""} onChange={(e) => setTicketData({ ...ticketData, quotationNumber: e.target.value })} /></Form.Group></Col>
+        </Row>
+        <Row className="mb-3">
+            <Col md={4}>
+                <Form.Group><Form.Label>Client Phone</Form.Label><Form.Control type="tel" value={ticketData.clientPhone || ""} onChange={(e) => setTicketData({ ...ticketData, clientPhone: e.target.value })} placeholder="Enter 10 Digit Client Number" /></Form.Group>
+            </Col>
+            <Col md={4}>
+                <Form.Group><Form.Label>Client GST Number</Form.Label><Form.Control type="text" value={ticketData.clientGstNumber || ""} onChange={(e) => setTicketData({ ...ticketData, clientGstNumber: e.target.value.toUpperCase() })} placeholder="Enter Client GST Number" /></Form.Group>
+            </Col>
+            <Col md={4}>
+                <Form.Group><Form.Label>Deadline</Form.Label><Form.Control type="date" value={ticketData.deadline || ""} onChange={(e) => setTicketData({ ...ticketData, deadline: e.target.value })} /></Form.Group>
+            </Col>
+        </Row>
+        <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+            <i className="bi bi-geo-alt-fill me-1"></i>Address Details
+        </h5>
+
+        <Row>
+            <Col md={6}>
+                <Card className="mb-3">
+                    <Card.Header as="h5"><i className="bi bi-building me-1"></i>Billing Address</Card.Header>
+                    <Card.Body>
+                        <Row><Col md={12}><Form.Group className="mb-2"><Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label><Form.Control required value={ticketData.billingAddress?.address1 || ""} onChange={(e) => handleAddressChange("billingAddress", "address1", e.target.value)} placeholder="Address line 1" disabled={isFetchingAddress} /></Form.Group></Col></Row>
+                        <Row><Col md={12}><Form.Group className="mb-2"><Form.Label>Address Line 2</Form.Label><Form.Control value={ticketData.billingAddress?.address2 || ""} onChange={(e) => handleAddressChange("billingAddress", "address2", e.target.value)} placeholder="Address line 2" disabled={isFetchingAddress} /></Form.Group></Col></Row>
+                        <Row><Col md={4}><Form.Group className="mb-2"><Form.Label>Pincode <span className="text-danger">*</span></Form.Label><Form.Control required type="text" pattern="[0-9]{6}" value={ticketData.billingAddress?.pincode || ""} onChange={(e) => handlePincodeChangeForAddress("billingAddress", e.target.value)} placeholder="Pincode" disabled={isFetchingAddress} /><Form.Text className="text-muted">6-digit</Form.Text></Form.Group></Col>
+                            <Col md={4}><Form.Group className="mb-2"><Form.Label>City <span className="text-danger">*</span></Form.Label><Form.Control required value={ticketData.billingAddress?.city || ""} onChange={(e) => handleAddressChange("billingAddress", "city", e.target.value)} placeholder="City" readOnly={!isFetchingAddress && !!ticketData.billingAddress?.city} disabled={isFetchingAddress} /></Form.Group></Col>
+                            <Col md={4}><Form.Group className="mb-2"><Form.Label>State <span className="text-danger">*</span></Form.Label><Form.Control required value={ticketData.billingAddress?.state || ""} onChange={(e) => handleAddressChange("billingAddress", "state", e.target.value)} placeholder="State" readOnly={!isFetchingAddress && !!ticketData.billingAddress?.state} disabled={isFetchingAddress} /></Form.Group></Col>
+                        </Row>
+                    </Card.Body>
+                </Card>
+            </Col>
+            <Col md={6}>
+                <Card className="mb-3">
+                    <Card.Header as="h5"><i className="bi bi-truck me-1"></i>Shipping Address</Card.Header>
+                    <Card.Body style={{ minHeight: '230px' /* Approximate height of billing address card */ }}>
+                        <Form.Group className="mb-2">
+                            <Form.Check type="checkbox" label="Shipping address same as billing" checked={ticketData.shippingSameAsBilling} onChange={(e) => { const isChecked = e.target.checked; setTicketData((prev) => ({ ...prev, shippingSameAsBilling: isChecked, shippingAddress: isChecked ? { ...prev.billingAddress } : initialTicketData.shippingAddress })); }} disabled={isFetchingAddress} />
+                        </Form.Group>
+                        {!ticketData.shippingSameAsBilling && (
+                            <>
+                                <Row><Col md={12}><Form.Group className="mb-2"><Form.Label>Address Line 1 <span className="text-danger">*</span></Form.Label><Form.Control required={!ticketData.shippingSameAsBilling} value={ticketData.shippingAddress?.address1 || ""} onChange={(e) => handleAddressChange("shippingAddress", "address1", e.target.value)} placeholder="Address line 1" disabled={isFetchingAddress} /></Form.Group></Col></Row>
+                                <Row><Col md={12}><Form.Group className="mb-2"><Form.Label>Address Line 2</Form.Label><Form.Control value={ticketData.shippingAddress?.address2 || ""} onChange={(e) => handleAddressChange("shippingAddress", "address2", e.target.value)} placeholder="Address line 2" disabled={isFetchingAddress} /></Form.Group></Col></Row>
+                                <Row><Col md={4}><Form.Group className="mb-2"><Form.Label>Pincode <span className="text-danger">*</span></Form.Label><Form.Control required={!ticketData.shippingSameAsBilling} type="text" pattern="[0-9]{6}" value={ticketData.shippingAddress?.pincode || ""} onChange={(e) => handlePincodeChangeForAddress("shippingAddress", e.target.value)} placeholder="Pincode" disabled={isFetchingAddress} /><Form.Text className="text-muted">6-digit</Form.Text></Form.Group></Col>
+                                    <Col md={4}><Form.Group className="mb-2"><Form.Label>City <span className="text-danger">*</span></Form.Label><Form.Control required={!ticketData.shippingSameAsBilling} value={ticketData.shippingAddress?.city || ""} onChange={(e) => handleAddressChange("shippingAddress", "city", e.target.value)} placeholder="City" readOnly={!isFetchingAddress && !!ticketData.shippingAddress?.city} disabled={isFetchingAddress} /></Form.Group></Col>
+                                    <Col md={4}><Form.Group className="mb-2"><Form.Label>State <span className="text-danger">*</span></Form.Label><Form.Control required={!ticketData.shippingSameAsBilling} value={ticketData.shippingAddress?.state || ""} onChange={(e) => handleAddressChange("shippingAddress", "state", e.target.value)} placeholder="State" readOnly={!isFetchingAddress && !!ticketData.shippingAddress?.state} disabled={isFetchingAddress} /></Form.Group></Col>
+                                </Row>
+                            </>
+                        )}
+                    </Card.Body>
+                </Card>
+            </Col>
+        </Row>
+
+        <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBlock: "1.5rem" }}>
+            <i className="bi bi-box-seam me-1"></i>Goods Details*
+        </h5>
+        <ItemSearchComponent onItemSelect={handleAddItemToTicket} onDropdownToggle={setIsItemSearchDropdownOpen} placeholder="Search and add item..."/>
+        {isItemSearchDropdownOpen && <div style={{ height: "200px" }}></div> /* Spacer for open dropdown */}
+        <div className="table-responsive mt-3">
+          <Table bordered hover size="sm">
+            <thead className="table-light"><tr><th>Sr.</th><th>Desc.*</th><th>HSN/SAC*</th><th>Qty*</th><th>Unit</th><th>GST%*</th><th>Price*</th><th>Amount</th><th>Actions</th></tr></thead>
+            <tbody>
+              {ticketData.goods.map((item, index) => (
+                <React.Fragment key={index}>
+                <tr>
+                  <td className="align-middle text-center">{item.srNo}</td>
+                  <td style={{minWidth: "250px"}}>
+                    <Form.Control required type="text" value={item.description} onChange={(e) => handleTicketGoodsChange(index, "description", e.target.value)} placeholder="Description" />
+                     {item.subtexts && item.subtexts.map((subtext, subtextIndex) => (
+                        <div key={subtextIndex} className="d-flex mt-1">
+                            <Form.Control type="text" bsPrefix="form-control form-control-sm" value={subtext} onChange={(e) => handleTicketGoodsChange(index, "subtexts", e.target.value, subtextIndex)} placeholder={`Subtext ${subtextIndex + 1}`} />
+                            <BsButton variant="outline-danger" size="sm" onClick={() => handleDeleteSubtextFromTicketItem(index, subtextIndex)}>&times;</BsButton>
+                        </div>
+                    ))}
+                    <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
+                  </td>
+                  <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
+                  <td>
+                    <Form.Select value={item.unit || "Nos"} onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}>
+                        <option value="Nos">Nos</option><option value="Mtr">Mtr</option><option value="Pcs">Pcs</option><option value="Set">Set</option><option value="KG">KG</option><option value="Ltr">Ltr</option>
+                    </Form.Select>
+                  </td>
+                  <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>
+                  <td><Form.Control required type="number" value={item.price} onChange={(e) => handleTicketGoodsChange(index, "price", e.target.value)} placeholder="Price" min="0" step="0.01" /></td>
+                  <td className="align-middle text-end">{(item.amount || 0).toFixed(2)}</td>
+                  <td className="align-middle text-center"><BsButton variant="danger" size="sm" onClick={() => handleDeleteItemFromTicket(index)}><i className="bi bi-trash"></i></BsButton></td>
+                </tr>
+                </React.Fragment>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+
+        <Card className="mt-3 mb-3 bg-light">
+            <Card.Header as="h5" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#e9ecef", padding: "0.5rem", borderRadius: "0.25rem", marginBlockEnd: "1rem" }}>
+                <i className="bi bi-calculator me-1"></i>Ticket Financial Summary
+            </Card.Header>
+            <Card.Body>
+                <Row>
+                    <Col md={4}>
+                        <Table bordered size="sm"><tbody>
+                            <tr><td>Total Quantity</td><td className="text-end"><strong>{ticketData.totalQuantity || 0}</strong></td></tr>
+                            <tr><td>Total Amount (Pre-GST)</td><td className="text-end"><strong>₹{(ticketData.totalAmount || 0).toFixed(2)}</strong></td></tr>
+                        </tbody></Table>
+                    </Col>
+                    <Col md={8}>
+                        <Table bordered size="sm"><tbody>
+                            {(ticketData.gstBreakdown || []).map((gstGroup, index) => (
+                                <React.Fragment key={index}>
+                                {gstGroup.itemGstRate > 0 && (
+                                    ticketData.isBillingStateSameAsCompany ? (
+                                    <>
+                                        <tr><td>CGST ({gstGroup.cgstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.cgstAmount || 0).toFixed(2)}</td></tr>
+                                        <tr><td>SGST ({gstGroup.sgstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.sgstAmount || 0).toFixed(2)}</td></tr>
+                                    </>
+                                    ) : (
+                                    <tr><td>IGST ({gstGroup.igstRate?.toFixed(2) || 0}% on ₹{gstGroup.taxableAmount?.toFixed(2) || 0})</td><td className="text-end">₹{(gstGroup.igstAmount || 0).toFixed(2)}</td></tr>
+                                    )
+                                )}
+                                </React.Fragment>
+                            ))}
+                            <tr className="table-active"><td><strong>Total Tax</strong></td><td className="text-end"><strong>₹{(ticketData.finalGstAmount || 0).toFixed(2)}</strong></td></tr>
+                            <tr className="table-success"><td><strong>Grand Total</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
+                        </tbody></Table>
+                    </Col>
+                </Row>
+            </Card.Body>
+        </Card>
+
+        <Form.Group className="mb-3">
+            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+                <i className="bi bi-card-checklist me-1"></i>Other Details
+            </h5>
+            <Row>
+              <Col md={6}><Form.Group className="mb-3"><Form.Label>Dispatch Days</Form.Label><Form.Control type="text" value={ticketData.dispatchDays || ""} onChange={(e) => setTicketData({ ...ticketData, dispatchDays: e.target.value })} placeholder="e.g. 7-10 working days" /></Form.Group></Col>
+              <Col md={6}><Form.Group className="mb-3"><Form.Label>Validity Date (Quotation)</Form.Label><Form.Control type="date" value={ticketData.validityDate || ""} onChange={(e) => setTicketData({ ...ticketData, validityDate: e.target.value })} /></Form.Group></Col>
+            </Row>
+            <hr/>
+            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
+                <i className="bi bi-file-text me-1"></i>Terms & Conditions
+            </h5>
+            <Form.Control as="textarea" rows={3} value={ticketData.termsAndConditions || ""} onChange={(e) => setTicketData({ ...ticketData, termsAndConditions: e.target.value })} />
+        </Form.Group>
       </Form>
     </ReusablePageStructure>
   );

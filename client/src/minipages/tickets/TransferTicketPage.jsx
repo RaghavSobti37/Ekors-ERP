@@ -1,10 +1,10 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/TransferTicketPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button as BsButton, Alert, Spinner, Badge, Row, Col, Table } from "react-bootstrap";
+import { Form, Button as BsButton, Alert, Spinner, Badge, Row, Col, Table, Card } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import UserSearchComponent from "../../pages/Tickets.jsx"; 
+import { UserSearchComponent } from "../../pages/Tickets.jsx"; 
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError } from "../../utils/helpers";
@@ -81,8 +81,11 @@ const TransferTicketPage = () => {
       return <p>No transfer history for this ticket.</p>;
     }
     return (
-      <div className="mt-4 p-3 border rounded">
-        <h5>Transfer History</h5>
+      <Card className="mt-4">
+        <Card.Header as="h5" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem" }}>
+            <i className="bi bi-arrow-repeat me-1"></i>Transfer History
+        </Card.Header>
+        <Card.Body>
         <Table striped bordered hover responsive size="sm">
           <thead>
             <tr><th>Date</th><th>From</th><th>To</th><th>Transferred By</th><th>Note</th></tr>
@@ -90,7 +93,7 @@ const TransferTicketPage = () => {
           <tbody>
             {ticketToTransfer.transferHistory.map((entry, index) => (
               <tr key={index}>
-                <td>{new Date(entry.timestamp || entry.createdAt).toLocaleString()}</td>
+                <td>{entry.transferredAt ? new Date(entry.transferredAt).toLocaleString() : 'N/A'}</td>
                 <td>{entry.from ? `${entry.from.firstname} ${entry.from.lastname}` : 'System/Initial'}</td>
                 <td>{entry.to ? `${entry.to.firstname} ${entry.to.lastname}` : 'N/A'}</td>
                 <td>{entry.transferredBy ? `${entry.transferredBy.firstname} ${entry.transferredBy.lastname}` : 'System'}</td>
@@ -99,7 +102,8 @@ const TransferTicketPage = () => {
             ))}
           </tbody>
         </Table>
-      </div>
+        </Card.Body>
+      </Card>
     );
   };
 
@@ -116,32 +120,43 @@ const TransferTicketPage = () => {
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}
-      <div className="mb-4">
-        <h5 className="mb-3">Search User to Transfer To</h5>
-        <UserSearchComponent onUserSelect={handleUserSelect} authContext={auth} />
-      </div>
+      
+      <Card className="mb-4">
+        <Card.Header as="h5" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem" }}>
+            <i className="bi bi-person-plus-fill me-1"></i>Select User to Transfer To
+        </Card.Header>
+        <Card.Body>
+            <UserSearchComponent onUserSelect={handleUserSelect} authContext={auth} />
+        </Card.Body>
+      </Card>
 
       {selectedUserToTransfer && (
-        <div className="selected-user-info p-3 border rounded bg-light mb-3">
-          <h6>Selected User:</h6>
-          <p><strong>Name:</strong> {selectedUserToTransfer.firstname} {selectedUserToTransfer.lastname}</p>
-          <p><strong>Email:</strong> {selectedUserToTransfer.email}</p>
-          <p><strong>Role:</strong> <Badge bg="info">{selectedUserToTransfer.role}</Badge></p>
-        </div>
+        <Card className="mb-3 bg-light">
+            <Card.Header as="h6"><i className="bi bi-person-check-fill me-1"></i>Selected User Details</Card.Header>
+            <Card.Body>
+                <p><strong>Name:</strong> {selectedUserToTransfer.firstname} {selectedUserToTransfer.lastname}</p>
+                <p><strong>Email:</strong> {selectedUserToTransfer.email}</p>
+                <p><strong>Role:</strong> <Badge bg="info">{selectedUserToTransfer.role}</Badge></p>
+            </Card.Body>
+        </Card>
       )}
 
       <Form.Group className="mb-3">
         <Form.Label>Transfer Note (Optional)</Form.Label>
-        <Form.Control as="textarea" rows={3} value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="Add any notes about this transfer..." />
+        <Form.Control as="textarea" rows={2} value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="Add any notes about this transfer..." />
       </Form.Group>
 
-      <div className="ticket-summary mt-4 p-3 border rounded">
-        <h5>Ticket Summary</h5>
-        <p><strong>Company:</strong> {ticketToTransfer.companyName}</p>
-        <p><strong>Quotation:</strong> {ticketToTransfer.quotationNumber}</p>
-        <p><strong>Current Assignee:</strong> {ticketToTransfer.currentAssignee?.firstname} {ticketToTransfer.currentAssignee?.lastname || "N/A"}</p>
-        <p><strong>Status:</strong> <Badge bg="secondary">{ticketToTransfer.status}</Badge></p>
-      </div>
+      <Card className="mt-4">
+        <Card.Header as="h5" style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem" }}>
+            <i className="bi bi-ticket-detailed-fill me-1"></i>Ticket Summary
+        </Card.Header>
+        <Card.Body>
+            <p><strong>Company:</strong> {ticketToTransfer.companyName}</p>
+            <p><strong>Quotation:</strong> {ticketToTransfer.quotationNumber}</p>
+            <p><strong>Current Assignee:</strong> {ticketToTransfer.currentAssignee?.firstname} {ticketToTransfer.currentAssignee?.lastname || "N/A"}</p>
+            <p><strong>Status:</strong> <Badge bg="secondary">{ticketToTransfer.status}</Badge></p>
+        </Card.Body>
+      </Card>
 
       {renderTransferHistory()}
     </ReusablePageStructure>

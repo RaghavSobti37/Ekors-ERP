@@ -231,10 +231,8 @@ export default function Dashboard() {
   });
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "descending" });
   const [showTicketReportModal, setShowTicketReportModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isFetchingAddressInEdit, setIsFetchingAddressInEdit] = useState(false);
-
   const { user: authUser, loading: authLoading } = useAuth();
+  // Removed showEditModal and isFetchingAddressInEdit as edit is now a separate page
   const auth = useAuth();
   const navigate = useNavigate();
 
@@ -360,63 +358,6 @@ export default function Dashboard() {
     navigate(`/tickets/transfer/${ticketToTransfer._id}`, { state: { ticketDataForTransfer: ticketToTransfer } });
   };
 
-  const renderAddressFields = (type, isDisabled = false) => {
-    const addressKey = type;
-    const address = ticketData[addressKey] || {};
-
-    const handleChange = (field, value) => {
-      setTicketData((prev) => {
-        const newAddressData = { ...prev, [addressKey]: { ...(prev[addressKey] || {}), [field]: value } };
-        return newAddressData;
-      });
-    };
-
-    const handlePincodeChangeForAddress = async (pincode) => {
-        handleChange('pincode', pincode);
-        if (pincode.length === 6) {
-            setIsFetchingAddressInEdit(true);
-            try {
-                const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
-                const data = response.data[0];
-                if (data.Status === "Success") {
-                    const postOffice = data.PostOffice[0];
-                    setTicketData(prev => {
-                        const updatedAddress = {
-                            ...prev[addressKey],
-                            city: postOffice.District,
-                            state: postOffice.State,
-                            pincode: pincode
-                        };
-                        const newTicketData = { ...prev, [addressKey]: updatedAddress };
-                        if (type === 'billingAddress' && prev.shippingSameAsBilling) {
-                            newTicketData.shippingAddress = { ...updatedAddress };
-                        }
-                        return newTicketData;
-                    });
-                } else {
-                    toast.warn(`Pincode ${pincode} not found or invalid.`);
-                }
-            } catch (err) {
-                console.error("Pincode fetch error:", err);
-                toast.error("Error fetching address from pincode.");
-            }
-            finally { setIsFetchingAddressInEdit(false); }
-        }
-    };
-
-    return (
-      <div className="mb-3">
-        <div className="row g-2">
-          <Form.Group className="col-md-6"><Form.Label>Address Line 1</Form.Label><Form.Control placeholder="Address Line 1" value={address.address1 || ""} onChange={(e) => handleChange("address1", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} /></Form.Group>
-          <Form.Group className="col-md-6"><Form.Label>Address Line 2</Form.Label><Form.Control placeholder="Address Line 2" value={address.address2 || ""} onChange={(e) => handleChange("address2", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} /></Form.Group>
-          <Form.Group className="col-md-4"><Form.Label>Pincode</Form.Label><Form.Control placeholder="Pincode" value={address.pincode || ""} onChange={(e) => handlePincodeChangeForAddress(e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} pattern="[0-9]{6}" /><Form.Text className="text-muted">6-digit pincode</Form.Text></Form.Group>
-          <Form.Group className="col-md-4"><Form.Label>City</Form.Label><Form.Control placeholder="City" value={address.city || ""} onChange={(e) => handleChange("city", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} readOnly={!!address.city && !isDisabled && !isFetchingAddressInEdit && !!address.pincode && address.pincode.length === 6} /></Form.Group>
-          <Form.Group className="col-md-4"><Form.Label>State</Form.Label><Form.Control placeholder="State" value={address.state || ""} onChange={(e) => handleChange("state", e.target.value)} disabled={isDisabled || isFetchingAddressInEdit} readOnly={!!address.state && !isDisabled && !isFetchingAddressInEdit && !!address.pincode && address.pincode.length === 6} /></Form.Group>
-        </div>
-      </div>
-    );
-  };
-  
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case "Quotation Sent": return "info";
@@ -506,51 +447,6 @@ export default function Dashboard() {
           }}
           noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
         />
-
-        {showEditModal && (
-          <ReusableModal
-            show={showEditModal}
-            onHide={() => { setShowEditModal(false); setError(null); }}
-            title={`Edit Ticket - ${editTicket?.ticketNumber || editTicket?.quotationNumber || 'N/A'}`}
-            footerContent={ // This ReusableModal and its content will be removed as we navigate to a page
-              <>
-                <Button variant="outline-secondary" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button variant="primary" onClick={() => { /* This onClick would be the submit handler on EditTicketPage */ }} disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </Button>
-              </>
-            }
-            isLoading={isLoading}
-          >
-            {editTicket && (
-              <div> {/* This form structure is now in EditTicketPage.jsx */}
-                <Form>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Company Name</Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={ticketData.companyName}
-                      onChange={(e) => setTicketData({...ticketData, companyName: e.target.value})}
-                    />
-                  </Form.Group>
-                  
-                  {renderAddressFields('billingAddress')}
-                  
-                  <Form.Group className="mb-3">
-                    <Form.Check
-                      type="checkbox"
-                      label="Shipping address same as billing"
-                      checked={ticketData.shippingSameAsBilling}
-                      onChange={(e) => setTicketData({...ticketData, shippingSameAsBilling: e.target.checked})}
-                    />
-                  </Form.Group>
-                  
-                  {!ticketData.shippingSameAsBilling && renderAddressFields('shippingAddress')}
-                </Form>
-              </div>
-            )}
-          </ReusableModal>
-        )}
 
         {showTicketReportModal && (
           <TicketReportModal
