@@ -32,6 +32,7 @@ import TicketReportPage from "./minipages/tickets/TicketReportPage.jsx";
 import CreateChallanPage from "./minipages/challans/CreateChallanPage";
 import EditChallanPage from "./minipages/challans/EditChallanPage";
 import ViewChallanPage from "./minipages/challans/ViewChallanPage";
+import LogTimePage from "./pages/LogTimePage";
 
 function App() {
   return (
@@ -154,6 +155,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/logtime/:date" element={<LogTimePage />} />
           <Route
             path="/challan"
             element={

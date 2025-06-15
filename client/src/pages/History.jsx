@@ -8,10 +8,8 @@ import {
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
 import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
-import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import LogtimeModal from "../components/LogtimeModal";
 import { Table, Button, Alert } from "react-bootstrap";
 import Pagination from "../components/Pagination";
 import ReusableTable from "../components/ReusableTable";
@@ -19,6 +17,7 @@ import apiClient from "../utils/apiClient";
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
 import "../css/Style.css";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -27,13 +26,14 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [editingEntry, setEditingEntry] = useState(null);
 
   const itemsPerPage = 4;
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const dateToYYYYMMDD = (dateObj) => {
+    return dateObj.toISOString().split('T')[0];
+  };
 
   const fetchHistory = async () => {
     setIsLoading(true);
@@ -91,7 +91,10 @@ export default function History() {
   };
 
   const handleView = (entry) => setSelectedEntry(entry);
-  const handleEdit = (entry) => setEditingEntry(entry);
+  const handleEdit = (entry) => {
+    // entry.date is expected to be in YYYY-MM-DD format from the backend
+    navigate(`/logtime/${entry.date}`);
+  };
 
   const handleDelete = async (entryId) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
@@ -127,23 +130,14 @@ export default function History() {
 
   const closeModal = () => {
     setSelectedEntry(null);
-    setEditingEntry(null);
   };
 
   const handleAddNewEntry = () => {
     const today = new Date();
-    const formattedDate = formatDisplayDateHelper(today);
-    setSelectedDate(formattedDate);
-    setShowAddModal(true);
+    const formattedDateYYYYMMDD = dateToYYYYMMDD(today);
+    navigate(`/logtime/${formattedDateYYYYMMDD}`);
   };
 
-  const handleSaveSuccess = () => {
-    fetchHistory();
-    setShowAddModal(false);
-    setEditingEntry(null);
-  };
-
-  const totalPages = Math.ceil(historyData.length / itemsPerPage);
   const currentEntries = historyData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -153,11 +147,13 @@ export default function History() {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
+  const totalPages = Math.ceil(historyData.length / itemsPerPage);
+
   return (
     <div>
       <Navbar />
       <div className="container mt-4">
-        {error && !selectedEntry && !showAddModal && !editingEntry && (
+        {error && !selectedEntry && ( // Simplified error display condition
           <Alert variant="danger" onClose={() => setError(null)} dismissible>
             {error}
           </Alert>
@@ -259,25 +255,6 @@ export default function History() {
         </ReusableModal>
       )}
 
-      {/* Add New Entry Modal */}
-      {showAddModal && (
-        <LogtimeModal
-          initialDate={selectedDate}
-          initialLogs={[]}
-          onClose={() => setShowAddModal(false)}
-          onSave={handleSaveSuccess}
-        />
-      )}
-
-      {/* Edit Entry Modal */}
-      {editingEntry && (
-        <LogtimeModal
-          initialDate={formatDisplayDateHelper(editingEntry.date)}
-          initialLogs={editingEntry.logs || []}
-          onClose={closeModal}
-          onSave={handleSaveSuccess}
-        />
-      )}
       <Footer />
     </div>
   );
