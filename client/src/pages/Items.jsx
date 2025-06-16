@@ -630,6 +630,19 @@ export default function Items() {
         let details = `File: ${entry.fileName || "N/A"}. `;
         let oldQtyText = "";
         let newQtyText = "";
+
+        // Determine user display name for Excel import
+        let importedByUserDisplay = "System";
+        if (entry.importedBy) {
+          if (entry.importedBy.firstname && entry.importedBy.lastname) {
+            importedByUserDisplay = `${entry.importedBy.firstname} ${entry.importedBy.lastname}`;
+          } else if (entry.importedBy.firstname) {
+            importedByUserDisplay = entry.importedBy.firstname;
+          } else if (entry.importedBy.email) { // Fallback to email
+            importedByUserDisplay = entry.importedBy.email;
+          }
+        }
+
         if (entry.action === "created") {
           const createdQty = entry.snapshot?.quantity;
           quantityChange = parseFloat(createdQty) || 0;
@@ -650,7 +663,7 @@ export default function Items() {
         combinedHistory.push({
           date: new Date(entry.importedAt),
           type: `Excel (${entry.action})`,
-          user: entry.importedBy?.firstname || "System",
+          user: importedByUserDisplay,
           details: details.trim() + oldQtyText + newQtyText,
           quantityChange: quantityChange,
         });
