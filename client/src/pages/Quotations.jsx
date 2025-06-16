@@ -124,7 +124,7 @@ export default function Quotations() {
         navigate("/login", { state: { from: "/quotations" } });
       }
     } finally {
-      hidePageLoader(); // Hide global loader
+      // hidePageLoader(); // Hide global loader
     }
   }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, 
     // showPageLoader, hidePageLoader
@@ -374,7 +374,7 @@ export default function Quotations() {
       );
       if (error.status === 401) {
         navigate("/login", { state: { from: "/quotations" } });
-        hidePageLoader();
+        // hidePageLoader();
         return;
       }
       setError(errorMessage); // Set local error state
@@ -389,7 +389,7 @@ export default function Quotations() {
         );
       }
     } finally {
-      hidePageLoader();
+      // hidePageLoader();
     }
   };
 

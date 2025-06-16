@@ -5,6 +5,7 @@ import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
+import { useAuth } from "../context/AuthContext.jsx"; 
 
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
 import SearchBar from "../components/Searchbar.jsx"; 
@@ -18,17 +19,19 @@ import {
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
   ClockHistory, // For Item History
+   CheckCircleFill, ShieldFillCheck, PencilSquare 
 } from "react-bootstrap-icons";
-import ReusableModal from "../components/ReusableModal.jsx";
-import { Spinner } from "react-bootstrap"; // Added for loading indicators on new category/subcategory save
-import "../css/Style.css"; // General styles
-
+import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
+import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
+import "../css/Style.css"; 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
 export default function Items() {
   const [items, setItems] = useState([]);
+    const [pendingReviewItems, setPendingReviewItems] = useState([]);
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -97,6 +100,8 @@ export default function Items() {
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
 
+  
+  const { user } = useAuth(); // Get user for role checks
   const location = useLocation();
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -150,7 +155,18 @@ export default function Items() {
       setLoading(true);
       setError(null);
       const response = await apiClient("/items"); // Use apiClient
-      setItems(response);
+       if (Array.isArray(response)) {
+        if (user && (user.role === 'admin' || user.role === 'super-admin')) {
+          setPendingReviewItems(response.filter(item => item.status === 'pending_review'));
+          setItems(response.filter(item => item.status !== 'pending_review'));
+        } else {
+          // Regular users only see approved items
+          setItems(response.filter(item => item.status === 'approved'));
+          setPendingReviewItems([]);
+        }
+      } else {
+        setItems([]);
+      }
       setError(null);
     } catch (err) {
       const errorMessage = handleApiError(
@@ -161,7 +177,7 @@ export default function Items() {
     } finally {
       setLoading(false); // Ensure loading is set to false in finally
     }
-  }, []);
+  }, [user]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -422,6 +438,25 @@ export default function Items() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+   const handleApproveItem = async (itemId) => {
+    if (!window.confirm("Are you sure you want to approve this item?")) return;
+    setIsSubmitting(true);
+    try {
+      await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
+      showSuccess("Item approved successfully!");
+      await fetchItems(); // Refetch all items to update lists
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to approve item.");
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReviewAndEditItem = (item) => {
+    handleEditItem(item); // This already sets editingItem, formData, and shows the modal
   };
 
   const handleItemChange = (index, field, value) => {
@@ -919,6 +954,62 @@ export default function Items() {
             Excel Update Error: {excelUpdateStatus.error}
           </div>
         )}
+
+                {/* Pending Review Section for Admins */}
+        {user && (user.role === 'admin' || user.role === 'super-admin') && pendingReviewItems.length > 0 && (
+          <Card className="mb-4 border-warning">
+            <Card.Header className="bg-warning text-dark">
+              <ShieldFillCheck size={20} className="me-2"/> Items Pending Review ({pendingReviewItems.length})
+            </Card.Header>
+            <Card.Body>
+              <div className="table-responsive">
+                <table className="table table-sm table-hover">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Created By</th>
+                      <th>Created At</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingReviewItems.map(item => (
+                      <tr key={item._id}>
+                        <td>{item.name}</td>
+                        <td>{item.category}{item.subcategory ? ` / ${item.subcategory}` : ''}</td>
+                        <td>{item.createdBy?.firstname || 'N/A'} {item.createdBy?.lastname || ''}</td>
+                        <td>{new Date(item.createdAt).toLocaleDateString()}</td>
+                        <td>
+                          <Button variant="success" size="sm" className="me-1" onClick={() => handleApproveItem(item._id)} disabled={isSubmitting} title="Approve Item">
+                            <CheckCircleFill /> Approve
+                          </Button>
+                          <Button variant="info" size="sm" className="me-1" onClick={() => handleReviewAndEditItem(item)} disabled={isSubmitting} title="Review and Edit Item">
+                            <PencilSquare /> Edit
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(item._id)} disabled={isSubmitting} title="Delete Item">
+                            <Trash /> Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-muted small">
+              These items were created by users and require your approval before being widely available or used in reports. Approving an item will make it part of the main item list. Editing an item will also automatically approve it.
+            </Card.Footer>
+          </Card>
+        )}
+
+
+        {/* Main Items List Title */}
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
+              {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List" : "All Items List")}
+            </h2>
+
         {excelUpdateStatus.success && (
           <div className="alert alert-success" role="alert">
             {excelUpdateStatus.success}
@@ -926,10 +1017,6 @@ export default function Items() {
         )}
 
         <div className="top-controls-container">
-          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive ? `Stock Alerts` : "All Items List"}
-            </h2>
             <div className="d-flex align-items-center gap-2">
               <SearchBar
                 searchTerm={searchTerm}

@@ -193,11 +193,11 @@ const TicketDetailsPage = () => {
                   <FaFilePdf /> Preview
                 </BsButton>
               )}
-               {docConfig.type === "pi" && ticket && ( // Specific for PI Word download
+               {/* {docConfig.type === "pi" && ticket && ( // Specific for PI Word download
                  <BsButton variant="outline-secondary" size="sm" className="ms-2" onClick={() => PIActions({ ticket }).handleDownloadWord()} title="Download PI as Word">
                     <FaFileWord /> Word
                  </BsButton>
-               )}
+               )} */}
             </div>
           </Card.Body>
         </Card>
@@ -279,16 +279,6 @@ const TicketDetailsPage = () => {
         </Col>
 
         <Col md={5}> {/* Sidebar for Payments, History */}
-          <Card className="mb-3">
-            <Card.Header>Record Payment</Card.Header>
-            <Card.Body>
-              <Form.Group className="mb-2"><Form.Label>Amount</Form.Label><Form.Control type="number" value={paymentAmount} onChange={e => setPaymentAmount(parseFloat(e.target.value))} /></Form.Group>
-              <Form.Group className="mb-2"><Form.Label>Date</Form.Label><Form.Control type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label>Reference (Optional)</Form.Label><Form.Control type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)} /></Form.Group>
-              {/* TODO: Add input for paymentProof file */}
-              <BsButton onClick={handlePaymentSubmit} disabled={isLoading || paymentAmount <= 0}>Record Payment</BsButton>
-            </Card.Body>
-          </Card>
 
           {ticket.payments && ticket.payments.length > 0 && (
             <Card className="mb-3"><Card.Header>Payment History</Card.Header><Card.Body>

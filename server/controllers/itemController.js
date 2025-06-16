@@ -13,7 +13,10 @@ exports.getAllItems = async (req, res) => {
   const user = req.user || null;
   try {
     logger.debug('item', "Fetching all items", user);
-    const items = await Item.find().sort({ name: 1 });
+const items = await Item.find()
+      .populate('createdBy', 'firstname lastname email')
+      .populate('reviewedBy', 'firstname lastname email')
+      .sort({ name: 1 });
     logger.debug('item', "Items fetched successfully", user, { count: items.length });
     // logger.info('item', `Fetched all items`, user, { count: items.length }); // Can be noisy
     res.json(items);
@@ -584,8 +587,13 @@ exports.getItemById = async (req, res) => {
 // Create new item
 exports.createItem = async (req, res) => {
   try {
-    const user = req.user || null;
-    const newItem = new Item({
+    const user = req.user; // Get user from auth middleware
+    if (!user) {
+      logger.warn('item', 'Create item attempt without authenticated user.', null, { requestBody: req.body });
+      return res.status(401).json({ message: 'Authentication required.' });
+    }
+
+    const newItemData = {
       name: req.body.name,
       quantity: parseFloat(req.body.quantity) || 0,
       sellingPrice: parseFloat(req.body.sellingPrice) || 0, 
@@ -596,14 +604,28 @@ exports.createItem = async (req, res) => {
       category: req.body.category || 'Other',
       subcategory: req.body.subcategory || 'General',
       maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-      lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 
-    });
+lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5,
+      createdBy: user._id, // Set createdBy
+    };
 
+    if (user.role === 'user') {
+      newItemData.status = 'pending_review';
+    } else { // admin, super-admin, or other roles that can auto-approve
+      newItemData.status = 'approved';
+      newItemData.reviewedBy = user._id;
+      newItemData.reviewedAt = new Date();
+    }
+
+    const newItem = new Item(newItemData);
     const savedItem = await newItem.save();
-    logger.info('item', `Item created successfully`, user, { itemId: savedItem._id, itemName: savedItem.name });
+logger.info('item', `Item created successfully by ${user.email} with status ${savedItem.status}`, user, { 
+      itemId: savedItem._id, 
+      itemName: savedItem.name, 
+      status: savedItem.status 
+    });
     res.status(201).json(savedItem);
   } catch (error) {
-    logger.error('item', `Failed to create item`, error, req.user, { requestBody: req.body });
+    logger.error('item', `Failed to create item`, error, req.user, { requestBody: req.body, userId: req.user?._id });
     res.status(400).json({ 
       message: error.message.includes('validation') ? 
         'Validation failed: ' + error.message : 
@@ -615,41 +637,107 @@ exports.createItem = async (req, res) => {
 // Update item
 exports.updateItem = async (req, res) => {
   try {
-    const user = req.user || null;
-    const updatedItem = await Item.findByIdAndUpdate(
-      req.params.id,
-      {
-        $set: {
-          name: req.body.name,
-          quantity: req.body.quantity || 0,
-          sellingPrice: req.body.sellingPrice || 0, 
-          buyingPrice: req.body.buyingPrice || 0,   
-          gstRate: req.body.gstRate || 0,
-          hsnCode: req.body.hsnCode || '',
-          unit: req.body.unit || 'Nos',
-          category: req.body.category || 'Other',
-          subcategory: req.body.subcategory || 'General',
-          maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-          lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5 
+const user = req.user;
+    if (!user) {
+      logger.warn('item', `Update item attempt without authenticated user. Item ID: ${req.params.id}`, null, { requestBody: req.body });
+      return res.status(401).json({ message: 'Authentication required.' });
+    }
+
+    const itemId = req.params.id;
+    const existingItem = await Item.findById(itemId);
+
+    if (!existingItem) {
+      logger.warn('item', `Item not found for update: ${itemId}`, user, { itemId, requestBody: req.body });
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    const updatePayload = {
+      name: req.body.name,
+      quantity: req.body.quantity || 0,
+      sellingPrice: req.body.sellingPrice || 0,
+      buyingPrice: req.body.buyingPrice || 0,
+      gstRate: req.body.gstRate || 0,
+      hsnCode: req.body.hsnCode || '',
+      unit: req.body.unit || 'Nos',
+      category: req.body.category || 'Other',
+      subcategory: req.body.subcategory || 'General',
+      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
+      lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5
+      // status will be handled below
+    };
+
+    // If an admin/super-admin is updating, and the item was pending review, approve it.
+    if ((user.role === 'admin' || user.role === 'super-admin') && existingItem.status === 'pending_review') {
+      updatePayload.status = 'approved';
+      updatePayload.reviewedBy = user._id;
+      updatePayload.reviewedAt = new Date();
+      logger.info('item', `Item ${itemId} approved upon update by admin ${user.email}.`, user, { itemId });
+    } else if (req.body.status && (user.role === 'admin' || user.role === 'super-admin')) {
+        // Allow admin to explicitly set status if needed, though 'approveItem' is preferred for explicit approval
+        if (['pending_review', 'approved'].includes(req.body.status)) {
+             updatePayload.status = req.body.status;
+             if (req.body.status === 'approved' && existingItem.status !== 'approved') {
+                updatePayload.reviewedBy = user._id;
+                updatePayload.reviewedAt = new Date();
+             }
         }
-      },
+    }
+    const updatedItem = await Item.findByIdAndUpdate(
+           itemId,
+      { $set: updatePayload },
+
       { new: true, runValidators: true }
     );
     
     if (!updatedItem) {
-      logger.warn('item', `Item not found for update: ${req.params.id}`, user, { itemId: req.params.id, requestBody: req.body });
-      return res.status(404).json({ message: 'Item not found' });
+      // This case should be rare if existingItem was found, but good for safety.
+      logger.warn('item', `Item not found during update execution: ${itemId}`, user, { itemId, requestBody: req.body });
+      return res.status(404).json({ message: 'Item not found during update' });
     }
-    
-    logger.info('item', `Item updated successfully`, user, { itemId: updatedItem._id, itemName: updatedItem.name });
+
+    logger.info('item', `Item updated successfully by ${user.email}`, user, { itemId: updatedItem._id, itemName: updatedItem.name, newStatus: updatedItem.status });
     res.json(updatedItem);
   } catch (error) {
-    logger.error('item', `Error updating item ID: ${req.params.id}`, error, user, { requestBody: req.body });
-    res.status(400).json({ 
+    logger.error('item', `Error updating item ID: ${req.params.id}`, error, req.user, { requestBody: req.body, userId: req.user?._id });    res.status(400).json({ 
       message: error.message.includes('validation') ? 
         'Validation failed: ' + error.message : 
         'Error updating item'
     });
+  }
+};
+
+exports.approveItem = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
+      logger.warn('item', `Unauthorized attempt to approve item ${req.params.id} by user ${user?.email || 'unknown'}.`, user);
+      return res.status(403).json({ message: 'Forbidden: Only admins can approve items.' });
+    }
+
+    const itemId = req.params.id;
+    const itemToApprove = await Item.findById(itemId);
+
+    if (!itemToApprove) {
+      logger.warn('item', `Item not found for approval: ${itemId}`, user, { itemId });
+      return res.status(404).json({ message: 'Item not found.' });
+    }
+
+    if (itemToApprove.status === 'approved') {
+      logger.info('item', `Item ${itemId} is already approved. No action taken by ${user.email}.`, user, { itemId });
+      return res.status(200).json(itemToApprove);
+    }
+
+    itemToApprove.status = 'approved';
+    itemToApprove.reviewedBy = user._id;
+    itemToApprove.reviewedAt = new Date();
+
+    const approvedItem = await itemToApprove.save();
+    logger.info('item', `Item ${itemId} approved successfully by ${user.email}.`, user, { itemId: approvedItem._id, itemName: approvedItem.name });
+    res.json(approvedItem);
+
+  } catch (error) {
+    logger.error('item', `Error approving item ID: ${req.params.id}`, error, req.user, { userId: req.user?._id });
+    res.status(500).json({ message: 'Error approving item.' });
   }
 };
 

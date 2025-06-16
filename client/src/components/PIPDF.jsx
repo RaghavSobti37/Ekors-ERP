@@ -322,6 +322,8 @@ const PIPDF = ({ ticket }) => {
 
   const billingCityStatePin = formatCityStatePin(billingCity, billingState, billingPincode);
   const shippingCityStatePin = formatCityStatePin(shippingCity, shippingState, shippingPincode);
+    const displayGrandTotal = ticket.finalRoundedAmount !== null && ticket.finalRoundedAmount !== undefined ? ticket.finalRoundedAmount : ticket.grandTotal;
+
   return (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -445,15 +447,20 @@ const PIPDF = ({ ticket }) => {
                 <Text style={[styles.summaryLabel, styles.bold]}>Total Tax Amount:</Text>
                 <Text style={styles.summaryValue}>₹{(ticket.finalGstAmount || 0).toFixed(2)}</Text>
             </View>
+             {ticket.roundOff !== undefined && ticket.roundOff !== 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Round Off:</Text>
+                <Text style={styles.summaryValue}>₹{(ticket.roundOff || 0).toFixed(2)}</Text>
+              </View>
+            )}
             <View style={styles.grandTotalRow}>
-                <Text>Grand Total:</Text>
-                <Text>₹{(ticket.grandTotal || 0).toFixed(2)}</Text>
-            </View>
+  <Text>{ticket.roundOff !== undefined && ticket.roundOff !== 0 ? "Final Amount:" : "Grand Total:"}</Text>
+                <Text>₹{(displayGrandTotal || 0).toFixed(2)}</Text>            </View>
         </View>
       </View>
 
       <Text style={styles.amountInWords}>
-        Amount in Words: {toWords(Math.round(ticket.grandTotal || 0))}
+        Amount in Words: {toWords(Math.round(displayGrandTotal || 0))}
       </Text>
 
       {/* Tax Breakdown Table */}

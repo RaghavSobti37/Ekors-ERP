@@ -1,11 +1,12 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/QuotationFormPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button, Alert, Spinner, Table } from "react-bootstrap";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Form, Button, Alert, Spinner, Table, Row, Col, InputGroup } from "react-bootstrap";import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+import axios from "axios";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx"; // Ensure this path is correct
 import ClientSearchComponent from "../../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../../components/ItemSearch.jsx";
+import frontendLogger from "../../utils/frontendLogger.js";
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -13,9 +14,9 @@ import {
   handleApiError,
   formatDateForInput as formatDateForInputHelper,
 } from "../../utils/helpers.js";
-import frontendLogger from "../../utils/frontendLogger.js";
-import axios from "axios"; // For pincode API call
+import { PlusCircle } from "react-bootstrap-icons";
 
+const initialNewItemFormData = { name: "", sellingPrice: "", unit: "Nos", category: "", subcategory: "General", hsnCode: "", gstRate: "0", quantity: 1, maxDiscountPercentage: "0", lowStockThreshold: "5" };
 const GoodsTable = ({
   goods,
   handleGoodsChange,
@@ -25,6 +26,12 @@ const GoodsTable = ({
   onAddSubtext,
   onDeleteSubtext,
   onItemSearchDropdownToggle,
+  itemCreationMode,
+  setItemCreationMode,
+  newItemFormData,
+  setNewItemFormData,
+  handleSaveAndAddNewItemToQuotation,
+  isSavingNewItem,
 }) => {
   return (
     <div className="table-responsive">
@@ -131,12 +138,96 @@ const GoodsTable = ({
         </tbody>
       </Table>
       <div className="mb-3">
-        <h6>Search and Add Items</h6>
-        <ItemSearchComponent
-          onItemSelect={onAddItem}
-          placeholder="Search items to add to quotation..."
-          onDropdownToggle={onItemSearchDropdownToggle}
-        />
+       <div className="d-flex gap-2 mb-2">
+          <Button variant={itemCreationMode === 'search' ? "primary" : "outline-primary"} onClick={() => setItemCreationMode('search')} size="sm">Search Existing Item</Button>
+          <Button variant={itemCreationMode === 'new' ? "primary" : "outline-primary"} onClick={() => setItemCreationMode('new')} size="sm">Create New Item</Button>
+        </div>
+
+        {itemCreationMode === 'search' && (
+          <>
+            <h6>Search and Add Existing Item</h6>
+            <ItemSearchComponent
+              onItemSelect={onAddItem}
+              placeholder="Search items to add to quotation..."
+              onDropdownToggle={onItemSearchDropdownToggle}
+            />
+          </>
+        )}
+
+        {itemCreationMode === 'new' && (
+          <>
+            <h6>Create and Add New Item</h6>
+            <Form>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Item Name <span className="text-danger">*</span></Form.Label>
+                    <Form.Control type="text" placeholder="Enter item name" value={newItemFormData.name} onChange={(e) => setNewItemFormData(prev => ({ ...prev, name: e.target.value }))} required />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Selling Price <span className="text-danger">*</span></Form.Label>
+                    <Form.Control type="number" placeholder="Enter selling price" value={newItemFormData.sellingPrice} onChange={(e) => setNewItemFormData(prev => ({ ...prev, sellingPrice: e.target.value }))} required />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Unit</Form.Label>
+                    <Form.Select value={newItemFormData.unit} onChange={(e) => setNewItemFormData(prev => ({ ...prev, unit: e.target.value }))}>
+                      <option value="Nos">Nos</option>
+                      <option value="Mtr">Mtr</option>
+                      <option value="PKT">PKT</option>
+                      <option value="Pair">Pair</option>
+                      <option value="Set">Set</option>
+                      <option value="Bottle">Bottle</option>
+                      <option value="KG">KG</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>HSN/SAC Code</Form.Label>
+                    <Form.Control type="text" placeholder="HSN/SAC" value={newItemFormData.hsnCode} onChange={(e) => setNewItemFormData(prev => ({ ...prev, hsnCode: e.target.value }))} />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>GST Rate (%)</Form.Label>
+                    <Form.Control type="number" placeholder="GST Rate" value={newItemFormData.gstRate} onChange={(e) => setNewItemFormData(prev => ({ ...prev, gstRate: e.target.value }))} />
+                  </Form.Group>
+                </Col>
+              </Row>
+               <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Category</Form.Label>
+                    <Form.Control type="text" placeholder="Item Category" value={newItemFormData.category} onChange={(e) => setNewItemFormData(prev => ({ ...prev, category: e.target.value, subcategory: 'General' }))} />
+                     {/* Basic category input, can be enhanced with dropdown from existing categories later */}
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Subcategory</Form.Label>
+                    <Form.Control type="text" placeholder="Item Subcategory" value={newItemFormData.subcategory} onChange={(e) => setNewItemFormData(prev => ({ ...prev, subcategory: e.target.value }))} />
+                  </Form.Group>
+                </Col>
+              </Row>
+              {/* Add more fields like maxDiscountPercentage, lowStockThreshold if needed for creation here */}
+              <Button 
+                variant="success" 
+                size="sm" 
+                className="mt-2" 
+                onClick={handleSaveAndAddNewItemToQuotation} 
+                disabled={isSavingNewItem || !newItemFormData.name || !newItemFormData.sellingPrice}
+              >
+                {isSavingNewItem ? <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Saving Item...</> : "Save Item & Add to Quotation"}
+              </Button>
+            </Form>
+          </>
+        )}
       </div>
     </div>
   );
@@ -146,8 +237,7 @@ const QuotationFormPage = () => {
   const { id: quotationIdFromParams } = useParams(); // For editing
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const auth = useAuth(); // For logging context
+  const { user, loading: authLoading, user: authUser } = useAuth();  const auth = useAuth(); // For logging context
 
   const generateQuotationNumber = () => {
     const now = new Date();
@@ -186,6 +276,10 @@ const QuotationFormPage = () => {
   const [isReplicating, setIsReplicating] = useState(false);
   const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] = useState(false);
 
+    // State for new item creation within the form
+  const [itemCreationMode, setItemCreationMode] = useState('search'); // 'search' or 'new'
+  const [newItemFormData, setNewItemFormData] = useState(initialNewItemFormData);
+  const [isSavingNewItem, setIsSavingNewItem] = useState(false);
   const quotationFormId = "quotation-form-page";
 
   // Fetch quotation data if editing and not passed via state
@@ -247,6 +341,33 @@ const QuotationFormPage = () => {
     setQuotationData({ ...quotationData, goods: newGoods, ...totals });
     setError(null);
   };
+
+    const handleSaveAndAddNewItemToQuotation = async () => {
+    if (!newItemFormData.name || !newItemFormData.sellingPrice) {
+      toast.error("New item name and selling price are required.");
+      return;
+    }
+    setIsSavingNewItem(true);
+    setError(null);
+    try {
+      // The backend will set 'status' and 'createdBy' based on user role
+      const savedItem = await apiClient("/items", { method: "POST", body: newItemFormData });
+      toast.success(`Item "${savedItem.name}" created and added to quotation.`);
+      
+      // Add the newly saved item to the quotation's goods list
+      handleAddItem(savedItem); // Re-use handleAddItem logic with the saved item
+
+      setNewItemFormData(initialNewItemFormData); // Reset new item form
+      setItemCreationMode('search'); // Switch back to search mode
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to save new item.", authUser, "itemCreationInQuotation");
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsSavingNewItem(false);
+    }
+  };
+
 
   const handleGoodsChange = (index, field, value, subtextIndex = null) => {
     const updatedGoods = [...quotationData.goods];
@@ -359,14 +480,26 @@ const QuotationFormPage = () => {
   const fetchBillingAddressFromPincode = async (pincode) => {
     if (!pincode || pincode.length !== 6) return;
     setIsFetchingBillingAddress(true);
+        setError(null); // Clear previous errors
     try {
       const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = response.data[0];
-      if (data.Status === "Success") {
-        const postOffice = data.PostOffice[0];
-        setQuotationData(prev => ({ ...prev, billingAddress: { ...prev.billingAddress, city: postOffice.District, state: postOffice.State } }));
-        toast.success(`City and State auto-filled for pincode ${pincode}.`);
-      } else { toast.warn(`Could not find details for pincode ${pincode}.`); }
+      // The API returns an array, usually with one element if the pincode is valid
+      if (response.data && response.data.length > 0 && response.data[0].Status === "Success") {
+        const postOffice = response.data[0].PostOffice[0]; // Assuming the first PostOffice is relevant
+        if (postOffice) {
+          setQuotationData(prev => ({
+            ...prev,
+            billingAddress: {
+              ...prev.billingAddress,
+              city: postOffice.District || prev.billingAddress.city, // Keep existing if API doesn't provide
+              state: postOffice.State || prev.billingAddress.state,   // Keep existing if API doesn't provide
+            }
+          }));
+          toast.success(`City and State auto-filled for pincode ${pincode}.`);
+        } else {
+          toast.warn(`No Post Office details found for pincode ${pincode}.`);
+        }
+      } else { toast.warn(`Could not find address details for pincode ${pincode}. Status: ${response.data[0]?.Status}`); }
     } catch (error) { console.error("Error fetching billing address:", error); toast.error("Error fetching address details."); }
     finally { setIsFetchingBillingAddress(false); }
   };
@@ -487,7 +620,22 @@ const QuotationFormPage = () => {
           <Form.Group className="mb-3 col-md-4"><Form.Label>State <span className="text-danger">*</span></Form.Label><Form.Control required type="text" name="billingAddress.state" value={quotationData.billingAddress.state} onChange={handleInputChange} disabled={isLoadingReplicationDetails || isFetchingBillingAddress} readOnly={!(isLoadingReplicationDetails || isFetchingBillingAddress) && !!quotationData.billingAddress.state} /></Form.Group>
         </div>
         <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>Goods Details</h5>
-        <GoodsTable goods={quotationData.goods} handleGoodsChange={handleGoodsChange} isEditing={true} onAddItem={handleAddItem} onDeleteItem={handleDeleteItem} onAddSubtext={handleAddSubtext} onDeleteSubtext={handleDeleteSubtext} onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal} />
+ <GoodsTable 
+          goods={quotationData.goods} 
+          handleGoodsChange={handleGoodsChange} 
+          isEditing={true} // This context is always editing goods for the form
+          onAddItem={handleAddItem} 
+          onDeleteItem={handleDeleteItem} 
+          onAddSubtext={handleAddSubtext} 
+          onDeleteSubtext={handleDeleteSubtext} 
+          onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
+          itemCreationMode={itemCreationMode}
+          setItemCreationMode={setItemCreationMode}
+          newItemFormData={newItemFormData}
+          setNewItemFormData={setNewItemFormData}
+          handleSaveAndAddNewItemToQuotation={handleSaveAndAddNewItemToQuotation}
+          isSavingNewItem={isSavingNewItem}
+        />
         {isItemSearchDropdownOpenInModal && (<div style={{ height: "300px" }}></div>)}
         <div className="bg-light p-3 rounded mt-3">
           <h5 className="text-center mb-3">Quotation Summary</h5>
