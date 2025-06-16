@@ -131,8 +131,8 @@ const CreateChallanPage = () => {
               <Col md={6}><Form.Group className="mb-3"><Form.Label>Bill Number (Optional)</Form.Label><Form.Control type="text" name="billNumber" value={formData.billNumber} onChange={handleInputChange} placeholder="Bill Number (if any)" /></Form.Group></Col>
             </Row>
             <Form.Group className="mb-3">
-              <Form.Label>Upload Document (Optional)</Form.Label>
-              <Form.Control type="file" name="media" accept="image/*,application/pdf" onChange={handleFileChange} />
+              <Form.Label>Upload Document </Form.Label>
+              <Form.Control required type="file" name="media" accept="image/*,application/pdf" onChange={handleFileChange} />
               {formData.media && <Form.Text className="text-muted">Selected file: {formData.media.name}</Form.Text>}
             </Form.Group>
           </Card.Body>

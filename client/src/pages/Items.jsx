@@ -1220,33 +1220,17 @@ export default function Items() {
                           {item.quantity <= 0 || item.needsRestock ? (
                             <span
                               className="badge bg-danger ms-2"
-                              title={
-                                item.quantity <= 0
-                                  ? "Out of stock! Needs immediate restock."
-                                  : `Below item specific threshold (${
-                                      item.lowStockThreshold || "Not Set"
-                                    }). Needs restock.`
-                              }
-                            >
+    title="Negative stock! Needs immediate restock."                            >
                               ⚠️ Restock
                             </span>
-                          ) : (
-                            item.quantity <
-                              (stockAlertFilterActive
-                                ? lowStockWarningQueryThreshold
-                                : effectiveLowStockThreshold) && (
+                                                  ) : item.quantity >= 0 && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? ( 
                               <span
                                 className="badge bg-warning text-dark ms-2"
-                                title={`Below page display threshold (< ${
-                                  stockAlertFilterActive
-                                    ? lowStockWarningQueryThreshold
-                                    : effectiveLowStockThreshold
-                                }`}
+                                 title={`Low Stock (Qty: ${item.quantity}). Warning if < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}.`}
                               >
                                 🔥 Low Stock
                               </span>
-                            )
-                          )}
+                            ) : null}
                         </>
                       </td>
                       <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>

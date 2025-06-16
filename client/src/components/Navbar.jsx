@@ -246,7 +246,7 @@ export default function Navbar({ showPurchaseModal }) {
                 title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
                   localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
                   DEFAULT_LOW_QUANTITY_THRESHOLD
-                }): ${lowStockWarningCount} items. Click to view.`}
+               }): ${lowStockWarningCount} items. Click to view.`}
               >
                 <FaExclamationTriangle className="icon-low-stock" />
                 <span className="alert-count">{restockAlertCount}</span>
