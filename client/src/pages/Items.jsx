@@ -623,10 +623,10 @@ export default function Items() {
     setItemHistoryLoading(true);
     setError(null);
     let combinedHistory = [];
-
-    if (item.excelImportHistory && item.excelImportHistory.length > 0) {
+    // 1. Excel Import History (Local Data)
+    if (Array.isArray(item.excelImportHistory) && item.excelImportHistory.length > 0) {
       item.excelImportHistory.forEach((entry) => {
-        let quantityChange = 0;
+        let quantityChange = 0; // Default to 0
         let details = `File: ${entry.fileName || "N/A"}. `;
         let oldQtyText = "";
         let newQtyText = "";
@@ -634,14 +634,14 @@ export default function Items() {
           const createdQty = entry.snapshot?.quantity;
           quantityChange = parseFloat(createdQty) || 0;
           newQtyText = ` (New Qty: ${quantityChange})`;
-          details += `Item created.`;
+          details += `Item created via Excel.`;
         } else if (entry.action === "updated") {
           const qtyChangeInfo = entry.changes?.find(
             (c) => c.field === "quantity"
           );
           if (qtyChangeInfo) {
-            const oldQty = parseFloat(qtyChangeInfo.oldValue);
-            const newQty = parseFloat(qtyChangeInfo.newValue);
+            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
             quantityChange = newQty - oldQty;
             oldQtyText = ` (Old: ${oldQty} -> New: ${newQty})`;
           }
@@ -649,7 +649,7 @@ export default function Items() {
         }
         combinedHistory.push({
           date: new Date(entry.importedAt),
-          type: `Excel Import (${entry.action})`,
+          type: `Excel (${entry.action})`,
           user: entry.importedBy?.firstname || "System",
           details: details.trim() + oldQtyText + newQtyText,
           quantityChange: quantityChange,
@@ -657,20 +657,49 @@ export default function Items() {
       });
     }
 
-    const existingPurchaseHistory = purchaseHistory[item._id];
-    if (existingPurchaseHistory && existingPurchaseHistory.length > 0) {
-      existingPurchaseHistory.forEach((purchase) => {
-        combinedHistory.push({
-          date: new Date(purchase.date),
-          type: "Purchase Entry",
-          user: purchase.createdByName || "System",
-          details: `Purchased from ${purchase.companyName} (Inv: ${
-            purchase.invoiceNumber
-          }). Price: ₹${purchase.price?.toFixed(2)}/unit.`,
-          quantityChange: parseFloat(purchase.quantity) || 0,
+    // 2. Purchase History (Fetch Fresh)
+    try {
+      const itemPurchases = await apiClient(`/items/${item._id}/purchases`);
+      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+        itemPurchases.forEach((purchase) => {
+          combinedHistory.push({
+            date: new Date(purchase.date),
+            type: "Purchase Entry",
+            user: purchase.createdByName || "System", // Ensure your backend provides this if needed
+            details: `Purchased from ${purchase.companyName} (Inv: ${
+              purchase.invoiceNumber
+            }). Price: ₹${(parseFloat(purchase.price) || 0).toFixed(2)}/unit. Qty: ${parseFloat(purchase.quantity) || 0}`,
+            quantityChange: parseFloat(purchase.quantity) || 0,
+          });
         });
-      });
+      }
+    } catch (err) {
+      console.error("Error fetching purchase history for modal:", err);
+      showToast("Failed to load purchase history.", false);
+      // Optionally set an error state for the modal if needed
     }
+
+    // 3. Ticket Usage History (Fetch Fresh)
+    try {
+      const ticketUsageData = await apiClient(`/items/${item._id}/ticket-usage`);
+      if (Array.isArray(ticketUsageData) && ticketUsageData.length > 0) {
+        ticketUsageData.forEach((usage) => {
+          combinedHistory.push({
+            date: new Date(usage.date),
+            type: usage.type || "Ticket Interaction",
+            user: usage.user || "System",
+            details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+            quantityChange: parseFloat(usage.quantityChange) || 0, // This should be negative
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching ticket usage history:", err);
+      showToast("Failed to load ticket usage history.", false);
+      // Optionally set an error state for the modal if needed
+    }
+
+    // Sort all combined history entries by date
     combinedHistory.sort((a, b) => b.date - a.date);
     setItemHistory(combinedHistory);
     setItemHistoryLoading(false);

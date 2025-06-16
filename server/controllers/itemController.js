@@ -6,6 +6,7 @@ const { parseExcelBufferForUpdate } = require('../utils/excelImporter'); // New 
 const path = require('path');
 const multer = require('multer');
 const xlsx = require('xlsx'); // For export
+const Ticket = require('../models/opentickets'); 
 
 // Get all items
 exports.getAllItems = async (req, res) => {
@@ -912,3 +913,67 @@ exports.getRestockSummary = async (req, res) => {
 //   `item.needsRestock = item.quantity < 0;`
 //   `await item.save();`
 // This is crucial for data consistency.
+
+// Get ticket usage history for a specific item
+exports.getItemTicketUsageHistory = async (req, res) => {
+  const user = req.user || null;
+  const { id: itemId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(itemId)) {
+    logger.warn('item_ticket_usage', `Invalid item ID format: ${itemId}`, user);
+    return res.status(400).json({ message: 'Invalid item ID format' });
+  }
+
+  try {
+    const item = await Item.findById(itemId).lean();
+    if (!item) {
+      logger.warn('item_ticket_usage', `Item not found: ${itemId}`, user);
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    logger.debug('item_ticket_usage', `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`, user);
+
+    const queryConditions = {
+      "goods.description": item.name,
+    };
+    if (item.hsnCode && item.hsnCode.trim() !== "") {
+      queryConditions["goods.hsnSacCode"] = item.hsnCode;
+    }
+
+    const ticketsContainingItem = await Ticket.find(queryConditions)
+      .populate('createdBy', 'firstname lastname')
+      .select('ticketNumber goods createdAt createdBy')
+      .lean();
+
+    const ticketUsageHistory = [];
+
+    for (const ticket of ticketsContainingItem) {
+      const relevantGood = ticket.goods.find(
+        g => g.description === item.name && (item.hsnCode && item.hsnCode.trim() !== "" ? g.hsnSacCode === item.hsnCode : true)
+      );
+
+      if (relevantGood && relevantGood.quantity > 0) {
+        ticketUsageHistory.push({
+          date: ticket.createdAt,
+          type: 'Ticket Usage',
+          user: ticket.createdBy ? `${ticket.createdBy.firstname || ''} ${ticket.createdBy.lastname || ''}`.trim() : 'System',
+          details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${ticket.ticketNumber}`,
+          quantityChange: -parseFloat(relevantGood.quantity) || 0,
+          ticketId: ticket._id,
+          ticketNumber: ticket.ticketNumber,
+        });
+      }
+    }
+    
+    ticketUsageHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+    logger.info('item_ticket_usage', `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`, user);
+    res.json(ticketUsageHistory);
+
+  } catch (error) {
+    logger.error('item_ticket_usage', `Error fetching ticket usage history for item ID: ${itemId}`, error, user);
+    res.status(500).json({
+      message: 'Server error while fetching item ticket usage history',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
