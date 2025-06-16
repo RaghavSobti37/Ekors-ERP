@@ -44,6 +44,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
     currentAssignee: user.id,
     assignedTo: user.id, // Default assignedTo to creator
       dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+          roundOff: newTicketDetails.roundOff || 0, // Capture from frontend
+    finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
 
       };
 
@@ -89,6 +91,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
 
       deadline: determinedDeadline, // Use the determined deadline
         dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+              roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
+      finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
 
     };
   }   
@@ -217,6 +221,13 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
     finalTicketData.totalIgstAmount = runningTotalIgst;
     finalTicketData.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
     finalTicketData.grandTotal = (finalTicketData.totalAmount || 0) + (finalTicketData.finalGstAmount || 0);
+        // If rounding info is not already set (e.g. from newTicketDetails), and grandTotal is calculated,
+    // ensure finalRoundedAmount defaults correctly if roundOff is 0.
+    // The pre-save hook in the model will also handle this, but setting it here can be explicit.
+    if (finalTicketData.finalRoundedAmount === undefined || finalTicketData.finalRoundedAmount === null) {
+        finalTicketData.finalRoundedAmount = finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
+    }
+
   } else { // If no goods, ensure totals are zeroed and GST fields are present
     finalTicketData.totalQuantity = 0;
     finalTicketData.totalAmount = 0;
@@ -227,6 +238,9 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
     finalTicketData.finalGstAmount = 0;
     finalTicketData.grandTotal = 0;
     finalTicketData.isBillingStateSameAsCompany = false; // Default
+        finalTicketData.roundOff = 0;
+    finalTicketData.finalRoundedAmount = 0;
+
   }
 
   if (

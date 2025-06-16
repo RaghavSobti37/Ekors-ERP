@@ -55,6 +55,8 @@ const ticketSchema = new mongoose.Schema({
   totalIgstAmount: { type: Number, default: 0 },
   finalGstAmount: { type: Number, required: true, default: 0 }, // Total GST
   grandTotal: { type: Number, required: true, default: 0 }, // Total Amount + Total GST
+   roundOff: { type: Number, default: 0 }, // To store the round off amount
+  finalRoundedAmount: { type: Number },
   isBillingStateSameAsCompany: { type: Boolean, default: false },
 
   status: { 
@@ -135,6 +137,15 @@ dispatchDays: { type: String, default: "7-10 working days" } // Add this line
 //   next();
 // });
 
+// Pre-save hook to set finalRoundedAmount if not explicitly provided by client
+ticketSchema.pre('save', function(next) {
+  if (this.isNew || this.isModified('grandTotal') || this.isModified('roundOff')) {
+    if (this.finalRoundedAmount === undefined || this.finalRoundedAmount === null) {
+      this.finalRoundedAmount = (this.grandTotal || 0) + (this.roundOff || 0);
+    }
+  }
+  next();
+});
 
 // Create a unique compound index to ensure one ticket per quotation
 ticketSchema.index({ quotationNumber: 1 }, { unique: true });

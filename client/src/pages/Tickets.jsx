@@ -177,28 +177,78 @@ export const UserSearchComponent = ({ onUserSelect, authContext }) => {
   );
 };
 
-export const PIActions = ({ ticket }) => {
+export const PIActions = ({ ticket , onPreviewPI}) => {
   const handleDownloadWord = async () => {
+        // Prioritize stored rounded values if they exist, otherwise calculate
+    let finalAmountForDoc = ticket.finalRoundedAmount;
+    let roundOffForDoc = ticket.roundOff;
+
+    if (finalAmountForDoc === undefined || finalAmountForDoc === null || roundOffForDoc === undefined) {
+      // Calculate if not stored
+      const decimalPartForDoc = (ticket.grandTotal || 0) - Math.floor(ticket.grandTotal || 0);
+      roundOffForDoc = 0; // Default
+      finalAmountForDoc = ticket.grandTotal || 0; // Default
+
+      if (decimalPartForDoc !== 0) {
+        if (decimalPartForDoc < 0.50) {
+          finalAmountForDoc = Math.floor(ticket.grandTotal || 0);
+          roundOffForDoc = -decimalPartForDoc;
+        } else {
+          finalAmountForDoc = Math.ceil(ticket.grandTotal || 0);
+          roundOffForDoc = 1 - decimalPartForDoc;
+        }
+      }
+    }
+
+    const ticketForDoc = { ...ticket, finalRoundedAmount: finalAmountForDoc, roundOff: roundOffForDoc };
+
     try {
-      const doc = generatePIDocx(ticket);
-      const blob = await docx.Packer.toBlob(doc);
-      saveAs(blob, `PI_${ticket.ticketNumber || ticket.quotationNumber}.docx`);
+      const doc = generatePIDocx(ticketForDoc);      const blob = await docx.Packer.toBlob(doc);
+      saveAs(blob, `PI_${ticketForDoc.ticketNumber || ticketForDoc.quotationNumber}.docx`);
     } catch (error) {
       console.error("Error generating PI Word document:", error);
       toast.error("Failed to generate PI Word document. Please try again.");
-      frontendLogger.error("piGeneration", "Failed to generate PI DOCX", { ticketId: ticket?._id, error: error.message });
-    }
+      frontendLogger.error("piGeneration", "Failed to generate PI DOCX", ticketForDoc.createdBy, { ticketId: ticketForDoc?._id, error: error.message });    }
   };
 
+  // Prepare ticket data with rounding for PDF preview
+  // Prioritize stored rounded values if they exist, otherwise calculate
+  let finalAmountForPdfPreview = ticket.finalRoundedAmount;
+  let roundOffForPdfPreview = ticket.roundOff;
+
+  if (finalAmountForPdfPreview === undefined || finalAmountForPdfPreview === null || roundOffForPdfPreview === undefined) {
+    // Calculate if not stored
+    const decimalPartForPdf = (ticket.grandTotal || 0) - Math.floor(ticket.grandTotal || 0);
+    roundOffForPdfPreview = 0; // Default
+    finalAmountForPdfPreview = ticket.grandTotal || 0; // Default
+
+    if (decimalPartForPdf !== 0) {
+      if (decimalPartForPdf < 0.50) {
+        finalAmountForPdfPreview = Math.floor(ticket.grandTotal || 0);
+        roundOffForPdfPreview = -decimalPartForPdf;
+      } else {
+        finalAmountForPdfPreview = Math.ceil(ticket.grandTotal || 0);
+        roundOffForPdfPreview = 1 - decimalPartForPdf;
+      }
+    }
+  }
+
+    const ticketForPdfPreview = { ...ticket, finalRoundedAmount: finalAmountForPdfPreview, roundOff: roundOffForPdfPreview };
+
   const pdfButtonProps = {
-    document: <PIPDF ticket={ticket} />,
-    fileName: `PI_${ticket.ticketNumber || ticket.quotationNumber}.pdf`,
-  };
+    document: <PIPDF ticket={ticketForPdfPreview} />,
+    fileName: `PI_${ticketForPdfPreview.ticketNumber || ticketForPdfPreview.quotationNumber}.pdf`,  };
 
   return (
     <ActionButtons
       item={ticket}
-      pdfProps={pdfButtonProps}
+          // We will override the default PDF view action with our own button for PI
+      // pdfProps={pdfButtonProps} // This is for the download link, keep it if ActionButtons uses it for that
+      customActions={[
+        { label: "Preview PI", handler: () => onPreviewPI(ticketForPdfPreview), icon: FaFilePdf, variant: "outline-info" }
+      ]}
+
+
       onDownloadWord={handleDownloadWord}
       size="md"
     />
@@ -233,6 +283,10 @@ export default function Dashboard() {
   const [showTicketReportModal, setShowTicketReportModal] = useState(false);
   const { user: authUser, loading: authLoading } = useAuth();
   // Removed showEditModal and isFetchingAddressInEdit as edit is now a separate page
+    const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
+  const [ticketForPIPreview, setTicketForPIPreview] = useState(null);
+
+
   const auth = useAuth();
   const navigate = useNavigate();
 
@@ -374,6 +428,12 @@ export default function Dashboard() {
     navigate(`/tickets/transfer/${ticketToTransfer._id}`, { state: { ticketDataForTransfer: ticketToTransfer } });
   };
 
+    const handlePreviewPIFromList = (ticketWithRounding) => {
+    setTicketForPIPreview(ticketWithRounding);
+    setShowPIPreviewModal(true);
+  };
+
+
     // Prepare the Report button element to pass to Pagination
   const reportButtonElement = (authUser?.role === "admin" || authUser?.role === "super-admin") && (
     <Button
@@ -475,6 +535,7 @@ export default function Dashboard() {
                 item={ticket}
                 onEdit={canModifyTicket ? handleEdit : undefined}
                 onDelete={authUser?.role === "super-admin" ? handleDelete : undefined}
+ customPIActions={<PIActions ticket={ticket} onPreviewPI={handlePreviewPIFromList} />} // Pass PIActions as a custom prop
                 onTransfer={canTransferThisTicket ? handleTransfer : undefined}
                 isLoading={isLoading}
                 disabled={{
@@ -503,6 +564,25 @@ export default function Dashboard() {
           />
         )}
       </div>
+            {showPIPreviewModal && ticketForPIPreview && (
+        <Modal show={showPIPreviewModal} onHide={() => setShowPIPreviewModal(false)} size="xl" centered>
+          <Modal.Header closeButton style={{ backgroundColor: "maroon", color: "white" }}>
+            <Modal.Title>PI Preview - {ticketForPIPreview.ticketNumber || ticketForPIPreview.quotationNumber}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body style={{ height: '80vh', overflowY: 'auto' }}>
+            <PDFViewer width="100%" height="99%">
+              <PIPDF ticket={ticketForPIPreview} />
+            </PDFViewer>
+          </Modal.Body>
+          <Modal.Footer>
+            {/* PIActions can be used here if it provides download buttons etc. */}
+            {/* For simplicity, just a close button for now, as PIActions in ActionButtons already handles download */}
+            <Button variant="secondary" onClick={() => setShowPIPreviewModal(false)}>
+              Close
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
       <Footer />
     </div>
   );

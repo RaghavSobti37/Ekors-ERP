@@ -44,6 +44,9 @@ const EditTicketPage = () => {
   const [originalStatus, setOriginalStatus] = useState("");
   const [statusChangeComment, setStatusChangeComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+    const [roundedGrandTotal, setRoundedGrandTotal] = useState(null);
+  const [roundOffAmount, setRoundOffAmount] = useState(0);
+
   const [error, setError] = useState(null);
   const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
@@ -87,6 +90,8 @@ const EditTicketPage = () => {
         })),
       });
       setOriginalStatus(data.status);
+       setRoundOffAmount(data.roundOff || 0);
+      setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null ? data.finalRoundedAmount : data.grandTotal + (data.roundOff || 0) );
     } catch (err) {
       handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
       navigate("/tickets");
@@ -123,6 +128,9 @@ const EditTicketPage = () => {
             })),
         });
         setOriginalStatus(initialData.status);
+        setRoundOffAmount(initialData.roundOff || 0);
+        setRoundedGrandTotal(initialData.finalRoundedAmount !== undefined && initialData.finalRoundedAmount !== null ? initialData.finalRoundedAmount : initialData.grandTotal + (initialData.roundOff || 0));
+
     } else if (ticketIdFromParams) {
       fetchTicketDetails();
     }
@@ -278,6 +286,25 @@ const EditTicketPage = () => {
     if (status !== originalStatus) setStatusChangeComment(""); // Reset comment if status changes
   };
 
+    const handleRoundOff = () => {
+    const currentGrandTotal = ticketData.grandTotal || 0;
+    const decimalPart = currentGrandTotal - Math.floor(currentGrandTotal);
+    let newRoundedTotal;
+    let newRoundOffAmount;
+
+    if (decimalPart < 0.50) {
+      newRoundedTotal = Math.floor(currentGrandTotal);
+      newRoundOffAmount = -decimalPart;
+    } else {
+      newRoundedTotal = Math.ceil(currentGrandTotal);
+      newRoundOffAmount = 1 - decimalPart;
+    }
+    setRoundedGrandTotal(newRoundedTotal);
+    setRoundOffAmount(newRoundOffAmount);
+    toast.info(`Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`);
+  };
+
+
   const handleUpdateTicket = async () => {
     setFormValidated(true);
     // Basic form validation (can be expanded)
@@ -312,6 +339,8 @@ const EditTicketPage = () => {
           originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
+         roundOff: roundOffAmount,
+        finalRoundedAmount: roundedGrandTotal !== null ? roundedGrandTotal : ticketData.grandTotal + roundOffAmount,
       };
       // Remove fields that shouldn't be sent or are managed by backend
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
@@ -602,8 +631,20 @@ const EditTicketPage = () => {
                                 )}
                                 </React.Fragment>
                             ))}
-                            <tr className="table-active"><td><strong>Total Tax</strong></td><td className="text-end"><strong>₹{(ticketData.finalGstAmount || 0).toFixed(2)}</strong></td></tr>
-                            <tr className="table-success"><td><strong>Grand Total</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
+<tr className="table-active">
+                                <td><strong>Total Tax</strong></td>
+                                <td className="text-end"><strong>₹{(ticketData.finalGstAmount || 0).toFixed(2)}</strong></td>
+                            </tr>
+                            <tr className="table-secondary"><td><strong>Grand Total (Before Round Off)</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
+                            {roundedGrandTotal !== null && (
+                                <>
+                                <tr>
+                                    <td>Round Off</td>
+                                    <td className="text-end">₹{roundOffAmount.toFixed(2)}</td>
+                                </tr>
+                                <tr className="table-success"><td><strong>Final Amount</strong></td><td className="text-end"><strong>₹{roundedGrandTotal.toFixed(2)}</strong></td></tr>
+                                </>
+                            )}
                         </tbody></Table>
                     </Col>
                 </Row>
@@ -611,6 +652,10 @@ const EditTicketPage = () => {
         </Card>
 
         <Form.Group className="mb-3">
+             {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
+                <BsButton variant="outline-primary" size="sm" onClick={handleRoundOff} className="mt-2 mb-3 float-end">Round Off Total</BsButton>
+            )}
+            <div style={{clear: "both"}}></div>
             {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
                 <i className="bi bi-card-checklist me-1"></i>Other Details
             </h5> */}
