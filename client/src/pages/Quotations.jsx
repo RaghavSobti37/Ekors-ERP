@@ -45,7 +45,9 @@ export default function Quotations() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const { user, loading: authLoading } = useAuth(); // Renamed loading to authLoading to avoid conflict
-  const { showPageLoader, hidePageLoader, user: authUserFromContext } = useAuth(); // Get loader functions
+  const { 
+    // showPageLoader, hidePageLoader,
+     user: authUserFromContext } = useAuth(); // Get loader functions
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
   // const [showQuotationReportModal, setShowQuotationReportModal] = useState(false); // Replaced by navigation
@@ -85,7 +87,7 @@ export default function Quotations() {
 
   const fetchQuotations = useCallback(async () => {
     if (authLoading || !user) return;
-    showPageLoader(); // Show global loader
+    // showPageLoader(); // Show global loader
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
@@ -124,7 +126,9 @@ export default function Quotations() {
     } finally {
       hidePageLoader(); // Hide global loader
     }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, showPageLoader, hidePageLoader]);
+  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, 
+    // showPageLoader, hidePageLoader
+  ]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -345,7 +349,7 @@ export default function Quotations() {
     }
     if (!window.confirm(`Delete quotation ${quotation.referenceNumber}?`)) return;
 
-    showPageLoader();
+    // showPageLoader();
     setError(null);
     try {
       await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" });

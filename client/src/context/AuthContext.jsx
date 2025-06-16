@@ -6,14 +6,12 @@ import {
   useCallback,
 } from "react";
 import apiClient from "../utils/apiClient"; // Adjust path if apiClient.js is elsewhere
-import LoadingSpinner from "../components/LoadingSpinner"; // Import the new component
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // Renamed for clarity
-  const [isPageLoading, setIsPageLoading] = useState(false); // For general page loading
+  const [isLoading, setIsLoading] = useState(true); // For initial auth check
 
   // Function to fetch current user details if token exists
   const fetchCurrentUser = useCallback(async () => {
@@ -27,8 +25,8 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       }
     } else {
-    } // This else block was empty, can be removed or add logic if needed
-    setIsAuthLoading(false);
+    }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -131,11 +129,9 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
-  const showPageLoader = useCallback(() => setIsPageLoading(true), []);
-  const hidePageLoader = useCallback(() => setIsPageLoading(false), []);
-
-  // The LoadingSpinner will be shown if either auth is loading or a page is loading.
-  // The children (rest of the app) are always rendered, but the spinner overlays if needed.
+  if (isLoading) {
+    return <div>Loading authentication...</div>; // Or your custom loading component
+  }
 
   return (
     <AuthContext.Provider
@@ -144,14 +140,10 @@ export const AuthProvider = ({ children }) => {
         updateUserContext,
         login,
         logout,
-        isAuthLoading, // Expose auth loading state
+        isLoading,
         fetchCurrentUser,
-        isPageLoading, // Expose page loading state
-        showPageLoader,
-        hidePageLoader,
       }}
     >
-      <LoadingSpinner show={isAuthLoading || isPageLoading} />
       {children}
     </AuthContext.Provider>
   );
