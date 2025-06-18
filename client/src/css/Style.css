@@ -2060,4 +2060,198 @@ p {
 }
 
 
+/* Mobile-first breakpoints */
+@media (max-width: 576px) {
+  /* Small devices (landscape phones) */
+  :root {
+    --font-size-base: 14px;
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+  }
+  
+  body {
+    font-size: var(--font-size-base);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Medium devices (tablets) */
+  .container {
+    padding-right: var(--spacing-sm);
+    padding-left: var(--spacing-sm);
+  }
+  
+  /* Stack page header elements vertically */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+}
+
+/* Ensure all tables are scrollable horizontally on mobile */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+/* Enhanced responsive tables */
+@media (max-width: 768px) {
+  .table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  .table thead {
+    display: none;
+  }
+  
+  .table tr {
+    display: block;
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+  }
+  
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm);
+    text-align: right;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    margin-right: var(--spacing-sm);
+    color: var(--primary-color);
+  }
+  
+  .table td:last-child {
+    border-bottom: none;
+  }
+}
+/* Mobile navigation */
+.navbar {
+  position: relative;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: block;
+  }
+  
+  .nav-links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--dark-color);
+    flex-direction: column;
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+    display: none;
+    z-index: var(--z-index-dropdown);
+  }
+  
+  .nav-links.active {
+    display: flex;
+  }
+  
+  .nav-link {
+    width: 100%;
+    padding: var(--spacing-sm);
+  }
+}
+/* Mobile form controls */
+@media (max-width: 768px) {
+  .form-control, .form-select, .btn {
+    padding: var(--spacing-sm);
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn-action-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .btn-action {
+    width: 44px;
+    height: 44px;
+  }
+}
+/* Responsive modals */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    max-width: none;
+    margin: var(--spacing-sm);
+  }
+  
+  .modal-body {
+    padding: var(--spacing-md);
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+/* Quotation cards for mobile */
+.quotation-card {
+  display: none;
+  background: white;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.quotation-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.quotation-card .card-label {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.quotation-card .card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    display: none;
+  }
+  
+  .quotation-card {
+    display: block;
+  }
+}
+
+
 
