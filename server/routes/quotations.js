@@ -7,6 +7,7 @@ const auth = require("../middleware/auth");
 const logger = require("../utils/logger");
 const { generateQuotationsReport } = require("../controllers/reportController");
 const excelJS = require("exceljs");
+const Ticket = require("../models/opentickets"); // Import Ticket model
 
 const handleQuotationUpsert = async (req, res) => {
   let operation;
@@ -17,10 +18,10 @@ const handleQuotationUpsert = async (req, res) => {
     const quotationPayload = { ...quotationDetails, billingAddress }; // Re-include billingAddress
 
     const { id } = req.params;
-    const user = req.user || null;
+    const user = req.user || null; // Ensure user is available for logging even if auth fails (though auth middleware should handle)
     operation = id ? "update" : "create";
     logDetails = { // Assign here after user and operation are defined
-      userId: req.user._id,
+      userId: user ? user._id : null, // Safely access user._id
       operation,
       quotationId: id,
       referenceNumber: quotationPayload.referenceNumber,
@@ -38,11 +39,15 @@ const handleQuotationUpsert = async (req, res) => {
         .json({ message: "Missing quotation reference number" });
     }
 
-    const refCheck = await Quotation.findOne({
+    const refCheckQuery = {
       user: req.user._id,
       referenceNumber: quotationPayload.referenceNumber,
-      ...(id && { _id: { $ne: id } }),
-    });
+    };
+    if (id) {
+      refCheckQuery._id = { $ne: id };
+    }
+    const refCheck = await Quotation.findOne(refCheckQuery);
+
 
     if (refCheck) {
       logger.warn(
@@ -111,10 +116,14 @@ const handleQuotationUpsert = async (req, res) => {
               });
           }
         }
+        // Ensure user field is not accidentally overwritten if present in updateData
+        const clientUpdatePayload = { ...updateData };
+        delete clientUpdatePayload.user; // Prevent user field from being changed here
+
         processedClient = await Client.findByIdAndUpdate(
           clientInput._id,
-          { ...updateData, user: req.user._id },
-          { new: true }
+          { ...clientUpdatePayload, user: req.user._id }, // Explicitly set user from auth
+          { new: true, runValidators: true }
         );
       }
     } else if (
@@ -162,15 +171,19 @@ const handleQuotationUpsert = async (req, res) => {
                 field: "gstNumber",
               });
         }
+        // Ensure user field is not accidentally overwritten
+        const clientUpdatePayload = { ...clientInput };
+        delete clientUpdatePayload.user;
+
         processedClient = await Client.findByIdAndUpdate(
           processedClient._id,
           {
-            ...clientInput,
+            ...clientUpdatePayload,
             email: normalizedEmail,
             gstNumber: normalizedGst,
-            user: req.user._id,
+            user: req.user._id, // Explicitly set user from auth
           },
-          { new: true }
+          { new: true, runValidators: true }
         );
         logger.info(
           "quotation",
@@ -204,6 +217,12 @@ const handleQuotationUpsert = async (req, res) => {
           user: req.user._id,
         });
         await processedClient.save();
+        logger.info(
+          "quotation",
+          `Created new client for quotation ${operation}`,
+          user,
+          { ...logDetails, clientId: processedClient._id }
+        );
       }
     } else {
       logger.warn(
@@ -221,6 +240,12 @@ const handleQuotationUpsert = async (req, res) => {
     }
 
     if (!processedClient || !processedClient._id) {
+      logger.error(
+        "quotation",
+        `Client processing failed unexpectedly for quotation ${operation}`,
+        user,
+        logDetails
+      );
       return res
         .status(500)
         .json({
@@ -228,7 +253,6 @@ const handleQuotationUpsert = async (req, res) => {
         });
     }
 
-    // Ensure billingAddress is an object, even if empty, to avoid issues with Mongoose
     const processedBillingAddress = typeof billingAddress === 'object' && billingAddress !== null
                                       ? billingAddress
                                       : { address1: '', address2: '', city: '', state: '', pincode: '' };
@@ -239,7 +263,7 @@ const handleQuotationUpsert = async (req, res) => {
       date: new Date(quotationPayload.date),
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
-      billingAddress: processedBillingAddress, // Add billingAddress to data to be saved
+      billingAddress: processedBillingAddress,
     };
 
     let quotation;
@@ -263,9 +287,6 @@ const handleQuotationUpsert = async (req, res) => {
           });
       }
 
-      // Handle status updates:
-      // System-managed statuses ("running", "closed") cannot be manually changed by user.
-      // Users can only change status to "open" or "hold" if current status allows it.
       if (
         quotationPayload.status &&
         quotationPayload.status !== existingQuotation.status
@@ -300,17 +321,18 @@ const handleQuotationUpsert = async (req, res) => {
                 "Status can only be manually changed to 'open' or 'hold'.",
             });
         }
-        // If valid manual status change, it will be part of 'data'
-      } else if (
-        quotationPayload.hasOwnProperty("status") &&
-        quotationPayload.status === existingQuotation.status
-      ) {
-        // If status in payload is same as existing, no change, so remove from data to avoid issues if not intended for update
-        delete data.status;
+        // Valid manual status change is in 'data' via quotationPayload
+      } else if (quotationPayload.hasOwnProperty("status") && quotationPayload.status === existingQuotation.status) {
+        // If status in payload is same as existing, no change, so remove from data if it was spread from quotationPayload
+        // This ensures data.status is not unnecessarily set if it's not changing.
+        // However, if it's intentionally being set to the same value, this logic might be too aggressive.
+        // For simplicity and to ensure intended updates, it might be better to let it be part of 'data'.
+        // The current logic is: if status is provided and same, it's in 'data'. If not provided, it's not in 'data'.
       } else if (!quotationPayload.hasOwnProperty("status")) {
-        // If status is not in payload, ensure it's not accidentally removed from 'data' if it was there from quotationPayload
+        // If status is not in payload, ensure it's not accidentally removed from 'data'
         data.status = existingQuotation.status; // Keep existing status
       }
+
 
       quotation = await Quotation.findOneAndUpdate(
         { _id: id, user: req.user._id },
@@ -319,11 +341,18 @@ const handleQuotationUpsert = async (req, res) => {
       );
 
       if (!quotation) {
+        // This case might be redundant due to the existingQuotation check, but good for safety.
+        logger.warn(
+          "quotation",
+          `Update failed after initial check for quotation ${id}.`,
+          user,
+          logDetails
+        );
         return res
           .status(404)
           .json({
             message:
-              "Quotation not found or you do not have permission to update it.",
+              "Quotation not found during update or permission issue.",
           });
       }
     } else {
@@ -354,7 +383,7 @@ const handleQuotationUpsert = async (req, res) => {
           "quotation",
           `Added quotation reference ${populatedQuotation._id} to client ${processedClient._id}`,
           user,
-          { ...logDetails, clientId: processedClient._id }
+          { ...logDetails, quotationIdFromOp: populatedQuotation._id, clientId: processedClient._id }
         );
       } catch (clientUpdateError) {
         logger.error(
@@ -362,20 +391,68 @@ const handleQuotationUpsert = async (req, res) => {
           `Error adding quotation reference ${populatedQuotation._id} to client ${processedClient._id}`,
           clientUpdateError,
           user,
-          { ...logDetails, clientId: processedClient._id }
+          { ...logDetails, quotationIdFromOp: populatedQuotation._id, clientId: processedClient._id }
         );
+      }
+    }
+        // If quotation was updated, sync relevant data to linked tickets
+    if (id && quotation) {
+      try {
+        const linkedTickets = await Ticket.find({ quotationNumber: quotation.referenceNumber });
+        if (linkedTickets.length > 0) {
+          logger.info("quotation-ticket-sync", `Found ${linkedTickets.length} tickets linked to quotation ${quotation.referenceNumber} for syncing.`, user, { quotationId: quotation._id });
+          
+          const quotationClient = quotation.client; // Assuming client is populated or is an ID
+          const quotationBillingAddress = quotation.billingAddress || {};
+
+          for (const ticket of linkedTickets) {
+            const ticketUpdatePayload = {
+              companyName: quotationClient?.companyName || ticket.companyName,
+              client: quotationClient?._id || ticket.client,
+              clientPhone: quotationClient?.phone || ticket.clientPhone,
+              clientGstNumber: quotationClient?.gstNumber || ticket.clientGstNumber,
+              billingAddress: [
+                quotationBillingAddress.address1 || "",
+                quotationBillingAddress.address2 || "",
+                quotationBillingAddress.state || "",
+                quotationBillingAddress.city || "",
+                quotationBillingAddress.pincode || "",
+              ],
+              // Goods sync: This is a direct overwrite. Consider conditional logic if needed.
+              goods: quotation.goods.map(g => ({...g, _id: undefined})), // Ensure goods don't carry over old _id if schema differs
+              totalQuantity: quotation.totalQuantity,
+              totalAmount: quotation.totalAmount,
+              // Assuming ticket's GST/grandTotal will be recalculated based on new goods/amounts
+              // or you can explicitly set them if quotation has final calculated values.
+              // For simplicity, let's assume ticket recalculates.
+              termsAndConditions: quotation.termsAndConditions || ticket.termsAndConditions,
+              dispatchDays: quotation.dispatchDays || ticket.dispatchDays,
+              validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : ticket.validityDate,
+            };
+
+            // If shippingSameAsBilling is true on the ticket, update its shippingAddress too
+            if (ticket.shippingSameAsBilling) {
+                ticketUpdatePayload.shippingAddress = [...ticketUpdatePayload.billingAddress];
+            }
+
+            await Ticket.findByIdAndUpdate(ticket._id, { $set: ticketUpdatePayload });
+            logger.info("quotation-ticket-sync", `Synced ticket ${ticket.ticketNumber} with updated quotation ${quotation.referenceNumber}.`, user, { ticketId: ticket._id });
+          }
+        }
+      } catch (syncError) {
+        logger.error("quotation-ticket-sync", `Error syncing tickets for quotation ${quotation.referenceNumber}: ${syncError.message}`, user, { quotationId: quotation._id, error: syncError });
       }
     }
     res.status(id ? 200 : 201).json(populatedQuotation);
   } catch (error) {
     logger.error(
       "quotation",
-      `Error during quotation ${operation} process`,
+      `Error during quotation ${operation || 'unknown'} process`, // Ensure operation is defined
       error,
-      req.user,
-      logDetails
+      req.user, // req.user might be null if auth middleware failed or wasn't hit
+      logDetails // logDetails might be partially initialized
     );
-    console.error("Error in handleQuotationUpsert:", error);
+    console.error(`Error in handleQuotationUpsert (${operation || 'unknown'}):`, error); // Log to console for immediate visibility
     if (error.name === "ValidationError") {
       return res
         .status(400)
@@ -390,33 +467,38 @@ const handleQuotationUpsert = async (req, res) => {
 router.get("/next-number", auth, async (req, res) => {
   try {
     const latestQuotation = await Quotation.findOne({})
-      .sort({ referenceNumber: -1 })
+      .sort({ referenceNumber: -1 }) // This might not give the true "latest" if format varies wildly
       .select("referenceNumber");
 
     let nextNumber = 1;
+    // A more robust way to get the next number might involve a dedicated sequence collection or more complex parsing.
+    // For "Q-000001" format:
     if (latestQuotation && latestQuotation.referenceNumber) {
       const match = latestQuotation.referenceNumber.match(/Q-(\d+)/);
       if (match && match[1]) {
         nextNumber = parseInt(match[1], 10) + 1;
       } else {
+        // Fallback for other potential formats, less reliable
         const numPart = latestQuotation.referenceNumber.replace(/[^0-9]/g, "");
         if (numPart) {
           try {
             nextNumber = parseInt(numPart, 10) + 1;
-          } catch (e) {}
+          } catch (e) {
+            logger.warn("quotation", "Failed to parse number from latest reference for next-number", e, req.user);
+          }
         }
       }
     }
     const nextQuotationNumber = `Q-${String(nextNumber).padStart(6, "0")}`;
     res.json({ nextQuotationNumber });
   } catch (error) {
-    res.status(500).json({ message: error.message });
     logger.error(
       "quotation",
       `Failed to generate next quotation number`,
       error,
       req.user
     );
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -433,22 +515,26 @@ router.get("/", auth, async (req, res) => {
       query.status = req.query.status;
     }
 
-    // Add search functionality - Moved inside the async function
     if (req.query.search) {
       const searchTerm = req.query.search;
       const searchRegex = { $regex: searchTerm, $options: "i" };
 
-      // Attempt to find clients matching the search term by name
-      const matchingClients = await Client.find({
+      const clientQuery = {
         companyName: searchRegex,
-        ...(req.user.role !== "super-admin" && { user: req.user._id }),
-      }).select("_id");
+      };
+      if (req.user.role !== "super-admin") {
+        clientQuery.user = req.user._id;
+      }
+      const matchingClients = await Client.find(clientQuery).select("_id");
       const clientIds = matchingClients.map((c) => c._id);
 
       query.$or = [{ referenceNumber: searchRegex }];
       if (clientIds.length > 0) {
         query.$or.push({ client: { $in: clientIds } });
       }
+      // Add search by goods description or HSN if needed
+      // query.$or.push({ "goods.description": searchRegex });
+      // query.$or.push({ "goods.hsnSacCode": searchRegex });
     }
 
     const quotations = await Quotation.find(query)
@@ -464,7 +550,7 @@ router.get("/", auth, async (req, res) => {
       `Failed to fetch all accessible quotations`,
       error,
       req.user,
-      { query: req.query }
+      { queryParams: req.query }
     );
     res.status(500).json({
       message: "Error fetching quotations",
@@ -479,29 +565,31 @@ router.put("/:id", auth, handleQuotationUpsert);
 router.get("/check-reference", auth, async (req, res) => {
   try {
     const { referenceNumber, excludeId } = req.query;
-    const user = req.user || null;
+    const user = req.user || null; // For logging
     if (!referenceNumber) {
       return res
         .status(400)
         .json({ message: "referenceNumber query parameter is required." });
     }
     const query = {
-      user: req.user._id,
+      user: req.user._id, // Check only for the current user
       referenceNumber,
-      ...(excludeId && { _id: { $ne: excludeId } }),
     };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
 
     const existing = await Quotation.findOne(query);
     res.json({ exists: !!existing });
   } catch (error) {
-    res.status(500).json({ message: error.message });
     logger.error(
       "quotation",
       `Failed to check reference number availability`,
       error,
-      user,
-      { query }
+      req.user, // Use req.user for consistency in logging
+      { queryParams: req.query }
     );
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -516,6 +604,7 @@ router.get("/:id", auth, async (req, res) => {
 
     const quotation = await Quotation.findOne(findQuery)
       .populate("client")
+      .populate("user", "firstname lastname email") // Added user populate
       .populate("orderIssuedBy", "firstname lastname");
 
     if (!quotation) {
@@ -523,7 +612,7 @@ router.get("/:id", auth, async (req, res) => {
         "quotation",
         `Quotation not found or access denied: ${req.params.id}`,
         user,
-        { findQuery }
+        { queryDetails: findQuery }
       );
       return res
         .status(404)
@@ -532,20 +621,24 @@ router.get("/:id", auth, async (req, res) => {
 
     res.json(quotation);
   } catch (error) {
+    logger.error(
+      "quotation",
+      `Failed to fetch quotation by ID: ${req.params.id}`,
+      error,
+      req.user
+    );
     res.status(500).json({ message: error.message });
   }
 });
 
 router.delete("/:id", auth, async (req, res) => {
   const quotationId = req.params.id;
-  const userId = req.user ? req.user._id : null;
-  const userEmail = req.user ? req.user.email : "N/A";
-  const user = req.user || null;
-  const logDetails = { userId, quotationId, model: "Quotation", userEmail };
+  const user = req.user || { _id: 'unknown', email: 'unknown' }; // Fallback for logging if req.user is somehow undefined
+  const logDetails = { userId: user._id, quotationId, model: "Quotation", userEmail: user.email };
 
   logger.info(
     "delete",
-    `[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${userEmail}.`,
+    `[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${user.email}.`,
     user,
     logDetails
   );
@@ -554,7 +647,7 @@ router.delete("/:id", auth, async (req, res) => {
     if (req.user.role !== "super-admin") {
       logger.warn(
         "delete",
-        `[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${userEmail}.`,
+        `[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${user.email}.`,
         user,
         logDetails
       );
@@ -568,13 +661,14 @@ router.delete("/:id", auth, async (req, res) => {
       logger.warn(
         "delete",
         `[NOT_FOUND] Quotation not found for deletion: ${quotationId}.`,
+        user, // Pass user object
         logDetails
       );
       return res
         .status(404)
         .json({
           message:
-            "Quotation not found or you do not have permission to delete it.",
+            "Quotation not found.",
         });
     }
 
@@ -582,7 +676,7 @@ router.delete("/:id", auth, async (req, res) => {
     const newBackupEntry = new QuotationBackup({
       ...backupData,
       originalId: quotationToBackup._id,
-      deletedBy: userId,
+      deletedBy: user._id,
       deletedAt: new Date(),
       originalCreatedAt: quotationToBackup.createdAt,
       originalUpdatedAt: quotationToBackup.updatedAt,
@@ -597,6 +691,12 @@ router.delete("/:id", auth, async (req, res) => {
         await Client.findByIdAndUpdate(quotationToBackup.client, {
           $pull: { quotations: quotationToBackup._id },
         });
+        logger.info(
+          "delete",
+          `[CLIENT_REF_REMOVED] Quotation reference ${quotationToBackup._id} removed from Client ID: ${quotationToBackup.client}.`,
+          user,
+          { ...logDetails, targetClientId: quotationToBackup.client.toString() }
+        );
       } catch (clientUpdateError) {
         logger.error(
           "delete",
@@ -607,7 +707,12 @@ router.delete("/:id", auth, async (req, res) => {
         );
       }
     }
-
+    logger.info(
+      "delete",
+      `[DELETE_SUCCESS] Quotation ID: ${quotationId} deleted and backed up successfully by User: ${user.email}. Backup ID: ${newBackupEntry._id}`,
+      user,
+      { ...logDetails, backupId: newBackupEntry._id }
+    );
     res.status(200).json({
       message: "Quotation deleted and backed up successfully.",
       originalId: quotationToBackup._id,
@@ -616,7 +721,7 @@ router.delete("/:id", auth, async (req, res) => {
   } catch (error) {
     logger.error(
       "delete",
-      `[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${userEmail}.`,
+      `[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${user.email}.`,
       error,
       user,
       logDetails
@@ -630,15 +735,43 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
-// @desc    Get Quotations Report Summary or Excel
-// @route   GET /api/quotations/report/summary
-// @route   GET /api/quotations/report/excel
-// @access  Private
-// The controller will differentiate based on `exportToExcel` query param
-router.get("/report/summary", auth, generateQuotationsReport); // For JSON summary
+router.get("/report/summary", auth, generateQuotationsReport);
 router.get("/report/excel", auth, (req, res, next) => {
-  // For Excel download
-  req.query.exportToExcel = "true"; // Ensure controller knows to export
+  req.query.exportToExcel = "true";
   generateQuotationsReport(req, res, next);
 });
+
+// GET a quotation by its reference number
+router.get("/by-reference/:refNumber", auth, async (req, res) => {
+  try {
+    const { refNumber } = req.params;
+    const user = req.user; // For user context in query if needed
+
+    // Find the quotation.
+    // If quotations are user-specific, you might need to include user in the query:
+    // const quotation = await Quotation.findOne({ referenceNumber: refNumber, user: user._id });
+    // If referenceNumbers are globally unique or accessible by users who can see the ticket:
+    const quotation = await Quotation.findOne({
+      referenceNumber: refNumber,
+    });
+
+    if (!quotation) {
+      logger.warn("quotation", `Quotation not found by reference: ${refNumber}`, user);
+      return res.status(404).json({ message: "Quotation not found." });
+    }
+
+    // Optionally populate client or other details if needed by the QuotationFormPage
+    // For this use case, just returning the quotation with its _id is sufficient
+    // as the QuotationFormPage will fetch full details if it navigates there.
+    // const populatedQuotation = await Quotation.findById(quotation._id).populate('client');
+    // res.json(populatedQuotation);
+
+    res.json(quotation); // Send back the quotation object (must include _id)
+
+  } catch (error) {
+    logger.error("quotation", `Error fetching quotation by reference: ${req.params.refNumber}`, error, req.user);
+    res.status(500).json({ message: "Failed to fetch quotation details.", error: error.message });
+  }
+});
+
 module.exports = router;

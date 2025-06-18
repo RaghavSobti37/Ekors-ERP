@@ -147,3 +147,28 @@ export const debounce = (func, wait) => {
     timeout = setTimeout(later, wait);
   };
 };
+
+/**
+ * Formats a date string or Date object into a more readable date and time string.
+ * e.g., "DD/MM/YYYY, HH:MM AM/PM"
+ * @param {string | Date} dateString - The date string or Date object to format.
+ * @returns {string} The formatted date-time string or 'N/A' if invalid.
+ */
+export const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    return date.toLocaleString('en-GB', { // en-GB for DD/MM/YYYY format, adjust as needed
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+  } catch (error) {
+    // Log error if needed, e.g., frontendLogger.error('dateFormatting', 'Error in formatDateTime', null, { dateString, error });
+    return 'Invalid Date';
+  }
+};
+

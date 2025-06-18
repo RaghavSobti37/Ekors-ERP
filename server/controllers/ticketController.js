@@ -9,12 +9,13 @@ const fs = require("fs-extra"); // fs-extra for recursive directory removal
 const path = require("path");
 const asyncHandler = require("express-async-handler");
 
-exports.createTicket = asyncHandler(async (req, res) => {
-  const user = req.user || null;
-  // Ensure ticketData is a fresh object to avoid modifying req.body directly
-  const ticketInputData = { ...req.body }; // Use a new variable for input
+// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
+const COMPANY_REFERENCE_STATE = "UTTAR PRADESH"; 
 
-  if (!user) {
+exports.createTicket = asyncHandler(async (req, res) => {
+  const user = req.user; // Auth middleware should ensure req.user exists
+
+  if (!user || !user.id) {
     logger.error(
       "ticket-create",
       "User not found in request. Auth middleware might not be working correctly."
@@ -23,80 +24,270 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .status(401)
       .json({ error: "Unauthorized: User not authenticated." });
   }
+  const { newTicketDetails, sourceQuotationData } = req.body;
 
-  // --- Billing Address from Quotation ---
-  let quotationBillingAddressArray = ["", "", "", "", ""]; // Default empty address
-  if (ticketInputData.quotationNumber) {
-    const quotation = await Quotation.findOne({
-      referenceNumber: ticketInputData.quotationNumber,
-      // user: user.id // Assuming quotation is user-specific or accessible
-    }).select("billingAddress"); // Only select billingAddress
-
-    if (quotation && quotation.billingAddress) {
-      const ba = quotation.billingAddress;
-      // Frontend Tickets.jsx handleUpdateTicket converts object to [add1, add2, state, city, pincode]
-      // So, the mapping from quotation object to ticket array should be:
-      quotationBillingAddressArray = [
-        ba.address1 || "",
-        ba.address2 || "",
-        ba.state || "", // state is 3rd element
-        ba.city || "", // city is 4th element
-        ba.pincode || "",
-      ];
-    } else {
-      logger.warn(
-        "ticket-create",
-        `Quotation ${ticketInputData.quotationNumber} not found or has no billing address. Using default empty for ticket.`,
-        user
-      );
-    }
+  if (!newTicketDetails) {
+    logger.error(
+      "ticket-create",
+      "Missing newTicketDetails in request body.",
+      user
+    );
+    return res
+      .status(400)
+      .json({ error: "Missing newTicketDetails in request body." });
   }
 
-  const finalTicketData = { ...ticketInputData }; // Start with input data
-  finalTicketData.createdBy = user.id;
-  finalTicketData.currentAssignee = user.id; // Set currentAssignee to creator by default
-  finalTicketData.billingAddress = quotationBillingAddressArray; // Set billing address from quotation
+   let finalTicketData = {
 
-  // --- Shipping Address Logic ---
-  if (ticketInputData.shippingSameAsBilling === true) {
-    finalTicketData.shippingAddress = quotationBillingAddressArray; // Copy from billing
+    ...newTicketDetails,
+    createdBy: user.id,
+    currentAssignee: user.id,
+    assignedTo: user.id, // Default assignedTo to creator
+      dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+          roundOff: newTicketDetails.roundOff || 0, // Capture from frontend
+    finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
+
+      };
+
+     // If creating from a quotation, prioritize sourceQuotationData
+  if (sourceQuotationData && sourceQuotationData.referenceNumber) {
+    const clientData = sourceQuotationData.client || {};
+    const quotationBillingAddress = sourceQuotationData.billingAddress || {};
+
+        // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
+    let determinedDeadline = newTicketDetails.deadline 
+      ? new Date(newTicketDetails.deadline) 
+      : (sourceQuotationData.validityDate ? new Date(sourceQuotationData.validityDate) : null);
+
+    finalTicketData = {
+      ...finalTicketData, // Keep any specific newTicketDetails not from quotation
+      companyName: clientData.companyName || newTicketDetails.companyName,
+      quotationNumber: sourceQuotationData.referenceNumber, // This should be the defining link
+      client: clientData._id || newTicketDetails.client?._id,
+      clientPhone: clientData.phone || newTicketDetails.clientPhone,
+      clientGstNumber: clientData.gstNumber || newTicketDetails.clientGstNumber,
+      billingAddress: [ // Transform quotation billing address to ticket format
+        quotationBillingAddress.address1 || "",
+        quotationBillingAddress.address2 || "",
+        quotationBillingAddress.state || "",
+        quotationBillingAddress.city || "",
+        quotationBillingAddress.pincode || "",
+      ],
+      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map((qGood, index) => ({
+        srNo: qGood.srNo || (index + 1),
+        description: qGood.description, // Required
+        hsnSacCode: qGood.hsnSacCode,   // Required
+        quantity: Number(qGood.quantity || 0), // Required, ensure number
+        unit: qGood.unit || "Nos",
+        price: Number(qGood.price || 0),       // Required, ensure number
+        amount: Number(qGood.amount || 0),     // Required, ensure number (price * quantity)
+        originalPrice: Number(qGood.originalPrice || qGood.price || 0),
+        maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
+        gstRate: Number(qGood.gstRate || 0),   // Required, ensure number
+        subtexts: qGood.subtexts || [],
+      })),
+      termsAndConditions: sourceQuotationData.termsAndConditions || newTicketDetails.termsAndConditions, // If terms are on quotation
+      dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+
+      deadline: determinedDeadline, // Use the determined deadline
+        dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
+              roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
+      finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
+
+    };
+  }   
+
+  // Ensure deadline is null if an empty string is passed, otherwise Mongoose handles valid date strings/null.
+  if (finalTicketData.hasOwnProperty('deadline') && finalTicketData.deadline === "") {
+    finalTicketData.deadline = null;
+      }
+
+  // If deadline is still null and it's required by schema, this will cause validation error.
+  // The schema states `deadline: { type: Date, required: true }`.
+  // So, finalTicketData.deadline must be a valid Date object at this point.
+  // If determinedDeadline was null and newTicketDetails.deadline was also null/empty, this is an issue.
+  // For a required field, it's better to ensure it's set or throw a 400 error earlier.
+  if (!finalTicketData.deadline) {
+    logger.error("ticket-create", "Deadline is required but not provided or derived.", user, { finalTicketData });
+    return res.status(400).json({ error: "Ticket deadline is required." });
+  };
+
+
+  // Set client ObjectId if available from sourceQuotationData
+  if (
+    !finalTicketData.client && // Only if not already set by sourceQuotationData block
+    newTicketDetails.client && 
+    newTicketDetails.client._id  ) {
+    finalTicketData.client = newTicketDetails.client._id;
+      } else if (sourceQuotationData && sourceQuotationData.client && sourceQuotationData.client._id && !finalTicketData.client) {
+    finalTicketData.client = sourceQuotationData.client._id;
+
+  }
+
+  // Ensure statusHistory is correctly formatted
+  if (
+    Array.isArray(finalTicketData.statusHistory) &&
+    finalTicketData.statusHistory.length > 0
+  ) {
+    finalTicketData.statusHistory = finalTicketData.statusHistory.map(
+      (entry) => ({
+        ...entry,
+        changedBy: entry.changedBy || user.id, // Ensure changedBy is set by backend
+        changedAt: entry.changedAt || new Date(),
+      })
+    );
   } else {
-    // Ensure shippingAddress from req.body is an array of 5 strings
-    // The frontend should send it in the correct array format if not shippingSameAsBilling
-    if (
-      Array.isArray(ticketInputData.shippingAddress) &&
-      ticketInputData.shippingAddress.length === 5
-    ) {
-      finalTicketData.shippingAddress = ticketInputData.shippingAddress;
-    } else if (
-      typeof ticketInputData.shippingAddress === "object" &&
-      ticketInputData.shippingAddress !== null
-    ) {
-      // If frontend sends an object, convert it
-      const sa = ticketInputData.shippingAddress;
-      finalTicketData.shippingAddress = [
-        sa.address1 || "",
-        sa.address2 || "",
-        sa.state || "",
-        sa.city || "",
-        sa.pincode || "",
-      ];
-    } else {
-      finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default empty if not provided correctly
-      logger.warn(
-        "ticket-create",
-        `Shipping address not provided correctly and not same as billing. Using default empty.`,
-        user
-      );
-    }
+    finalTicketData.statusHistory = [
+      {
+        status: finalTicketData.status || "Quotation Sent", // Default from schema
+        changedAt: new Date(),
+        changedBy: user.id,
+note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket created from quotation." : "Ticket created.",
+       },
+    ];
   }
-  finalTicketData.shippingSameAsBilling =
-    ticketInputData.shippingSameAsBilling || false;
+  if (!finalTicketData.status) {
+    finalTicketData.status = "Quotation Sent"; // Ensure status is set
+  }
+
+  // Construct shippingAddress array
+  if (finalTicketData.shippingSameAsBilling === true) {
+    finalTicketData.shippingAddress = [
+      ...(finalTicketData.billingAddress || ["", "", "", "", ""]),
+    ];
+  } else if (finalTicketData.shippingAddressObj) {
+    const saObj = finalTicketData.shippingAddressObj;
+    finalTicketData.shippingAddress = [
+      saObj.address1 || "",
+      saObj.address2 || "",
+      saObj.state || "",
+      saObj.city || "",
+      saObj.pincode || "",
+    ];
+  } else if (
+    !Array.isArray(finalTicketData.shippingAddress) ||
+    finalTicketData.shippingAddress.length !== 5
+  ) {
+    finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default if not properly provided
+  }
+  delete finalTicketData.shippingAddressObj; // Remove if not part of schema
+
+    // --- Calculate Totals and GST (Crucial for required fields) ---
+  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
+    finalTicketData.totalQuantity = finalTicketData.goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    finalTicketData.totalAmount = finalTicketData.goods.reduce((sum, item) => sum + Number(item.amount || 0), 0); // Pre-GST
+
+    const billingState = (finalTicketData.billingAddress[2] || "").toUpperCase().trim(); // Assuming state is at index 2
+    const isBillingStateSameAsCompany = billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+    finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+
+    const gstGroups = {};
+    finalTicketData.goods.forEach(item => {
+      const itemGstRate = parseFloat(item.gstRate);
+      if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+        if (!gstGroups[itemGstRate]) gstGroups[itemGstRate] = { taxableAmount: 0 };
+        gstGroups[itemGstRate].taxableAmount += (item.amount || 0);
+      }
+    });
+
+    const newGstBreakdown = [];
+    let runningTotalCgst = 0, runningTotalSgst = 0, runningTotalIgst = 0;
+
+    for (const rateKey in gstGroups) {
+      const group = gstGroups[rateKey];
+      const itemGstRate = parseFloat(rateKey);
+      if (isNaN(itemGstRate) || itemGstRate < 0) continue;
+
+      const taxableAmount = group.taxableAmount;
+      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+      let cgstRate = 0, sgstRate = 0, igstRate = 0;
+
+      if (itemGstRate > 0) {
+        if (isBillingStateSameAsCompany) {
+          cgstRate = itemGstRate / 2; sgstRate = itemGstRate / 2;
+          cgstAmount = (taxableAmount * cgstRate) / 100; sgstAmount = (taxableAmount * sgstRate) / 100;
+          runningTotalCgst += cgstAmount; runningTotalSgst += sgstAmount;
+        } else {
+          igstRate = itemGstRate;
+          igstAmount = (taxableAmount * igstRate) / 100;
+          runningTotalIgst += igstAmount;
+        }
+      }
+      newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
+    }
+    finalTicketData.gstBreakdown = newGstBreakdown;
+    finalTicketData.totalCgstAmount = runningTotalCgst;
+    finalTicketData.totalSgstAmount = runningTotalSgst;
+    finalTicketData.totalIgstAmount = runningTotalIgst;
+    finalTicketData.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+    finalTicketData.grandTotal = (finalTicketData.totalAmount || 0) + (finalTicketData.finalGstAmount || 0);
+        // If rounding info is not already set (e.g. from newTicketDetails), and grandTotal is calculated,
+    // ensure finalRoundedAmount defaults correctly if roundOff is 0.
+    // The pre-save hook in the model will also handle this, but setting it here can be explicit.
+    if (finalTicketData.finalRoundedAmount === undefined || finalTicketData.finalRoundedAmount === null) {
+        finalTicketData.finalRoundedAmount = finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
+    }
+
+  } else { // If no goods, ensure totals are zeroed and GST fields are present
+    finalTicketData.totalQuantity = 0;
+    finalTicketData.totalAmount = 0;
+    finalTicketData.gstBreakdown = [];
+    finalTicketData.totalCgstAmount = 0;
+    finalTicketData.totalSgstAmount = 0;
+    finalTicketData.totalIgstAmount = 0;
+    finalTicketData.finalGstAmount = 0;
+    finalTicketData.grandTotal = 0;
+    finalTicketData.isBillingStateSameAsCompany = false; // Default
+        finalTicketData.roundOff = 0;
+    finalTicketData.finalRoundedAmount = 0;
+
+  }
+
+  if (
+    !Array.isArray(finalTicketData.billingAddress) ||
+    finalTicketData.billingAddress.length !== 5
+  ) {
+    logger.error(
+      "ticket-create",
+      "Billing address is not in the expected array format.",
+      user,
+      { billingAddress: finalTicketData.billingAddress }
+    );
+    return res.status(400).json({ error: "Invalid billing address format." });
+  }
+  if (
+    !Array.isArray(finalTicketData.shippingAddress) ||
+    finalTicketData.shippingAddress.length !== 5
+  ) {
+    logger.error(
+      "ticket-create",
+      "Shipping address is not in the expected array format after construction.",
+      user,
+      { shippingAddress: finalTicketData.shippingAddress }
+    );
+    return res.status(400).json({ error: "Invalid shipping address format." });
+  }
+
+  // Ensure all required GST fields are present if your logic depends on them
+  // (e.g., gstBreakdown, finalGstAmount, grandTotal)
+  // This step assumes the frontend calculates and sends these accurately.
+  // The model schema will validate their presence if marked as 'required'.
+  // finalTicketData.shippingSameAsBilling =
+  //   ticketInputData.shippingSameAsBilling || false;
 
   // Ensure subtexts are copied from input goods to final goods
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
     finalTicketData.goods = finalTicketData.goods.map((item) => ({
-      ...item,
+      srNo: item.srNo, // Ensure all required fields are explicitly mapped or validated
+      description: item.description,
+      hsnSacCode: item.hsnSacCode,
+      quantity: Number(item.quantity || 0),
+      unit: item.unit || "Nos",
+      price: Number(item.price || 0),
+      amount: Number(item.amount || (Number(item.quantity || 0) * Number(item.price || 0))), // Recalculate amount if not present
+      originalPrice: Number(item.originalPrice || item.price || 0),
+      maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
+      gstRate: Number(item.gstRate || 0),
       subtexts: item.subtexts || [],
     }));
   }
@@ -111,10 +302,9 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const seconds = String(now.getSeconds()).padStart(2, "0");
 
   if (!finalTicketData.ticketNumber) {
-    // Use finalTicketData
     finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
     logger.warn(
-      "ticket",
+      "ticket-create ",
       `Generated fallback ticket number: ${finalTicketData.ticketNumber}`,
       user
     );
@@ -196,6 +386,15 @@ exports.createTicket = asyncHandler(async (req, res) => {
   try {
     // Use finalTicketData for creating the ticket
     const ticket = new Ticket(finalTicketData);
+    console.log(
+      "Received newTicketDetails in backend:",
+      JSON.stringify(newTicketDetails, null, 2)
+    );
+    console.log(
+      "Final ticketData before save:",
+      JSON.stringify(finalTicketData, null, 2)
+    );
+
     await ticket.save();
 
     logger.info(
@@ -221,9 +420,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
             referenceNumber: ticket.quotationNumber,
-            user: user.id,
+            // Prefer original quotation user if available, fallback to ticket creator
+            ...(sourceQuotationData &&
+              sourceQuotationData.user && {
+                user: sourceQuotationData.user._id || sourceQuotationData.user,
+              }),
+            ...(!(sourceQuotationData && sourceQuotationData.user) && {
+              user: finalTicketData.createdBy,
+            }),
           },
-          { status: "running" },
+          { status: "running", $addToSet: { linkedTickets: ticket._id } }, // Link ticket to quotation
           { new: true }
         );
 
@@ -248,8 +454,17 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(201).json(ticket);
   } catch (error) {
     logger.error("ticket", `Failed to create ticket`, error, user, {
-      requestBody: req.body,
-    }); // Log original req.body for debugging
+      finalTicketDataAttempted: finalTicketData, // Log the data that was attempted to be saved
+    });
+    if (error.name === "ValidationError") {
+      return res
+        .status(400)
+        .json({
+          error: "Validation failed",
+          details: error.message,
+          errors: error.errors,
+        });
+    }
     return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
@@ -307,6 +522,12 @@ exports.updateTicket = async (req, res) => {
     ...updatedTicketPayload
   } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
+
+  // Ensure deadline is null if an empty string is passed.
+  // Frontend should send ISOString or null, but this is a safeguard.
+  if (ticketDataForUpdate.hasOwnProperty('deadline') && ticketDataForUpdate.deadline === "") {
+    ticketDataForUpdate.deadline = null;
+  }
   try {
     const originalTicket = await Ticket.findOne({ _id: ticketId });
 
@@ -668,8 +889,43 @@ exports.deleteTicket = async (req, res) => {
 
     const backupData = ticketToBackup.toObject();
     const newBackupEntry = new TicketBackup({
-      ...backupData,
       originalId: ticketToBackup._id,
+            ticketNumber: ticketToBackup.ticketNumber,
+      companyName: ticketToBackup.companyName,
+      quotationNumber: ticketToBackup.quotationNumber,
+      client: ticketToBackup.client,
+      clientPhone: ticketToBackup.clientPhone,
+      clientGstNumber: ticketToBackup.clientGstNumber,
+      billingAddress: ticketToBackup.billingAddress,
+      shippingAddress: ticketToBackup.shippingAddress,
+      shippingSameAsBilling: ticketToBackup.shippingSameAsBilling,
+      goods: ticketToBackup.goods.map(g => ({ // Ensure all required fields for backup's goodsSchema are mapped
+        srNo: g.srNo,
+        description: g.description,
+        hsnSacCode: g.hsnSacCode,
+        quantity: g.quantity,
+        price: g.price,
+        amount: g.amount,
+      })),
+      totalQuantity: ticketToBackup.totalQuantity,
+      totalAmount: ticketToBackup.totalAmount, // Pre-GST total
+      gstAmount: ticketToBackup.finalGstAmount, // Crucial: Map finalGstAmount to gstAmount
+      grandTotal: ticketToBackup.grandTotal,
+      isBillingStateSameAsCompany: ticketToBackup.isBillingStateSameAsCompany,
+      status: ticketToBackup.status,
+      documents: ticketToBackup.documents, // Assuming sub-schemas are compatible
+      statusHistory: ticketToBackup.statusHistory.map(sh => ({
+        status: sh.status,
+        changedAt: sh.changedAt,
+        changedBy: sh.changedBy,
+      })),
+      createdBy: ticketToBackup.createdBy,
+      currentAssignee: ticketToBackup.currentAssignee,
+      deadline: ticketToBackup.deadline,
+      assignedTo: ticketToBackup.assignedTo,
+      transferHistory: ticketToBackup.transferHistory,
+      assignmentLog: ticketToBackup.assignmentLog,
+      dispatchDays: ticketToBackup.dispatchDays,
       deletedBy: userId, // User performing the delete
       deletedAt: new Date(),
       originalCreatedAt: ticketToBackup.createdAt,
@@ -1026,12 +1282,10 @@ exports.transferTicket = async (req, res) => {
       initiator,
       logContext
     );
-    res
-      .status(500)
-      .json({
-        message: "Server error during ticket transfer.",
-        details: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during ticket transfer.",
+      details: error.message,
+    });
   }
 };
 
@@ -1089,12 +1343,10 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       requestingUser,
       { ...logContext, errorMessage: error.message, stack: error.stack }
     );
-    res
-      .status(500)
-      .json({
-        message: "Failed to load users for transfer.",
-        details: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to load users for transfer.",
+      details: error.message,
+    });
   }
 });
 

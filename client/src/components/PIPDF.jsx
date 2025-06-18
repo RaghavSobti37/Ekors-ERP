@@ -1,566 +1,554 @@
 import React from "react";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
-} from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
+// Styles
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    paddingTop: 35,
+    paddingBottom: 65,
+    paddingHorizontal: 35,
     fontFamily: "Helvetica",
-    fontSize: 11,
-    position: "relative",
+    fontSize: 9, // Adjusted base font size for more content
   },
-  logo: {
-    position: "absolute",
-    left: 30,   // changed from 'right' to 'left'
-    top: 30,    // keep it at the top
-    width: 80,
-    height: "auto",
-  },
-  header: {
-    fontSize: 12,
+  headerSection: {
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: 15,
   },
-  companyName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  subHeader: {
+  gstinHeader: {
     fontSize: 10,
-    textAlign: "center",
+    marginBottom: 2,
+  },
+  companyNameHeader: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
+  companyAddressHeader: {
+    fontSize: 8,
     marginBottom: 10,
   },
   invoiceTitle: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: "bold",
+    textDecoration: "underline",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  metaInfoContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    fontSize: 9,
+  },
+  addressTable: {
+    display: "table",
+    width: "100%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333", // Darker border
+    marginBottom: 15,
+  },
+  addressRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  addressCellHeaderLabel: { // For "Details" column labels like "Party Name:"
+    width: "20%", // Adjusted width
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    fontWeight: "bold",
+    backgroundColor: "#f0f0f0", // Light grey background for labels
+  },
+  addressCellData: { // For Billing and Shipping data columns
+    width: "40%", // Adjusted width
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    wordBreak: "break-all",
+  },
+  addressCellDataLast: { // For the last data cell in a row (no right border)
+    width: "40%",
+    padding: 4,
+    wordBreak: "break-all",
+  },
+  addressTableHeader: { // For "Details", "Billing Address", "Shipping Address"
+    width: "20%",
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 10,
-    textDecoration: "underline",
+    backgroundColor: "#e0e0e0", // Slightly darker grey for main headers
   },
-  detailsTable: {
-    width: "100%",
-    marginBottom: 10,
-    border: "1px solid #000",
+  addressTableHeaderData: {
+    width: "40%",
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    fontWeight: "bold",
+    textAlign: "center",
+    backgroundColor: "#e0e0e0",
   },
-  detailsRow: {
+  goodsTable: {
+    display: "table",
+    width: "auto",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333",
+    marginBottom: 10,
+  },
+  goodsTableHeader: {
     flexDirection: "row",
-    borderBottom: "1px solid #000",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+    textAlign: "center",
   },
-  detailsCell: {
-    padding: 5,
-    borderRight: "1px solid #000",
-    flex: 1,
+  goodsTableRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 0.5, // Lighter border for rows
+    borderBottomColor: "#ccc",
   },
-  detailsLastCell: {
-    padding: 5,
-    flex: 1,
+  goodsCell: {
+    padding: 4,
+    borderRightStyle: "solid",
+    borderRightWidth: 0.5,
+    borderRightColor: "#ccc",
+    textAlign: "center", // Center align by default
+  },
+  goodsCellDescription: {
+    textAlign: "left",
+    paddingLeft: 5,
+  },
+  colSrNo: { width: "5%" },
+  colDescription: { width: "35%" },
+  colHSN: { width: "15%" },
+  colQty: { width: "10%" },
+  colUnit: { width: "10%" },
+  colRate: { width: "10%" },
+  colAmount: { width: "15%", borderRightWidth: 0 },
+
+  summarySection: {
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  summaryContainer: {
+    width: "50%", // Adjust as needed
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 2,
+    fontSize: 9,
+  },
+  summaryLabel: {
+    fontWeight: "normal",
+  },
+  summaryValue: {
+    fontWeight: "bold",
+  },
+  grandTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 3,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    marginTop: 5,
+    fontWeight: "bold",
+    fontSize: 10,
+  },
+  amountInWords: {
+    marginTop: 8,
+    fontSize: 8,
+    textTransform: "capitalize",
+  },
+  taxBreakdownTable: {
+    display: "table",
+    width: "100%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333",
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  taxBreakdownHeader: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  taxBreakdownRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ccc",
+  },
+  taxBreakdownCell: {
+    padding: 4,
+    borderRightStyle: "solid",
+    borderRightWidth: 0.5,
+    borderRightColor: "#ccc",
+    textAlign: "right", // Default to right for amounts
+  },
+  taxColDescription: { width: "28%", textAlign: "left" },
+  taxColTaxableValue: { width: "18%" },
+  taxColCGSTRate: { width: "8%", textAlign: "center" },
+  taxColCGSTAmount: { width: "12%" },
+  taxColSGSTRate: { width: "8%", textAlign: "center" },
+  taxColSGSTAmount: { width: "12%" },
+  taxColIGSTRate: { width: "10%", textAlign: "center" },
+  taxColIGSTAmount: { width: "16%" },
+  taxColTotalTax: { width: "14%", borderRightWidth: 0 },
+
+  bankDetails: {
+    marginTop: 15,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    fontSize: 8,
+  },
+  termsConditions: {
+    marginTop: 10,
+    fontSize: 8,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 35,
+    right: 35,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    fontSize: 8,
+  },
+  authSignatory: {
+    textAlign: "right",
+  },
+  logo: {
+    position: 'absolute',
+    right: 35,
+    top: 35,
+    width: 70, // Adjusted size
+    height: 'auto',
   },
   bold: {
     fontWeight: "bold",
   },
-  tableContainer: {
-    width: "100%",
-    marginTop: 15,
-    border: "1px solid #000",
-  },
-  tableHeader: {
-    flexDirection: "row",
-    borderBottom: "1px solid #000",
-    backgroundColor: "#f0f0f0",
-  },
-  tableHeaderCell: {
-    padding: 5,
-    borderRight: "1px solid #000",
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottom: "1px solid #000",
-  },
-  tableCell: {
-    padding: 5,
-    borderRight: "1px solid #000",
-    textAlign: "center",
-  },
-  descriptionCell: {
-    padding: 5,
-    borderRight: "1px solid #000",
-    textAlign: "left",
-    width: "35%",
-  },
-  lastCell: {
-    padding: 5,
-    textAlign: "center",
-  },
-  taxSummary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    width: "100%",
-  },
-  taxRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 5,
-  },
-  grandTotal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 5,
-    borderTop: "1px solid #000",
-    paddingTop: 5,
-  },
-  amountInWords: {
-    marginTop: 10,
-    fontStyle: "italic",
-  },
-  bankDetails: {
-    marginTop: 15,
-    borderTop: "1px solid #000",
-    paddingTop: 10,
-    width: "100%",
-  },
-  signature: {
-    marginTop: 30,
-    textAlign: "right",
-    width: "100%",
-  },
-  gstRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    width: "100%",
-    marginBottom: 5,
-  },
-  gstCell: {
-    width: "20%",
-    textAlign: "right",
-    paddingRight: 10,
-  },
-  taxTable: {
-    width: "100%",
-    marginTop: 10,
-    border: "1px solid #000",
-  },
-  taxTableRow: {
-    flexDirection: "row",
-    borderBottom: "1px solid #000",
-  },
-  taxTableCell: {
-    padding: 5,
-    borderRight: "1px solid #000",
-    width: "20%",
-    textAlign: "center",
-  },
-  taxTableLastCell: {
-    padding: 5,
-    width: "20%",
-    textAlign: "center",
-  },
-  quotationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 10,
-  },
-  quotationHeaderCol: {
-    flexDirection: "row",
-  },
-  quotationHeaderLabel: {
-    fontWeight: "bold",
-    marginRight: 5,
-  },
-  clientDetailsTable: {
-    width: "100%",
-    marginBottom: 10,
-  },
-  clientDetailsRow: {
-    flexDirection: "row",
-    marginBottom: 5,
-  },
-  clientDetailsCol: {
-    width: "50%",
-  },
-  clientDetailsLabel: {
-    fontWeight: "bold",
-    marginRight: 5,
-  },
 });
 
-const toWords = (num) => {
-  if (num === 0) return "Zero";
-
-  const a = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-    "Ten",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-  const b = [
-    "",
-    "",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-
-  const g = ["", "Thousand", "Lakh", "Crore"];
-
-  const floatPart = Math.round((num - Math.floor(num)) * 100);
-  num = Math.floor(num);
-
-  let str = "";
-  let i = 0;
-
-  const convertChunk = (n) => {
-    let s = "";
-    if (n > 99) {
-      s += a[Math.floor(n / 100)] + " Hundred ";
-      n %= 100;
+// Helper function to get parts of an address
+const getAddressPart = (address, part) => {
+  if (!address) return ""; 
+  if (Array.isArray(address)) {
+    switch (part) {
+      case 'address1': return address[0] || " " ;
+      case 'address2': return address[1] || "";
+      case 'city':     return address[3] || " " ;
+      case 'state':    return address[2] || " " ;
+      case 'pincode':  return address[4] || " " ;
+      default: return " " ;
     }
-    if (n > 19) {
-      s += b[Math.floor(n / 10)] + " " + a[n % 10];
-    } else {
-      s += a[n];
+  } else if (typeof address === 'object' && address !== null) {
+    switch (part) {
+      case 'address1': return address.address1 || " " ;
+      case 'address2': return address.address2 || "";
+      case 'city':     return address.city || " " ;
+      case 'state':    return address.state || " " ;
+      case 'pincode':  return address.pincode || " " ;
+      default: return " " ;
     }
-    return s.trim();
-  };
-
-  while (num > 0) {
-    const chunk = i === 0 ? num % 1000 : num % 100;
-    if (chunk !== 0) {
-      str = convertChunk(chunk) + (g[i] ? " " + g[i] : "") + " " + str;
-    }
-    num = i === 0 ? Math.floor(num / 1000) : Math.floor(num / 100);
-    i++;
   }
-
-  return (
-    str.trim() +
-    (floatPart > 0 ? " and " + convertChunk(floatPart) + " Paise" : "") +
-    " Only"
-  );
+  return part === 'address2' ? "" : " " ;
 };
 
-const PIPDF = ({ invoice }) => {
-  // Sample data matching the PDF
-  const invoiceData = {
-    PI_NO: "PI 118",
-    date: "09-06-2025",
-    company: {
-      name: "E-KORS PRIVATE LIMITED",
-      address: "POLE NO-02., Sector-115, NOIDA",
-      city: "Gautam Buddha Nagar, Uttar Pradesh, 201307",
-      gstin: "09AAFCE8706R1ZV",
-    },
-    client: {
-      name: "M/s Kiranotics India Pvt Ltd",
-      address: "D15, Site C, Industrial Area",
-      city: "Sikandra",
-      pincode: "282007",
-      state: "Uttar Pradesh (09)",
-      gstin: "09AACCK868101ZK",
-      phone: "",
-    },
-    goods: [
-      {
-        sn: 1,
-        description: "Earthing Rod\nUI Rod 250 Micron 3 Mir",
-        hsnSacCode: "74071090",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 1000.00,
-        amount: 4000.00,
-      },
-      {
-        sn: 2,
-        description: "Clamp",
-        hsnSacCode: "85389000",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 150.00,
-        amount: 600.00,
-      },
-      {
-        sn: 3,
-        description: "Chemical Bag",
-        hsnSacCode: "73089090",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 200.00,
-        amount: 800.00,
-      },
-      {
-        sn: 4,
-        description: "ESE LA\n5 Mir Mast\nTaura",
-        hsnSacCode: "85354010",
-        quantity: 1.00,
-        unit: "NOS",
-        price: 11500.00,
-        amount: 11500.00,
-      },
-      {
-        sn: 5,
-        description: "Pit Cover\n6\"",
-        hsnSacCode: "73259910",
-        quantity: 4.00,
-        unit: "NOS",
-        price: 150.00,
-        amount: 600.00,
-      },
-    ],
-    tax: {
-      taxableAmount: 17500.00,
-      cgstRate: 9,
-      cgstAmount: 1575.00,
-      sgstRate: 9,
-      sgstAmount: 1575.00,
-      totalTax: 3150.00,
-      grandTotal: 20650.00,
-    },
-    bankDetails: {
-      bankName: "ICICI Bank",
-      accountNo: "628405020990",
-      ifsc: "ICIC0006284",
-    },
+const toWords = (num) => {
+  const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  const s = num.toString();
+  if (s.length > 9) return 'overflow';
+  const n = ('000000000' + s).substring(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+  let str = '';
+  str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'crore ' : '';
+  str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'lakh ' : '';
+  str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'thousand ' : '';
+  str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'hundred ' : '';
+  str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+  return str.trim() === '' ? 'zero' : str.trim() + ' only';
+};
+
+const PIPDF = ({ ticket }) => {
+    const clientPhone = ticket.clientPhone || " " ;
+  const clientGstNumber = ticket.clientGstNumber || " " ;
+
+  const billingAddress1 = getAddressPart(ticket.billingAddress, 'address1');
+  const billingAddress2 = getAddressPart(ticket.billingAddress, 'address2');
+  const billingCity = getAddressPart(ticket.billingAddress, 'city');
+  const billingState = getAddressPart(ticket.billingAddress, 'state');
+  const billingPincode = getAddressPart(ticket.billingAddress, 'pincode');
+
+  const shippingAddress1 = getAddressPart(ticket.shippingAddress, 'address1');
+  const shippingAddress2 = getAddressPart(ticket.shippingAddress, 'address2');
+  const shippingCity = getAddressPart(ticket.shippingAddress, 'city');
+  const shippingState = getAddressPart(ticket.shippingAddress, 'state');
+  const shippingPincode = getAddressPart(ticket.shippingAddress, 'pincode');
+
+  const fullBillingAddress = `${billingAddress1}${billingAddress2 ? `, ${billingAddress2}` : ''}`;
+  const fullShippingAddress = `${shippingAddress1}${shippingAddress2 ? `, ${shippingAddress2}` : ''}`;
+
+ const formatCityStatePin = (city, state, pincode) => {
+    let parts = [city, state].filter(Boolean); // Filter out empty strings
+    let mainPart = parts.join(', ');
+    if (pincode) {
+      return mainPart ? `${mainPart} - ${pincode}` : pincode;
+    }
+    return mainPart;
   };
 
-  // Calculate total quantity
-  const totalQuantity = invoiceData.goods.reduce(
-    (sum, item) => sum + Number(item.quantity),
-    0
-  );
+  const billingCityStatePin = formatCityStatePin(billingCity, billingState, billingPincode);
+  const shippingCityStatePin = formatCityStatePin(shippingCity, shippingState, shippingPincode);
+    const displayGrandTotal = ticket.finalRoundedAmount !== null && ticket.finalRoundedAmount !== undefined ? ticket.finalRoundedAmount : ticket.grandTotal;
 
   return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Logo in top right corner */}
-        <Image style={styles.logo} src="/src/assets/logo.png" />
-        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
-        <Text style={styles.companyName}>{invoiceData.company.name}</Text>
-        <Text style={styles.subHeader}>
-          {invoiceData.company.address}{"\n"}{invoiceData.company.city}
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Image style={styles.logo} src="/src/assets/logo.png" />
+
+      <View style={styles.headerSection}>
+        <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
+        <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+        <Text style={styles.companyAddressHeader}>
+          PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
         </Text>
-        <Text style={styles.header}>GSTIN : {invoiceData.company.gstin}</Text>
+      </View>
 
-        {/* Quotation Header - Matches the image layout */}
-        <View style={styles.quotationHeader}>
-          <View style={styles.quotationHeaderCol}>
-            <Text style={styles.quotationHeaderLabel}>Quotation No.:</Text>
-            <Text>{invoiceData.quotationNo}</Text>
-          </View>
-          <View style={styles.quotationHeaderCol}>
-            <Text style={styles.quotationHeaderLabel}>Date:</Text>
-            <Text>{invoiceData.date}</Text>
-          </View>
+      <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
+
+      <View style={styles.metaInfoContainer}>
+        <Text>PI No.: {ticket.ticketNumber || ticket.quotationNumber}</Text>
+        <Text>Date: {new Date(ticket.createdAt || Date.now()).toLocaleDateString('en-GB')}</Text>
+      </View>
+      {/* <View style={styles.metaInfoContainer}>
+        <Text>PI Number: {ticket.quotationNumber}</Text>
+        <Text>Validity: {ticket.validityDate ? new Date(ticket.validityDate).toLocaleDateString('en-GB') : 'N/A'}</Text>
+      </View> */}
+       <View style={styles.metaInfoContainer}>
+        <Text>Dispatch Through: {ticket.dispatchThrough || 'As per discussion'}</Text>
+        <Text>Dispatch Days: {ticket.dispatchDays || '7-10 working days'}</Text>
+      </View>
+
+
+      <View style={styles.addressTable}>
+        <View style={styles.addressRow}>
+          <Text style={styles.addressTableHeader}>Details</Text>
+          <Text style={styles.addressTableHeaderData}>Billing Address</Text>
+          <Text style={[styles.addressTableHeaderData, { borderRightWidth: 0 }]}>Shipping Address</Text>
         </View>
-
-        {/* Client Details - Matches the image layout */}
-        <View style={styles.clientDetailsTable}>
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Quotation to:</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Shipped to:</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.name}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.name}</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.address}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.address}</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.city}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.city}</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.pincode}</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>{invoiceData.client.pincode}</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text style={styles.clientDetailsLabel}>Party Mobile No:</Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>
-                <Text style={styles.clientDetailsLabel}>State: </Text>
-                {invoiceData.client.state}
-              </Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>
-                <Text style={styles.clientDetailsLabel}>State:</Text>
-                {invoiceData.client.state}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.clientDetailsRow}>
-            <View style={styles.clientDetailsCol}>
-              <Text>
-                <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {invoiceData.client.gstin}
-              </Text>
-            </View>
-            <View style={styles.clientDetailsCol}>
-              <Text>
-                <Text style={styles.clientDetailsLabel}>GSTIN / UIN:</Text>
-                {invoiceData.client.gstin}
-              </Text>
-            </View>
-          </View>
+        <View style={styles.addressRow}>
+          <Text style={styles.addressCellHeaderLabel}>Party Name:</Text>
+          <Text style={styles.addressCellData}>{ticket.client?.companyName || ticket.companyName || " " }</Text>
+          <Text style={styles.addressCellDataLast}>{ticket.client?.companyName || ticket.companyName || " " }</Text>
         </View>
+        <View style={styles.addressRow}>
+          <Text style={styles.addressCellHeaderLabel}>Address:</Text>
+          <Text style={styles.addressCellData}>{fullBillingAddress}</Text>
+          <Text style={styles.addressCellDataLast}>{fullShippingAddress}</Text>
+        </View>
+        <View style={styles.addressRow}>
+          <Text style={styles.addressCellHeaderLabel}>City/State/Pin:</Text>
+          <Text style={styles.addressCellData}>{billingCityStatePin}</Text>
+          <Text style={styles.addressCellDataLast}>{shippingCityStatePin}</Text>
+        </View>
+        <View style={styles.addressRow}>
+          <Text style={styles.addressCellHeaderLabel}>State:</Text>
+          <Text style={styles.addressCellData}>{billingState}</Text>
+          <Text style={styles.addressCellDataLast}>{shippingState}</Text>
+        </View>
+        <View style={styles.addressRow}>
+           <Text style={[styles.addressCellHeader, styles.bold]}>GSTIN / UIN:</Text>
+      {/* <Text style={styles.addressCell}>{clientGstNumber}</Text> */}
+      <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>{clientGstNumber}</Text>
+        </View>
+        <View style={[styles.addressRow, { borderBottomWidth: 0 }]}>
+ <Text style={[styles.addressCellHeader, styles.bold]}>Contact No.:</Text>
+      {/* <Text style={styles.addressCell}>{clientPhone}</Text> */}
+      <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>{clientPhone}</Text>
+        </View>
+      </View>
 
-        {/* Items Table with proper borders */}
-        <View style={styles.tableContainer}>
-          {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, { width: "5%" }]}>S.N</Text>
-            <Text style={[styles.tableHeaderCell, { width: "35%" }]}>Description of Goods</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>HSN/SAC Code</Text>
-            <Text style={[styles.tableHeaderCell, { width: "8%" }]}>Qty.</Text>
-            <Text style={[styles.tableHeaderCell, { width: "8%" }]}>Unit</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%" }]}>Price</Text>
-            <Text style={[styles.tableHeaderCell, { width: "12%", borderRight: 0 }]}>Amount( )</Text>
-          </View>
-
-          {/* Table Rows */}
-          {invoiceData.goods.map((item, i) => (
-            <View style={styles.tableRow} key={i}>
-              <Text style={[styles.tableCell, { width: "5%" }]}>{item.sn}.</Text>
-              <Text style={[styles.descriptionCell, { width: "35%" }]}>{item.description}</Text>
-              <Text style={[styles.tableCell, { width: "12%" }]}>{item.hsnSacCode}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{item.quantity.toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "8%" }]}>{item.unit}</Text>
-              <Text style={[styles.tableCell, { width: "12%" }]}>{item.price.toFixed(2)}</Text>
-              <Text style={[styles.tableCell, { width: "12%", borderRight: 0 }]}>{item.amount.toFixed(2)}</Text>
+      <View style={styles.goodsTable}>
+        <View style={styles.goodsTableHeader}>
+          <Text style={[styles.goodsCell, styles.colSrNo]}>S.N.</Text>
+          <Text style={[styles.goodsCell, styles.colDescription, styles.goodsCellDescription]}>Description of Goods</Text>
+          <Text style={[styles.goodsCell, styles.colHSN]}>HSN/SAC</Text>
+          <Text style={[styles.goodsCell, styles.colQty]}>Qty</Text>
+          <Text style={[styles.goodsCell, styles.colUnit]}>Unit</Text>
+          <Text style={[styles.goodsCell, styles.colRate]}>Rate (₹)</Text>
+          <Text style={[styles.goodsCell, styles.colAmount]}>Amount (₹)</Text>
+        </View>
+        {(ticket.goods || []).map((item, i) => (
+          <View style={styles.goodsTableRow} key={item._id || i}>
+            <Text style={[styles.goodsCell, styles.colSrNo]}>{item.srNo || i + 1}</Text>
+            <View style={[styles.goodsCell, styles.colDescription, styles.goodsCellDescription]}>
+                <Text>{item.description}</Text>
+                {(item.subtexts || []).map((sub, subIndex) => (
+                    <Text key={subIndex} style={{ fontSize: 7, fontStyle: 'italic', marginLeft: 5 }}>- {sub}</Text>
+                ))}
             </View>
-          ))}
-        </View>
-
-        {/* GST Calculation */}
-        <View style={styles.gstRow}>
-          <Text style={styles.gstCell}>Add: CGST</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>{invoiceData.tax.cgstRate.toFixed(2)} %</Text>
-          <Text style={[styles.gstCell, { width: "12%" }]}>{invoiceData.tax.cgstAmount.toFixed(2)}</Text>
-        </View>
-        <View style={styles.gstRow}>
-          <Text style={styles.gstCell}>Add: SGST</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>@</Text>
-          <Text style={[styles.gstCell, { width: "8%" }]}>{invoiceData.tax.sgstRate.toFixed(2)} %</Text>
-          <Text style={[styles.gstCell, { width: "12%" }]}>{invoiceData.tax.sgstAmount.toFixed(2)}</Text>
-        </View>
-
-        {/* Grand Total */}
-        <View style={styles.grandTotal}>
-          <Text style={styles.bold}>Grand Total</Text>
-          <Text>
-            {totalQuantity.toFixed(2)} NOS {invoiceData.tax.grandTotal.toFixed(2)}
-          </Text>
-        </View>
-
-        {/* Tax Summary Table */}
-        <View style={styles.taxTable}>
-          <View style={styles.taxTableRow}>
-            <Text style={[styles.taxTableCell, styles.bold]}>Tax Rate</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>Taxable Amt.</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>CGST Amt.</Text>
-            <Text style={[styles.taxTableCell, styles.bold]}>SGST Amt.</Text>
-            <Text style={[styles.taxTableLastCell, styles.bold]}>Total Tax</Text>
+            <Text style={[styles.goodsCell, styles.colHSN]}>{item.hsnSacCode}</Text>
+            <Text style={[styles.goodsCell, styles.colQty]}>{item.quantity}</Text>
+            <Text style={[styles.goodsCell, styles.colUnit]}>{item.unit || "Nos"}</Text>
+            <Text style={[styles.goodsCell, styles.colRate]}>{(item.price || 0).toFixed(2)}</Text>
+            <Text style={[styles.goodsCell, styles.colAmount]}>{(item.amount || 0).toFixed(2)}</Text>
           </View>
-          <View style={styles.taxTableRow}>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.cgstRate + invoiceData.tax.sgstRate}%</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.taxableAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.cgstAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableCell}>{invoiceData.tax.sgstAmount.toFixed(2)}</Text>
-            <Text style={styles.taxTableLastCell}>{invoiceData.tax.totalTax.toFixed(2)}</Text>
+        ))}
+      </View>
+      
+      <View style={styles.summarySection}>
+        <View style={styles.summaryContainer}>
+            <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal (Before Tax):</Text>
+                <Text style={styles.summaryValue}>₹{(ticket.totalAmount || 0).toFixed(2)}</Text>
+            </View>
+            {/* Dynamically add CGST, SGST, IGST based on breakdown */}
+            {ticket.isBillingStateSameAsCompany ? (
+                <>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Total CGST:</Text>
+                        <Text style={styles.summaryValue}>₹{(ticket.totalCgstAmount || 0).toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={styles.summaryLabel}>Total SGST:</Text>
+                        <Text style={styles.summaryValue}>₹{(ticket.totalSgstAmount || 0).toFixed(2)}</Text>
+                    </View>
+                </>
+            ) : (
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Total IGST:</Text>
+                    <Text style={styles.summaryValue}>₹{(ticket.totalIgstAmount || 0).toFixed(2)}</Text>
+                </View>
+            )}
+             <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, styles.bold]}>Total Tax Amount:</Text>
+                <Text style={styles.summaryValue}>₹{(ticket.finalGstAmount || 0).toFixed(2)}</Text>
+            </View>
+             {ticket.roundOff !== undefined && ticket.roundOff !== 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Round Off:</Text>
+                <Text style={styles.summaryValue}>₹{(ticket.roundOff || 0).toFixed(2)}</Text>
+              </View>
+            )}
+            <View style={styles.grandTotalRow}>
+  <Text>{ticket.roundOff !== undefined && ticket.roundOff !== 0 ? "Final Amount:" : "Grand Total:"}</Text>
+                <Text>₹{(displayGrandTotal || 0).toFixed(2)}</Text>            </View>
+        </View>
+      </View>
+
+      <Text style={styles.amountInWords}>
+        Amount in Words: {toWords(Math.round(displayGrandTotal || 0))}
+      </Text>
+
+      {/* Tax Breakdown Table */}
+      <View style={styles.taxBreakdownTable}>
+        <View style={styles.taxBreakdownHeader}>
+          <Text style={[styles.taxBreakdownCell, styles.taxColDescription]}>Description (GST @)</Text>
+          <Text style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}>Taxable Value (₹)</Text>
+          {ticket.isBillingStateSameAsCompany ? (
+            <>
+              <Text style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}>CGST Rate</Text>
+              <Text style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}>CGST Amt (₹)</Text>
+              <Text style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}>SGST Rate</Text>
+              <Text style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}>SGST Amt (₹)</Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}>IGST Rate</Text>
+              <Text style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}>IGST Amt (₹)</Text>
+            </>
+          )}
+          <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>Total Tax (₹)</Text>
+        </View>
+        {(ticket.gstBreakdown || []).map((group, index) => (
+          <View style={styles.taxBreakdownRow} key={`tax_group_${index}`}>
+            <Text style={[styles.taxBreakdownCell, styles.taxColDescription]}>{`Goods @ ${group.itemGstRate.toFixed(2)}%`}</Text>
+            <Text style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}>{(group.taxableAmount || 0).toFixed(2)}</Text>
+            {ticket.isBillingStateSameAsCompany ? (
+              <>
+                <Text style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}>{`${(group.cgstRate || 0).toFixed(2)}%`}</Text>
+                <Text style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}>{(group.cgstAmount || 0).toFixed(2)}</Text>
+                <Text style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}>{`${(group.sgstRate || 0).toFixed(2)}%`}</Text>
+                <Text style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}>{(group.sgstAmount || 0).toFixed(2)}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}>{`${(group.igstRate || 0).toFixed(2)}%`}</Text>
+                <Text style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}>{(group.igstAmount || 0).toFixed(2)}</Text>
+              </>
+            )}
+            <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>{((group.cgstAmount || 0) + (group.sgstAmount || 0) + (group.igstAmount || 0)).toFixed(2)}</Text>
           </View>
+        ))}
+        {/* Total Row for Tax Breakdown */}
+        <View style={[styles.taxBreakdownRow, styles.bold, {backgroundColor: "#f0f0f0"}]}>
+            <Text style={[styles.taxBreakdownCell, styles.taxColDescription]}>Total</Text>
+            <Text style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}>{(ticket.totalAmount || 0).toFixed(2)}</Text>
+            {ticket.isBillingStateSameAsCompany ? (
+                <>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}></Text>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}>{(ticket.totalCgstAmount || 0).toFixed(2)}</Text>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}></Text>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}>{(ticket.totalSgstAmount || 0).toFixed(2)}</Text>
+                </>
+            ) : (
+                <>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}></Text>
+                    <Text style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}>{(ticket.totalIgstAmount || 0).toFixed(2)}</Text>
+                </>
+            )}
+            <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>{(ticket.finalGstAmount || 0).toFixed(2)}</Text>
         </View>
+      </View>
 
-        {/* Amount in Words */}
-        <Text style={styles.amountInWords}>
-          Rupees {toWords(invoiceData.tax.grandTotal)}
-        </Text>
+      <View style={styles.termsConditions}>
+        <Text style={styles.bold}>Terms & Conditions:</Text>
+        {(ticket.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.").split('\n').map((term, i) => (
+          <Text key={i}>- {term}</Text>
+        ))}
+      </View>
 
-        {/* Bank Details */}
-        <View style={styles.bankDetails}>
-          <Text style={styles.bold}>
-            Bank Details : {invoiceData.bankDetails.bankName}{"\n"}
-            Bank Account No:-{invoiceData.bankDetails.accountNo}, IFSC CODE No.{invoiceData.bankDetails.ifsc}
-          </Text>
+      <View style={styles.bankDetails}>
+        <Text style={styles.bold}>Bank Details:</Text>
+        <Text>Bank: ICICI Bank</Text>
+        <Text>Account No.: 628906029990</Text>
+        <Text>IFSC Code: ICIC0006284</Text>
+        <Text>Branch: Sector 62, Noida</Text>
+      </View>
+
+      <View style={styles.footer}>
+        {/* <Text>This is a computer-generated Performa Invoice.</Text> */}
+        <View style={styles.authSignatory}>
+          <Text>For E-KORS PRIVATE LIMITED</Text>
+          <View style={{height: 30}} /> {/* Spacer for signature */}
+          <Text>Authorized Signatory</Text>
         </View>
-
-        {/* Signature */}
-        <View style={styles.signature}>
-          <Text>for {invoiceData.company.name}</Text>
-          <Text>Authorised Signatory</Text>
-        </View>
-      </Page>
-    </Document>
+      </View>
+    </Page>
+  </Document>
   );
 };
-
 export default PIPDF;

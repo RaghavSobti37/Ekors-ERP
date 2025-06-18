@@ -22,23 +22,37 @@ exports.searchClients = async (req, res) => {
 
     let finalQuery = {};
 
-    if (userRole === 'user') {
+// Define the filter for clients created by the current user.
+    // Based on the current model, 'user' field indicates the creator.
+    // If "assigned to" is a separate concept, the Client model and this filter would need an update.
+    const ownerFilter = { user: userId };
+
+    if (userRole === 'super-admin') {
+      finalQuery = searchConditions; // Super-admins see all matching clients
+    } else if (userRole === 'admin') {
+      // Admins are now also restricted to clients they created.
+      // If admins should see all clients, this should be: finalQuery = searchConditions;
       finalQuery = {
         $and: [
           searchConditions,
-          { user: userId } // Filter by the user who created the client
+                  ownerFilter
+
         ]
       };
-    } else if (userRole === 'admin' || userRole === 'super-admin') {
-      finalQuery = searchConditions; // Admins/Super-admins see all matching clients
-    } else {
+   } else if (userRole === 'user') {
+      finalQuery = {
+        $and: [
+          searchConditions,
+          ownerFilter // 'user' role sees only their created clients
+        ]
+      };    } else {
       // Fallback for any other roles (if any) - restrict to their own clients
       // Or, you could return res.status(403).json({ message: 'Access denied.' });
       logger.warn('client_search', `User with unhandled role '${userRole}' attempted to search clients.`, { userId });
       finalQuery = {
         $and: [
           searchConditions,
-          { user: userId }
+                    ownerFilter
         ]
       };
     }

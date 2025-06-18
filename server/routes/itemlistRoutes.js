@@ -27,4 +27,7 @@ router.post('/', auth, itemController.createItem); // Create item (Protected)
 router.put('/:id', auth, itemController.updateItem); // Update item (Protected)
 router.delete('/:id', auth, itemController.deleteItem); // Delete item (Protected)
 
+router.patch('/:id/approve', auth, itemController.approveItem);
+router.get('/:id/ticket-usage', auth, itemController.getItemTicketUsageHistory);
+
 module.exports = router;

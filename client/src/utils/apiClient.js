@@ -1,76 +1,129 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL; // User sets this to https://erp-backend-n2mu.onrender.com in Vercel
+import { getAuthToken } from "./authUtils";
 
-const apiClient = async (endpoint, options = {}) => {
-  const { body, method = 'GET', headers = {}, isFormData, rawResponse, ...customConfig } = options;
+// Set API base URL from environment variables
+const API_BASE_URL =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.VITE_API_BASE_URL) ||
+  (typeof process !== "undefined" &&
+    process.env &&
+    process.env.REACT_APP_API_BASE_URL) ||
+  (typeof process !== "undefined" &&
+    process.env &&
+    process.env.NEXT_PUBLIC_API_BASE_URL) ||
+  "http://localhost:3000/api"; // Fallback
 
-  const token = localStorage.getItem("erp-user");
+if (
+  API_BASE_URL === "http://localhost:3000/api" &&
+  ((typeof import.meta !== "undefined" && !import.meta.env?.VITE_API_BASE_URL) &&
+    (typeof process !== "undefined" && !process.env?.REACT_APP_API_BASE_URL) &&
+    (typeof process !== "undefined" && !process.env?.NEXT_PUBLIC_API_BASE_URL))
+) {
+  console.warn(
+    "apiClient.js: API_BASE_URL is using fallback 'http://localhost:3000/api'. " +
+      "Ensure VITE_API_BASE_URL, REACT_APP_API_BASE_URL, or NEXT_PUBLIC_API_BASE_URL is set in your .env file."
+  );
+}
+
+const apiClient = async (
+  endpoint,
+  {
+    body,
+    method = "GET",
+    headers: customHeaders = {},
+    responseType = "json",
+    params,
+    rawResponse = false, // ADDED: Optional flag to return raw response
+    ...customConfig
+  } = {}
+) => {
+  const token = getAuthToken();
+  const defaultHeaders = {};
+
+  if (!(body instanceof FormData)) {
+    defaultHeaders["Content-Type"] = "application/json";
+  }
+
+  if (responseType === "json" && !customHeaders["Accept"]) {
+    defaultHeaders["Accept"] = "application/json";
+  }
+
+  if (token) {
+    defaultHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
   const config = {
-    method: method,
-    ...customConfig, // Spread other custom fetch options
+    method,
+    ...customConfig,
     headers: {
-      ...headers, // Spread custom headers
+      ...defaultHeaders,
+      ...customHeaders,
     },
   };
 
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`;
+  if (
+    body &&
+    !(body instanceof FormData) &&
+    config.headers["Content-Type"] === "application/json"
+  ) {
+    config.body = JSON.stringify(body);
+  } else if (body) {
+    config.body = body;
   }
 
-  // BASE_URL already contains /api, and endpoint is the path relative to that.
-  const requestUrl = `${BASE_URL}${endpoint}`;
+  let url = `${API_BASE_URL}/${
+    endpoint.startsWith("/") ? endpoint.substring(1) : endpoint
+  }`;
 
-  // Handle body content: JSON or FormData
-  if (options.formData) { // If formData is explicitly passed in options (e.g. for file uploads in Tickets.jsx)
-    config.body = options.formData;
-    // Content-Type for FormData is set by the browser
-  } else if (body) { // If a 'body' property is passed in options
-    if (isFormData || body instanceof FormData) { // Check isFormData flag or if body is FormData instance (e.g. Items.jsx Excel upload)
-      config.body = body;
-      // Content-Type for FormData is set by the browser
-    } else { // Assume JSON
-      config.body = JSON.stringify(body);
-      config.headers['Content-Type'] = 'application/json';
+  if (params) {
+    const queryParams = new URLSearchParams(params).toString();
+    if (queryParams) url += `?${queryParams}`;
+  }
+
+  try {
+    const response = await fetch(url, config);
+
+    if (response.status === 204 || (method === "DELETE" && response.ok)) {
+      return null; // No Content
     }
-  }
 
-  // Make the request
-  const response = await fetch(requestUrl, config);
+    let responseData;
 
-  // Handle raw response if requested (e.g., for file downloads/previews)
-  if (rawResponse) {
+    if (responseType === "blob") {
+      responseData = await response.blob();
+    } else if (responseType === "text") {
+      responseData = await response.text();
+    } else {
+      responseData = await response.json().catch((err) => {
+        console.error(
+          `[apiClient] Failed to parse JSON for ${method} ${url}. Status: ${response.status}`,
+          err
+        );
+        if (response.ok) {
+          throw new Error("Expected JSON response but got something else.");
+        }
+        return { message: `Invalid response. Status: ${response.status}` };
+      });
+    }
+
     if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { message: response.statusText || errorText };
-      }
-      const error = new Error(errorData.message || `API request failed for ${requestUrl}`);
+      const error = new Error(responseData.message || `Request failed with status ${response.status}`);
       error.status = response.status;
-      error.data = errorData;
-      console.error(`[apiClient] Error for ${method} ${requestUrl}: ${error.status}`, error.data);
+      error.data = responseData;
       throw error;
     }
-    return response; // Return the raw Response object
-  }
 
-  // Standard JSON response handling
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-    const error = new Error(errorData.message || `API request failed for ${requestUrl}`);
-    error.status = response.status;
-    error.data = errorData;
-    console.error(`[apiClient] Error for ${method} ${requestUrl}: ${error.status}`, error.data);
+    if (rawResponse) {
+      return { data: responseData, raw: response };
+    }
+
+    return responseData;
+  } catch (error) {
+    if (!error.status) {
+      error.message = `Network error or server unreachable: ${error.message}`;
+    }
     throw error;
   }
-
-  // Handle successful responses that might not have a body (e.g., 204 No Content)
-  if (response.status === 204 || (method === 'DELETE' && response.ok)) {
-    return; 
-  }
-  
-  return response.json(); // Parse and return JSON data
 };
 
 export default apiClient;
