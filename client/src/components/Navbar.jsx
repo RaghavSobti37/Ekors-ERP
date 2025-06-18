@@ -29,8 +29,8 @@ import {
   Row,
   Col,
   // Image, // Image component might no longer be needed if only icons are used. Let's check usage.
-} from "react-bootstrap"; // For Edit Profile Modal
-import ReusableModal from "./ReusableModal.jsx"; // Import ReusableModal
+} from "react-bootstrap"; 
+// ReusableModal is no longer used here for profile edit
 import { showToast, handleApiError } from "../utils/helpers"; // For toasts and error handling
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
@@ -39,21 +39,22 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 export default function Navbar({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  // const [showEditModal, setShowEditModal] = useState(false); // Modal state removed
   const [showNewItemModal, setShowNewItemModal] = useState(false);
   const navigate = useNavigate();
   const [restockAlertCount, setRestockAlertCount] = useState(0);
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
   const { user, logout, updateUserContext } = useAuth(); // Added updateUserContext
-  const [profileFormData, setProfileFormData] = useState({
-    firstname: "", // Added firstname
-    lastname: "",  // Added lastname
-    phone: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [profileError, setProfileError] = useState("");
-  const [profileLoading, setProfileLoading] = useState(false);
+  // Profile form state and handlers are moved to EditProfilePage.jsx
+  // const [profileFormData, setProfileFormData] = useState({
+  //   firstname: "", 
+  //   lastname: "",  
+  //   phone: "",
+  //   newPassword: "",
+  //   confirmPassword: "",
+  // });
+  // const [profileError, setProfileError] = useState("");
+  // const [profileLoading, setProfileLoading] = useState(false);
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
@@ -85,18 +86,19 @@ export default function Navbar({ showPurchaseModal }) {
     return () => clearInterval(intervalId);
   }, [user]); 
 
-  useEffect(() => {
-    if (user) {
-      setProfileFormData((prev) => ({
-        ...prev,
-        firstname: user.firstname || "",
-        lastname: user.lastname || "",
-        phone: user.phone || "",
-      }));
-    } else {
-      setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
-    }
-  }, [user]);
+  // useEffect for setting profileFormData is moved to EditProfilePage.jsx
+  // useEffect(() => {
+  //   if (user) {
+  //     setProfileFormData((prev) => ({
+  //       ...prev,
+  //       firstname: user.firstname || "",
+  //       lastname: user.lastname || "",
+  //       phone: user.phone || "",
+  //     }));
+  //   } else {
+  //     setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
+  //   }
+  // }, [user]);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -140,55 +142,8 @@ export default function Navbar({ showPurchaseModal }) {
     navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`); // Corrected path
   };
 
-  const handleProfileInputChange = (e) => {
-    setProfileFormData({ ...profileFormData, [e.target.name]: e.target.value });
-  };
+  // handleProfileInputChange and handleProfileSave are moved to EditProfilePage.jsx
 
-  const handleProfileSave = async () => {
-    setProfileError("");
-    if (
-      profileFormData.newPassword &&
-      profileFormData.newPassword !== profileFormData.confirmPassword
-    ) {
-      setProfileError("New passwords do not match.");
-      return;
-    }
-    if (profileFormData.newPassword && profileFormData.newPassword.length < 5) {
-      setProfileError("New password must be at least 5 characters long.");
-      return;
-    }
-
-    setProfileLoading(true);
-    try {
-      const payload = {
-        firstname: profileFormData.firstname,
-        lastname: profileFormData.lastname,
-        phone: profileFormData.phone
-      };
-      if (profileFormData.newPassword) {
-        payload.password = profileFormData.newPassword;
-      }
-      const updatedUser = await apiClient("/users/profile", {
-        method: "PATCH",
-        body: payload,
-      });
-      updateUserContext(updatedUser.data); // Assuming API returns { data: userObject }
-      // Update local form state for firstname and lastname as well, as they are now editable
-      setProfileFormData(prev => ({ ...prev, firstname: updatedUser.data.firstname, lastname: updatedUser.data.lastname, phone: updatedUser.data.phone }));
-      showToast("Profile updated successfully!", true);
-      setShowEditModal(false);
-      setProfileFormData({
-        ...profileFormData,
-        newPassword: "",
-        confirmPassword: "",
-      }); // Clear password fields
-    } catch (err) {
-      const errorMsg = handleApiError(err, "Failed to update profile.");
-      setProfileError(errorMsg);
-    } finally {
-      setProfileLoading(false);
-    }
-  };
 
   return (
     <>
@@ -291,7 +246,7 @@ export default function Navbar({ showPurchaseModal }) {
                 title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
                   localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
                   DEFAULT_LOW_QUANTITY_THRESHOLD
-                }): ${lowStockWarningCount} items. Click to view.`}
+               }): ${lowStockWarningCount} items. Click to view.`}
               >
                 <FaExclamationTriangle className="icon-low-stock" />
                 <span className="alert-count">{restockAlertCount}</span>
@@ -346,7 +301,7 @@ export default function Navbar({ showPurchaseModal }) {
               </div>
               <button
                 className="edit-btn"
-                onClick={() => setShowEditModal(true)}
+                onClick={() => navigate("/profile/edit")} // Navigate to edit page
               >
                 Edit
               </button>
@@ -359,127 +314,7 @@ export default function Navbar({ showPurchaseModal }) {
       </nav>
 
 
-      {/* Edit Profile Modal */}
-      <ReusableModal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        title="Edit Profile"
-        footerContent={
-          <>
-            <BsButton
-              variant="secondary"
-              onClick={() => setShowEditModal(false)}
-              disabled={profileLoading}
-            >
-              Cancel
-            </BsButton>
-            <BsButton
-              variant="primary"
-              onClick={handleProfileSave}
-              disabled={profileLoading}
-            >
-              {profileLoading ? "Saving..." : "Save Changes"}
-            </BsButton>
-          </>
-        }
-        // size="xl" // Or rely on ReusableModal's default fullScreenModalStyle
-        isLoading={profileLoading}
-      >
-        {profileError && <Alert variant="danger">{profileError}</Alert>}
-
-        <Form>
-          <Row>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>First Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="firstname" // Add name attribute
-                  value={profileFormData.firstname} // Bind to profileFormData
-                  onChange={handleProfileInputChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Last Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="lastname" // Add name attribute
-                  value={profileFormData.lastname} // Bind to profileFormData
-                  onChange={handleProfileInputChange}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
-                <Form.Control
-                  type="email"
-                  value={user?.email || ""}
-                  readOnly
-                  disabled
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Role</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={user?.role || ""}
-                  readOnly
-                  disabled
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Phone</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="phone"
-                  value={profileFormData.phone}
-                  onChange={handleProfileInputChange}
-                  placeholder="Enter phone number"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-          <hr />
-          <h5 className="mb-3">Change Password (optional)</h5>
-          <Row>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>New Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  name="newPassword"
-                  value={profileFormData.newPassword}
-                  onChange={handleProfileInputChange}
-                  placeholder="Enter new password"
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Confirm New Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  name="confirmPassword"
-                  value={profileFormData.confirmPassword}
-                  onChange={handleProfileInputChange}
-                  placeholder="Confirm new password"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-        </Form>
-      </ReusableModal>
+      {/* Edit Profile Modal has been removed and converted to EditProfilePage.jsx */}
     </>
   );
 }

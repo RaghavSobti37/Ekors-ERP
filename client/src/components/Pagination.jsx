@@ -60,6 +60,7 @@ const Pagination = ({
   onPageChange,
   onItemsPerPageChange,
   itemsPerPageOptions = [5, 10, 20, 50, 100],
+  reportButton, // New prop for the report button
   siblingCount = 1, // Added siblingCount as a prop
 }) => {
   const totalPages = totalItems > 0 ? Math.ceil(totalItems / itemsPerPage) : 0;
@@ -72,7 +73,7 @@ const Pagination = ({
   return (
     <div className="pagination-wrapper">
       <div className="pagination-controls">
-        <div className="pagination-left-slot">
+        <div className="pagination-left-slot d-flex align-items-center" style={{gap: "0.75rem"}}> {/* Made it a flex container */}
           {itemsPerPageOptions && itemsPerPageOptions.length > 0 && totalItems > 0 && (
             <div className="items-per-page-selector">
               <select
@@ -92,6 +93,9 @@ const Pagination = ({
                 ))}
               </select>
             </div>
+          )}
+          {reportButton && (
+            <div className="report-button-container">{reportButton}</div>
           )}
         </div>
 

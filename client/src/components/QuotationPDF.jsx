@@ -6,7 +6,12 @@ import {
   View,
   StyleSheet,
   Image,
+  PDFDownloadLink,
 } from "@react-pdf/renderer";
+import { generateQuotationDocx } from "../utils/generateQuotationDocx";
+import * as docx from "docx";
+import { saveAs } from "file-saver";
+import ActionButtons from "./ActionButtons"; // Import ActionButtons
 
 // Styles
 const styles = StyleSheet.create({
@@ -115,12 +120,60 @@ const styles = StyleSheet.create({
     marginLeft: 10, // Indent subtext
     // paddingVertical: 1, // Small padding
   },
+    headerSection: {
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  gstinHeader: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  companyNameHeader: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
 });
+
+export const QuotationActions = ({ quotation }) => {
+  const handleDownloadWord = async () => {
+    try {
+      const doc = generateQuotationDocx(quotation);
+      const blob = await docx.Packer.toBlob(doc);
+      saveAs(blob, `quotation_${quotation.referenceNumber}.docx`);
+    } catch (error) {
+      console.error("Error generating Word document:", error);
+      alert("Failed to generate Word document. Please try again.");
+    }
+  };
+
+    // Props for the PDF button in ActionButtons
+  const pdfButtonProps = {
+    document: <QuotationPDF quotation={quotation} />,
+    fileName: `quotation_${quotation.referenceNumber}.pdf`,
+  };
+
+  return (
+    <ActionButtons
+      item={quotation} // Pass the quotation item
+      pdfProps={pdfButtonProps}
+      onDownloadWord={handleDownloadWord}
+    />
+  );
+};
 
 // Component
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
+         <View style={styles.headerSection}>
+              <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
+              <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+              <Text style={styles.companyAddressHeader}>
+                PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
+              </Text>
+            </View>
       <View style={styles.document}>
         <View style={styles.pageContent}>
           <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
@@ -138,7 +191,9 @@ const QuotationPDF = ({ quotation }) => (
           <View style={styles.section}>
             <Text>To,</Text>
             <Text>{quotation.client.companyName}</Text>
-            <Text>Site: {quotation.client.siteLocation}</Text>
+            {/* <Text>Site: {quotation.client.siteLocation}</Text> */}
+            <Text>GSTIN: {quotation.client.gstNumber || "N/A"}</Text>
+            <Text>Phone: {quotation.client.phone || "N/A"}</Text>
           </View>
 
           <Text style={styles.heading}>
@@ -171,13 +226,14 @@ const QuotationPDF = ({ quotation }) => (
             {quotation.goods.map((item, index) => (
               <View style={styles.tableRow} key={index}>
                 <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
-                 <View style={[styles.tableCol, styles.col2]}>
+                <View style={[styles.tableCol, styles.col2]}>
                   <Text>{item.description}</Text>
-                  {item.subtexts && item.subtexts.map((sub, subIndex) => (
-                    <Text key={subIndex} style={styles.subtextItem}>
-                      - {sub}
-                    </Text>
-                  ))}
+                  {item.subtexts &&
+                    item.subtexts.map((sub, subIndex) => (
+                      <Text key={subIndex} style={styles.subtextItem}>
+                        - {sub}
+                      </Text>
+                    ))}
                 </View>
                 <Text style={[styles.tableCol, styles.col3]}>{item.unit}</Text>
                 <Text style={[styles.tableCol, styles.col4]}>

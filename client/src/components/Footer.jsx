@@ -10,7 +10,7 @@ const HelpFooter = () => {
   return (
     <div className="help-footer">
       <div className="help-content">
-        <span className="help-text">Help</span>
+        <span className="help-text">Report A Bug</span>
         <button 
           className="help-icon" 
           onClick={openGoogleSheet}

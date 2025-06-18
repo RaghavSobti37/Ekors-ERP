@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // Icons for password visibility
-import { useAuth } from "../context/AuthContext"; // Authentication context
-import "../css/Style.css"; // General styles
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import "../css/Style.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,180 +14,161 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("[DEBUG Client Login.jsx] Login attempt with:", { email });
     setError("");
 
     try {
       await auth.login({ email, password });
-      console.log("[DEBUG Client Login.jsx] Auth context login successful, navigating to /quotations");
       navigate("/quotations");
-
     } catch (err) {
-      console.error("[ERROR Client Login.jsx] Login failed:", err.data?.error || err.message || "An unknown error occurred");
-      setError(err.data?.error || err.data?.message || err.message || "Invalid email or password. Please try again.");
+      setError(err.data?.error || err.data?.message || err.message || "Invalid credentials");
     }
   };
 
   return (
     <div className="container-fluid vh-100 p-0">
       <div className="row g-0 h-100">
-        {/* Left Description Section - Updated with better styling */}
-        <div className="col-md-6 col-lg-7 d-none d-md-flex flex-column justify-content-center align-items-center p-5"
+        {/* Left Description Section */}
+        <div
+          className="col-md-6 col-lg-7 d-none d-md-flex flex-column justify-content-center align-items-center p-5"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            borderRight: "3px solid rgba(255, 255, 255, 0.3)",
-            position: "relative"
-          }}>
-          {/* Glow effect on the border */}
-          <div style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            height: "100%",
-            width: "3px",
-            background: "linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.2))",
-            boxShadow: "0 0 10px rgba(255,255,255,0.5)"
-          }}></div>
-
-          <div className="text-center" style={{ maxWidth: '500px' }}>
+            background: "var(--primary-color)",
+            color: "var(--light-color)",
+          }}
+        >
+          <div className="text-center w-100" style={{ maxWidth: "600px" }}>
             <img
               src="/logo.png"
-              alt="Application Logo"
+              alt="Logo"
               style={{
-                width: '120px',
-                marginBottom: '30px',
-                filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                width: "100px",
+                marginBottom: "2rem",
+                filter: "brightness(0) invert(1)",
               }}
             />
-            <h1 className="mb-3 display-5 fw-bold" style={{ textShadow: '0 2px 4px #7B1E1E' }}>E-KORS Platform</h1>
-            <ul style={{
-              listStyle: 'none',
-              paddingLeft: '0',
-              margin: '0',
-              color: 'white',
-              fontSize: '1rem',
-              lineHeight: '1.6'
-            }}>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Streamline your workflow.</span>
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Create Quotation, Ticket and Challan.</span>
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Track each user.</span>
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Manage your data efficiently.</span>
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                marginBottom: '0.5rem'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Collaborate seamlessly with our comprehensive suite of tools.</span>
-              </li>
-              <li style={{
-                display: 'flex',
-                alignItems: 'flex-start'
-              }}>
-                <span style={{ marginRight: '8px' }}>•</span>
-                <span>Log in to unlock your productivity.</span>
-              </li>
-            </ul>
-            <hr className="my-4" style={{
-              borderColor: 'rgba(255,255,255,0.3)',
-              boxShadow: '0 1px 1px rgba(0,0,0,0.1)'
-            }} />
+            <h1 className="mb-4 fw-bold">E-KORS Platform</h1>
+
+            {/* 2x3 Grid */}
+            <div
+              className="feature-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "1rem",
+              }}
+            >
+              {[
+                "Streamline your workflow",
+                "Create Quotation, Ticket and Challan",
+                "Track each user",
+                "Manage your data efficiently",
+                "Collaborate seamlessly",
+                "Unlock productivity with secure login",
+              ].map((feature, index) => (
+                <div
+                  key={index}
+                  className="feature-card"
+                  style={{
+                    background: "var(--card-bg)",
+                    borderRadius: "var(--border-radius-md)",
+                    padding: "1rem",
+                    border: `1px solid var(--card-border)`,
+                    boxShadow: "var(--card-shadow)",
+                    transition: "var(--transition-normal)",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "var(--card-hover-bg)")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "var(--card-bg)")
+                  }
+                >
+                  {feature}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right Login Form Section */}
-        <div className="col-md-6 col-lg-5 d-flex justify-content-center align-items-center bg-light">
-          <div className="card p-4 p-sm-5 shadow-lg" style={{
-            width: "100%",
-            maxWidth: "450px",
-            border: "none",
-            borderRadius: "10px"
-          }}>
-            <h2 className="text-center mb-4" style={{ color: "#7B1E1E" }}>Login</h2>
+        {/* Right Login Section */}
+        <div className="col-md-6 col-lg-5 d-flex align-items-center justify-content-center bg-white">
+          <div
+            className="card p-4 p-md-5 shadow"
+            style={{
+              width: "100%",
+              maxWidth: "450px",
+              borderRadius: "var(--border-radius-lg)",
+              border: "none",
+            }}
+          >
+            <h2
+              className="mb-4 text-center"
+              style={{ color: "var(--primary-color)" }}
+            >
+              Login
+            </h2>
             {error && <div className="alert alert-danger">{error}</div>}
+
             <form onSubmit={handleSubmit}>
-              <div className="form-outline mb-3">
-                <label htmlFor="emailInput" className="form-label">Email address</label>
+              <div className="form-group mb-3">
+                <label htmlFor="emailInput">Email address</label>
                 <input
                   type="email"
                   id="emailInput"
+                  className="form-control"
                   placeholder="Enter your email"
-                  className="form-control form-control-lg"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  style={{ borderRadius: "8px" }}
+                  style={{ borderRadius: "var(--border-radius-md)" }}
                 />
               </div>
 
-              <div className="form-outline mb-4 position-relative">
-                <label htmlFor="passwordInput" className="form-label">Password</label>
+              <div className="form-group mb-4 position-relative">
+                <label htmlFor="passwordInput">Password</label>
                 <input
                   type={showPassword ? "text" : "password"}
                   id="passwordInput"
+                  className="form-control"
                   placeholder="Enter your password"
-                  className="form-control form-control-lg"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  style={{ borderRadius: "8px" }}
+                  style={{ borderRadius: "var(--border-radius-md)" }}
                 />
                 <button
                   type="button"
+                  onClick={() => setShowPassword(!showPassword)}
                   className="btn position-absolute"
                   style={{
+                    top: "60%",
                     right: "10px",
-                    top: "70%",
                     transform: "translateY(-50%)",
-                    color: "#7B1E1E"
+                    background: "none",
+                    border: "none",
+                    color: "var(--secondary-color)",
                   }}
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
 
               <button
                 type="submit"
-                className="btn btn-lg w-100"
+                className="btn w-100"
                 style={{
-                  backgroundColor: "#7B1E1E",
-                  color: "white",
-                  borderRadius: "8px",
-                  border: "none",
-                  padding: "12px",
-                  fontWeight: "500",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
+                  backgroundColor: "var(--primary-color)",
+                  color: "#fff",
+                  padding: "0.75rem",
+                  fontWeight: 600,
+                  borderRadius: "var(--border-radius-md)",
+                  transition: "var(--transition-normal)",
                 }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.backgroundColor = "var(--primary-hover)")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.backgroundColor = "var(--primary-color)")
+                }
               >
                 Sign In
               </button>
