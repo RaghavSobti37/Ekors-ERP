@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import QuotationPDF from "./components/QuotationPDF";
 import Footer from "./components/Footer";
 import PIPDF from "./components/PIPDF";
+import QuotationModalPage from "./components/QuotationModalPage.jsx";
 import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
@@ -11,7 +12,6 @@ import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
 import Pagination from "./components/Pagination.jsx";
-// import AddNewItem from "./pages/AddNewItem.jsx";
 import PurchaseHistory from "./pages/PurchaseHistory.jsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -45,6 +45,7 @@ function App() {
           <Route path="/pipdf" element={<PIPDF />} />
           <Route path="/pagination" element={<Pagination />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/quotationmodalpage" element={<QuotationModalPage />} />
 
           {/* Protected Routes */}
           <Route

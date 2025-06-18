@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "react-bootstrap"; // Added Spinner, OverlayTrigger, Tooltip
 import Navbar from "../components/Navbar.jsx"; // Navigation bar component
+import QuotationModalPage from "../components/QuotationModalPage.jsx";
 import { useAuth } from "../context/AuthContext"; // Authentication context
 import { useNavigate } from "react-router-dom";
 import ClientSearchComponent from "../components/ClientSearchComponent.jsx"; // Component for searching clients

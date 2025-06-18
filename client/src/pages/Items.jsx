@@ -1122,7 +1122,7 @@ export default function Items() {
                     cursor: anyLoading ? "not-allowed" : "pointer",
                   }}
                 >
-                  Max Disc. %
+                  Disc. %
                   {sortConfig.key === "maxDiscountPercentage" &&
                     (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
@@ -1424,7 +1424,7 @@ export default function Items() {
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
-                    <label>Name*</label>
+                    <label>Name <span className="text-danger">*</span></label>
                     <input
                       className="form-control mb-2"
                       placeholder="Name"
@@ -1450,7 +1450,7 @@ export default function Items() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Selling Price*</label>
+                    <label>Selling Price <span className="text-danger">*</span></label>
                     <input
                       type="number"
                       step="0.01"
