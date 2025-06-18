@@ -1,5 +1,4 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/PIPreviewPage.jsx
-import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PDFViewer } from '@react-pdf/renderer';
 import { Alert, Button } from 'react-bootstrap';

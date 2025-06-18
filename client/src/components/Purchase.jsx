@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useCallback } from 'react'; // Removed useEffect as allItems is unused
+import apiClient from '../utils/apiClient'; // Use consistent API client
+import { showToast, handleApiError } from '../utils/helpers'; // For notifications and error handling
 
-export default function PurchaseTracking() {
-  const [purchaseData, setPurchaseData] = useState({
+const PurchaseTracking = () => {
+  const initialPurchaseData = {
     companyName: '',
     gstNumber: '',
     address: '',
@@ -10,51 +11,40 @@ export default function PurchaseTracking() {
     invoiceNumber: '',
     date: '',
     items: [{ name: '', description: '', price: '', quantity: '' }],
-  });
-
-  const [allItems, setAllItems] = useState([]);
-
-  useEffect(() => {
-    axios.get('http://localhost:3000/api/items').then((res) => {
-      setAllItems(res.data);
-    });
-  }, []);
-
-  const handlePurchaseChange = (e) => {
-    setPurchaseData({ ...purchaseData, [e.target.name]: e.target.value });
   };
+  const [purchaseData, setPurchaseData] = useState(initialPurchaseData);
 
-  const handleItemChange = (index, field, value) => {
+  // allItems state and its useEffect are removed as they were unused.
+  // If item selection from a list is needed, ItemSearchComponent should be integrated.
+
+  const handlePurchaseChange = useCallback((e) => {
+    setPurchaseData({ ...purchaseData, [e.target.name]: e.target.value });
+  }, [purchaseData]);
+
+  const handleItemChange = useCallback((index, field, value) => {
     const updatedItems = [...purchaseData.items];
     updatedItems[index][field] = value;
     setPurchaseData({ ...purchaseData, items: updatedItems });
-  };
+  }, [purchaseData]);
 
-  const addNewItemRow = () => {
+  const addNewItemRow = useCallback(() => {
     setPurchaseData({
       ...purchaseData,
       items: [...purchaseData.items, { name: '', description: '', price: '', quantity: '' }],
     });
-  };
+  }, [purchaseData]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
-      await axios.post('http://localhost:3000/api/purchases', purchaseData);
-      alert('Purchase added successfully!');
-      setPurchaseData({
-        companyName: '',
-        gstNumber: '',
-        address: '',
-        state: '',
-        invoiceNumber: '',
-        date: '',
-        items: [{ name: '', description: '', price: '', quantity: '' }],
-      });
+      await apiClient('/purchases', { method: 'POST', body: purchaseData }); // Use apiClient
+      showToast('Purchase added successfully!', true);
+      setPurchaseData(initialPurchaseData); // Reset form
     } catch (err) {
-      console.error(err);
-      alert('Failed to add purchase');
+      const errorMessage = handleApiError(err, "Failed to add purchase");
+      showToast(errorMessage, false);
+      // setError(errorMessage); // If you have a local error state for the form
     }
-  };
+  }, [purchaseData, initialPurchaseData]);
 
   return (
     <div className="container mt-4">
@@ -90,4 +80,6 @@ export default function PurchaseTracking() {
       <button className="btn btn-success" onClick={handleSubmit}>Submit Purchase</button>
     </div>
   );
-}
+};
+
+export default React.memo(PurchaseTracking);

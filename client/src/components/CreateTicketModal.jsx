@@ -1,18 +1,13 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/components/CreateTicketModal.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Button, Form, Table, Spinner, Alert } from "react-bootstrap"; // Modal removed, Alert added
+import { Button, Form, Table, Spinner, Alert } from "react-bootstrap";
 import axios from "axios"; // Keep axios if used for pincode or other direct calls
-import ReusablePageStructure from "./ReusablePageStructure.jsx"; // Corrected import for page structure
-import PIPDF from "./PIPDF.jsx"; // For PI Preview
-import { PDFViewer } from "@react-pdf/renderer"; // For PI Preview
-import ActionButtons from "./ActionButtons.jsx"; // Import ActionButtons
-import { useNavigate, useLocation } from "react-router-dom"; // For navigation and state
-import apiClient from "../utils/apiClient.js"; // For API calls
-import { useAuth } from "../context/AuthContext.jsx"; // For user context
+import ReusablePageStructure from "./ReusablePageStructure.jsx";
+import ActionButtons from "./ActionButtons.jsx";
+import { useNavigate, useLocation } from "react-router-dom";
+import apiClient from "../utils/apiClient.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import { handleApiError, showToast } from "../utils/helpers.js";
-
-// This is now a Page component, e.g., rendered at /tickets/create-from-quotation
-// Props like 'show', 'onHide' are removed. Data is passed via route state.
 const CreateTicketPage = () => {
   const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
@@ -22,7 +17,6 @@ const CreateTicketPage = () => {
   const location = useLocation();
   const { user: authUser } = useAuth();
 
-  // Initial ticket data would come from route state (passed from Quotations page when creating ticket from quotation)
   const initialTicketDataFromState = location.state?.ticketDataForForm || {
     billingAddress: ["", "", "", "", ""], // Ensure array structure
     shippingAddressObj: {
@@ -33,16 +27,13 @@ const CreateTicketPage = () => {
       pincode: "",
     },
     goods: [],
-    // Add other necessary default fields if not always provided by location.state
   };
   const [ticketData, setTicketData] = useState(initialTicketDataFromState);
-  const [isLoading, setIsLoading] = useState(false); // Page-level loading state
+  const [isLoading, setIsLoading] = useState(false);
   const [roundedGrandTotal, setRoundedGrandTotal] = useState(null);
   const [roundOffAmount, setRoundOffAmount] = useState(0);
-  const [error, setError] = useState(null); // Page-level error state
+  const [error, setError] = useState(null);
   const sourceQuotationData = location.state?.sourceQuotationData || null;
-
-  // The handleTicketSubmit logic would be part of this page or passed if it's generic and reused
   const handleTicketSubmit = async (event) => {
     event.preventDefault();
     setError(null);
@@ -50,12 +41,11 @@ const CreateTicketPage = () => {
 
     // Prepare newTicketDetails part of the payload
     const newTicketDetailsPayload = {
-      ...ticketData, // Contains most ticket fields like companyName, quotationNumber, goods, etc.
-      billingAddress: ticketData.billingAddress, // Already an array
+      ...ticketData,
+      billingAddress: ticketData.billingAddress,
       shippingAddress: ticketData.shippingSameAsBilling
-        ? [...ticketData.billingAddress] // Copy if same
+        ? [...ticketData.billingAddress]
         : [
-            // Construct from shippingAddressObj if different
             ticketData.shippingAddressObj?.address1 || "",
             ticketData.shippingAddressObj?.address2 || "",
             ticketData.shippingAddressObj?.state || "",
@@ -72,18 +62,15 @@ const CreateTicketPage = () => {
       validityDate: ticketData.validityDate
         ? new Date(ticketData.validityDate).toISOString()
         : null,
-      roundOff: roundOffAmount, // Send roundOff amount to backend if you decide to store it
+      roundOff: roundOffAmount,
       finalRoundedAmount:
         roundedGrandTotal !== null ? roundedGrandTotal : ticketData.grandTotal,
     };
-    delete newTicketDetailsPayload.shippingAddressObj; // Not part of ticket schema, was for form handling
-    // sourceQuotationId was previously here, but backend expects sourceQuotationData object
-
+    delete newTicketDetailsPayload.shippingAddressObj;
     const finalPayload = {
       newTicketDetails: newTicketDetailsPayload,
       sourceQuotationData: sourceQuotationData
         ? {
-            // Pass the whole sourceQuotationData object if available
             _id: sourceQuotationData._id,
             referenceNumber: sourceQuotationData.referenceNumber,
             billingAddress: sourceQuotationData.billingAddress, // Object form
@@ -104,7 +91,6 @@ const CreateTicketPage = () => {
         } created successfully!`,
         true
       );
-      // Optionally, log this event
       navigate("/tickets"); // Navigate to tickets list or details page
     } catch (err) {
       const errorMsg = handleApiError(
@@ -147,6 +133,7 @@ const CreateTicketPage = () => {
     const gstGroups = {};
 
     (ticketData.goods || []).forEach((item) => {
+      // Ensure goods is an array
       const itemGstRate = parseFloat(item.gstRate);
       if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
         // Consider 0% GST items for taxable amount if needed, but not for tax calculation
@@ -165,7 +152,7 @@ const CreateTicketPage = () => {
     for (const rateKey in gstGroups) {
       const group = gstGroups[rateKey];
       const itemGstRate = parseFloat(rateKey);
-      if (isNaN(itemGstRate) || itemGstRate < 0) continue; // Skip invalid rates
+      if (isNaN(itemGstRate) || itemGstRate < 0) continue;
 
       const taxableAmount = group.taxableAmount;
       let cgstAmount = 0,
@@ -174,7 +161,6 @@ const CreateTicketPage = () => {
       let cgstRate = 0,
         sgstRate = 0,
         igstRate = 0;
-
       if (itemGstRate > 0) {
         // Only calculate tax for rates > 0
         if (isBillingStateSameAsCompany) {
@@ -218,7 +204,6 @@ const CreateTicketPage = () => {
       grandTotal,
       isBillingStateSameAsCompany,
     }));
-    // Reset rounding when taxes are recalculated
     setRoundedGrandTotal(null);
     setRoundOffAmount(0);
   }, [
@@ -353,7 +338,10 @@ const CreateTicketPage = () => {
     }
     setRoundedGrandTotal(newRoundedTotal);
     setRoundOffAmount(newRoundOffAmount);
-    toast.info(`Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`);
+    showToast(
+      `Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`,
+      true
+    ); // Use showToast helper
   };
 
   const handleSameAsBillingChange = (e) => {
@@ -377,10 +365,6 @@ const CreateTicketPage = () => {
   };
 
   const handlePreviewPI = () => {
-    // Construct the ticket object exactly as PIPDF expects it
-    // This ensures that what PIPDF gets is consistent.
-    // billingAddress is already an array in ticketData.
-    // shippingAddress needs to be constructed from shippingAddressObj if not same as billing.
     const ticketForPreview = {
       ...ticketData, // All fields from ticketData (companyName, quotationNumber, goods, all tax fields, etc.)
       // Ensure shippingAddress is an array for PIPDF
@@ -397,20 +381,8 @@ const CreateTicketPage = () => {
       roundOff: roundOffAmount, // Pass rounding info to PDF
       finalRoundedAmount: roundedGrandTotal,
     };
-    // Navigate to a PI Preview page, passing ticketForPreview in state
     navigate("/tickets/pi-preview", { state: { ticketForPreview } });
   };
-
-  // useEffect to set ticketData if passed via state and not already set (e.g. on direct navigation/refresh if state is lost)
-  useEffect(() => {
-    if (
-      location.state?.ticketDataForForm &&
-      Object.keys(ticketData).length === 0
-    ) {
-      // Simple check
-      setTicketData(location.state.ticketDataForForm);
-    }
-  }, [location.state, ticketData]);
 
   const pageContent = (
     <Form id="create-ticket-form" onSubmit={handleTicketSubmit}>
@@ -701,29 +673,45 @@ const CreateTicketPage = () => {
                     </strong>
                   </td>
                 </tr>
-                                      <tr className="table-secondary"><td><strong>Grand Total (Before Round Off)</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
-                      {roundedGrandTotal !== null && (
-                        <>
-                          <tr>
-                            <td>Round Off</td>
-                            <td className="text-end">₹{roundOffAmount.toFixed(2)}</td>
-                          </tr>
-                          <tr className="table-success">
-                            <td><strong>Final Amount</strong></td>
-                            <td className="text-end"><strong>₹{roundedGrandTotal.toFixed(2)}</strong></td>
-                          </tr>
-                        </>
-                      )}
-
+                <tr className="table-secondary">
+                  <td>
+                    <strong>Grand Total (Before Round Off)</strong>
+                  </td>
+                  <td className="text-end">
+                    <strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong>
+                  </td>
+                </tr>
+                {roundedGrandTotal !== null && (
+                  <>
+                    <tr>
+                      <td>Round Off</td>
+                      <td className="text-end">₹{roundOffAmount.toFixed(2)}</td>
+                    </tr>
+                    <tr className="table-success">
+                      <td>
+                        <strong>Final Amount</strong>
+                      </td>
+                      <td className="text-end">
+                        <strong>₹{roundedGrandTotal.toFixed(2)}</strong>
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tbody>
             </Table>
           </div>
         </div>
-                        {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
-                    <Button variant="outline-primary" size="sm" onClick={handleRoundOff} className="mt-2 float-end">Round Off Total</Button>
-                )}
-                <div style={{clear: "both"}}></div>
-
+        {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={handleRoundOff}
+            className="mt-2 float-end"
+          >
+            Round Off Total
+          </Button>
+        )}
+        <div style={{ clear: "both" }}></div>
       </div>
     </Form>
   );
@@ -750,34 +738,10 @@ const CreateTicketPage = () => {
         disabled={isLoading || isFetchingAddress}
       >
         {" "}
-        {/* Ensure your Form has an id="create-ticket-form" */}
         {isLoading ? "Creating..." : "Create Ticket"}
       </Button>
     </>
   );
-
-  // The PI Preview modal is now a separate page.
-  // If you were to implement a PI Preview page, it would look something like this:
-  /*
-    const PIPreviewPage = () => {
-      const location = useLocation();
-      const ticketForPreview = location.state?.ticketForPreview;
-      const navigate = useNavigate();
-      if (!ticketForPreview) return <Alert variant="danger">No ticket data for preview.</Alert>;
-      return (
-        <ReusablePageStructure
-            title={`PI Preview - ${ticketData.ticketNumber || ticketData.quotationNumber}`}
-            footerContent={<Button onClick={() => navigate(-1)}>Close</Button>}
-        >
-            <div style={{ height: '80vh', overflowY: 'auto' }}>
-              <PDFViewer width="100%" height="99%">
-                <PIPDF ticket={ticketForPreview} />
-              </PDFViewer>
-            </div>
-        </ReusablePageStructure>
-      );
-    }
-  */
 
   return (
     <ReusablePageStructure

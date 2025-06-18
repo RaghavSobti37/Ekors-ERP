@@ -23,4 +23,4 @@ const HelpFooter = () => {
   );
 };
 
-export default HelpFooter;
+export default React.memo(HelpFooter);

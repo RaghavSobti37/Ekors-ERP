@@ -1,7 +1,7 @@
 // components/ReusableModal.jsx
 // This component is now intended to be a Page Layout, not a Modal.
 // Consider renaming the file to ReusablePageLayout.jsx or similar in your project.
-import React from "react";
+import React, { useCallback } from "react";
 // Removed Modal import from react-bootstrap
 import { Button } from "react-bootstrap"; // For the back button
 import { useNavigate } from "react-router-dom"; // To navigate back
@@ -58,7 +58,7 @@ const footerStyle = {
   marginTop: "auto", // Push footer to bottom if content is short
 };
 
-const ReusablePageStructure = ({
+const ReusablePageStructureComponent = ({
   title,
   children,
   // headerActions, // This can be used for additional right-side actions if needed
@@ -67,9 +67,9 @@ const ReusablePageStructure = ({
 }) => {
   const navigate = useNavigate();
 
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     navigate(-1); // Go to the previous page in history
-  };
+  }, [navigate]);
 
   React.useEffect(() => {
     const handleEsc = (event) => {
@@ -78,7 +78,6 @@ const ReusablePageStructure = ({
       }
     };
     window.addEventListener('keydown', handleEsc);
-
     return () => {
       window.removeEventListener('keydown', handleEsc);
     };
@@ -110,4 +109,4 @@ const ReusablePageStructure = ({
   );
 };
 
-export default ReusablePageStructure
+export default React.memo(ReusablePageStructureComponent);

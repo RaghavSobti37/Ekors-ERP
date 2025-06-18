@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import "../css/Navbar.css"; // Main Navbar styles
 import {
   FaUser,
@@ -11,94 +11,52 @@ import {
   FaExclamationTriangle, // For restock alerts
   FaExclamationCircle, // For low quantity warnings
 } from "react-icons/fa";
-import {
-  Navbar as BootstrapNavbar,
-  Nav,
-  NavDropdown,
-  Button,
-} from "react-bootstrap";
-import { Link } from "react-router-dom";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import apiClient from "../utils/apiClient"; // Assuming you have this
-import { getAuthToken } from "../utils/authUtils"; // Assuming you have this
-import {
-  Form,
-  Button as BsButton,
-  Alert,
-  Row,
-  Col,
-  // Image, // Image component might no longer be needed if only icons are used. Let's check usage.
-} from "react-bootstrap"; 
-// ReusableModal is no longer used here for profile edit
-import { showToast, handleApiError } from "../utils/helpers"; // For toasts and error handling
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 
-export default function Navbar({ showPurchaseModal }) {
+function NavbarComponent({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
-  // const [showEditModal, setShowEditModal] = useState(false); // Modal state removed
-  const [showNewItemModal, setShowNewItemModal] = useState(false);
   const navigate = useNavigate();
   const [restockAlertCount, setRestockAlertCount] = useState(0);
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
-  const { user, logout, updateUserContext } = useAuth(); // Added updateUserContext
-  // Profile form state and handlers are moved to EditProfilePage.jsx
-  // const [profileFormData, setProfileFormData] = useState({
-  //   firstname: "", 
-  //   lastname: "",  
-  //   phone: "",
-  //   newPassword: "",
-  //   confirmPassword: "",
-  // });
-  // const [profileError, setProfileError] = useState("");
-  // const [profileLoading, setProfileLoading] = useState(false);
+  const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
 
+  const fetchRestockData = useCallback(async () => {
+    if (!user) return; // Don't fetch if not logged in or user context not yet available
+
+    const currentThreshold =
+      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
+      DEFAULT_LOW_QUANTITY_THRESHOLD;
+    try {
+      // apiClient is expected to handle auth token injection.
+      const response = await apiClient(
+        `/items/restock-summary?lowGlobalThreshold=${currentThreshold}`
+      );
+      setRestockAlertCount(response.restockNeededCount || 0);
+      setLowStockWarningCount(response.lowStockWarningCount || 0);
+    } catch (error) {
+      console.error(
+        "Navbar: Failed to fetch restock summary:",
+        error.data?.message || error.message
+      );
+      // Not showing a UI error for this background check.
+    }
+  }, [user]); // Depends on user object to ensure it runs after user is available
+
   useEffect(() => {
-    if (!user) return; // Don't fetch if not logged in
-
-    const fetchRestockData = async () => {
-      const currentThreshold =
-        parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
-        DEFAULT_LOW_QUANTITY_THRESHOLD;
-      try {
-        const token = getAuthToken();
-        if (!token) return;
-        const response = await apiClient(
-          `/items/restock-summary?lowGlobalThreshold=${currentThreshold}`
-        );
-        setRestockAlertCount(response.restockNeededCount || 0);
-        setLowStockWarningCount(response.lowStockWarningCount || 0);
-      } catch (error) {
-        console.error("Navbar: Failed to fetch restock summary:", error);
-        // Don't show an error toast here, as it's a background check
-      }
-    };
-
     fetchRestockData();
     // Optional: Set an interval to refresh periodically
     const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
     return () => clearInterval(intervalId);
-  }, [user]); 
-
-  // useEffect for setting profileFormData is moved to EditProfilePage.jsx
-  // useEffect(() => {
-  //   if (user) {
-  //     setProfileFormData((prev) => ({
-  //       ...prev,
-  //       firstname: user.firstname || "",
-  //       lastname: user.lastname || "",
-  //       phone: user.phone || "",
-  //     }));
-  //   } else {
-  //     setProfileFormData({ firstname: "", lastname: "", phone: "", newPassword: "", confirmPassword: "" });
-  //   }
-  // }, [user]);
+  }, [fetchRestockData]);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -142,11 +100,8 @@ export default function Navbar({ showPurchaseModal }) {
     navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`); // Corrected path
   };
 
-  // handleProfileInputChange and handleProfileSave are moved to EditProfilePage.jsx
-
-
   return (
-    <>
+    <React.Fragment>
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo">
@@ -239,21 +194,23 @@ export default function Navbar({ showPurchaseModal }) {
             )}
 
             {/* Stock Alert Notification Area */}
-            {(restockAlertCount > 0 || lowStockWarningCount > 0) && user && user.role !== "user" && (
-              <div
-                className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
-                onClick={handleStockAlertClick}
-                title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
-                  localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
-                  DEFAULT_LOW_QUANTITY_THRESHOLD
-               }): ${lowStockWarningCount} items. Click to view.`}
-              >
-                <FaExclamationTriangle className="icon-low-stock" />
-                <span className="alert-count">{restockAlertCount}</span>
-                <FaExclamationCircle className="icon-restock" />
-                <span className="alert-count">{lowStockWarningCount}</span>
-              </div>
-            )}
+            {(restockAlertCount > 0 || lowStockWarningCount > 0) &&
+              user &&
+              user.role !== "user" && (
+                <div
+                  className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
+                  onClick={handleStockAlertClick}
+                  title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
+                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
+                    DEFAULT_LOW_QUANTITY_THRESHOLD
+                  }): ${lowStockWarningCount} items. Click to view.`}
+                >
+                  <FaExclamationTriangle className="icon-low-stock" />
+                  <span className="alert-count">{restockAlertCount}</span>
+                  <FaExclamationCircle className="icon-restock" />
+                  <span className="alert-count">{lowStockWarningCount}</span>
+                </div>
+              )}
           </div>
         </div>
 
@@ -272,11 +229,6 @@ export default function Navbar({ showPurchaseModal }) {
 
           {showProfilePopup && (
             <div className="profile-popup">
-              {/* <img
-                src="/src/assets/profile.jpg"
-                alt="Profile"
-                className="profile-pic"
-              /> */}
               <div className="profile-details">
                 <div className="profile-avatar-large-container">
                   {/* Always show placeholder */}
@@ -295,9 +247,6 @@ export default function Navbar({ showPurchaseModal }) {
                 <p>
                   <strong>Phone:</strong> {user?.phone || "N/A"}
                 </p>
-                {/* <p>
-                  <strong>Role:</strong> {user?.role || "N/A"}
-                </p> */}
               </div>
               <button
                 className="edit-btn"
@@ -312,9 +261,8 @@ export default function Navbar({ showPurchaseModal }) {
           )}
         </div>
       </nav>
-
-
-      {/* Edit Profile Modal has been removed and converted to EditProfilePage.jsx */}
-    </>
+    </React.Fragment>
   );
 }
+
+export default React.memo(NavbarComponent);

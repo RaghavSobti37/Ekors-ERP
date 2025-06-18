@@ -1,6 +1,6 @@
-import React from 'react';
-import { Table as BootstrapTable, Alert } from 'react-bootstrap';
-import SortIndicator from './SortIndicator'; // Assuming SortIndicator.jsx is in the same components folder
+import React from "react";
+import { Table as BootstrapTable, Alert } from "react-bootstrap";
+import SortIndicator from "./SortIndicator"; // Assuming SortIndicator.jsx is in the same components folder
 
 /**
  * A reusable table component.
@@ -22,7 +22,7 @@ import SortIndicator from './SortIndicator'; // Assuming SortIndicator.jsx is in
  * @param {function} [props.onRowClick] - Callback function for row click: (item) => void.
  * @param {string} [props.rowClassName] - CSS class or function (item) => string for table rows.
  */
-const ReusableTable = ({
+const ReusableTableComponent = ({
   columns,
   data,
   keyField,
@@ -31,36 +31,56 @@ const ReusableTable = ({
   onSort,
   sortConfig,
   renderActions,
-  noDataMessage = 'No data found.',
-  tableClassName = 'mt-3',
-  theadClassName = 'table-dark',
-  tbodyClassName = '',
+  noDataMessage = "No data found.",
+  tableClassName = "mt-3",
+  theadClassName = "table-dark",
+  tbodyClassName = "",
   onRowClick,
   rowClassName,
 }) => {
   const colSpan = columns.length + (renderActions ? 1 : 0);
 
   if (error) {
-    return <Alert variant="danger" className="mt-3">{error}</Alert>;
+    return (
+      <Alert variant="danger" className="mt-3">
+        {error}
+      </Alert>
+    );
   }
 
   return (
-    <BootstrapTable striped bordered hover responsive className={tableClassName}>
+    <BootstrapTable
+      striped
+      bordered
+      hover
+      responsive
+      className={tableClassName}
+    >
       <thead className={theadClassName}>
         <tr>
           {columns.map((col) => (
             <th
               key={col.key}
-              onClick={() => col.sortable !== false && onSort && onSort(col.key)}
-              style={onSort && col.sortable !== false ? { cursor: 'pointer' } : {}}
-              className={`${col.headerClassName || ''} ${col.tooltip ? 'has-tooltip' : ''}`}
+              onClick={() =>
+                col.sortable !== false && onSort && onSort(col.key)
+              }
+              style={
+                onSort && col.sortable !== false ? { cursor: "pointer" } : {}
+              }
+              className={`${col.headerClassName || ""} ${
+                col.tooltip ? "has-tooltip" : ""
+              }`}
               title={col.tooltip} // Native browser tooltip
             >
               {col.header}
               {col.tooltip && (
-                <span className="ms-1" style={{ cursor: 'help' }}>❓</span>
+                <span className="ms-1" style={{ cursor: "help" }}>
+                  ❓
+                </span>
               )}
-              {onSort && sortConfig && <SortIndicator columnKey={col.key} sortConfig={sortConfig} />}
+              {onSort && sortConfig && (
+                <SortIndicator columnKey={col.key} sortConfig={sortConfig} />
+              )}
             </th>
           ))}
           {renderActions && <th>Actions</th>}
@@ -69,27 +89,40 @@ const ReusableTable = ({
       <tbody className={tbodyClassName}>
         {isLoading ? (
           <tr>
-            <td colSpan={colSpan} className="text-center">Loading...</td>
+            <td colSpan={colSpan} className="text-center">
+              Loading...
+            </td>
           </tr>
         ) : data.length > 0 ? (
           data.map((item) => (
-            <tr 
-              key={item[keyField]} 
+            <tr
+              key={item[keyField]}
               onClick={() => onRowClick && onRowClick(item)}
-              className={typeof rowClassName === 'function' ? rowClassName(item) : rowClassName}
-              style={onRowClick ? { cursor: 'pointer' } : {}}
+              className={
+                typeof rowClassName === "function"
+                  ? rowClassName(item)
+                  : rowClassName
+              }
+              style={onRowClick ? { cursor: "pointer" } : {}}
             >
               {columns.map((col) => (
-                <td key={`${item[keyField]}-${col.key}`} className={col.cellClassName}>
+                <td
+                  key={`${item[keyField]}-${col.key}`}
+                  className={col.cellClassName}
+                >
                   {col.renderCell ? col.renderCell(item) : item[col.key]}
                 </td>
               ))}
-              {renderActions && <td className="text-center">{renderActions(item)}</td>}
+              {renderActions && (
+                <td className="text-center">{renderActions(item)}</td>
+              )}
             </tr>
           ))
         ) : (
           <tr>
-            <td colSpan={colSpan} className="text-center">{noDataMessage}</td>
+            <td colSpan={colSpan} className="text-center">
+              {noDataMessage}
+            </td>
           </tr>
         )}
       </tbody>
@@ -97,4 +130,4 @@ const ReusableTable = ({
   );
 };
 
-export default ReusableTable;
+export default React.memo(ReusableTableComponent);

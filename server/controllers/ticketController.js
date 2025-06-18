@@ -1,5 +1,5 @@
 const Ticket = require("../models/opentickets");
-const TicketBackup = require("../models/ticketBackup"); // Import backup model
+const UniversalBackup = require("../models/universalBackup"); // Using UniversalBackup
 const Quotation = require("../models/quotation"); // Import Quotation model
 const OpenticketModel = require("../models/opentickets.js"); // Used by index.js logic
 const User = require("../models/users");
@@ -8,12 +8,14 @@ const { Item } = require("../models/itemlist"); // Import Item model for invento
 const fs = require("fs-extra"); // fs-extra for recursive directory removal
 const path = require("path");
 const asyncHandler = require("express-async-handler");
+const mongoose = require("mongoose"); // Added mongoose for session
 
 // Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
-const COMPANY_REFERENCE_STATE = "UTTAR PRADESH"; 
+const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 
 exports.createTicket = asyncHandler(async (req, res) => {
   const user = req.user; // Auth middleware should ensure req.user exists
+  const session = await mongoose.startSession(); // Start session for potential transaction
 
   if (!user || !user.id) {
     logger.error(
@@ -37,27 +39,30 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .json({ error: "Missing newTicketDetails in request body." });
   }
 
-   let finalTicketData = {
-
+  let finalTicketData = {
     ...newTicketDetails,
     createdBy: user.id,
     currentAssignee: user.id,
     assignedTo: user.id, // Default assignedTo to creator
-      dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
-          roundOff: newTicketDetails.roundOff || 0, // Capture from frontend
-    finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
+    dispatchDays:
+      sourceQuotationData?.dispatchDays ||
+      newTicketDetails.dispatchDays ||
+      "7-10 working", // Ensure default
+    roundOff: newTicketDetails.roundOff || 0, // Capture from frontend
+    finalRoundedAmount: newTicketDetails.finalRoundedAmount,
+  };
 
-      };
-
-     // If creating from a quotation, prioritize sourceQuotationData
+  // If creating from a quotation, prioritize sourceQuotationData
   if (sourceQuotationData && sourceQuotationData.referenceNumber) {
     const clientData = sourceQuotationData.client || {};
     const quotationBillingAddress = sourceQuotationData.billingAddress || {};
 
-        // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
-    let determinedDeadline = newTicketDetails.deadline 
-      ? new Date(newTicketDetails.deadline) 
-      : (sourceQuotationData.validityDate ? new Date(sourceQuotationData.validityDate) : null);
+    // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
+    let determinedDeadline = newTicketDetails.deadline
+      ? new Date(newTicketDetails.deadline)
+      : sourceQuotationData.validityDate
+      ? new Date(sourceQuotationData.validityDate)
+      : null;
 
     finalTicketData = {
       ...finalTicketData, // Keep any specific newTicketDetails not from quotation
@@ -66,62 +71,74 @@ exports.createTicket = asyncHandler(async (req, res) => {
       client: clientData._id || newTicketDetails.client?._id,
       clientPhone: clientData.phone || newTicketDetails.clientPhone,
       clientGstNumber: clientData.gstNumber || newTicketDetails.clientGstNumber,
-      billingAddress: [ // Transform quotation billing address to ticket format
+      billingAddress: [
+        // Transform quotation billing address to ticket format
         quotationBillingAddress.address1 || "",
         quotationBillingAddress.address2 || "",
         quotationBillingAddress.state || "",
         quotationBillingAddress.city || "",
         quotationBillingAddress.pincode || "",
       ],
-      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map((qGood, index) => ({
-        srNo: qGood.srNo || (index + 1),
-        description: qGood.description, // Required
-        hsnSacCode: qGood.hsnSacCode,   // Required
-        quantity: Number(qGood.quantity || 0), // Required, ensure number
-        unit: qGood.unit || "Nos",
-        price: Number(qGood.price || 0),       // Required, ensure number
-        amount: Number(qGood.amount || 0),     // Required, ensure number (price * quantity)
-        originalPrice: Number(qGood.originalPrice || qGood.price || 0),
-        maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
-        gstRate: Number(qGood.gstRate || 0),   // Required, ensure number
-        subtexts: qGood.subtexts || [],
-      })),
-      termsAndConditions: sourceQuotationData.termsAndConditions || newTicketDetails.termsAndConditions, // If terms are on quotation
-      dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
-
+      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map(
+        (qGood, index) => ({
+          srNo: qGood.srNo || index + 1,
+          description: qGood.description, // Required
+          hsnSacCode: qGood.hsnSacCode, // Required
+          quantity: Number(qGood.quantity || 0), // Required, ensure number
+          unit: qGood.unit || "Nos",
+          price: Number(qGood.price || 0), // Required, ensure number
+          amount: Number(qGood.amount || 0), // Required, ensure number (price * quantity)
+          originalPrice: Number(qGood.originalPrice || qGood.price || 0),
+          maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
+          gstRate: Number(qGood.gstRate || 0), // Required, ensure number
+          subtexts: qGood.subtexts || [],
+        })
+      ),
+      termsAndConditions:
+        sourceQuotationData.termsAndConditions ||
+        newTicketDetails.termsAndConditions, // If terms are on quotation
+      dispatchDays:
+        sourceQuotationData.dispatchDays ||
+        newTicketDetails.dispatchDays ||
+        "7-10 working", // Ensure default
       deadline: determinedDeadline, // Use the determined deadline
-        dispatchDays: sourceQuotationData.dispatchDays || newTicketDetails.dispatchDays || "7-10 working", // Ensure default
-              roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
-      finalRoundedAmount: newTicketDetails.finalRoundedAmount, 
-
+      roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
+      finalRoundedAmount: newTicketDetails.finalRoundedAmount,
     };
-  }   
+  }
 
   // Ensure deadline is null if an empty string is passed, otherwise Mongoose handles valid date strings/null.
-  if (finalTicketData.hasOwnProperty('deadline') && finalTicketData.deadline === "") {
+  if (
+    finalTicketData.hasOwnProperty("deadline") &&
+    finalTicketData.deadline === ""
+  ) {
     finalTicketData.deadline = null;
-      }
+  }
 
-  // If deadline is still null and it's required by schema, this will cause validation error.
-  // The schema states `deadline: { type: Date, required: true }`.
-  // So, finalTicketData.deadline must be a valid Date object at this point.
-  // If determinedDeadline was null and newTicketDetails.deadline was also null/empty, this is an issue.
-  // For a required field, it's better to ensure it's set or throw a 400 error earlier.
   if (!finalTicketData.deadline) {
-    logger.error("ticket-create", "Deadline is required but not provided or derived.", user, { finalTicketData });
+    logger.error(
+      "ticket-create",
+      "Deadline is required but not provided or derived.",
+      user,
+      { finalTicketData }
+    );
     return res.status(400).json({ error: "Ticket deadline is required." });
-  };
-
+  }
 
   // Set client ObjectId if available from sourceQuotationData
   if (
     !finalTicketData.client && // Only if not already set by sourceQuotationData block
-    newTicketDetails.client && 
-    newTicketDetails.client._id  ) {
+    newTicketDetails.client &&
+    newTicketDetails.client._id
+  ) {
     finalTicketData.client = newTicketDetails.client._id;
-      } else if (sourceQuotationData && sourceQuotationData.client && sourceQuotationData.client._id && !finalTicketData.client) {
+  } else if (
+    sourceQuotationData &&
+    sourceQuotationData.client &&
+    sourceQuotationData.client._id &&
+    !finalTicketData.client
+  ) {
     finalTicketData.client = sourceQuotationData.client._id;
-
   }
 
   // Ensure statusHistory is correctly formatted
@@ -142,8 +159,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
         status: finalTicketData.status || "Quotation Sent", // Default from schema
         changedAt: new Date(),
         changedBy: user.id,
-note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket created from quotation." : "Ticket created.",
-       },
+        note:
+          sourceQuotationData && sourceQuotationData.referenceNumber
+            ? "Ticket created from quotation."
+            : "Ticket created.",
+      },
     ];
   }
   if (!finalTicketData.status) {
@@ -172,26 +192,38 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
   }
   delete finalTicketData.shippingAddressObj; // Remove if not part of schema
 
-    // --- Calculate Totals and GST (Crucial for required fields) ---
+  // --- Calculate Totals and GST (Crucial for required fields) ---
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
-    finalTicketData.totalQuantity = finalTicketData.goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    finalTicketData.totalAmount = finalTicketData.goods.reduce((sum, item) => sum + Number(item.amount || 0), 0); // Pre-GST
+    finalTicketData.totalQuantity = finalTicketData.goods.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    finalTicketData.totalAmount = finalTicketData.goods.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    ); // Pre-GST
 
-    const billingState = (finalTicketData.billingAddress[2] || "").toUpperCase().trim(); // Assuming state is at index 2
-    const isBillingStateSameAsCompany = billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+    const billingState = (finalTicketData.billingAddress[2] || "")
+      .toUpperCase()
+      .trim(); // Assuming state is at index 2
+    const isBillingStateSameAsCompany =
+      billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
     finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
 
     const gstGroups = {};
-    finalTicketData.goods.forEach(item => {
+    finalTicketData.goods.forEach((item) => {
       const itemGstRate = parseFloat(item.gstRate);
       if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
-        if (!gstGroups[itemGstRate]) gstGroups[itemGstRate] = { taxableAmount: 0 };
-        gstGroups[itemGstRate].taxableAmount += (item.amount || 0);
+        if (!gstGroups[itemGstRate])
+          gstGroups[itemGstRate] = { taxableAmount: 0 };
+        gstGroups[itemGstRate].taxableAmount += item.amount || 0;
       }
     });
 
     const newGstBreakdown = [];
-    let runningTotalCgst = 0, runningTotalSgst = 0, runningTotalIgst = 0;
+    let runningTotalCgst = 0,
+      runningTotalSgst = 0,
+      runningTotalIgst = 0;
 
     for (const rateKey in gstGroups) {
       const group = gstGroups[rateKey];
@@ -199,36 +231,55 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
       if (isNaN(itemGstRate) || itemGstRate < 0) continue;
 
       const taxableAmount = group.taxableAmount;
-      let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
-      let cgstRate = 0, sgstRate = 0, igstRate = 0;
+      let cgstAmount = 0,
+        sgstAmount = 0,
+        igstAmount = 0;
+      let cgstRate = 0,
+        sgstRate = 0,
+        igstRate = 0;
 
       if (itemGstRate > 0) {
         if (isBillingStateSameAsCompany) {
-          cgstRate = itemGstRate / 2; sgstRate = itemGstRate / 2;
-          cgstAmount = (taxableAmount * cgstRate) / 100; sgstAmount = (taxableAmount * sgstRate) / 100;
-          runningTotalCgst += cgstAmount; runningTotalSgst += sgstAmount;
+          cgstRate = itemGstRate / 2;
+          sgstRate = itemGstRate / 2;
+          cgstAmount = (taxableAmount * cgstRate) / 100;
+          sgstAmount = (taxableAmount * sgstRate) / 100;
+          runningTotalCgst += cgstAmount;
+          runningTotalSgst += sgstAmount;
         } else {
           igstRate = itemGstRate;
           igstAmount = (taxableAmount * igstRate) / 100;
           runningTotalIgst += igstAmount;
         }
       }
-      newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
+      newGstBreakdown.push({
+        itemGstRate,
+        taxableAmount,
+        cgstRate,
+        cgstAmount,
+        sgstRate,
+        sgstAmount,
+        igstRate,
+        igstAmount,
+      });
     }
     finalTicketData.gstBreakdown = newGstBreakdown;
     finalTicketData.totalCgstAmount = runningTotalCgst;
     finalTicketData.totalSgstAmount = runningTotalSgst;
     finalTicketData.totalIgstAmount = runningTotalIgst;
-    finalTicketData.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
-    finalTicketData.grandTotal = (finalTicketData.totalAmount || 0) + (finalTicketData.finalGstAmount || 0);
-        // If rounding info is not already set (e.g. from newTicketDetails), and grandTotal is calculated,
-    // ensure finalRoundedAmount defaults correctly if roundOff is 0.
-    // The pre-save hook in the model will also handle this, but setting it here can be explicit.
-    if (finalTicketData.finalRoundedAmount === undefined || finalTicketData.finalRoundedAmount === null) {
-        finalTicketData.finalRoundedAmount = finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
+    finalTicketData.finalGstAmount =
+      runningTotalCgst + runningTotalSgst + runningTotalIgst;
+    finalTicketData.grandTotal =
+      (finalTicketData.totalAmount || 0) +
+      (finalTicketData.finalGstAmount || 0);
+    if (
+      finalTicketData.finalRoundedAmount === undefined ||
+      finalTicketData.finalRoundedAmount === null
+    ) {
+      finalTicketData.finalRoundedAmount =
+        finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
     }
-
-  } else { // If no goods, ensure totals are zeroed and GST fields are present
+  } else {
     finalTicketData.totalQuantity = 0;
     finalTicketData.totalAmount = 0;
     finalTicketData.gstBreakdown = [];
@@ -237,10 +288,9 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
     finalTicketData.totalIgstAmount = 0;
     finalTicketData.finalGstAmount = 0;
     finalTicketData.grandTotal = 0;
-    finalTicketData.isBillingStateSameAsCompany = false; // Default
-        finalTicketData.roundOff = 0;
+    finalTicketData.isBillingStateSameAsCompany = false;
+    finalTicketData.roundOff = 0;
     finalTicketData.finalRoundedAmount = 0;
-
   }
 
   if (
@@ -268,23 +318,17 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
     return res.status(400).json({ error: "Invalid shipping address format." });
   }
 
-  // Ensure all required GST fields are present if your logic depends on them
-  // (e.g., gstBreakdown, finalGstAmount, grandTotal)
-  // This step assumes the frontend calculates and sends these accurately.
-  // The model schema will validate their presence if marked as 'required'.
-  // finalTicketData.shippingSameAsBilling =
-  //   ticketInputData.shippingSameAsBilling || false;
-
-  // Ensure subtexts are copied from input goods to final goods
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
     finalTicketData.goods = finalTicketData.goods.map((item) => ({
-      srNo: item.srNo, // Ensure all required fields are explicitly mapped or validated
+      srNo: item.srNo,
       description: item.description,
       hsnSacCode: item.hsnSacCode,
       quantity: Number(item.quantity || 0),
       unit: item.unit || "Nos",
       price: Number(item.price || 0),
-      amount: Number(item.amount || (Number(item.quantity || 0) * Number(item.price || 0))), // Recalculate amount if not present
+      amount: Number(
+        item.amount || Number(item.quantity || 0) * Number(item.price || 0)
+      ),
       originalPrice: Number(item.originalPrice || item.price || 0),
       maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
       gstRate: Number(item.gstRate || 0),
@@ -292,7 +336,6 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
     }));
   }
 
-  // --- Ticket Number Generation ---
   const now = new Date();
   const year = now.getFullYear().toString().slice(-2);
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -309,31 +352,31 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
       user
     );
   }
-  // --- Inventory Deduction Logic ---
-  if (finalTicketData.goods && finalTicketData.goods.length > 0) {
-    // Use finalTicketData
-    for (const good of finalTicketData.goods) {
-      if (!good.description || !(Number(good.quantity) > 0)) {
-        logger.warn(
-          "inventory",
-          `Skipping item with missing description or invalid quantity: ${JSON.stringify(
-            good
-          )}`,
-          user
-        );
-        continue;
-      }
 
-      try {
+  try {
+    session.startTransaction(); // Start transaction before DB operations
+
+    // --- Inventory Deduction Logic ---
+    if (finalTicketData.goods && finalTicketData.goods.length > 0) {
+      for (const good of finalTicketData.goods) {
+        if (!good.description || !(Number(good.quantity) > 0)) {
+          logger.warn(
+            "inventory",
+            `Skipping item with missing description or invalid quantity: ${JSON.stringify(
+              good
+            )}`,
+            user
+          );
+          continue;
+        }
         const itemToUpdate = await Item.findOne({
           name: good.description,
           ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
-        });
+        }).session(session);
 
         if (itemToUpdate) {
           const quantityToDecrement = Number(good.quantity);
           itemToUpdate.quantity -= quantityToDecrement;
-
           if (itemToUpdate.quantity < 0) {
             logger.warn(
               "inventory",
@@ -341,7 +384,6 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
               user
             );
           }
-
           if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
             itemToUpdate.needsRestock = true;
             itemToUpdate.restockAmount = Math.max(
@@ -355,8 +397,7 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
           }
-
-          await itemToUpdate.save();
+          await itemToUpdate.save({ session });
           logger.info(
             "inventory",
             `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrement}, new qty: ${itemToUpdate.quantity}`,
@@ -371,31 +412,12 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
             user
           );
         }
-      } catch (invError) {
-        logger.error(
-          "inventory",
-          `Error updating inventory for ${good.description}: ${invError.message}`,
-          user,
-          { error: invError }
-        );
       }
     }
-  }
 
-  // --- Ticket Creation ---
-  try {
-    // Use finalTicketData for creating the ticket
+    // --- Ticket Creation ---
     const ticket = new Ticket(finalTicketData);
-    console.log(
-      "Received newTicketDetails in backend:",
-      JSON.stringify(newTicketDetails, null, 2)
-    );
-    console.log(
-      "Final ticketData before save:",
-      JSON.stringify(finalTicketData, null, 2)
-    );
-
-    await ticket.save();
+    await ticket.save({ session });
 
     logger.info(
       "ticket",
@@ -408,71 +430,179 @@ note: (sourceQuotationData && sourceQuotationData.referenceNumber) ? "Ticket cre
       }
     );
 
-    // --- Add ticket to user's document --- (Removed as User schema doesn't have 'tickets' field)
-    // await User.findByIdAndUpdate(user.id, {
-    //   $push: { tickets: ticket._id },
-    // });
-
     // --- Update Quotation Status if applicable ---
-    if (finalTicketData.quotationNumber) {
-      // Use finalTicketData
+    if (finalTicketData.quotationNumber && sourceQuotationData) {
       try {
-        const updatedQuotation = await Quotation.findOneAndUpdate(
-          {
-            referenceNumber: ticket.quotationNumber,
-            // Prefer original quotation user if available, fallback to ticket creator
-            ...(sourceQuotationData &&
-              sourceQuotationData.user && {
-                user: sourceQuotationData.user._id || sourceQuotationData.user,
-              }),
-            ...(!(sourceQuotationData && sourceQuotationData.user) && {
-              user: finalTicketData.createdBy,
-            }),
-          },
-          { status: "running", $addToSet: { linkedTickets: ticket._id } }, // Link ticket to quotation
-          { new: true }
-        );
-
-        if (updatedQuotation) {
-          logger.info(
-            "quotation",
-            `Quotation ${finalTicketData.quotationNumber} set to 'running'.`,
+        const quotationOwnerId =
+          sourceQuotationData.user?._id || sourceQuotationData.user;
+        if (!quotationOwnerId) {
+          logger.error(
+            "quotation-update-error",
+            "Source quotation user ID is missing.",
             user,
-            { quotationId: updatedQuotation._id }
+            { quotationNumber: ticket.quotationNumber }
           );
+        } else {
+          const updatedQuotation = await Quotation.findOneAndUpdate(
+            {
+              referenceNumber: ticket.quotationNumber,
+              user: quotationOwnerId,
+            },
+            {
+              $set: { status: "running" },
+              $addToSet: { linkedTickets: ticket._id },
+            },
+            { new: true, session: session }
+          );
+
+          if (updatedQuotation) {
+            logger.info(
+              "quotation",
+              `Quotation ${ticket.quotationNumber} status set to 'running' and linked to ticket ${ticket.ticketNumber}.`,
+              user,
+              { quotationId: updatedQuotation._id, ticketId: ticket._id }
+            );
+          } else {
+            logger.warn(
+              "quotation",
+              `Could not find quotation ${ticket.quotationNumber} (User: ${quotationOwnerId}) to update status after ticket creation.`,
+              user
+            );
+          }
         }
       } catch (quotationError) {
         logger.error(
           "quotation",
-          `Failed to update quotation status to 'running' for ${finalTicketData.quotationNumber}`,
+          `Failed to update quotation status to 'running' for ${finalTicketData.quotationNumber} after ticket creation.`,
           quotationError,
           user
         );
+        // Decide if this error should abort the transaction. For now, it won't.
       }
     }
 
+    await session.commitTransaction();
     return res.status(201).json(ticket);
   } catch (error) {
+    await session.abortTransaction();
     logger.error("ticket", `Failed to create ticket`, error, user, {
-      finalTicketDataAttempted: finalTicketData, // Log the data that was attempted to be saved
+      finalTicketDataAttempted: finalTicketData,
     });
     if (error.name === "ValidationError") {
-      return res
-        .status(400)
-        .json({
-          error: "Validation failed",
-          details: error.message,
-          errors: error.errors,
-        });
+      return res.status(400).json({
+        error: "Validation failed",
+        details: error.message,
+        errors: error.errors,
+      });
     }
     return res
       .status(500)
       .json({ error: "Failed to create ticket", details: error.message });
+  } finally {
+    session.endSession();
   }
 });
 
-// Get all tickets for the logged-in user
+// Get All Tickets with Pagination, Sorting, and Filtering
+exports.getAllTickets = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const {
+    page = 1,
+    limit = 5, // Default to 5 as per request, frontend can override
+    sortKey = "createdAt",
+    sortDirection = "descending",
+    searchTerm,
+    status, // Will be 'undefined' if "all" is selected on frontend
+    populate, // Get populate string from query
+  } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const skip = (pageNum - 1) * limitNum;
+
+  let queryConditions = [];
+
+  // 1. Base query based on role
+  if (user.role !== "super-admin" && user.role !== "admin") {
+    queryConditions.push({
+      $or: [{ currentAssignee: user.id }, { createdBy: user.id }],
+    });
+  }
+
+  // 2. Search term filter
+  if (searchTerm) {
+    queryConditions.push({
+      $or: [
+        { ticketNumber: { $regex: searchTerm, $options: "i" } },
+        { companyName: { $regex: searchTerm, $options: "i" } },
+        { quotationNumber: { $regex: searchTerm, $options: "i" } },
+      ],
+    });
+  }
+
+  // 3. Status filter
+  if (
+    status &&
+    status.toLowerCase() !== "all" &&
+    status.toLowerCase() !== "undefined"
+  ) {
+    if (status.toLowerCase() === "open") {
+      // "Open (Active)"
+      queryConditions.push({ status: { $nin: ["Closed", "Hold"] } });
+    } else {
+      queryConditions.push({ status: status }); // Assumes status is a valid enum value from frontend
+    }
+  }
+
+  const finalQuery =
+    queryConditions.length > 0 ? { $and: queryConditions } : {};
+
+  logger.debug(
+    "ticket-list-query",
+    "Constructed final query for tickets",
+    user,
+    { finalQuery: JSON.stringify(finalQuery) }
+  );
+
+  const totalItems = await Ticket.countDocuments(finalQuery);
+  let ticketsQuery = Ticket.find(finalQuery)
+    .sort({ [sortKey]: sortDirection === "ascending" ? 1 : -1 })
+    .skip(skip)
+    .limit(limitNum);
+
+  // Apply populate if provided in the query string
+  if (populate) {
+    const populatePaths = populate.split(",");
+    populatePaths.forEach((pathObj) => {
+      // Basic populate, can be enhanced with select fields if needed
+      ticketsQuery = ticketsQuery.populate({ path: pathObj.trim() });
+    });
+  } else {
+    // Default essential populates if not specified by frontend
+    ticketsQuery = ticketsQuery
+      .populate({ path: "currentAssignee", select: "firstname lastname email" })
+      .populate({ path: "createdBy", select: "firstname lastname email" });
+  }
+
+  const tickets = await ticketsQuery.exec();
+
+  logger.info(
+    "ticket-list",
+    `Fetched ${tickets.length} of ${totalItems} tickets.`,
+    user,
+    { page: pageNum, limit: limitNum, query: finalQuery }
+  );
+  res.json({
+    data: tickets,
+    totalItems,
+    currentPage: pageNum,
+    totalPages: Math.ceil(totalItems / limitNum),
+  });
+});
+
+// Get all tickets for the logged-in user (Potentially deprecated if getAllTickets covers this)
 exports.getUserTickets = async (req, res) => {
+  // This might be for a specific "My Tickets" view
   const user = req.user || null;
   try {
     const tickets = await Ticket.find({ createdBy: req.user.id }).sort({
@@ -485,18 +615,73 @@ exports.getUserTickets = async (req, res) => {
   }
 };
 
-// Get single ticket (only if created by the user)
+// Get single ticket (only if created by the user or assigned, or if super-admin)
 exports.getTicket = async (req, res) => {
   try {
     const user = req.user || null;
-    const ticket = await Ticket.findOne({
-      _id: req.params.id,
-      createdBy: req.user.id,
-    });
+    let query = { _id: req.params.id };
 
-    // logger.debug('ticket', `Fetched single ticket by ID: ${req.params.id}`, user); // Debug level
+    if (user.role !== "super-admin") {
+      query.$or = [{ createdBy: user.id }, { currentAssignee: user.id }];
+    }
+
+    const ticket = await Ticket.findOne(query)
+      .populate({ path: "currentAssignee", select: "firstname lastname email" })
+      .populate({ path: "createdBy", select: "firstname lastname email" })
+      .populate({
+        path: "transferHistory.from",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "transferHistory.to",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "transferHistory.transferredBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.quotation.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.po.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.pi.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.challan.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.packingList.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.feedback.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.other.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "statusHistory.changedBy",
+        select: "firstname lastname email",
+      });
+
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      logger.warn(
+        "ticket-fetch",
+        `Ticket not found or access denied for ID: ${req.params.id}`,
+        req.user
+      );
+      return res
+        .status(404)
+        .json({ error: "Ticket not found or access denied" });
     }
 
     res.json(ticket);
@@ -511,10 +696,10 @@ exports.getTicket = async (req, res) => {
   }
 };
 
-// Update ticket
 exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
+  const session = await mongoose.startSession();
   // Destructure shippingSameAsBilling, statusChangeComment, and the rest of ticket data
   const {
     shippingSameAsBilling,
@@ -525,14 +710,21 @@ exports.updateTicket = async (req, res) => {
 
   // Ensure deadline is null if an empty string is passed.
   // Frontend should send ISOString or null, but this is a safeguard.
-  if (ticketDataForUpdate.hasOwnProperty('deadline') && ticketDataForUpdate.deadline === "") {
+  if (
+    ticketDataForUpdate.hasOwnProperty("deadline") &&
+    ticketDataForUpdate.deadline === ""
+  ) {
     ticketDataForUpdate.deadline = null;
   }
   try {
-    const originalTicket = await Ticket.findOne({ _id: ticketId });
+    session.startTransaction();
+    const originalTicket = await Ticket.findOne({ _id: ticketId }).session(
+      session
+    );
 
     if (!originalTicket) {
       logger.warn("ticket", `Ticket not found for update: ${ticketId}`, user);
+      await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
 
@@ -541,14 +733,22 @@ exports.updateTicket = async (req, res) => {
       ticketDataForUpdate.status &&
       ticketDataForUpdate.status !== originalTicket.status
     ) {
-      // Use ticketDataForUpdate
-      if (!statusChangeComment) {
+      if (
+        !statusChangeComment &&
+        ticketDataForUpdate.status !== originalTicket.status
+      ) {
+        // Only require comment if status actually changes
         logger.warn(
           "ticket",
           `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`,
           user
         );
-        // return res.status(400).json({ error: "A comment is required when changing the ticket status." }); // Optional: make it strictly mandatory
+        await session.abortTransaction();
+        return res
+          .status(400)
+          .json({
+            error: "A comment is required when changing the ticket status.",
+          });
       }
       const newStatusEntry = {
         status: ticketDataForUpdate.status,
@@ -559,10 +759,9 @@ exports.updateTicket = async (req, res) => {
       ticketDataForUpdate.statusHistory = [
         ...(originalTicket.statusHistory || []),
         newStatusEntry,
-      ]; // Use ticketDataForUpdate
+      ];
     }
 
-    // Authorization check (similar to your route but within controller)
     const canUpdate =
       originalTicket.createdBy.toString() === user.id.toString() ||
       (originalTicket.currentAssignee &&
@@ -575,12 +774,12 @@ exports.updateTicket = async (req, res) => {
         `User ${user.id} not authorized to update ticket ${ticketId}. Creator: ${originalTicket.createdBy}, Assignee: ${originalTicket.currentAssignee}`,
         user
       );
+      await session.abortTransaction();
       return res
         .status(403)
         .json({ error: "Not authorized to update this ticket" });
     }
 
-    // Ensure subtexts are copied from input goods to update data
     if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
       ticketDataForUpdate.goods = ticketDataForUpdate.goods.map((item) => ({
         ...item,
@@ -590,112 +789,84 @@ exports.updateTicket = async (req, res) => {
 
     // --- Inventory Adjustment Logic ---
     const originalGoods = originalTicket.goods || [];
-    const newGoods = ticketDataForUpdate.goods || []; // Use ticketDataForUpdate
+    const newGoods = ticketDataForUpdate.goods || [];
 
-    // Step A: Add back old quantities
-    for (const good of originalGoods) {
-      if (!good.description || !(Number(good.quantity) > 0)) continue;
+    // Calculate net changes for each item
+    const itemChanges = new Map();
+
+    originalGoods.forEach((good) => {
+      const key = `${good.description}-${good.hsnSacCode || ""}`;
+      itemChanges.set(key, (itemChanges.get(key) || 0) + Number(good.quantity)); // Add back old quantity
+    });
+
+    newGoods.forEach((good) => {
+      const key = `${good.description}-${good.hsnSacCode || ""}`;
+      itemChanges.set(key, (itemChanges.get(key) || 0) - Number(good.quantity)); // Subtract new quantity
+    });
+
+    for (const [key, netChange] of itemChanges) {
+      if (netChange === 0) continue; // No change in quantity for this item
+
+      const [description, hsnSacCode] = key.split("-");
       try {
         const itemToUpdate = await Item.findOne({
-          name: good.description,
-          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
-        });
-        if (itemToUpdate) {
-          itemToUpdate.quantity += Number(good.quantity);
-          if (
-            itemToUpdate.needsRestock &&
-            itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
-          ) {
-            itemToUpdate.needsRestock = false;
-            itemToUpdate.restockAmount = 0;
-          } else if (itemToUpdate.needsRestock) {
-            // Still needs restock, update amount
-            itemToUpdate.restockAmount = Math.max(
-              0,
-              itemToUpdate.lowStockThreshold - itemToUpdate.quantity
-            );
-          }
-          await itemToUpdate.save();
-          logger.info(
-            "inventory",
-            `Restored stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Added: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`,
-            user
-          );
-        }
-      } catch (invError) {
-        logger.error(
-          "inventory",
-          `Error restoring stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`,
-          user,
-          { error: invError }
-        );
-      }
-    }
+          name: description,
+          ...(hsnSacCode && { hsnCode: hsnSacCode }),
+        }).session(session);
 
-    // Step B: Subtract new quantities
-    for (const good of newGoods) {
-      if (!good.description || !(Number(good.quantity) > 0)) continue;
-      try {
-        const itemToUpdate = await Item.findOne({
-          name: good.description,
-          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
-        });
         if (itemToUpdate) {
-          itemToUpdate.quantity -= Number(good.quantity);
+          itemToUpdate.quantity += netChange; // Apply the net change (positive if added back, negative if new deduction)
+
+          // Update needsRestock status
           if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
             itemToUpdate.needsRestock = true;
             itemToUpdate.restockAmount = Math.max(
               0,
               itemToUpdate.lowStockThreshold - itemToUpdate.quantity
             );
-          } else if (
-            itemToUpdate.needsRestock &&
-            itemToUpdate.quantity >= itemToUpdate.lowStockThreshold
-          ) {
+          } else {
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
           }
-          await itemToUpdate.save();
+          await itemToUpdate.save({ session });
           logger.info(
             "inventory",
-            `Deducted stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Subtracted: ${good.quantity}, New Qty: ${itemToUpdate.quantity}`,
+            `Adjusted stock for item ${itemToUpdate.name} (Ticket ${ticketId} update). Net Change: ${netChange}, New Qty: ${itemToUpdate.quantity}`,
             user
           );
-        } else {
+        } else if (netChange < 0) {
+          // Item was in newGoods but not found in DB (or not in originalGoods)
           logger.warn(
             "inventory",
-            `Item "${good.description}" (HSN: ${
-              good.hsnSacCode || "N/A"
-            }) not found in inventory for ticket ${ticketId} update. Stock not updated.`,
+            `Item "${description}" (HSN: ${
+              hsnSacCode || "N/A"
+            }) not found in inventory for stock deduction (Ticket ${ticketId} update).`,
             user
           );
         }
       } catch (invError) {
         logger.error(
           "inventory",
-          `Error deducting stock for item "${good.description}" (Ticket ${ticketId} update): ${invError.message}`,
+          `Error adjusting stock for item "${description}" (Ticket ${ticketId} update): ${invError.message}`,
           user,
           { error: invError }
         );
+        // Decide if this should abort the transaction
       }
     }
     // --- End Inventory Adjustment Logic ---
 
-    // --- Shipping Address Update Logic ---
     if (typeof shippingSameAsBilling === "boolean") {
       ticketDataForUpdate.shippingSameAsBilling = shippingSameAsBilling;
       if (shippingSameAsBilling === true) {
-        // If shipping is same as billing, copy billingAddress to shippingAddress
-        // originalTicket.billingAddress should be the source of truth for billing address on an existing ticket
-        ticketDataForUpdate.shippingAddress = originalTicket.billingAddress;
+        ticketDataForUpdate.shippingAddress =
+          ticketDataForUpdate.billingAddress || originalTicket.billingAddress; // Use updated billingAddress if available
       } else {
-        // If not same as billing, the frontend should provide the shippingAddress object/array
-        // Ensure shippingAddress from req.body is an array of 5 strings
         if (
           Array.isArray(ticketDataForUpdate.shippingAddress) &&
           ticketDataForUpdate.shippingAddress.length === 5
         ) {
-          // It's already in the correct format
+          // Correct format
         } else if (
           typeof ticketDataForUpdate.shippingAddress === "object" &&
           ticketDataForUpdate.shippingAddress !== null
@@ -710,17 +881,16 @@ exports.updateTicket = async (req, res) => {
           ];
         } else {
           if (!ticketDataForUpdate.shippingAddress) {
-            // Check if it was part of payload
             ticketDataForUpdate.shippingAddress =
-              originalTicket.shippingAddress; // Keep original if not provided
+              originalTicket.shippingAddress;
           }
         }
       }
     }
     const ticket = await Ticket.findOneAndUpdate(
-      { _id: ticketId }, // Filter already handled by originalTicket check and auth
-      ticketDataForUpdate, // Use the modified data
-      { new: true, runValidators: true }
+      { _id: ticketId },
+      ticketDataForUpdate,
+      { new: true, runValidators: true, session: session }
     );
 
     if (!ticket) {
@@ -729,23 +899,11 @@ exports.updateTicket = async (req, res) => {
         `Ticket not found for update: ${req.params.id}`,
         user,
         { requestBody: req.body }
-      ); // Log original req.body
+      );
+      await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-    logger.info(
-      "ticket",
-      `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
-      user,
-      {
-        ticketId: ticket._id,
-        ticketNumber: ticket.ticketNumber,
-      }
-    );
-    res.json(ticket);
-
-    // If ticket status changed to "Closed", update corresponding Quotation status to "closed"
-    // Ensure user context for quotation update is correct, e.g., originalTicket.createdBy
     if (
       originalTicket.status !== ticket.status &&
       ticket.status === "Closed" &&
@@ -755,10 +913,10 @@ exports.updateTicket = async (req, res) => {
         const updatedQuotation = await Quotation.findOneAndUpdate(
           {
             referenceNumber: ticket.quotationNumber,
-            user: originalTicket.createdBy,
+            user: originalTicket.createdBy, // Use original creator of the ticket to find the quotation
           },
-          { status: "closed" },
-          { new: true }
+          { $set: { status: "closed" } }, // Use $set for clarity
+          { new: true, session: session }
         );
         if (updatedQuotation) {
           logger.info(
@@ -775,43 +933,56 @@ exports.updateTicket = async (req, res) => {
           quotationError,
           user
         );
+        // Decide if this error should abort the transaction. For now, it won't.
       }
     }
+
+    await session.commitTransaction();
+    logger.info(
+      "ticket",
+      `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
+      user,
+      {
+        ticketId: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+      }
+    );
+    res.json(ticket);
   } catch (error) {
+    await session.abortTransaction();
     logger.error(
       "ticket",
       `Failed to update ticket ID: ${ticketId}`,
       error,
       user,
       { requestBody: ticketDataForUpdate }
-    ); // Log modified data
+    );
     res.status(500).json({ error: "Failed to update ticket" });
+  } finally {
+    session.endSession();
   }
 };
 
-// Delete ticket
 exports.deleteTicket = async (req, res) => {
   const ticketId = req.params.id;
   const userId = req.user ? req.user.id : null;
   const userEmail = req.user ? req.user.email : "N/A";
   const user = req.user || null;
   const logDetails = { userId, ticketId, model: "Ticket", userEmail };
+  const session = await mongoose.startSession();
 
   logger.info(
     "delete",
-    `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}.`,
+    `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}. Transaction started.`,
     user,
     logDetails
   );
 
   try {
-    logger.debug(
-      "delete",
-      `[FETCH_ATTEMPT] Finding Ticket ID: ${ticketId} for backup and deletion.`,
-      user,
-      logDetails
+    session.startTransaction();
+    const ticketToBackup = await Ticket.findOne({ _id: ticketId }).session(
+      session
     );
-    const ticketToBackup = await Ticket.findOne({ _id: ticketId });
 
     if (!ticketToBackup) {
       logger.warn(
@@ -820,10 +991,10 @@ exports.deleteTicket = async (req, res) => {
         user,
         logDetails
       );
+      await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-    // Update corresponding Quotation status to "hold" before deleting the ticket
     if (ticketToBackup.quotationNumber) {
       try {
         const updatedQuotation = await Quotation.findOneAndUpdate(
@@ -831,8 +1002,8 @@ exports.deleteTicket = async (req, res) => {
             referenceNumber: ticketToBackup.quotationNumber,
             user: ticketToBackup.createdBy,
           },
-          { status: "hold" },
-          { new: true }
+          { $set: { status: "hold" } }, // Use $set
+          { new: true, session: session }
         );
         if (updatedQuotation) {
           logger.info(
@@ -857,17 +1028,10 @@ exports.deleteTicket = async (req, res) => {
           user,
           { ticketId: ticketToBackup._id }
         );
+        // Decide if this error should abort the transaction. For now, it won't.
       }
     }
 
-    logger.debug(
-      "delete",
-      `[FETCH_SUCCESS] Found Ticket ID: ${ticketId} (Number: ${ticketToBackup.ticketNumber}). Performing authorization checks.`,
-      user,
-      { ...logDetails, ticketNumber: ticketToBackup.ticketNumber }
-    );
-
-    // Authorization: User can delete if they created it OR if they are a super-admin (for admin delete route)
     const isCreator = ticketToBackup.createdBy.toString() === userId;
     const isSuperAdmin = req.user.role === "super-admin";
 
@@ -876,72 +1040,30 @@ exports.deleteTicket = async (req, res) => {
         `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
         { ...logDetails, createdBy: ticketToBackup.createdBy.toString() }
       );
+      await session.abortTransaction();
       return res.status(403).json({
         error: "Forbidden: You do not have permission to delete this ticket.",
       });
     }
-    logger.debug(
-      "delete",
-      `[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}. Preparing for backup.`,
-      user,
-      logDetails
-    );
 
-    const backupData = ticketToBackup.toObject();
-    const newBackupEntry = new TicketBackup({
+    const backupData = {
+      originalModel: "Ticket",
+      data: ticketToBackup.toObject(), // Store the full ticket object
       originalId: ticketToBackup._id,
-            ticketNumber: ticketToBackup.ticketNumber,
-      companyName: ticketToBackup.companyName,
-      quotationNumber: ticketToBackup.quotationNumber,
-      client: ticketToBackup.client,
-      clientPhone: ticketToBackup.clientPhone,
-      clientGstNumber: ticketToBackup.clientGstNumber,
-      billingAddress: ticketToBackup.billingAddress,
-      shippingAddress: ticketToBackup.shippingAddress,
-      shippingSameAsBilling: ticketToBackup.shippingSameAsBilling,
-      goods: ticketToBackup.goods.map(g => ({ // Ensure all required fields for backup's goodsSchema are mapped
-        srNo: g.srNo,
-        description: g.description,
-        hsnSacCode: g.hsnSacCode,
-        quantity: g.quantity,
-        price: g.price,
-        amount: g.amount,
-      })),
-      totalQuantity: ticketToBackup.totalQuantity,
-      totalAmount: ticketToBackup.totalAmount, // Pre-GST total
-      gstAmount: ticketToBackup.finalGstAmount, // Crucial: Map finalGstAmount to gstAmount
-      grandTotal: ticketToBackup.grandTotal,
-      isBillingStateSameAsCompany: ticketToBackup.isBillingStateSameAsCompany,
-      status: ticketToBackup.status,
-      documents: ticketToBackup.documents, // Assuming sub-schemas are compatible
-      statusHistory: ticketToBackup.statusHistory.map(sh => ({
-        status: sh.status,
-        changedAt: sh.changedAt,
-        changedBy: sh.changedBy,
-      })),
-      createdBy: ticketToBackup.createdBy,
-      currentAssignee: ticketToBackup.currentAssignee,
-      deadline: ticketToBackup.deadline,
-      assignedTo: ticketToBackup.assignedTo,
-      transferHistory: ticketToBackup.transferHistory,
-      assignmentLog: ticketToBackup.assignmentLog,
-      dispatchDays: ticketToBackup.dispatchDays,
-      deletedBy: userId, // User performing the delete
+      deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: ticketToBackup.createdAt,
       originalUpdatedAt: ticketToBackup.updatedAt,
       backupReason: `${
         isSuperAdmin ? "Admin" : "User"
       }-initiated deletion via API`,
-    });
+    };
+    // Remove fields that are specific to the live Ticket model but not needed or problematic in backup's generic 'data'
+    delete backupData.data._id;
+    delete backupData.data.__v;
 
-    logger.debug(
-      "delete",
-      `[PRE_BACKUP_SAVE] Attempting to save backup for Ticket ID: ${ticketToBackup._id}.`,
-      user,
-      { ...logDetails, originalId: ticketToBackup._id }
-    );
-    await newBackupEntry.save();
+    const newBackupEntry = new UniversalBackup(backupData);
+    await newBackupEntry.save({ session });
     logger.info(
       "delete",
       `[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`,
@@ -950,17 +1072,11 @@ exports.deleteTicket = async (req, res) => {
         ...logDetails,
         originalId: ticketToBackup._id,
         backupId: newBackupEntry._id,
-        backupModel: "TicketBackup",
+        backupModel: "UniversalBackup",
       }
     );
 
-    logger.debug(
-      "delete",
-      `[PRE_ORIGINAL_DELETE] Attempting to delete original Ticket ID: ${ticketToBackup._id}.`,
-      user,
-      { ...logDetails, originalId: ticketToBackup._id }
-    );
-    await Ticket.findByIdAndDelete(ticketId);
+    await Ticket.findByIdAndDelete(ticketId, { session });
     logger.info(
       "delete",
       `[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`,
@@ -968,11 +1084,14 @@ exports.deleteTicket = async (req, res) => {
       { ...logDetails, originalId: ticketToBackup._id }
     );
 
-    // Delete associated documents folder
-    const ticketDocumentsPath = path.join("uploads", ticketId); // Adjusted path if uploads are directly in ticketId folder
+    const ticketDocumentsPath = path.join(
+      process.cwd(),
+      "uploads",
+      ticketId.toString()
+    ); // Ensure ticketId is string
     if (fs.existsSync(ticketDocumentsPath)) {
       try {
-        await fs.remove(ticketDocumentsPath); // fs-extra's remove is like rm -rf
+        await fs.remove(ticketDocumentsPath);
         logger.info(
           "delete",
           `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
@@ -987,12 +1106,9 @@ exports.deleteTicket = async (req, res) => {
           user,
           logDetails
         );
-        // Decide if this error should prevent ticket deletion or just be logged.
-        // For now, we'll log it and proceed with ticket deletion.
       }
     }
 
-    // Remove ticket from user's (creator and current assignee) tickets array
     const usersToUpdate = new Set();
     if (ticketToBackup.createdBy)
       usersToUpdate.add(ticketToBackup.createdBy.toString());
@@ -1001,15 +1117,11 @@ exports.deleteTicket = async (req, res) => {
 
     for (const uid of usersToUpdate) {
       try {
-        logger.debug(
-          "delete",
-          `[USER_TICKET_REF_REMOVE_ATTEMPT] Removing ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
-          user,
-          { ...logDetails, targetUserId: uid }
+        await User.findByIdAndUpdate(
+          uid,
+          { $pull: { tickets: ticketToBackup._id } },
+          { session }
         );
-        await User.findByIdAndUpdate(uid, {
-          $pull: { tickets: ticketToBackup._id },
-        });
         logger.info(
           "delete",
           `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
@@ -1025,12 +1137,14 @@ exports.deleteTicket = async (req, res) => {
       }
     }
 
+    await session.commitTransaction();
     res.status(200).json({
       message: "Ticket deleted and backed up successfully.",
       originalId: ticketToBackup._id,
       backupId: newBackupEntry._id,
     });
   } catch (error) {
+    await session.abortTransaction();
     logger.error(
       "delete",
       `[DELETE_ERROR] Error during Ticket deletion process for ID: ${ticketId} by ${userEmail}.`,
@@ -1038,26 +1152,14 @@ exports.deleteTicket = async (req, res) => {
       user,
       logDetails
     );
-    if (
-      error.name === "ValidationError" ||
-      typeof ticketToBackup === "undefined" ||
-      (ticketToBackup && (!newBackupEntry || newBackupEntry.isNew))
-    ) {
-      // Check if ticketToBackup was successfully fetched before attempting backup save
-      logger.warn(
-        "delete",
-        `[ROLLBACK_DELETE] Backup failed or error before backup for Ticket ID: ${ticketId}. Original document will not be deleted.`,
-        user,
-        logDetails
-      );
-    }
     res
       .status(500)
       .json({ error: "Failed to delete ticket. Check server logs." });
+  } finally {
+    session.endSession();
   }
 };
 
-// Admin delete ticket - specific for super-admin role, uses the same core logic as deleteTicket
 exports.adminDeleteTicket = async (req, res) => {
   const user = req.user || null;
   logger.debug(
@@ -1075,17 +1177,12 @@ exports.adminDeleteTicket = async (req, res) => {
     );
     return res.status(403).json({ error: "Forbidden" });
   }
-  // Call the generic deleteTicket function which now handles permissions correctly
-  // The deleteTicket function will use req.user.role to determine if it's an admin deletion for logging/backupReason
   return exports.deleteTicket(req, res);
 };
 
 exports.generateTicketNumber = async (req, res) => {
   try {
     const user = req.user || null;
-    // This function currently generates a timestamp-based ticket number for example/fallback.
-    // A persistent counter (e.g., using a MongoDB 'Counter' collection) would be needed for sequential numbering.
-
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -1093,12 +1190,8 @@ exports.generateTicketNumber = async (req, res) => {
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const seconds = String(now.getSeconds()).padStart(2, "0");
-    // Generates a timestamp-based ticket number.
     const ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-
-    res.status(200).json({
-      nextTicketNumber: ticketNumber,
-    });
+    res.status(200).json({ nextTicketNumber: ticketNumber });
     logger.debug(
       "ticket",
       `Generated example ticket number: ${ticketNumber}`,
@@ -1121,8 +1214,6 @@ exports.checkExistingTicket = async (req, res) => {
   try {
     const { quotationNumber } = req.params;
     const ticket = await Ticket.findOne({ quotationNumber });
-    // logger.debug('ticket', `Checked for existing ticket with quotation number: ${quotationNumber}`, req.user, { quotationNumber, exists: !!ticket }); // Debug level
-
     res.status(200).json({ exists: !!ticket });
   } catch (error) {
     logger.error(
@@ -1137,8 +1228,9 @@ exports.checkExistingTicket = async (req, res) => {
 
 exports.transferTicket = async (req, res) => {
   const ticketId = req.params.id;
-  const { userId: newAssigneeId, note } = req.body; // userId is the ID of the user to transfer TO
-  const initiator = req.user; // User initiating the transfer
+  const { userId: newAssigneeId, note } = req.body;
+  const initiator = req.user;
+  const session = await mongoose.startSession();
 
   const logContext = {
     ticketId,
@@ -1149,6 +1241,7 @@ exports.transferTicket = async (req, res) => {
   };
 
   try {
+    session.startTransaction();
     logger.info(
       "transfer",
       `[TRANSFER_INITIATED] Ticket ID: ${ticketId} to User ID: ${newAssigneeId} by User: ${initiator.email}.`,
@@ -1156,7 +1249,7 @@ exports.transferTicket = async (req, res) => {
       logContext
     );
 
-    const ticket = await Ticket.findById(ticketId);
+    const ticket = await Ticket.findById(ticketId).session(session);
     if (!ticket) {
       logger.warn(
         "transfer",
@@ -1164,6 +1257,7 @@ exports.transferTicket = async (req, res) => {
         initiator,
         logContext
       );
+      await session.abortTransaction();
       return res.status(404).json({ message: "Ticket not found" });
     }
 
@@ -1179,19 +1273,14 @@ exports.transferTicket = async (req, res) => {
         initiator,
         { ...logContext, currentAssignee: ticket.currentAssignee?.toString() }
       );
+      await session.abortTransaction();
       return res.status(403).json({
         message:
           "Forbidden: Only the current assignee or a super-admin can transfer this ticket.",
       });
     }
-    logger.debug(
-      "transfer",
-      `[AUTH_SUCCESS] Authorization successful for Ticket ID: ${ticketId}.`,
-      initiator,
-      logContext
-    );
 
-    const newAssigneeUser = await User.findById(newAssigneeId);
+    const newAssigneeUser = await User.findById(newAssigneeId).session(session);
     if (!newAssigneeUser) {
       logger.warn(
         "transfer",
@@ -1199,6 +1288,7 @@ exports.transferTicket = async (req, res) => {
         initiator,
         logContext
       );
+      await session.abortTransaction();
       return res.status(404).json({ message: "User to transfer to not found" });
     }
 
@@ -1206,17 +1296,15 @@ exports.transferTicket = async (req, res) => {
       ? ticket.currentAssignee.toString()
       : null;
 
-    // Add to transferHistory
     ticket.transferHistory.push({
-      from: ticket.currentAssignee, // The one who was assigned before this transfer
-      to: newAssigneeId, // The new assignee
-      transferredBy: initiator.id, // The user initiating the transfer
+      from: ticket.currentAssignee,
+      to: newAssigneeId,
+      transferredBy: initiator.id,
       note: note || "",
       transferredAt: new Date(),
       statusAtTransfer: ticket.status,
     });
 
-    // Add to assignmentLog
     ticket.assignmentLog.push({
       assignedTo: newAssigneeId,
       assignedBy: initiator.id,
@@ -1224,37 +1312,23 @@ exports.transferTicket = async (req, res) => {
       assignedAt: new Date(),
     });
 
-    // Update currentAssignee
     ticket.currentAssignee = newAssigneeId;
-    await ticket.save();
-    logger.info(
-      "transfer",
-      `[TICKET_UPDATED] Ticket ID: ${ticketId} currentAssignee updated to ${newAssigneeId}.`,
-      initiator,
-      logContext
-    );
+    await ticket.save({ session });
 
-    // Update user documents: remove from old assignee's list, add to new assignee's list
     if (oldAssigneeId && oldAssigneeId !== newAssigneeId.toString()) {
-      await User.findByIdAndUpdate(oldAssigneeId, {
-        $pull: { tickets: ticket._id },
-      });
-      logger.debug(
-        "transfer",
-        `[USER_TICKET_REF_REMOVED] Ticket ${ticket._id} pulled from old assignee ${oldAssigneeId}.`,
-        initiator,
-        logContext
+      await User.findByIdAndUpdate(
+        oldAssigneeId,
+        { $pull: { tickets: ticket._id } },
+        { session }
       );
     }
-    await User.findByIdAndUpdate(newAssigneeId, {
-      $addToSet: { tickets: ticket._id },
-    });
-    logger.debug(
-      "transfer",
-      `[USER_TICKET_REF_ADDED] Ticket ${ticket._id} added to new assignee ${newAssigneeId}.`,
-      initiator,
-      logContext
+    await User.findByIdAndUpdate(
+      newAssigneeId,
+      { $addToSet: { tickets: ticket._id } },
+      { session }
     );
+
+    await session.commitTransaction();
 
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate("currentAssignee", "firstname lastname email")
@@ -1262,7 +1336,7 @@ exports.transferTicket = async (req, res) => {
         "transferHistory.from transferHistory.to transferHistory.transferredBy",
         "firstname lastname email"
       )
-      .populate("createdBy", "firstname lastname email"); // Added createdBy for completeness
+      .populate("createdBy", "firstname lastname email");
 
     logger.info(
       "transfer",
@@ -1275,6 +1349,7 @@ exports.transferTicket = async (req, res) => {
       ticket: populatedTicket,
     });
   } catch (error) {
+    await session.abortTransaction();
     logger.error(
       "transfer",
       `[TRANSFER_ERROR] Error transferring Ticket ID: ${ticketId}.`,
@@ -1286,12 +1361,11 @@ exports.transferTicket = async (req, res) => {
       message: "Server error during ticket transfer.",
       details: error.message,
     });
+  } finally {
+    session.endSession();
   }
 };
 
-// @desc    Get a list of users suitable for ticket transfer
-// @route   GET /api/tickets/transfer-candidates (New route)
-// @access  Private (Authenticated users)
 exports.getTransferCandidates = asyncHandler(async (req, res) => {
   const requestingUser = req.user;
 
@@ -1312,7 +1386,6 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       .json({ message: "Authentication required or user session invalid." });
   }
 
-  // Now it's safe to define logContext
   const logContext = {
     initiatorId: requestingUser.id,
     initiatorEmail: requestingUser.email,
@@ -1322,11 +1395,11 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
   try {
     const users = await User.find({
       _id: { $ne: requestingUser.id },
-      role: { $nin: ["client"] },
+      role: { $nin: ["client"] }, // Exclude 'client' role
       isActive: true,
     })
       .select("firstname lastname email role _id")
-      .lean(); // Removed 'department'
+      .lean();
 
     logger.info(
       "ticket-transfer-candidates",
@@ -1350,7 +1423,7 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
   }
 });
 
-// --- Logic moved from index.js ---
+// --- Logic moved from index.js (Legacy - consider refactoring or removing if fully replaced) ---
 
 exports.getAllTickets_IndexLogic = async (req, res) => {
   const user = req.user || null;
@@ -1369,7 +1442,7 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
 };
 
 exports.createTicket_IndexLogic = async (req, res) => {
-  const user = req.user || null; // This route in index.js was not authenticated, so user might be null
+  const user = req.user || null;
   try {
     const {
       companyName,
@@ -1381,11 +1454,10 @@ exports.createTicket_IndexLogic = async (req, res) => {
 
     const totalQuantity = goods.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = goods.reduce((sum, item) => sum + item.amount, 0);
-    const gstAmount = totalAmount * 0.18; // Assuming fixed GST
+    const gstAmount = totalAmount * 0.18;
     const grandTotal = totalAmount + gstAmount;
 
     const newTicket = await OpenticketModel.create({
-      // ticketNumber will be auto-generated by model or another mechanism if set up
       companyName,
       quotationNumber,
       billingAddress,
@@ -1395,25 +1467,17 @@ exports.createTicket_IndexLogic = async (req, res) => {
       totalAmount,
       gstAmount,
       grandTotal,
-      status: "Quotation Sent", // Default status
-      statusHistory: [
-        {
-          status: "Quotation Sent",
-          changedAt: new Date(),
-          // changedBy would ideally be set if user context was available
-        },
-      ],
+      status: "Quotation Sent",
+      statusHistory: [{ status: "Quotation Sent", changedAt: new Date() }],
       documents: {
-        // Initialize documents
-        quotation: "",
-        po: "",
-        pi: "",
-        challan: "",
-        packingList: "",
-        feedback: "",
+        quotation: null,
+        po: null,
+        pi: null,
+        challan: null,
+        packingList: null,
+        feedback: null,
+        other: [],
       },
-      // createdBy and currentAssignee would ideally be set if user context was available
-      // For now, mirroring index.js which didn't explicitly set them from req.user
     });
     logger.info("ticket-controller", `Ticket created (index.js logic)`, user, {
       ticketId: newTicket._id,
@@ -1435,7 +1499,7 @@ exports.createTicket_IndexLogic = async (req, res) => {
 };
 
 exports.uploadDocument_IndexLogic = async (req, res) => {
-  const user = req.user || null; // This route in index.js was not authenticated
+  const user = req.user || null;
   try {
     const { documentType } = req.body;
     if (!req.file) {
@@ -1447,26 +1511,18 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
       );
       return res.status(400).json({ error: "No file uploaded" });
     }
-
-    // req.file.path from multer in routes/tickets.js will be relative to 'uploads/<ticketId>/'
-    // The original index.js saved to 'uploads/filename'. We adapt to the new structure.
-    const filePath = req.file.filename; // filename is now relative to 'uploads/<ticketId>/'
-
+    const filePath = req.file.filename;
     const update = {};
     update[`documents.${documentType}`] = {
-      // Store as an object consistent with main model
       path: filePath,
       originalName: req.file.originalname,
-      // uploadedBy: user ? user.id : null, // If user context was available
       uploadedAt: new Date(),
     };
-
     const updatedTicket = await OpenticketModel.findByIdAndUpdate(
       req.params.id,
       { $set: update },
       { new: true }
     );
-
     if (!updatedTicket) {
       logger.warn(
         "ticket-controller",
@@ -1496,7 +1552,7 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
 };
 
 exports.updateTicket_IndexLogic = async (req, res) => {
-  const user = req.user || null; // This route in index.js was not authenticated
+  const user = req.user || null;
   try {
     const { _id, __v, createdAt, updatedAt, ...updateData } = req.body;
     const updatedTicket = await OpenticketModel.findByIdAndUpdate(
@@ -1531,26 +1587,22 @@ exports.updateTicket_IndexLogic = async (req, res) => {
   }
 };
 
-// Note: The GET /uploads/:filename route from index.js is a general file serving route.
-// If it's intended *only* for ticket documents, it can be adapted here.
-// Otherwise, it should remain a general route in index.js or a separate file utility controller.
-// For this exercise, assuming it's related, but it's a broader concern.
-// A more robust solution would be to have specific, authenticated endpoints for ticket documents.
 exports.serveFile_IndexLogic = (req, res) => {
   const user = req.user || null;
   const filename = req.params.filename;
-  // The original path was path.join(__dirname, 'uploads', filename);
-  // This needs to be relative to the project root's 'uploads' or the specific ticket's upload folder.
-  // For simplicity, assuming 'uploads' is at the root of the server.
-  // If files are in ticket-specific folders (e.g., uploads/ticketId/filename), this needs more context.
-  const filePath = path.join(process.cwd(), "uploads", filename); // More robust path finding
+  const ticketId = req.params.ticketId; // Assuming ticketId is part of the path for ticket-specific files
+
+  // Construct path to ticket-specific upload folder
+  const filePath = ticketId
+    ? path.join(process.cwd(), "uploads", ticketId, filename)
+    : path.join(process.cwd(), "uploads", filename); // Fallback for general uploads if any
 
   if (!fs.existsSync(filePath)) {
     logger.warn(
       "ticket-controller",
       "File not found for serving (index.js logic)",
       user,
-      { filename }
+      { filename, ticketId, attemptedPath: filePath }
     );
     return res.status(404).send("File not found");
   }
@@ -1577,7 +1629,6 @@ exports.serveFile_IndexLogic = (req, res) => {
       `attachment; filename="${path.basename(filename)}"`
     );
   }
-
   res.setHeader("Content-Type", contentType);
   logger.debug("ticket-controller", `Serving file (index.js logic)`, user, {
     filename,
