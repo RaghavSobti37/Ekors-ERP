@@ -2683,5 +2683,192 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* ===================== */
+/* History Page Specific */
+/* ===================== */
+
+.history-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Mobile Header */
+.mobile-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.mobile-history-header h2 {
+  font-size: 1.5rem;
+  color: var(--dark-color);
+  margin: 0;
+}
+
+.mobile-history-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mobile-filter-btn,
+.mobile-add-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.mobile-add-btn {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+/* History Controls */
+.history-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.history-search {
+  min-width: 250px;
+}
+
+/* Mobile Card View */
+.mobile-history-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.mobile-history-card {
+  background: white;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.mobile-history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-history-card-header h5 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--primary-color);
+}
+
+.mobile-history-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-history-time {
+  font-size: 0.95rem;
+}
+
+.mobile-history-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Modal Content */
+.modal-time-summary {
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.modal-time-table {
+  margin-top: 1rem;
+}
+
+/* Loading and Empty States */
+.loading-history,
+.empty-history {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.empty-history p {
+  margin-bottom: 0.5rem;
+}
+
+/* Tablet Adjustments */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .mobile-history-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .mobile-history-card-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .mobile-history-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Very Small Mobile Devices */
+@media (max-width: 400px) {
+  .mobile-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .mobile-history-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .mobile-filter-btn,
+  .mobile-add-btn {
+    flex: 1;
+  }
+  
+  .mobile-filter-btn {
+    margin-right: 0.5rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .mobile-history-card {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #f8f9fa;
+  }
+  
+  .mobile-history-card-header h5 {
+    color: var(--primary-light);
+  }
+  
+  .modal-time-summary {
+    background-color: #333;
+    color: #f8f9fa;
+  }
+}
+
 
 
