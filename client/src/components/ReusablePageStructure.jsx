@@ -19,7 +19,7 @@ const pageContainerStyle = {
 };
 
 const headerStyle = {
-  backgroundColor: "cyan",
+  backgroundColor: "#34495E",
   color: "white",
   padding: "1rem 1.5rem", // Added more padding
   flexShrink: 0,
