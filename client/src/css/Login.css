@@ -1,0 +1,175 @@
+/* Root Variables */
+:root {
+  --primary: #667eea;
+  --accent: #764ba2;
+  --text-light: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.1);
+  --card-hover-bg: rgba(255, 255, 255, 0.25);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --card-border: rgba(255, 255, 255, 0.3);
+  --form-bg: #ffffff;
+  --form-text: #333333;
+  --form-border: #dddddd;
+  --form-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Container Layout */
+.login-container {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(to right, var(--primary), var(--accent));
+  color: var(--text-light);
+}
+
+/* Left Section - Description */
+.login-description-section {
+  width: 60%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.login-description-content {
+  max-width: 80%;
+}
+
+.login-logo {
+  width: 120px;
+  margin-bottom: 1rem;
+}
+
+.login-title {
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 1.5rem;
+}
+
+.feature-card {
+  background-color: var(--card-bg);
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  color: var(--text-light);
+  font-size: 1rem;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.feature-card:hover {
+  background-color: var(--card-hover-bg);
+  transform: translateY(-3px);
+  cursor: pointer;
+}
+
+/* Right Section - Login Form */
+.login-form-section {
+  width: 40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--form-bg);
+}
+
+.login-form-card {
+  width: 80%;
+  background-color: var(--form-bg);
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: var(--form-shadow);
+  color: var(--form-text);
+}
+
+.login-form-title {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--form-border);
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.password-group {
+  position: relative;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 10px;
+  top: 35px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--form-text);
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--primary);
+  color: var(--text-light);
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-submit-btn:hover {
+  background-color: var(--accent);
+}
+
+/* Responsive Behavior */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+  }
+
+  .login-description-section,
+  .login-form-section {
+    width: 100%;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Wrapper for logo and title */
+.login-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem; /* Spacing below the header */
+}
+
+.login-logo {
+  width: 120px;
+  margin-bottom: 0; /* Remove bottom margin to align properly in row */
+  margin-right: 1rem; /* Space between logo and title */
+}
+
+.login-title {
+  font-size: 2.5rem;
+  margin-bottom: 0; /* Remove bottom margin as it’s now inline with logo */
+}
