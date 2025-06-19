@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Form, ListGroup, Spinner } from "react-bootstrap";
 import apiClient from "../utils/apiClient"; 
 import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
@@ -13,6 +13,7 @@ const ClientSearchComponent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const resultsRef = useRef(null);
 
   const fetchClients = useCallback(async (termToSearch) => {
     const trimmedTerm = termToSearch.trim();
@@ -24,27 +25,22 @@ const ClientSearchComponent = ({
     setIsLoading(true);
     setError("");
     try {
-      // apiClient is expected to handle auth and throw if token is missing/invalid.
-      // The error will be caught by the catch block below.
       const data = await apiClient(`/clients/search?q=${encodeURIComponent(trimmedTerm)}`);
       setResults(data);
       setShowResults(true); // Show results area now that we have data (or empty data)
-      // If data is empty, showResults is still true, allowing "No clients found" message
-      // If data has items, ListGroup will show.
     } catch (err) {
-      // handleApiError should ideally also handle auth errors from apiClient
       setError(handleApiError(err, "Failed to search clients."));
       setResults([]);
       setShowResults(false); // Hide results on error
     } finally {
       setIsLoading(false);
     }
-  }, [handleApiError]); // Assuming handleApiError is a stable utility function
+  }, [handleApiError]);
 
   useEffect(() => {
     const trimmedSearchTerm = searchTerm.trim();
     const timerId = setTimeout(() => {
-      fetchClients(trimmedSearchTerm); // fetchClients will handle empty/short terms
+      fetchClients(trimmedSearchTerm);
     }, 300); // 300ms debounce
     return () => clearTimeout(timerId);
   }, [searchTerm, fetchClients]);
@@ -61,6 +57,11 @@ const ClientSearchComponent = ({
     setShowResults(false);
   };
 
+  // Handle clicks inside the results dropdown
+  const handleResultsMouseDown = (e) => {
+    e.preventDefault(); // Prevent input blur when clicking on results
+  };
+
   return (
     <div className="mb-3 position-relative">
       <Form.Control
@@ -68,15 +69,22 @@ const ClientSearchComponent = ({
         placeholder={placeholder || "Search client by Name, Email, GST..."}
         value={searchTerm}
         onChange={handleSearchChange}
-        onFocus={() => searchTerm.trim().length >= 2 && setShowResults(true)} // Show results area if term is potentially valid
-        onBlur={() => setTimeout(() => setShowResults(false), 150)} // Delay to allow click on list item
+        onFocus={() => searchTerm.trim().length >= 2 && setShowResults(true)}
+        onBlur={() => {
+          // Only hide results if focus isn't moving to the results list
+          if (!resultsRef.current || !resultsRef.current.contains(document.activeElement)) {
+            setTimeout(() => setShowResults(false), 200);
+          }
+        }}
       />
       {isLoading && <Spinner animation="border" size="sm" className="mt-2" />}
       {error && <p className="text-danger small mt-1">{error}</p>}
       {showResults && results.length > 0 && (
         <ListGroup
+          ref={resultsRef}
           className="position-absolute w-100"
-          style={{ zIndex: 1051 /* Higher than modal */ }}
+          style={{ zIndex: 1051 }}
+          onMouseDown={handleResultsMouseDown}
         >
           {results.map((client) => (
             <ListGroup.Item
