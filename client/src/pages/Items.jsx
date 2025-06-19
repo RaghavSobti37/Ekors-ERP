@@ -42,7 +42,7 @@ export default function Items() {
     key: "name",
     direction: "asc",
   });
-  const [itemHistory, setItemHistory] = useState([]);
+  // const [itemHistory, setItemHistory] = useState([]); // Replaced by individual history states
   const [itemHistoryLoading, setItemHistoryLoading] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
@@ -61,8 +61,8 @@ export default function Items() {
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false); // Renamed from showModal for clarity
   const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
-  const [purchaseHistory, setPurchaseHistory] = useState({});
-  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
+  const [purchaseHistory, setPurchaseHistory] = useState({}); // This is for the expanded row, not the modal
+  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item for expanded row
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [currentItemIndex, setCurrentItemIndex] = useState(-1);
@@ -75,10 +75,6 @@ export default function Items() {
     stateName: "",
     invoiceNumber: "",
     date: new Date().toISOString().split("T")[0],
-    quantity: "",
-    price: "",
-    gstRate: "0",
-    description: "",
     items: [],
   });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -89,11 +85,11 @@ export default function Items() {
   const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
-    error: null,
+    error: null, // For Excel specific errors
     success: null,
     details: [],
   });
-  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); // Corrected from showViewItemModal
+  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); 
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -101,6 +97,13 @@ export default function Items() {
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
+  
+  // New states for separated history data in modal
+  const [excelHistoryData, setExcelHistoryData] = useState([]);
+  const [purchaseHistoryData, setPurchaseHistoryData] = useState([]);
+  const [ticketUsageData, setTicketUsageData] = useState([]);
+  const [inventoryAdjustmentsLogData, setInventoryAdjustmentsLogData] = useState([]);
+  const [itemEditsLogData, setItemEditsLogData] = useState([]);
 
   const { user } = useAuth(); // Get user for role checks
   const location = useLocation();
@@ -130,11 +133,11 @@ export default function Items() {
         ? parseInt(storedThreshold, 10)
         : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
     );
-  }, []); // Runs once on mount to get the threshold
+  }, []); 
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to the first page
+    setCurrentPage(1); 
   };
 
   const showSuccess = (message) => {
@@ -150,7 +153,7 @@ export default function Items() {
         limit,
         sortKey: sortConfig.key,
         sortDirection: sortConfig.direction,
-        status: 'approved', // Fetch only approved items for the main list
+        status: 'approved', 
       };
       if (searchTerm) params.searchTerm = searchTerm;
       if (selectedCategory !== "All") params.category = selectedCategory;
@@ -165,8 +168,8 @@ export default function Items() {
           : effectiveLowStockThreshold;
       }
 
-
-      const response = await apiClient("/items", { params });
+      // Fetch items with populated inventoryLog for the history modal
+      const response = await apiClient("/items", { params: {...params, populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy'} });
       setItems(response.data || []);
       setTotalItems(response.totalItems || 0);
       setError(null);
@@ -176,7 +179,7 @@ export default function Items() {
       setItems([]);
       setTotalItems(0);
     } finally {
-      setLoading(false); // Ensure loading is set to false in finally
+      setLoading(false); 
     }
   }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, selectedSubcategory, quantityFilterThreshold, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user]);
 
@@ -187,8 +190,8 @@ export default function Items() {
       return;
     }
     try {
-      setLoading(true); // Consider a separate loading state if fetches overlap significantly
-      const params = { page, limit, status: 'pending_review', sortKey: 'createdAt', sortDirection: 'desc' };
+      setLoading(true); 
+      const params = { page, limit, status: 'pending_review', sortKey: 'createdAt', sortDirection: 'desc', populate: 'createdBy' };
       const response = await apiClient("/items", { params });
       setPendingReviewItems(response.data || []);
       setTotalPendingReviewItems(response.totalItems || 0);
@@ -203,7 +206,7 @@ export default function Items() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true); // Should be setLoading(true) at the start
+      setLoading(true); 
       setError(null);
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
@@ -224,7 +227,7 @@ export default function Items() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]); // Added user dependency
 
   useEffect(() => {
     fetchItems();
@@ -235,7 +238,7 @@ export default function Items() {
       setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchPendingReviewItems, fetchCategories]); // Dependencies updated
+  }, [fetchItems, fetchPendingReviewItems, fetchCategories]); 
 
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
@@ -255,7 +258,7 @@ export default function Items() {
     }
   }, [itemSearchTerm, items]);
 
-  const fetchPurchaseHistory = useCallback(async (itemId) => {
+  const fetchPurchaseHistoryForExpandedRow = useCallback(async (itemId) => { // Renamed for clarity
     try {
       setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: true }));
       setError(null);
@@ -287,10 +290,9 @@ export default function Items() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
-    setCurrentPage(1); // Reset to first page when sort changes
+    setCurrentPage(1); 
   };
 
-  // currentItems will now be directly `items` from state, as server handles pagination.
 
   const handleEditItem = (item) => {
     setEditingItem(item);
@@ -338,13 +340,13 @@ export default function Items() {
       setShowEditItemModal(false);
       setEditingItem(null);
       showSuccess("Item updated successfully!");
-    } catch (err) { // eslint-disable-line no-shadow
+    } catch (err) { 
       const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-  }; // eslint-disable-line no-shadow
+  }; 
 
    const handleApproveItem = async (itemId) => {
     if (!window.confirm("Are you sure you want to approve this item?")) return;
@@ -352,9 +354,9 @@ export default function Items() {
     try {
       await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
       showSuccess("Item approved successfully!");
-      await fetchItems(); // Refetch all items to update lists
+      await fetchItems(); 
       await fetchPendingReviewItems();
-    } catch (err) { // eslint-disable-line no-shadow
+    } catch (err) { 
       const errorMessage = handleApiError(err, "Failed to approve item.", user);
       setError(errorMessage);
     } finally {
@@ -363,7 +365,7 @@ export default function Items() {
   };
 
   const handleReviewAndEditItem = (item) => {
-    handleEditItem(item); // This already sets editingItem, formData, and shows the modal
+    handleEditItem(item); 
   };
 
   const handleItemChange = (index, field, value) => {
@@ -454,9 +456,9 @@ export default function Items() {
       stateName: "",
       invoiceNumber: "",
       date: new Date().toISOString().split("T")[0],
-      quantity: "",
-      price: "",
-      gstRate: "0",
+      // quantity: "", // These were single item fields, now part of items array
+      // price: "",
+      // gstRate: "0",
       items: [],
     });
     setItemSearchTerm("");
@@ -485,7 +487,7 @@ export default function Items() {
       };
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
-      setShowAddItemModal(false); // Use renamed state
+      setShowAddItemModal(false); 
       setFormData({
         name: "",
         quantity: "",
@@ -516,111 +518,141 @@ export default function Items() {
 
   const toggleExpandedRow = async (id) => {
     if (expandedRow !== id) {
-      await fetchPurchaseHistory(id);
+      await fetchPurchaseHistoryForExpandedRow(id); // Use renamed function
     }
     setExpandedRow(expandedRow === id ? null : id);
   };
 
   const handleShowItemHistoryModal = async (item) => {
-    setEditingItem(item);
-    setShowItemHistoryModal(true);
+    // Fetch the full item details again to ensure inventoryLog is populated
     setItemHistoryLoading(true);
     setError(null);
-    let combinedHistory = [];
-    // 1. Excel Import History (Local Data)
-    if (Array.isArray(item.excelImportHistory) && item.excelImportHistory.length > 0) {
-      item.excelImportHistory.forEach((entry) => {
-        let quantityChange = 0; // Default to 0
-        let details = `File: ${entry.fileName || "N/A"}. `;
-        let oldQtyText = "";
-        let newQtyText = "";
+    setShowItemHistoryModal(true);
+    setEditingItem(item); // Set the item for context, even if we refetch
 
-        // Determine user display name for Excel import
-        let importedByUserDisplay = "System";
-        if (entry.importedBy) {
-          if (entry.importedBy.firstname && entry.importedBy.lastname) {
-            importedByUserDisplay = `${entry.importedBy.firstname} ${entry.importedBy.lastname}`;
-          } else if (entry.importedBy.firstname) {
-            importedByUserDisplay = entry.importedBy.firstname;
-          } else if (entry.importedBy.email) { // Fallback to email
-            importedByUserDisplay = entry.importedBy.email;
-          }
-        }
+    // Reset individual history states
+    setExcelHistoryData([]);
+    setPurchaseHistoryData([]);
+    setTicketUsageData([]);
+    setInventoryAdjustmentsLogData([]);
+    setItemEditsLogData([]);
 
-        if (entry.action === "created") {
-          const createdQty = entry.snapshot?.quantity;
-          quantityChange = parseFloat(createdQty) || 0;
-          newQtyText = ` (New Qty: ${quantityChange})`;
-          details += `Item created via Excel.`;
-        } else if (entry.action === "updated") {
-          const qtyChangeInfo = entry.changes?.find(
-            (c) => c.field === "quantity"
-          );
-          if (qtyChangeInfo) {
-            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
-            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
-            quantityChange = newQty - oldQty;
-            oldQtyText = ` (Old: ${oldQty} -> New: ${newQty})`;
-          }
-          details += `Item fields updated.`;
-        }
-        combinedHistory.push({
-          date: new Date(entry.importedAt),
-          type: `Excel (${entry.action})`,
-          user: importedByUserDisplay,
-          details: details.trim() + oldQtyText + newQtyText,
-          quantityChange: quantityChange,
-        });
-      });
-    }
+    let tempExcelHistory = [];
+    let tempPurchaseHistory = [];
+    let tempTicketUsage = [];
+    let tempInventoryAdjustments = [];
+    let tempItemEdits = [];
 
-    // 2. Purchase History (Fetch Fresh)
     try {
-      const itemPurchases = await apiClient(`/items/${item._id}/purchases`);
-      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
-        itemPurchases.forEach((purchase) => {
-          combinedHistory.push({
-            date: new Date(purchase.date),
-            type: "Purchase Entry",
-            user: purchase.createdByName || "System", // Ensure your backend provides this if needed
-            details: `Purchased from ${purchase.companyName} (Inv: ${
-              purchase.invoiceNumber
-            }). Price: ₹${(parseFloat(purchase.price) || 0).toFixed(2)}/unit. Qty: ${parseFloat(purchase.quantity) || 0}`,
-            quantityChange: parseFloat(purchase.quantity) || 0,
-          });
+        const fetchedItem = await apiClient(`/items/${item._id}`, {
+            params: { populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' }
         });
-      }
-    } catch (err) {
-      console.error("Error fetching purchase history for modal:", err);
-      showToast("Failed to load purchase history.", false);
-      // Optionally set an error state for the modal if needed
-    }
+        console.log("Fetched item for history:", fetchedItem); // Debug log: See the full item data fetched
+        console.log("Inventory Log:", fetchedItem.inventoryLog); // Debug log: See the raw inventoryLog array
+        setEditingItem(fetchedItem); // Update with fully populated item
 
-    // 3. Ticket Usage History (Fetch Fresh)
-    try {
-      const ticketUsageData = await apiClient(`/items/${item._id}/ticket-usage`);
-      if (Array.isArray(ticketUsageData) && ticketUsageData.length > 0) {
-        ticketUsageData.forEach((usage) => {
-          combinedHistory.push({
-            date: new Date(usage.date),
-            type: usage.type || "Ticket Interaction",
-            user: usage.user || "System",
-            details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
-            quantityChange: parseFloat(usage.quantityChange) || 0, // This should be negative
-          });
+        // 1. Excel Import History (from fetchedItem)
+        fetchedItem.excelImportHistory?.forEach((entry) => {
+            let importedByUserDisplay = "System";
+            if (entry.importedBy) {
+                importedByUserDisplay = `${entry.importedBy.firstname || ''} ${entry.importedBy.lastname || ''}`.trim() || entry.importedBy.email;
+            }
+            let oldQtyText = "";
+            let newQtyText = "";
+            if (entry.action === "created") {
+                const createdQty = entry.snapshot?.quantity;
+                newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
+            } else if (entry.action === "updated") {
+                const qtyChangeInfo = entry.changes?.find(c => c.field === "quantity");
+                if (qtyChangeInfo) {
+                    const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+                    const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
+                    oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
+                }
+            }
+            tempExcelHistory.push({
+                date: new Date(entry.importedAt),
+                action: entry.action,
+                user: importedByUserDisplay,
+                fileName: entry.fileName || "N/A",
+                changesSummary: entry.action === 'updated' 
+                    ? entry.changes?.map(c => `${c.field}: ${c.oldValue} -> ${c.newValue}`).join('; ') + oldQtyText
+                    : `Initial state set.` + newQtyText,
+            });
         });
-      }
-    } catch (err) {
-      console.error("Error fetching ticket usage history:", err);
-      showToast("Failed to load ticket usage history.", false);
-      // Optionally set an error state for the modal if needed
-    }
+        setExcelHistoryData(tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
-    // Sort all combined history entries by date
-    combinedHistory.sort((a, b) => b.date - a.date);
-    setItemHistory(combinedHistory);
-    setItemHistoryLoading(false);
+        // 2. Purchase History (Fetch Fresh)
+        const itemPurchases = await apiClient(`/items/${fetchedItem._id}/purchases`);
+        if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+            tempPurchaseHistory = itemPurchases.map((purchase) => ({
+                _id: purchase._id,
+                date: new Date(purchase.date),
+                companyName: purchase.companyName,
+                invoiceNumber: purchase.invoiceNumber,
+                createdByName: purchase.createdByName || "System",
+                quantity: parseFloat(purchase.quantity) || 0,
+                price: parseFloat(purchase.price) || 0,
+                gstRate: parseFloat(purchase.gstRate) || 0,
+                amount: purchase.amount,
+            }));
+        }
+        setPurchaseHistoryData(tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+        // 3. Ticket Usage History (Fetch Fresh - this might be simplified if inventoryLog is comprehensive)
+        const ticketUsageRaw = await apiClient(`/items/${fetchedItem._id}/ticket-usage`);
+        if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
+            tempTicketUsage = ticketUsageRaw.map((usage) => ({
+                date: new Date(usage.date),
+                type: usage.type || "Ticket Interaction",
+                user: usage.user || "System",
+                details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+                quantityChange: parseFloat(usage.quantityChange) || 0,
+                ticketNumber: usage.ticketNumber,
+            }));
+        }
+        setTicketUsageData(tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date)));
+        
+        // 4. Process inventoryLog for Adjustments and Item Edits
+        if (Array.isArray(fetchedItem.inventoryLog) && fetchedItem.inventoryLog.length > 0) {
+            fetchedItem.inventoryLog.forEach(log => {
+                const commonLogData = {
+                    date: new Date(log.date),
+                    type: log.type,
+                    user: log.userReference 
+                        ? `${log.userReference.firstname || ''} ${log.userReference.lastname || ''}`.trim() || log.userReference.email
+                        : 'System',
+                    details: log.ticketReference && log.ticketReference.ticketNumber 
+                        ? `${log.details || log.type}`
+                        : (log.details || log.type),
+                    quantityChange: parseFloat(log.quantityChange) || 0,
+                    ticketNumber: log.ticketReference?.ticketNumber
+                };
+
+                if (log.type === "Item Details Updated") {
+                    tempItemEdits.push(commonLogData);
+                } else if (
+                    !log.type.toLowerCase().includes('excel import') && 
+                    !log.type.toLowerCase().includes('purchase entry') &&
+                    !log.type.toLowerCase().includes('ticket deduction (initial)') // Assuming initial deduction is covered by ticket usage
+                ) {
+                    tempInventoryAdjustments.push(commonLogData);
+                }
+            });
+        }
+        setInventoryAdjustmentsLogData(tempInventoryAdjustments.sort((a, b) => new Date(b.date) - new Date(a.date)));
+        setItemEditsLogData(tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date)));
+        console.log("Processed Item Edits Log Data:", tempItemEdits); // Debug log: See what data is prepared for the edits table
+
+    } catch (err) {
+        console.error("Error fetching full item details for history modal:", err);
+        handleApiError(err, "Failed to load item history.", user);
+        setError("Failed to load item history.");
+    } finally {
+        setItemHistoryLoading(false);
+    }
   };
+
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
@@ -628,9 +660,9 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
-        await fetchPendingReviewItems(); // Also refresh pending items if one was deleted from there
+        await fetchPendingReviewItems(); 
         showSuccess("Item Deleted Successfully");
-      } catch (err) { // eslint-disable-line no-shadow
+      } catch (err) { 
         const errorMessage = handleApiError(err, "Failed to delete item.", user);
         setError(errorMessage);
         console.error("Error deleting item:", err);
@@ -648,7 +680,7 @@ export default function Items() {
         setError(
           "Please fill all required fields and ensure each item has a description, quantity, and price"
         );
-        setIsSubmitting(false); // Reset submitting state
+        setIsSubmitting(false); 
         return false;
       }
       const purchaseDataToSend = {
@@ -724,10 +756,10 @@ export default function Items() {
       return;
     }
     try {
-      // Use apiClient for blob response
-      const blob = await apiClient("items/export-excel", { // Endpoint relative to API_BASE_URL
+      
+      const blob = await apiClient("items/export-excel", { 
         method: "GET",
-        responseType: 'blob' // Tell apiClient to expect a blob
+        responseType: 'blob' 
       });
 
       if (!blob) {
@@ -745,7 +777,7 @@ export default function Items() {
       console.error("Error exporting to Excel:", err);
       const message = err.data?.message || err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); // Show error in the main error display
+      setError(message); 
     } finally {
       setIsExportingExcel(false);
     }
@@ -764,21 +796,21 @@ export default function Items() {
           "Are you absolutely sure you want to proceed?"
       )
     ) {
-      event.target.value = null; // Reset file input if user cancels
+      event.target.value = null; 
       return;
     }
     setIsProcessingExcel(true);
     const formData = new FormData();
     formData.append("excelFile", file);
     try {
-      // Use apiClient for FormData upload
-      const responseData = await apiClient("items/import-uploaded-excel", { // Endpoint relative to API_BASE_URL
+      
+      const responseData = await apiClient("items/import-uploaded-excel", { 
         method: "POST",
         body: formData,
-        // apiClient handles Content-Type for FormData
+        
       });
 
-      // responseData is already the parsed JSON from apiClient
+      
       let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
         } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
         } deleted.`;
@@ -806,11 +838,11 @@ export default function Items() {
       fetchItems();
     } catch (err) {
       console.error("Error updating from Excel:", err);
-      const message = err.data?.message || // apiClient error structure
+      const message = err.data?.message || 
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); // Show error in the main error display
+      setError(message); 
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -890,7 +922,7 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( // Only show page-level error if no modal is active
+        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( 
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
@@ -901,7 +933,7 @@ export default function Items() {
           </div>
         )}
 
-                {/* Pending Review Section for Admins */}
+                
         {user && (user.role === 'admin' || user.role === 'super-admin') && totalPendingReviewItems > 0 && (
           <Card className="mb-4 border-warning">
             <Card.Header className="bg-warning text-dark">
@@ -952,17 +984,17 @@ export default function Items() {
                 totalItems={totalPendingReviewItems}
                 itemsPerPage={itemsPerPage}
                 onPageChange={(page) => setCurrentPagePending(page)}
-                // onItemsPerPageChange can be added if needed for pending items list
+                
               />
             )}
           </Card>
         )}
 
 
-        {/* Main Items List Title */}
+        
         <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List" : "All Items List")}
+              {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
             </h2>
 
         {excelUpdateStatus.success && (
@@ -1021,7 +1053,7 @@ export default function Items() {
                 )}
               </button>
               <button
-                onClick={() => setShowAddItemModal(true)} // Changed from setShowModal
+                onClick={() => setShowAddItemModal(true)} 
                 className="btn btn-success d-flex align-items-center"
                 disabled={anyLoading}
                 title="Add New Item"
@@ -1164,7 +1196,7 @@ export default function Items() {
               </tr>
             </thead>
             <tbody>
-              {items.length > 0 ? ( // Use `items` state directly
+              {items.length > 0 ? ( 
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
@@ -1300,7 +1332,7 @@ export default function Items() {
                               </tbody>
                             </table>
                             <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
-                              <h6>Purchase History</h6>
+                              <h6>Purchase History (Expanded Row)</h6>
                             </div>
                             {purchaseHistoryLoading[item._id] ? (
                                <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
@@ -1333,9 +1365,9 @@ export default function Items() {
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error && expandedRow === item._id // Show error only for the current expanded row
+                                {error && expandedRow === item._id 
                                   ? `Error loading history: ${error}`
-                                  : "No purchase history found"}
+                                  : "No purchase history found for this item."}
                               </div>
                             )}
                           </div>
@@ -1353,7 +1385,7 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          {totalItems > 0 && ( // Use totalItems for pagination
+          {totalItems > 0 && ( 
             <Pagination
               currentPage={currentPage}
               totalItems={totalItems}
@@ -1372,19 +1404,19 @@ export default function Items() {
             show={showAddItemModal}
             onHide={() => {
               setShowAddItemModal(false);
-              setFormData({ // Reset form on hide
+              setFormData({ 
                 name: "", quantity: "", sellingPrice: "", buyingPrice: "",
                 gstRate: "0", hsnCode: "", unit: "Nos", category: "",
                 subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
               });
-              setError(null); // Clear modal-specific errors
+              setError(null); 
             }}
             title="Add New Item"
             footerContent={
               <>
                 <button
                   type="button"
-                  className="btn btn-secondary" // Changed from "close" to "btn btn-secondary"
+                  className="btn btn-secondary" 
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
@@ -1419,7 +1451,7 @@ export default function Items() {
             isLoading={isSubmitting}
           >
             <>
-              {error && <div className="alert alert-danger">{error}</div>} {/* Show error inside modal */}
+              {error && <div className="alert alert-danger">{error}</div>} 
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
@@ -1763,8 +1795,13 @@ export default function Items() {
             onHide={() => {
               setShowItemHistoryModal(false);
               setEditingItem(null);
-              setItemHistory([]);
-              setError(null); // Clear error on close
+              // Clear individual history states
+              setExcelHistoryData([]);
+              setPurchaseHistoryData([]);
+              setTicketUsageData([]);
+              setInventoryAdjustmentsLogData([]);
+              setItemEditsLogData([]);
+              setError(null); 
             }}
             title={`Item History: ${editingItem.name}`}
             footerContent={
@@ -1772,7 +1809,11 @@ export default function Items() {
                 onClick={() => {
                   setShowItemHistoryModal(false);
                   setEditingItem(null);
-                  setItemHistory([]);
+                  setExcelHistoryData([]);
+                  setPurchaseHistoryData([]);
+                  setTicketUsageData([]);
+                  setInventoryAdjustmentsLogData([]);
+                  setItemEditsLogData([]);
                   setError(null);
                 }}
                 className="btn btn-secondary"
@@ -1780,6 +1821,7 @@ export default function Items() {
                 Close
               </button>
             }
+            size="xl" // Make modal larger for multiple tables
           >
             <>
               {itemHistoryLoading ? (
@@ -1790,35 +1832,178 @@ export default function Items() {
                 </div>
               ) : error ? (
                 <div className="alert alert-danger">{error}</div>
-              ) : itemHistory.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-sm table-striped table-bordered">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>User/Source</th>
-                        <th>Details</th>
-                        <th>Qty Change</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itemHistory.map((entry, index) => (
-                        <tr key={index}>
-                          <td>{new Date(entry.date).toLocaleString()}</td>
-                          <td>{entry.type}</td>
-                          <td>{entry.user}</td>
-                          <td>{entry.details}</td>
-                          <td className={entry.quantityChange >= 0 ? 'text-success' : 'text-danger'}>
-                            {entry.quantityChange > 0 ? `+${entry.quantityChange}` : entry.quantityChange}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               ) : (
-                <div className="alert alert-info">No history found for this item.</div>
+                <>
+                  {/* Inventory Adjustments & Ticket Interactions Table */}
+                  {inventoryAdjustmentsLogData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Inventory Adjustments & Ticket Interactions</h5>
+                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Type</th>
+                              <th>User/Source</th>
+                              <th>Details</th>
+                              <th>Qty Change</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {inventoryAdjustmentsLogData.map((entry, index) => (
+                              <tr key={`general-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.type}</td>
+                                <td>{entry.user}</td>
+                                <td>{entry.details}{entry.ticketNumber ? ` (Ticket: ${entry.ticketNumber})` : ''}</td>
+                                <td className={entry.quantityChange >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'}>
+                                  {entry.quantityChange > 0 ? `+${entry.quantityChange}` : entry.quantityChange}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Item Detail Edits Table */}
+                  {itemEditsLogData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Item Detail Edits</h5>
+                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              {/* <th>Type</th> */}
+                              <th>User/Source</th>
+                              <th>Details of Changes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {itemEditsLogData.map((entry, index) => (
+                              <tr key={`edit-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                {/* <td>{entry.type}</td> */}
+                                <td>{entry.user}</td>
+                                <td style={{whiteSpace: 'pre-wrap'}}>{entry.details}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Purchase History Table */}
+                  {purchaseHistoryData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Purchase History</h5>
+                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Supplier</th>
+                              <th>Inv. No</th>
+                              <th>Qty</th>
+                              <th>Price/Unit</th>
+                              <th>GST</th>
+                              <th>Total</th>
+                              <th>Added By</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {purchaseHistoryData.map((entry, index) => (
+                              <tr key={`purchase-${index}`}>
+                                <td>{new Date(entry.date).toLocaleDateString()}</td>
+                                <td>{entry.companyName}</td>
+                                <td>{entry.invoiceNumber}</td>
+                                <td className="text-success fw-bold">+{entry.quantity}</td>
+                                <td>₹{entry.price.toFixed(2)}</td>
+                                <td>{entry.gstRate}%</td>
+                                <td>₹{entry.amount?.toFixed(2) || ((entry.price * entry.quantity) * (1 + entry.gstRate/100)).toFixed(2) }</td>
+                                <td>{entry.createdByName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ticket Usage History Table (from dedicated endpoint) */}
+                  {/* {ticketUsageData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Ticket Usage (Initial Deductions)</h5>
+                       <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Ticket No.</th>
+                              <th>User</th>
+                              <th>Details</th>
+                              <th>Qty Change</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ticketUsageData.map((entry, index) => (
+                              <tr key={`ticket-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.ticketNumber}</td>
+                                <td>{entry.user}</td>
+                                <td>{entry.details}</td>
+                                <td className="text-danger fw-bold">{entry.quantityChange}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )} */}
+
+                  {/* Excel Import History Table */}
+                  {excelHistoryData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Excel Import History</h5>
+                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Action</th>
+                              <th>User</th>
+                              <th>File Name</th>
+                              <th>Changes/Summary</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {excelHistoryData.map((entry, index) => (
+                              <tr key={`excel-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.action}</td>
+                                <td>{entry.user}</td>
+                                <td>{entry.fileName}</td>
+                                <td>{entry.changesSummary}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No History Found Message */}
+                  {inventoryAdjustmentsLogData.length === 0 &&
+                   itemEditsLogData.length === 0 &&
+                   purchaseHistoryData.length === 0 &&
+                   ticketUsageData.length === 0 &&
+                   excelHistoryData.length === 0 && !itemHistoryLoading && (
+                    <div className="alert alert-info">No history found for this item.</div>
+                  )}
+                </>
               )}
             </>
           </ReusableModal>

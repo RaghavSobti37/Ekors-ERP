@@ -658,7 +658,7 @@ const recalculateTotals = useCallback((goodsList) => {
           isEditing={true} // This context is always editing goods for the form
           onAddItem={handleAddItem} 
           onDeleteItem={handleDeleteItem} 
-          onAddSubtext={handleAddSubtext} 
+          // onAddSubtext={handleAddSubtext} 
           onDeleteSubtext={handleDeleteSubtext} 
           onItemSearchDropdownToggle={setIsItemSearchDropdownOpenInModal}
           itemCreationMode={itemCreationMode}

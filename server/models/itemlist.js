@@ -211,6 +211,23 @@ const itemSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    inventoryLog: [
+      {
+        type: { type: String, required: true },
+        date: { type: Date, default: Date.now },
+        quantityChange: { type: Number, required: true },
+        details: { type: String },
+        userReference: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        ticketReference: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Ticket",
+        },
+        _id: false,
+      },
+    ],
   },
   {
     timestamps: true,
