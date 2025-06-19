@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
-import "../css/Style.css";
+import "../css/Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -23,38 +23,41 @@ export default function Login() {
       await auth.login({ email, password });
       navigate("/quotations");
     } catch (err) {
-      setError(err.data?.error || err.data?.message || err.message || "Invalid credentials");
+      setError(
+        err.data?.error ||
+          err.data?.message ||
+          err.message ||
+          "Invalid credentials"
+      );
     } finally {
       setIsSubmitting(false); // Stop loading
     }
   };
+
+  const platformFeatures = [
+    "Effortless Quotation Creation",
+    "Integrated Client & Item Management",
+    "Quotation Status Tracking & PDF Downloads",
+    "Quick Quotation Search & Sorting",
+    "Seamless Quotation-to-Ticket Conversion",
+    "Service Ticket Progress Monitoring",
+    "Efficient Time Logging",
+    "Easy Access to Work History",
+  ];
 
   return (
     <div className="login-container">
       {/* Left Description Section - Hidden on mobile */}
       <div className="login-description-section">
         <div className="login-description-content">
-          <img
-            src="/logo.png"
-            alt="Logo"
-            className="login-logo"
-          />
-          <h1 className="login-title">E-KORS Platform</h1>
-
+          <div className="login-header">
+            <img src="/logo.png" alt="Logo" className="login-logo" />
+            <h1 className="login-title">E-KORS Platform</h1>
+          </div>
           {/* Feature Grid */}
           <div className="feature-grid">
-            {[
-              "Streamline your workflow",
-              "Create Quotation, Ticket and Challan",
-              "Track each user",
-              "Manage your data efficiently",
-              "Collaborate seamlessly",
-              "Unlock productivity with secure login",
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="feature-card"
-              >
+            {platformFeatures.map((feature, index) => (
+              <div key={index} className="feature-card">
                 {feature}
               </div>
             ))}
@@ -102,10 +105,7 @@ export default function Login() {
               </button>
             </div>
 
-            <button
-              type="submit"
-              className="login-submit-btn"
-            >
+            <button type="submit" className="login-submit-btn">
               Sign In
             </button>
           </form>

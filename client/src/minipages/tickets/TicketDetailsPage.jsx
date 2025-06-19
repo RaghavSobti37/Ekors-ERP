@@ -164,7 +164,7 @@ const TicketDetailsPage = () => {
   const documentTypes = [
     { label: "Quotation", type: "quotation", canGenerate: true, canPreview: true },
     { label: "Purchase Order (PO)", type: "po" },
-    { label: "Proforma Invoice (PI)", type: "pi", canGenerate: true, canPreview: true, canDownloadWord: true },
+    { label: "Performa Invoice (PI)", type: "pi", canGenerate: true, canPreview: true, canDownloadWord: true },
     { label: "Challan", type: "challan" },
     { label: "Packing List", type: "packingList" },
     { label: "Feedback Form", type: "feedback" },
