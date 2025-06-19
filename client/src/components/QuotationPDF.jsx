@@ -31,19 +31,7 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     width: "100%",
   },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 5,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  logoContainer: {
-    width: 100,
-    alignItems: "flex-end",
-  },
+
   logo: {
     width: 80,
     height: 60,
@@ -60,6 +48,12 @@ const styles = StyleSheet.create({
     textDecoration: "underline",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  subjectLine: {
+    marginVertical: 10,
+    fontSize: 11, // Or your preferred size for normal text
+    textAlign: "left",
+    // fontWeight: "normal", // Default
   },
   section: {
     marginBottom: 10,
@@ -121,7 +115,9 @@ const styles = StyleSheet.create({
     // paddingVertical: 1, // Small padding
   },
   headerSection: {
-    textAlign: "center",
+    flexDirection: "row", // Items in a row
+    justifyContent: "space-between", // Pushes company info to left, logo to right
+    alignItems: "center",
     marginBottom: 15,
   },
   gstinHeader: {
@@ -134,12 +130,26 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     textTransform: "uppercase",
   },
+  companyAddressHeader: {
+    // Added this style definition as it was used but not defined
+    fontSize: 8,
+    marginBottom: 5, // Adjusted margin
+  },
+  companyInfoContainer: {
+    flex: 1, // Takes up available space
+    flexDirection: "column",
+    alignItems: "center", // Centers the text block horizontally
+    textAlign: "center", // Centers the text lines
+  },
+  logoContainer: {
+    // marginLeft: 10, // Optional: if you want some space between text and logo
+  },
 });
 
 const QuotationActionsComponent = ({ quotation }) => {
   const handleDownloadWord = useCallback(async () => {
     try {
-      const doc = generateQuotationDocx(quotation);
+      const doc = await generateQuotationDocx(quotation); // Await the async function
       const blob = await docx.Packer.toBlob(doc);
       saveAs(blob, `quotation_${quotation.referenceNumber}.docx`);
     } catch (error) {
@@ -171,37 +181,61 @@ const QuotationActionsComponent = ({ quotation }) => {
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-      <View style={styles.headerSection}>
-        <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
-        <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
-        <Text style={styles.companyAddressHeader}>
-          PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh,
-          201307
-        </Text>
-      </View>
       <View style={styles.document}>
         <View style={styles.pageContent}>
-          <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
-
-          <View style={styles.headerContainer}>
-            <View style={styles.headerTextContainer}>
-              {/* <Text>Ref: {quotation.referenceNumber}</Text> */}
-              <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+          {/* Centered Header with Logo */}
+          <View style={styles.headerSection}>
+                  <View style={styles.companyInfoContainer}>
+              <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
+              <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+              <Text style={styles.companyAddressHeader}>
+                PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
+              </Text>
             </View>
             <View style={styles.logoContainer}>
               <Image style={styles.logo} src="/logo.png" />
             </View>
           </View>
 
+          {/* CIN and Date below the main header */}
+
+          <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
+
+          <Text>
+            Date: {new Date(quotation.date).toLocaleDateString("en-GB")}
+          </Text>
+
+
           <View style={styles.section}>
             <Text>To,</Text>
             <Text>{quotation.client.companyName}</Text>
-            {/* <Text>Site: {quotation.client.siteLocation}</Text> */}
-            <Text>GSTIN: {quotation.client.gstNumber || "N/A"}</Text>
-            <Text>Phone: {quotation.client.phone || "N/A"}</Text>
+            <Text>{quotation.client.clientName || "N/A"}</Text>
+            {quotation.billingAddress && (
+              <>
+                <Text>
+                  {quotation.billingAddress.address1 || ""}
+                  {quotation.billingAddress.address2
+                    ? `, ${quotation.billingAddress.address2}`
+                    : ""}
+                </Text>
+                <Text>
+                  {[
+                    quotation.billingAddress.city,
+                    quotation.billingAddress.state,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") +
+                    (quotation.billingAddress.pincode
+                      ? ` - ${quotation.billingAddress.pincode}`
+                      : "")}
+                </Text>
+              </>
+            )}
+            {/* <Text>GSTIN: {quotation.client.gstNumber || "N/A"}</Text>
+            <Text>Phone: {quotation.client.phone || "N/A"}</Text> */}
           </View>
 
-          <Text style={styles.heading}>
+          <Text style={styles.subjectLine}>
             Sub: Quotation for Earthing Material and Installation
           </Text>
 
@@ -274,7 +308,10 @@ const QuotationPDF = ({ quotation }) => (
             </Text>
             <Text>
               - Validity: This quotation is valid till{" "}
-              {new Date(quotation.validityDate).toLocaleDateString()}
+                        {new Date(quotation.validityDate).toLocaleDateString(
+                "en-GB"
+              )}
+
             </Text>
             <Text>
               - Order: Order to be placed in the name of "E-KORS PVT LTD"

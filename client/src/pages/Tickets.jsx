@@ -503,7 +503,7 @@ export default function Dashboard() {
           </Modal.Header>
           <Modal.Body style={{ height: '80vh', overflowY: 'auto' }}>
             <PDFViewer width="100%" height="99%">
-              <PIPDF ticket={ticketForPIPreview} />
+              <PIPDF ticketId={ticketForPIPreview?._id} />
             </PDFViewer>
           </Modal.Body>
           <Modal.Footer>
