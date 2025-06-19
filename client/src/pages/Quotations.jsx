@@ -4,7 +4,6 @@ import {
   Button,
   Form,
   Alert,
-  Spinner,
 } from "react-bootstrap";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +13,7 @@ import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable.jsx";
 import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons";
+import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import { toast } from "react-toastify";
 import frontendLogger from "../utils/frontendLogger.js";
 import "react-toastify/dist/ReactToastify.css";
@@ -40,7 +40,7 @@ export default function Quotations() {
   const [searchTerm, setSearchTerm] = useState("");
   const { user, loading: authLoading, user: authUserFromContext } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // isLoading is for local fetch, authLoading is for AuthContext
   const [isLoading, setIsLoading] = useState(false); // Local loading state for fetch
   const [sourceQuotationForTicket, setSourceQuotationForTicket] = useState(null); 
 
@@ -341,6 +341,7 @@ export default function Quotations() {
   return (
     <div>
       <Navbar />
+      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
           <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Quotations</h2>
@@ -376,10 +377,9 @@ export default function Quotations() {
           </Button>
         </div>
 
-        {isLoading && <div className="text-center"><Spinner animation="border" /> Loading ...</div>}
-        {error && !isLoading && <Alert variant="danger">{error}</Alert>}
+        {!isLoading && !authLoading && error && <Alert variant="danger">{error}</Alert>}
 
-        {!isLoading && (
+        {!isLoading && !authLoading && !error && (
           <ReusableTable
             columns={[
               { key: "referenceNumber", header: "Reference No", sortable: true, tooltip: "Quotation Reference Number (yymmdd-hhmmss format)" },
@@ -410,13 +410,13 @@ export default function Quotations() {
                 onView={() => navigate(`/quotations/preview/${quotation._id}`, { state: { quotationToPreview: quotation } })}
                 onDelete={user?.role === "super-admin" ? handleDeleteQuotation : undefined}
                 isLoading={isLoading} 
-                createTicketDisabled={quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold"}
+                createTicketDisabled={isLoading || quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold"}
               />
             )}
             noDataMessage="No quotations found."
             tableClassName="mt-3"
             theadClassName="table-dark"
-          />
+          />        
         )}
 
         {totalQuotations > 0 && !isLoading && (

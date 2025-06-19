@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
 import "../css/Style.css";
 
 export default function Login() {
@@ -9,18 +10,22 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // State for submission loading
   const navigate = useNavigate();
   const auth = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true); // Start loading
 
     try {
       await auth.login({ email, password });
       navigate("/quotations");
     } catch (err) {
       setError(err.data?.error || err.data?.message || err.message || "Invalid credentials");
+    } finally {
+      setIsSubmitting(false); // Stop loading
     }
   };
 

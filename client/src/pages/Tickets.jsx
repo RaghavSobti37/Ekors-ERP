@@ -25,6 +25,7 @@ import "../css/Style.css";
 import ActionButtons from "../components/ActionButtons.jsx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
+import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import { generatePIDocx } from "../utils/generatePIDocx";
 import { Button } from "react-bootstrap";
 
@@ -237,7 +238,7 @@ export default function Dashboard() {
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "descending" });
   const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
   const [ticketForPIPreview, setTicketForPIPreview] = useState(null);
-
+  
   const { user: authUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -390,6 +391,7 @@ export default function Dashboard() {
   return (
     <div>
       <Navbar />
+      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
           <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Tickets Overview</h2>
@@ -416,63 +418,70 @@ export default function Dashboard() {
               className="w-100" />
           </div>
         </div>
-        {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-        <ReusableTable
-          columns={[
-            { key: "ticketNumber", header: "Ticket Number", sortable: true },
-            { key: "assignedTo", header: "Assigned To", sortable: true, renderCell: (ticket) => ticket.currentAssignee ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}` : ticket.createdBy?.firstname ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}` : "N/A" },
-            { key: "companyName", header: "Company Name", sortable: true },
-            { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
-            {
-              key: "deadline",
-              header: "Deadline",
-              sortable: true,
-              renderCell: (ticket) => {
-                const overdue = isTicketOverdue(ticket);
-                return ticket.deadline ? (<span className={overdue ? "text-danger fw-bold" : ""}>{new Date(ticket.deadline).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}{overdue && <Badge bg="danger" className="ms-2">Overdue</Badge>}</span>) : ("N/A");
+        {!isLoading && !authLoading && error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
+        
+        {!isLoading && !authLoading && !error && (
+          <ReusableTable
+            columns={[
+              { key: "ticketNumber", header: "Ticket Number", sortable: true },
+              { key: "assignedTo", header: "Assigned To", sortable: true, renderCell: (ticket) => ticket.currentAssignee ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}` : ticket.createdBy?.firstname ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}` : "N/A" },
+              { key: "companyName", header: "Company Name", sortable: true },
+              { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
+              {
+                key: "deadline",
+                header: "Deadline",
+                sortable: true,
+                renderCell: (ticket) => {
+                  const overdue = isTicketOverdue(ticket);
+                  return ticket.deadline ? (<span className={overdue ? "text-danger fw-bold" : ""}>{new Date(ticket.deadline).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}{overdue && <Badge bg="danger" className="ms-2">Overdue</Badge>}</span>) : ("N/A");
+                },
               },
-            },
-            {
-              key: "progress", header: "Progress",
-              renderCell: (ticket) => {
-                const currentStatusIndex = statusStages.indexOf(ticket.status);
-                const progressPercentage = currentStatusIndex !== -1 ? Math.round(((currentStatusIndex + 1) / statusStages.length) * 100) : 0;
-                return (
-                  <>
-                    <Badge bg={getStatusBadgeColor(ticket.status)} className="mb-1 d-block text-center">{ticket.status}</Badge>
-                    <div className="d-flex flex-column clickable-progress" onClick={(e) => { e.stopPropagation(); handleProgressClick(ticket); }} style={{ cursor: "pointer" }} title="View Payment Details & History">
-                      <ProgressBar now={progressPercentage} label={`${progressPercentage}%`} variant={getProgressBarVariant(progressPercentage)} style={{ height: "15px" }} />
-                    </div>
-                  </>
-                );
+              {
+                key: "progress", header: "Progress",
+                renderCell: (ticket) => {
+                  const currentStatusIndex = statusStages.indexOf(ticket.status);
+                  const progressPercentage = currentStatusIndex !== -1 ? Math.round(((currentStatusIndex + 1) / statusStages.length) * 100) : 0;
+                  return (
+                    <>
+                      <Badge bg={getStatusBadgeColor(ticket.status)} className="mb-1 d-block text-center">{ticket.status}</Badge>
+                      <div className="d-flex flex-column clickable-progress" onClick={(e) => { e.stopPropagation(); handleProgressClick(ticket); }} style={{ cursor: "pointer" }} title="View Payment Details & History">
+                        <ProgressBar now={progressPercentage} label={`${progressPercentage}%`} variant={getProgressBarVariant(progressPercentage)} style={{ height: "15px" }} />
+                      </div>
+                    </>
+                  );
+                },
               },
-            },
-          ]}
-          data={tickets} keyField="_id" isLoading={isLoading && tickets.length === 0}
-          error={error && tickets.length === 0 ? error : null} onSort={handleSort} sortConfig={sortConfig}
-          renderActions={(ticket) => {
-            const canModifyTicket = authUser?.role === "admin" || authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
-            const canTransferThisTicket = authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
-            return (
-              <ActionButtons
-                item={ticket}
-                onEdit={canModifyTicket ? handleEdit : undefined}
-                onDelete={authUser?.role === "super-admin" ? handleDelete : undefined}
-                customPIActions={<PIActions ticket={ticket} onPreviewPI={handlePreviewPIFromList} />}
-                onTransfer={canTransferThisTicket ? handleTransfer : undefined}
-                isLoading={isLoading}
-                disabled={{
-                  edit: !canModifyTicket,
-                  transfer: !canTransferThisTicket,
-                }}
-                size="sm"
-              />
-            );
-          }}
-          noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
-        />
+            ]}
+            data={tickets} keyField="_id" 
+            // isLoading prop for ReusableTable can be for its internal "empty but loading" state
+            // The main LoadingSpinner will cover the page if isLoading or authLoading is true.
+            isLoading={ (isLoading || authLoading) && tickets.length === 0} 
+            error={error && tickets.length === 0 ? error : null} 
+            onSort={handleSort} sortConfig={sortConfig}
+            renderActions={(ticket) => {
+              const canModifyTicket = authUser?.role === "admin" || authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+              const canTransferThisTicket = authUser?.role === "super-admin" || (ticket.currentAssignee && ticket.currentAssignee._id === authUser?.id);
+              return (
+                <ActionButtons
+                  item={ticket}
+                  onEdit={canModifyTicket ? handleEdit : undefined}
+                  onDelete={authUser?.role === "super-admin" ? handleDelete : undefined}
+                  customPIActions={<PIActions ticket={ticket} onPreviewPI={handlePreviewPIFromList} />}
+                  onTransfer={canTransferThisTicket ? handleTransfer : undefined}
+                  isLoading={isLoading || authLoading}
+                  disabled={{
+                    edit: !canModifyTicket || isLoading || authLoading,
+                    transfer: !canTransferThisTicket || isLoading || authLoading,
+                  }}
+                  size="sm"
+                />
+              );
+            }}
+            noDataMessage="No tickets found." tableClassName="mt-3" theadClassName="table-dark"
+          />
+        )}
 
-        {totalTickets > 0 && (
+        {totalTickets > 0 && !isLoading && !authLoading && (
           <Pagination
             currentPage={currentPage}
             totalItems={totalTickets}

@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import apiClient from "../utils/apiClient"; // Adjust path if apiClient.js is elsewhere
+import LoadingSpinner from "../components/LoadingSpinner"; // Import the LoadingSpinner
 
 const AuthContext = createContext();
 
@@ -109,7 +110,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   if (isLoading) {
-    return <div>Loading authentication...</div>; // Or your custom loading component
+    // Use LoadingSpinner for initial authentication check
+    return <LoadingSpinner show={true} />;
   }
 
   return (
