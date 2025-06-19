@@ -1870,7 +1870,7 @@ export default function Items() {
                   {/* Item Detail Edits Table */}
                   {itemEditsLogData.length > 0 && (
                     <div className="mb-4">
-                      <h5>Item Detail Edits</h5>
+                      <h5>Item Detail Edits </h5>
                       <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">

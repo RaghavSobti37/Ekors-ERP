@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+
 import {
   Document,
   Page,
@@ -7,6 +8,9 @@ import {
   StyleSheet,
   Image,
 } from "@react-pdf/renderer";
+
+import apiClient from "../utils/apiClient"; // Assuming apiClient is in utils
+import LoadingSpinner from "./LoadingSpinner"; 
 
 // Styles
 const styles = StyleSheet.create({
@@ -365,7 +369,49 @@ const toWords = (num) => {
   return str.trim() === "" ? "zero" : str.trim() + " only";
 };
 
-const PIPDF = ({ ticket }) => {
+const PIPDF = ({ ticketId }) => {
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!ticketId) {
+      setError("No Ticket ID provided.");
+      setLoading(false);
+      return;
+    }
+
+    const fetchTicketData = async () => {
+      setLoading(true);
+      try {
+        // Adjust the populate string as per your backend's capabilities and PI needs.
+        // Ensure client, goods, gstBreakdown, billingAddress, shippingAddress are available.
+        // If billingAddress/shippingAddress are on the client, populate them: 'client.billingAddress,client.shippingAddress'
+        const data = await apiClient(`/tickets/${ticketId}`, {
+          params: { populate: "client,goods,gstBreakdown" }, // Example populate
+        });
+        setTicket(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching ticket data for PI PDF:", err);
+        setError(err.data?.message || err.message || "Failed to load ticket data.");
+        setTicket(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTicketData();
+  }, [ticketId]);
+
+  if (loading) {
+    return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Loading PI data...</Text></View></Page></Document>;
+  }
+
+  if (error || !ticket) {
+    return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Error loading PI: {error || "Ticket data not found."}</Text></View></Page></Document>;
+  }
+
   const clientPhone = ticket.clientPhone || " ";
   const clientGstNumber = ticket.clientGstNumber || " ";
 

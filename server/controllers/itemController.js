@@ -1349,9 +1349,7 @@ exports.updateItem = async (req, res) => {
         type: "Item Details Updated",
         date: new Date(),
         quantityChange: 0, // No direct quantity change from these field updates
-        details: `Fields updated by ${
-          user.firstname || user.email
-        }: ${changedFieldsDetails.join(", ")}.`,
+        details: `${changedFieldsDetails.join(", ")}.`,
         userReference: user._id,
       });
     }
