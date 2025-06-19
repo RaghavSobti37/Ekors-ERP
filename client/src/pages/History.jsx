@@ -7,10 +7,6 @@ import {
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
-<<<<<<< HEAD
-=======
-import { toast } from "react-toastify";
->>>>>>> 584d53a13a316859ea791697d2e794eb8f1ab32a
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Table, Button, Alert } from "react-bootstrap";
@@ -35,20 +31,9 @@ export default function History() {
   const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
 
-<<<<<<< HEAD
   const dateToYYYYMMDD = (dateObj) => {
     return dateObj.toISOString().split("T")[0];
   };
-=======
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
->>>>>>> 584d53a13a316859ea791697d2e794eb8f1ab32a
 
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
 
@@ -80,21 +65,8 @@ export default function History() {
         };
       });
 
-<<<<<<< HEAD
       setHistoryData(processedData);
       setTotalHistoryCount(response.totalItems || 0);
-=======
-      // Apply search filter if searchTerm exists
-      const filteredData = searchTerm 
-        ? processedData.filter(entry => 
-            formatDisplayDateHelper(entry.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.totalTime.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.logs.some(log => log.task.toLowerCase().includes(searchTerm.toLowerCase()))
-          )
-        : processedData;
-
-      setHistoryData(filteredData);
->>>>>>> 584d53a13a316859ea791697d2e794eb8f1ab32a
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
@@ -113,13 +85,8 @@ export default function History() {
       navigate("/login");
       return;
     }
-<<<<<<< HEAD
     fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
   }, [user, navigate, currentPage, itemsPerPage, sortConfig, fetchHistory]);
-=======
-    fetchHistory();
-  }, [user, navigate, searchTerm]);
->>>>>>> 584d53a13a316859ea791697d2e794eb8f1ab32a
 
   const handleSort = useCallback((key) => {
     let direction = "asc";
@@ -149,10 +116,6 @@ export default function History() {
       try {
         setIsLoading(true); // Set loading after token check
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
-<<<<<<< HEAD
-=======
-        await fetchHistory();
->>>>>>> 584d53a13a316859ea791697d2e794eb8f1ab32a
         showToast("Entry deleted successfully!", true);
         // Refresh logic
         if (historyData.length === 1 && currentPage > 1) {
