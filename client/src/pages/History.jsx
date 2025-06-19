@@ -6,6 +6,7 @@ import {
   showToast,
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
+  dateToYYYYMMDD, // Import the missing function
 } from "../utils/helpers";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";

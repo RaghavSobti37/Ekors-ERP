@@ -1,14 +1,6 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/tickets/TicketReportPage.jsx
 import { useState, useEffect, useCallback } from "react";
-import {
-  Button,
-  Form,
-  Spinner,
-  Alert,
-  Row,
-  Col,
-  Table,
-} from "react-bootstrap";
+import { Button, Form, Spinner, Alert, Row, Col, Table } from "react-bootstrap";
 import { FaFileExcel, FaChartBar } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 import {
@@ -71,10 +63,11 @@ const TicketReportPage = () => {
     setReportData(null);
 
     try {
-      const response = await apiClient.get(`/reports/tickets`, { // apiClient from import
+      const response = await apiClient(`/reports/tickets`, {
         params: { period },
+        method: "GET", // Endpoint remains the same
       });
-      setReportData(response.data.data);
+      setReportData(response.data);
     } catch (err) {
       let errorMessage =
         "Failed to fetch ticket report. An unknown error occurred.";
@@ -100,8 +93,9 @@ const TicketReportPage = () => {
     setError("");
 
     try {
-      const response = await apiClient.get(`/reports/tickets`, { // apiClient from import
+      const response = await apiClient(`/reports/tickets`, {
         params: { period, exportToExcel: "true" },
+        method: "GET", // Endpoint remains the same
         responseType: "blob",
       });
 
@@ -129,7 +123,7 @@ const TicketReportPage = () => {
               parsedError.error ||
               `Server error: ${err.response.status}`;
           } catch (parseError) {
-             errorMessage = `Server error: ${err.response.status} (Could not parse error response)`;
+            errorMessage = `Server error: ${err.response.status} (Could not parse error response)`;
           }
         } else {
           errorMessage =
@@ -152,7 +146,7 @@ const TicketReportPage = () => {
     fetchReport();
   }, [fetchReport]);
 
-  const renderSummaryTab = () => {
+  const renderSummaryTab = useCallback(() => {
     if (!reportData) return null;
     return (
       <div className="report-summary">
@@ -186,10 +180,15 @@ const TicketReportPage = () => {
         </Table>
       </div>
     );
-  };
+ }, [reportData, ticketStatusOrder]);
 
-  const renderChartsTab = () => {
-    if (!reportData || !reportData.statusCounts) return <Alert variant="info" className="mt-3">Chart data is not available.</Alert>;
+  const renderChartsTab = useCallback(() => {
+    if (!reportData || !reportData.statusCounts)
+      return (
+        <Alert variant="info" className="mt-3">
+          Chart data is not available.
+        </Alert>
+      );
 
     const chartData = {
       labels: ticketStatusOrder,
@@ -200,16 +199,24 @@ const TicketReportPage = () => {
             (status) => reportData.statusCounts?.[status] || 0
           ),
           backgroundColor: [
-            "rgba(75, 192, 192, 0.6)", "rgba(54, 162, 235, 0.6)",
-            "rgba(255, 206, 86, 0.6)", "rgba(153, 102, 255, 0.6)",
-            "rgba(255, 159, 64, 0.6)", "rgba(201, 203, 207, 0.6)",
-            "rgba(255, 99, 132, 0.6)", "rgba(100, 255, 100, 0.6)",
+            "rgba(75, 192, 192, 0.6)",
+            "rgba(54, 162, 235, 0.6)",
+            "rgba(255, 206, 86, 0.6)",
+            "rgba(153, 102, 255, 0.6)",
+            "rgba(255, 159, 64, 0.6)",
+            "rgba(201, 203, 207, 0.6)",
+            "rgba(255, 99, 132, 0.6)",
+            "rgba(100, 255, 100, 0.6)",
           ],
           borderColor: [
-            "rgba(75, 192, 192, 1)", "rgba(54, 162, 235, 1)",
-            "rgba(255, 206, 86, 1)", "rgba(153, 102, 255, 1)",
-            "rgba(255, 159, 64, 1)", "rgba(201, 203, 207, 1)",
-            "rgba(255, 99, 132, 1)", "rgba(100, 255, 100, 1)",
+            "rgba(75, 192, 192, 1)",
+            "rgba(54, 162, 235, 1)",
+            "rgba(255, 206, 86, 1)",
+            "rgba(153, 102, 255, 1)",
+            "rgba(255, 159, 64, 1)",
+            "rgba(201, 203, 207, 1)",
+            "rgba(255, 99, 132, 1)",
+            "rgba(100, 255, 100, 1)",
           ],
           borderWidth: 1,
         },
@@ -230,14 +237,17 @@ const TicketReportPage = () => {
         </div>
       </div>
     );
-  };
+}, [reportData, ticketStatusOrder]);
 
   const reportPageTitle = (
     <div>
       Ticket Activity Report
       {reportData && !loading && reportData.period && reportData.dateRange && (
-        <div style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.9 }}>
-          Period: {periodOptions.find(p => p.value === reportData.period)?.label || reportData.period} ({reportData.dateRange})
+        <div style={{ fontSize: "0.8rem", fontWeight: "normal", opacity: 0.9 }}>
+          Period:{" "}
+          {periodOptions.find((p) => p.value === reportData.period)?.label ||
+            reportData.period}{" "}
+          ({reportData.dateRange})
         </div>
       )}
     </div>
@@ -288,24 +298,46 @@ const TicketReportPage = () => {
             variant="outline-success"
             onClick={handleExportToExcel}
             disabled={
-              loading || exportLoading || !reportData || !period || reportData.totalTickets === 0
+              loading ||
+              exportLoading ||
+              !reportData ||
+              !period ||
+              reportData.totalTickets === 0
             }
           >
             {exportLoading ? (
-              <><Spinner as="span" size="sm" animation="border" /> Exporting...</>
+              <>
+                <Spinner as="span" size="sm" animation="border" /> Exporting...
+              </>
             ) : (
-              <><FaFileExcel className="me-1" />Export Excel</>
+              <>
+                <FaFileExcel className="me-1" />
+                Export Excel
+              </>
             )}
           </Button>
         </Col>
       </Row>
-      
+
       {/* Content Display Area */}
-      {loading && <div className="text-center p-5"><Spinner animation="border" /><p>Loading report data...</p></div>}
+      {loading && (
+        <div className="text-center p-5">
+          <Spinner animation="border" />
+          <p>Loading report data...</p>
+        </div>
+      )}
       {!loading && error && <Alert variant="danger">{error}</Alert>}
-      {!loading && !error && !period && <Alert variant="info" className="text-center">Please select a report period to view data.</Alert>}
-      {!loading && !error && period && !reportData && <Alert variant="info" className="text-center">No data found for the selected period, or an error occurred.</Alert>}
-      
+      {!loading && !error && !period && (
+        <Alert variant="info" className="text-center">
+          Please select a report period to view data.
+        </Alert>
+      )}
+      {!loading && !error && period && !reportData && (
+        <Alert variant="info" className="text-center">
+          No data found for the selected period, or an error occurred.
+        </Alert>
+      )}
+
       {!loading && !error && period && reportData && (
         <div className="mt-3">
           {activeTab === "summary" && renderSummaryTab()}
@@ -314,7 +346,7 @@ const TicketReportPage = () => {
       )}
     </>
   );
-  
+
   const pageFooter = null; // Unused, but kept for consistency if needed later
 
   return (

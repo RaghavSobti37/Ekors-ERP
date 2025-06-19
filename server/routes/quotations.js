@@ -16,9 +16,9 @@ router.get("/next-number", auth, quotationController.getNextQuotationNumber);
 router.get("/check-reference", auth, quotationController.checkReferenceNumber);
 router.get("/by-reference/:refNumber", auth, quotationController.getQuotationByReferenceNumber);
 
-// Report Routes (pointing to controller methods)
-router.get("/report/summary", auth, quotationController.generateQuotationsReport);
-router.get("/report/excel", auth, quotationController.exportQuotationsToExcel);
+// // Report Routes (pointing to controller methods)
+// router.get("/report/summary", auth, quotationController.generateQuotationsReport);
+// router.get("/report/excel", auth, quotationController.exportQuotationsToExcel);
 
 
 module.exports = router;
