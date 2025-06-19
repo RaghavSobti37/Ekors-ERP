@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Form, ListGroup, Spinner } from "react-bootstrap";
-import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import apiClient from "../utils/apiClient"; 
 import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
 
 const ClientSearchComponent = ({
@@ -19,37 +18,28 @@ const ClientSearchComponent = ({
     const trimmedTerm = termToSearch.trim();
     if (!trimmedTerm || trimmedTerm.length < 2) {
       setResults([]);
-      setShowResults(false);
+      setShowResults(false); // Keep results hidden if term is too short
       return;
     }
     setIsLoading(true);
     setError("");
-    // setShowResults(true) here allows "No clients found" to appear if data is empty
-    // and also prepares for showing results if data is found.
-    setShowResults(true); 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        // Handle missing token more gracefully in UI
-        setError("Authentication token not found. Please log in again.");
-        setResults([]);
-        setShowResults(false);
-        setIsLoading(false); // Ensure loading is stopped
-        return;
-      }
-      // Use apiClient for the request
+      // apiClient is expected to handle auth and throw if token is missing/invalid.
+      // The error will be caught by the catch block below.
       const data = await apiClient(`/clients/search?q=${encodeURIComponent(trimmedTerm)}`);
       setResults(data);
+      setShowResults(true); // Show results area now that we have data (or empty data)
       // If data is empty, showResults is still true, allowing "No clients found" message
       // If data has items, ListGroup will show.
     } catch (err) {
+      // handleApiError should ideally also handle auth errors from apiClient
       setError(handleApiError(err, "Failed to search clients."));
       setResults([]);
       setShowResults(false); // Hide results on error
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [handleApiError]); // Assuming handleApiError is a stable utility function
 
   useEffect(() => {
     const trimmedSearchTerm = searchTerm.trim();

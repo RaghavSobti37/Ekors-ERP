@@ -1,24 +1,78 @@
 const { Item, Purchase } = require('../models/itemlist');
-const ItemBackup = require('../models/itemBackup'); // Import backup model
+const UniversalBackup = require('../models/universalBackup'); // Changed from ItemBackup
 const mongoose = require('mongoose');
-const logger = require('../utils/logger'); // Import logger
-const { parseExcelBufferForUpdate } = require('../utils/excelImporter'); // New utility for uploaded files
+const logger = require('../utils/logger');
+const { parseExcelBufferForUpdate } = require('../utils/excelImporter');
 const path = require('path');
 const multer = require('multer');
-const xlsx = require('xlsx'); // For export
-const Ticket = require('../models/opentickets'); 
+const xlsx = require('xlsx');
+const Ticket = require('../models/opentickets');
 
-// Get all items
+// Get all items - Updated for server-side pagination, sorting, and filtering
 exports.getAllItems = async (req, res) => {
   const user = req.user || null;
+  const {
+    page = 1,
+    limit = 10, // Default limit for items page
+    sortKey = 'name',
+    sortDirection = 'asc',
+    searchTerm,
+    category,
+    subcategory,
+    quantityThreshold,
+    status, // e.g., 'approved', 'pending_review'
+    filter, // Special filter like 'stock_alerts'
+    lowThreshold // Used with 'stock_alerts'
+  } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const skip = (pageNum - 1) * limitNum;
+
   try {
-    logger.debug('item', "Fetching all items", user);
-    const items = await Item.find()
+    let query = {};
+
+    if (searchTerm) {
+      query.$or = [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { hsnCode: { $regex: searchTerm, $options: 'i' } },
+      ];
+    }
+   if (category && category !== 'All' && category !== 'undefined') query.category = category;
+    if (subcategory && subcategory !== 'All' && subcategory !== 'undefined') query.subcategory = subcategory;
+    
+    if (quantityThreshold !== undefined && quantityThreshold !== null && quantityThreshold !== 'All' && quantityThreshold !== 'null') {
+      query.quantity = { $lte: parseInt(quantityThreshold, 10) };
+    }
+    
+    if (status && status !== 'undefined') query.status = status;
+
+    if (filter === 'stock_alerts' && lowThreshold !== undefined && lowThreshold !== 'undefined') {
+      // This overrides other quantity filters if stock_alerts is active
+      query.quantity = { $lt: parseInt(lowThreshold, 10) };
+    }
+
+
+    const totalItems = await Item.countDocuments(query);
+    const items = await Item.find(query)
       .populate('createdBy', 'firstname lastname email')
       .populate('reviewedBy', 'firstname lastname email')
-      .sort({ name: 1 });
-    logger.debug('item', "Items fetched successfully", user, { count: items.length });
-    res.json(items);
+      .sort({ [sortKey]: sortDirection === 'desc' ? -1 : 1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    logger.debug('item', "Items fetched successfully", user, {
+      count: items.length,
+      totalItems,
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalItems / limitNum)
+    });
+    res.json({
+      data: items,
+      totalItems,
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalItems / limitNum),
+    });
   } catch (error) {
     logger.error('item', "Error fetching items", error, user);
     res.status(500).json({
@@ -28,7 +82,6 @@ exports.getAllItems = async (req, res) => {
   }
 };
 
-// Configure multer for memory storage (to get file buffer)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -39,14 +92,15 @@ const upload = multer({
       cb(new Error('Invalid file type. Only .xlsx and .xls files are allowed.'), false);
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
-exports.uploadMiddleware = upload.single('excelFile'); // 'excelFile' is the field name in FormData
+exports.uploadMiddleware = upload.single('excelFile');
 
 exports.exportItemsToExcel = async (req, res) => {
   const user = req.user || null;
   logger.info('excel_export', 'API: Starting Excel export process', { userId: user?._id });
   try {
+    // Fetch all items, not just paginated, for export
     const items = await Item.find().lean();
 
     if (!items || items.length === 0) {
@@ -66,6 +120,7 @@ exports.exportItemsToExcel = async (req, res) => {
       'GST Rate': item.gstRate,
       'Max Discount Percentage': item.maxDiscountPercentage,
       'Low Stock Threshold': item.lowStockThreshold,
+      'Status': item.status, // Added status
     }));
 
     const worksheet = xlsx.utils.json_to_sheet(dataForSheet);
@@ -150,10 +205,13 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
   const importUserId = user?._id || null;
   const importFileName = req?.file?.originalname || 'unknown_excel_file.xlsx';
 
-  try {
-    logger.info(logContextPrefix, 'Starting database sync with Excel data.', {userId: importUserId}, { itemCountExcel: excelItems.length });
+  const session = await mongoose.startSession(); // Start session for transaction
 
-    const existingDbItems = await Item.find().lean();
+  try {
+    session.startTransaction();
+    logger.info(logContextPrefix, 'Starting database sync with Excel data within transaction.', {userId: importUserId}, { itemCountExcel: excelItems.length, sessionId: session.id });
+
+    const existingDbItems = await Item.find().session(session).lean();
     const dbItemsMap = new Map(existingDbItems.map(item => [item.name.toLowerCase(), item]));
     const excelItemNamesLowerCase = new Set(excelItems.map(item => item.name.toLowerCase()));
 
@@ -183,9 +241,15 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         discountAvailable: excelItemData.discountAvailable !== undefined ? excelItemData.discountAvailable : (existingItem?.discountAvailable || false),
         lastPurchaseDate: excelItemData.lastPurchaseDate !== undefined ? excelItemData.lastPurchaseDate : (existingItem?.lastPurchaseDate || null),
         lastPurchasePrice: excelItemData.lastPurchasePrice !== undefined ? excelItemData.lastPurchasePrice : (existingItem?.lastPurchasePrice || null),
+        status: excelItemData.status || (existingItem ? existingItem.status : (importUserId && user?.role === 'user' ? 'pending_review' : 'approved')), // Handle status from Excel or default
+        createdBy: existingItem ? existingItem.createdBy : importUserId, // Preserve original creator or set new
       };
+      
+      if (payload.status === 'approved' && (!existingItem || existingItem.status !== 'approved')) {
+        payload.reviewedBy = importUserId;
+        payload.reviewedAt = new Date();
+      }
 
-      // Set needsRestock based on the final quantity in the payload
       payload.needsRestock = payload.quantity < 0;
 
 
@@ -227,14 +291,22 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         } else {
            logger.debug(logContextPrefix, `Item "${excelItemData.name}" has no changes from Excel. Skipping update.`, {userId: importUserId}, { itemId: existingItem._id });
         }
-      } else {
+      } else { // New item
         payload.excelImportHistory = [{
           action: 'created',
           importedBy: importUserId,
           importedAt: new Date(),
           fileName: importFileName,
-          snapshot: { ...payload }
+          snapshot: { ...payload } // Snapshot of initial state
         }];
+        // If created by a 'user' role via Excel, it should be pending_review unless Excel specifies 'approved'
+        if (importUserId && user?.role === 'user' && payload.status !== 'approved') {
+            payload.status = 'pending_review';
+        } else if (payload.status === 'approved') { // If Excel says approved, or admin creates
+            payload.reviewedBy = importUserId;
+            payload.reviewedAt = new Date();
+        }
+        payload.createdBy = importUserId; // Set creator for new items
 
         itemUpsertOps.push({
           insertOne: {
@@ -255,20 +327,20 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
     if (itemsToBeDeletedFromDb.length > 0) {
       logger.info(logContextPrefix, `${itemsToBeDeletedFromDb.length} items identified for DELETION. Preparing backups.`, {userId: importUserId});
       for (const itemToDelete of itemsToBeDeletedFromDb) {
-        const backupData = {
-          ...itemToDelete,
-          originalId: itemToDelete._id,
-          deletedBy: importUserId,
-          deletedAt: new Date(),
-          originalCreatedAt: itemToDelete.createdAt,
-          originalUpdatedAt: itemToDelete.updatedAt,
-          backupReason: "Deleted during Excel synchronization"
-        };
-        delete backupData._id;
-
+        const backupDocData = itemToDelete; // Already a plain object from .lean()
+        
         backupInsertOps.push({
             insertOne: {
-                document: backupData
+                document: {
+                  originalId: itemToDelete._id,
+                  originalModel: 'Item',
+                  data: backupDocData,
+                  deletedBy: importUserId,
+                  deletedAt: new Date(),
+                  backupReason: "Deleted during Excel synchronization",
+                  originalCreatedAt: itemToDelete.createdAt,
+                  originalUpdatedAt: itemToDelete.updatedAt
+                }
             }
         });
         itemDeleteOps.push({
@@ -276,45 +348,45 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
                 filter: { _id: itemToDelete._id }
             }
         });
-        logger.debug(logContextPrefix, `Item "${itemToDelete.name}" (ID: ${itemToDelete._id}) marked for BACKUP and DELETION.`, {userId: importUserId});
+        logger.debug(logContextPrefix, `Item "${itemToDelete.name}" (ID: ${itemToDelete._id}) marked for BACKUP (UniversalBackup) and DELETION.`, {userId: importUserId});
       }
     } else {
         logger.info(logContextPrefix, "No items from DB are marked for deletion (all DB items present in Excel or DB is empty).", {userId: importUserId});
     }
 
     if (backupInsertOps.length > 0) {
-        logger.info(logContextPrefix, `Attempting to bulk insert ${backupInsertOps.length} item backups.`, {userId: importUserId});
+        logger.info(logContextPrefix, `Attempting to bulk insert ${backupInsertOps.length} item backups to UniversalBackup.`, {userId: importUserId});
         try {
-            const backupResult = await ItemBackup.bulkWrite(backupInsertOps, { ordered: false });
-            logger.info(logContextPrefix, `Item backups bulk operation completed. Inserted: ${backupResult.insertedCount}.`, {userId: importUserId}, { backupResult: { inserted: backupResult.insertedCount, errors: backupResult.hasWriteErrors() ? backupResult.getWriteErrors().length : 0 } });
+            const backupResult = await UniversalBackup.bulkWrite(backupInsertOps, { session, ordered: false });
+            logger.info(logContextPrefix, `UniversalBackup item backups bulk operation completed. Inserted: ${backupResult.insertedCount}.`, {userId: importUserId}, { backupResult: { inserted: backupResult.insertedCount, errors: backupResult.hasWriteErrors() ? backupResult.getWriteErrors().length : 0 } });
 
             if (backupResult.hasWriteErrors()) {
                 const writeErrors = backupResult.getWriteErrors();
-                logger.warn(logContextPrefix, `${writeErrors.length} errors occurred during item backup. These items will not be deleted.`, {userId: importUserId});
+                logger.warn(logContextPrefix, `${writeErrors.length} errors occurred during UniversalBackup item backup. These items will not be deleted.`, {userId: importUserId});
                 writeErrors.forEach(err => {
                     const failedBackupOp = backupInsertOps[err.index]?.insertOne?.document;
                     const originalItemId = failedBackupOp?.originalId;
-                    logger.error(logContextPrefix, `Backup failed for item (original name: ${failedBackupOp?.name}, original ID: ${originalItemId}). Original item will NOT be deleted.`, {userId: importUserId}, { error: err.errmsg, opDetails: failedBackupOp });
-                    databaseProcessingErrors.push({ name: `Backup for ${failedBackupOp?.name || originalItemId}`, status: 'backup_error', message: err.errmsg });
+                    logger.error(logContextPrefix, `UniversalBackup failed for item (original name: ${failedBackupOp?.data?.name}, original ID: ${originalItemId}). Original item will NOT be deleted.`, {userId: importUserId}, { error: err.errmsg, opDetails: failedBackupOp });
+                    databaseProcessingErrors.push({ name: `Backup for ${failedBackupOp?.data?.name || originalItemId}`, status: 'backup_error', message: err.errmsg });
 
                     const deleteOpIndex = itemDeleteOps.findIndex(op => op.deleteOne.filter._id.toString() === originalItemId.toString());
                     if (deleteOpIndex > -1) {
                         itemDeleteOps.splice(deleteOpIndex, 1);
-                        logger.warn(logContextPrefix, `Removed item "${failedBackupOp?.name}" (ID: ${originalItemId}) from deletion queue due to backup failure.`, {userId: importUserId});
+                        logger.warn(logContextPrefix, `Removed item "${failedBackupOp?.data?.name}" (ID: ${originalItemId}) from deletion queue due to backup failure.`, {userId: importUserId});
                     }
                 });
             }
         } catch (backupBulkError) {
-            logger.error(logContextPrefix, 'CRITICAL error during ItemBackup.bulkWrite. ALL delete operations for this sync will be cancelled.', {userId: importUserId}, { error: backupBulkError.message, stack: backupBulkError.stack });
-            databaseProcessingErrors.push({ name: 'Bulk Backup Operation', status: 'critical_error', message: `Backup bulkWrite failed: ${backupBulkError.message}. No items were deleted.` });
-            itemDeleteOps.length = 0;
+            logger.error(logContextPrefix, 'CRITICAL error during UniversalBackup.bulkWrite. ALL delete operations for this sync will be cancelled.', {userId: importUserId}, { error: backupBulkError.message, stack: backupBulkError.stack });
+            databaseProcessingErrors.push({ name: 'Bulk Backup Operation', status: 'critical_error', message: `UniversalBackup bulkWrite failed: ${backupBulkError.message}. No items were deleted.` });
+            itemDeleteOps.length = 0; // Cancel all deletions
             logger.warn(logContextPrefix, 'All item delete operations cancelled due to critical failure in bulk backup.', {userId: importUserId});
         }
     }
 
     if (itemUpsertOps.length > 0) {
       logger.info(logContextPrefix, `Attempting to bulk create/update ${itemUpsertOps.length} items.`, {userId: importUserId});
-      const upsertResult = await Item.bulkWrite(itemUpsertOps, { ordered: false });
+      const upsertResult = await Item.bulkWrite(itemUpsertOps, { session, ordered: false });
       itemsCreated = upsertResult.insertedCount || 0;
       itemsUpdated = upsertResult.modifiedCount || 0;
 
@@ -337,9 +409,9 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
       logger.info(logContextPrefix, 'No items to create or update from Excel.', {userId: importUserId});
     }
 
-    if (itemDeleteOps.length > 0) {
+    if (itemDeleteOps.length > 0) { // These are items whose backups were successful (or not needed if no deletions)
         logger.info(logContextPrefix, `Attempting to bulk delete ${itemDeleteOps.length} items (whose backups were processed).`, {userId: importUserId});
-        const deleteResult = await Item.bulkWrite(itemDeleteOps, { ordered: false });
+        const deleteResult = await Item.bulkWrite(itemDeleteOps, { session, ordered: false });
         itemsDeleted = deleteResult.deletedCount || 0;
         logger.info(logContextPrefix, `Item delete bulk operation completed. Deleted: ${itemsDeleted}.`, {userId: importUserId}, { deleteResult: { deleted: itemsDeleted, errors: deleteResult.hasWriteErrors() ? deleteResult.getWriteErrors().length : 0 } });
         operationResults.push({
@@ -358,12 +430,19 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
     } else {
         logger.info(logContextPrefix, 'No items to delete, or all deletions were cancelled due to backup issues.', {userId: importUserId});
     }
-
-    logger.info(logContextPrefix, 'Database sync with Excel data finished.', {userId: importUserId}, { itemsCreated, itemsUpdated, itemsDeleted });
+    
+    await session.commitTransaction();
+    logger.info(logContextPrefix, 'Database sync with Excel data finished and transaction committed.', {userId: importUserId}, { itemsCreated, itemsUpdated, itemsDeleted });
 
   } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+      logger.warn(logContextPrefix, `Transaction aborted due to error during syncItemsWithDatabase: ${error.message}`, {userId: importUserId}, { error, stack: error.stack });
+    }
     logger.error(logContextPrefix, `CRITICAL error during syncItemsWithDatabase: ${error.message}`, {userId: importUserId}, { error, stack: error.stack });
     databaseProcessingErrors.push({ name: 'General Sync Error', status: 'critical_error', message: error.message });
+  } finally {
+    session.endSession();
   }
 
   return { itemsCreated, itemsUpdated, itemsDeleted, operationResults, databaseProcessingErrors };
@@ -371,10 +450,10 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
 
 exports.importItemsFromExcelViaAPI = async (req, res) => {
   const user = req.user || null;
-  logger.info('excel_import_api', 'API: Starting Excel import process', { userId: user?._id });
+  logger.info('excel_import_api', 'API: Starting Excel import process from server file', { userId: user?._id });
 
   try {
-    const excelFilePath = path.resolve(__dirname, '..', 'itemlist.xlsx');
+    const excelFilePath = path.resolve(__dirname, '..', 'itemlist.xlsx'); // Assuming file is in parent directory of controllers
     logger.debug('excel_import_api', `Attempting to read Excel file from: ${excelFilePath}`, { userId: user?._id });
 
     if (!require('fs').existsSync(excelFilePath)) {
@@ -419,32 +498,21 @@ exports.importItemsFromExcelViaAPI = async (req, res) => {
   }
 };
 
-// Get item categories
 exports.getCategories = async (req, res) => {
   const user = req.user || null;
   try {
     logger.debug('item', "Attempting to fetch categories", user);
-    const items = await Item.find({}, 'category subcategory');
+    // Fetch distinct categories and their subcategories efficiently
+    const aggregationResult = await Item.aggregate([
+      { $match: { status: 'approved' } }, // Only consider approved items for category listing
+      { $group: { _id: "$category", subcategories: { $addToSet: "$subcategory" } } },
+      { $project: { category: "$_id", subcategories: 1, _id: 0 } },
+      { $sort: { category: 1 } }
+    ]);
 
-    const categoriesMap = new Map();
-
-    items.forEach(item => {
-      const category = item.category || 'Other';
-
-      if (!categoriesMap.has(category)) {
-        categoriesMap.set(category, new Set());
-      }
-
-      if (item.subcategory) {
-        categoriesMap.get(category).add(item.subcategory);
-      } else {
-        categoriesMap.get(category).add('General');
-      }
-    });
-
-    const categories = Array.from(categoriesMap).map(([category, subcategories]) => ({
-      category,
-      subcategories: Array.from(subcategories)
+    const categories = aggregationResult.map(catGroup => ({
+      category: catGroup.category || 'Other',
+      subcategories: (catGroup.subcategories || ['General']).filter(Boolean).sort() // Filter out null/empty and sort
     }));
 
     logger.debug('item', "Categories fetched successfully", user, { categoryCount: categories.length });
@@ -460,7 +528,6 @@ exports.getCategories = async (req, res) => {
   }
 };
 
-// Create new category
 exports.createCategory = async (req, res) => {
   const user = req.user || null;
   const { categoryName } = req.body;
@@ -476,34 +543,26 @@ exports.createCategory = async (req, res) => {
   try {
     logger.info('item', `API: createCategory - Attempting to create category "${trimmedCategoryName}"`, user, logDetails);
 
-    const existingItem = await Item.findOne({ category: trimmedCategoryName });
-
-    if (existingItem) {
-      logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" already exists`, user, logDetails);
+    // Check if a category effectively exists (even via a dummy item)
+    const existingCategory = await Item.findOne({ category: trimmedCategoryName });
+    if (existingCategory) {
+      logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" already exists or an item with this category exists.`, user, logDetails);
       return res.status(409).json({ message: `Category "${trimmedCategoryName}" already exists.` });
     }
+    
+    // If no item exists with this category, we can consider it "new"
+    // No need to create a dummy item if the goal is just to have it available for selection.
+    // The category will "exist" once an item is saved with it.
+    // If the frontend needs it immediately for a dropdown before any item is saved with it,
+    // then a dummy item approach or a separate Categories collection would be needed.
+    // For now, let's assume a category is "created" when an item uses it.
+    // This controller might be more about validating if a category name is usable.
 
-    const dummyItem = new Item({
-      name: `_Dummy Item for Category: ${trimmedCategoryName}_`,
-      category: trimmedCategoryName,
-      subcategory: 'General',
-      sellingPrice: 0,
-      unit: 'Nos',
-      quantity: 0,
-      gstRate: 0,
-      hsnCode: '',
-      maxDiscountPercentage: 0,
-      lowStockThreshold: 0,
-      needsRestock: false, // Explicitly set for dummy item
-    });
-
-    await dummyItem.save();
-    logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" created successfully via dummy item`, user, { ...logDetails, dummyItemId: dummyItem._id });
-
-    res.status(201).json({ message: 'Category added successfully.', category: trimmedCategoryName });
+    logger.info('item', `API: createCategory - Category "${trimmedCategoryName}" is available for use.`, user, logDetails);
+    res.status(201).json({ message: `Category "${trimmedCategoryName}" is available. It will be formally created when an item is saved with it.`, category: trimmedCategoryName });
 
   } catch (error) {
-    logger.error('item', `API: createCategory - Error creating category "${trimmedCategoryName}"`, error, user, logDetails);
+    logger.error('item', `API: createCategory - Error checking/creating category "${trimmedCategoryName}"`, error, user, logDetails);
     res.status(500).json({
       message: 'Server error while adding category',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -511,7 +570,6 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-// Create new subcategory for a given category
 exports.createSubcategory = async (req, res) => {
   const user = req.user || null;
   const { categoryName, subcategoryName } = req.body;
@@ -532,31 +590,14 @@ exports.createSubcategory = async (req, res) => {
   try {
     logger.info('item', `API: createSubcategory - Attempting to add subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`, user, logDetails);
 
-    const existingItem = await Item.findOne({ category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
-
-    if (existingItem) {
+    const existingSubcategory = await Item.findOne({ category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
+    if (existingSubcategory) {
       logger.info('item', `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}"`, user, logDetails);
       return res.status(409).json({ message: `Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}".` });
     }
 
-    const dummyItem = new Item({
-      name: `_Dummy Item for Subcategory: ${trimmedSubcategoryName} in ${trimmedCategoryName}_`,
-      category: trimmedCategoryName,
-      subcategory: trimmedSubcategoryName,
-      sellingPrice: 0,
-      unit: 'Nos',
-      quantity: 0,
-      gstRate: 0,
-      hsnCode: '',
-      maxDiscountPercentage: 0,
-      lowStockThreshold: 0,
-      needsRestock: false, // Explicitly set for dummy item
-    });
-
-    await dummyItem.save();
-    logger.info('item', `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" added to category "${trimmedCategoryName}" successfully via dummy item`, user, { ...logDetails, dummyItemId: dummyItem._id });
-
-    res.status(201).json({ message: 'Subcategory added successfully.', category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
+    logger.info('item', `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" under category "${trimmedCategoryName}" is available for use.`, user, logDetails);
+    res.status(201).json({ message: `Subcategory "${trimmedSubcategoryName}" is available for category "${trimmedCategoryName}". It will be formally created when an item is saved with it.`, category: trimmedCategoryName, subcategory: trimmedSubcategoryName });
 
   } catch (error) {
     logger.error('item', `API: createSubcategory - Error adding subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`, error, user, logDetails);
@@ -576,7 +617,9 @@ exports.getItemById = async (req, res) => {
   }
 
   try {
-    const item = await Item.findById(id);
+    const item = await Item.findById(id)
+      .populate('createdBy', 'firstname lastname email')
+      .populate('reviewedBy', 'firstname lastname email');
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
@@ -588,7 +631,6 @@ exports.getItemById = async (req, res) => {
   }
 };
 
-// Create new item
 exports.createItem = async (req, res) => {
   try {
     const user = req.user;
@@ -612,12 +654,12 @@ exports.createItem = async (req, res) => {
       maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
       lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5,
       createdBy: user._id,
-      needsRestock: quantity < 0, // Set needsRestock based on quantity
+      needsRestock: quantity < 0,
     };
 
     if (user.role === 'user') {
       newItemData.status = 'pending_review';
-    } else {
+    } else { // admin or super-admin
       newItemData.status = 'approved';
       newItemData.reviewedBy = user._id;
       newItemData.reviewedAt = new Date();
@@ -633,6 +675,9 @@ exports.createItem = async (req, res) => {
     res.status(201).json(savedItem);
   } catch (error) {
     logger.error('item', `Failed to create item`, error, req.user, { requestBody: req.body, userId: req.user?._id });
+    if (error.code === 11000) { // Duplicate key error
+        return res.status(400).json({ message: 'An item with this name already exists. Please use a unique name.' });
+    }
     res.status(400).json({
       message: error.message.includes('validation') ?
         'Validation failed: ' + error.message :
@@ -641,7 +686,6 @@ exports.createItem = async (req, res) => {
   }
 };
 
-// Update item
 exports.updateItem = async (req, res) => {
   try {
     const user = req.user;
@@ -672,25 +716,30 @@ exports.updateItem = async (req, res) => {
       subcategory: req.body.subcategory || 'General',
       maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
       lowStockThreshold: req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : 5,
-      needsRestock: quantity < 0, // Set needsRestock based on the final quantity
+      needsRestock: quantity < 0,
     };
 
-    if ((user.role === 'admin' || user.role === 'super-admin') && existingItem.status === 'pending_review') {
-      updatePayload.status = 'approved';
-      updatePayload.reviewedBy = user._id;
-      updatePayload.reviewedAt = new Date();
-      logger.info('item', `Item ${itemId} approved upon update by admin ${user.email}.`, user, { itemId });
-    } else if (req.body.status && (user.role === 'admin' || user.role === 'super-admin')) {
+    // Handle status update logic
+    if (req.body.status && (user.role === 'admin' || user.role === 'super-admin')) {
         if (['pending_review', 'approved'].includes(req.body.status)) {
              updatePayload.status = req.body.status;
              if (req.body.status === 'approved' && existingItem.status !== 'approved') {
                 updatePayload.reviewedBy = user._id;
                 updatePayload.reviewedAt = new Date();
+                logger.info('item', `Item ${itemId} status changed to 'approved' by ${user.email}.`, user, { itemId });
              }
         }
+    } else if ((user.role === 'admin' || user.role === 'super-admin') && existingItem.status === 'pending_review') {
+      // If admin edits a pending item, it gets approved
+      updatePayload.status = 'approved';
+      updatePayload.reviewedBy = user._id;
+      updatePayload.reviewedAt = new Date();
+      logger.info('item', `Item ${itemId} approved upon update by admin ${user.email}.`, user, { itemId });
     }
+
+
     const updatedItem = await Item.findByIdAndUpdate(
-           itemId,
+      itemId,
       { $set: updatePayload },
       { new: true, runValidators: true }
     );
@@ -704,6 +753,9 @@ exports.updateItem = async (req, res) => {
     res.json(updatedItem);
   } catch (error) {
     logger.error('item', `Error updating item ID: ${req.params.id}`, error, req.user, { requestBody: req.body, userId: req.user?._id });
+    if (error.code === 11000) { // Duplicate key error for name
+        return res.status(400).json({ message: 'An item with this name already exists. Please use a unique name.' });
+    }
     res.status(400).json({
       message: error.message.includes('validation') ?
         'Validation failed: ' + error.message :
@@ -730,7 +782,7 @@ exports.approveItem = async (req, res) => {
 
     if (itemToApprove.status === 'approved') {
       logger.info('item', `Item ${itemId} is already approved. No action taken by ${user.email}.`, user, { itemId });
-      return res.status(200).json(itemToApprove);
+      return res.status(200).json(itemToApprove); // Return the already approved item
     }
 
     itemToApprove.status = 'approved';
@@ -747,13 +799,12 @@ exports.approveItem = async (req, res) => {
   }
 };
 
-// Delete item
 exports.deleteItem = async (req, res) => {
   const itemId = req.params.id;
   const userId = req.user ? req.user._id : null;
-  const user = req.user || null;
+  const user = req.user || null; // For logging context
   const session = await mongoose.startSession();
-  const logDetails = { userId, itemId, model: 'Item', operation: 'delete', sessionId: session.id };
+  const logDetails = { userId, itemId, model: 'Item', operation: 'delete', sessionId: session.id.toString() };
 
   logger.info('delete', `[DELETE_INITIATED] Item ID: ${itemId}. Transaction started.`, user, logDetails);
 
@@ -764,41 +815,64 @@ exports.deleteItem = async (req, res) => {
 
     if (!itemToBackup) {
       await session.abortTransaction();
-      session.endSession();
       logger.warn('delete', `[NOT_FOUND] Item not found for deletion. Transaction aborted.`, user, logDetails);
       return res.status(404).json({ message: 'Item not found' });
     }
     logger.debug('delete', `[FETCH_SUCCESS] Found Item ID: ${itemId}. Preparing for backup within transaction.`, user, logDetails);
 
-    const backupData = itemToBackup.toObject();
-    const newBackupEntry = new ItemBackup({
-      ...backupData,
+    const backupData = {
       originalId: itemToBackup._id,
+      originalModel: 'Item',
+      data: itemToBackup.toObject(), // Store the full item data
       deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: itemToBackup.createdAt,
       originalUpdatedAt: itemToBackup.updatedAt,
       backupReason: "User-initiated deletion via API"
-    });
+    };
+    
+    const newBackupEntry = new UniversalBackup(backupData);
 
-    logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
+    logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for Item ID: ${itemToBackup._id} to UniversalBackup within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
     await newBackupEntry.save({ session });
-    logger.info('delete', `[BACKUP_SUCCESS] Item successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'ItemBackup' });
+    logger.info('delete', `[BACKUP_SUCCESS] Item successfully backed up to UniversalBackup. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: itemToBackup._id, backupId: newBackupEntry._id, backupModel: 'UniversalBackup' });
 
     logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original Item ID: ${itemToBackup._id} within transaction.`, user, { ...logDetails, originalId: itemToBackup._id });
-    await Item.findByIdAndDelete(itemId, { session });
+    const deleteResult = await Item.findByIdAndDelete(itemId, { session });
+    if (!deleteResult) {
+        // This case should ideally not be hit if findById found it, but as a safeguard:
+        await session.abortTransaction();
+        logger.error('delete', `[DELETE_FAILED_UNEXPECTEDLY] Item ${itemId} found but failed to delete. Transaction aborted.`, user, logDetails);
+        return res.status(500).json({ message: 'Failed to delete item after backup. Operation rolled back.' });
+    }
     logger.info('delete', `[ORIGINAL_DELETE_SUCCESS] Original Item successfully deleted.`, user, { ...logDetails, originalId: itemToBackup._id });
 
-    logger.debug('delete', `[UPDATE_PURCHASES_ATTEMPT] Updating Purchase records referencing deleted Item ID: ${itemId} within transaction.`, user, { ...logDetails, targetModel: 'Purchase' });
-    await Purchase.updateMany(
+    // Update Purchase records: Set itemId to null for the deleted item
+    // This is a "soft link" break, preserving purchase history but noting the item is gone.
+    logger.debug('delete', `[UPDATE_PURCHASES_ATTEMPT] Unlinking deleted Item ID: ${itemId} from Purchase records within transaction.`, user, { ...logDetails, targetModel: 'Purchase' });
+    const purchaseUpdateResult = await Purchase.updateMany(
       { 'items.itemId': itemId },
-      { $set: { 'items.$.itemId': null } }
-    ).session(session);
-    logger.info('delete', `[UPDATE_PURCHASES_SUCCESS] Purchase records updated for Item ID: ${itemId}.`, user, { ...logDetails, targetModel: 'Purchase' });
+      { $set: { 'items.$.itemId': null, 'items.$.description': `${itemToBackup.name} (Deleted)` } }, // Mark as deleted in description
+      { session }
+    );
+    logger.info('delete', `[UPDATE_PURCHASES_SUCCESS] Purchase records updated. Matched: ${purchaseUpdateResult.matchedCount}, Modified: ${purchaseUpdateResult.modifiedCount}.`, user, { ...logDetails, targetModel: 'Purchase' });
+
+    // Conceptual: Update Tickets/Quotations
+    // If Tickets/Quotations store item snapshots, no direct update might be needed here.
+    // If they store only itemId, this is where you'd unlink or mark as deleted.
+    // For ERP, often items are soft-deleted (archived) if they have significant transaction history.
+    // Example: Mark item as deleted in active tickets (status not 'Closed' or 'Cancelled')
+    // const ticketUpdateResult = await Ticket.updateMany(
+    //   { 'goods.itemId': itemId, status: { $nin: ['Closed', 'Cancelled'] } }, // Example: only active tickets
+    //   { $set: { 'goods.$.description': `${itemToBackup.name} (Item Deleted)`, 'goods.$.itemUnavailable': true } },
+    //   { session }
+    // );
+    // logger.info('delete', `[UPDATE_TICKETS_CONCEPTUAL] Active Ticket records potentially updated for Item ID: ${itemId}. Matched: ${ticketUpdateResult.matchedCount}, Modified: ${ticketUpdateResult.modifiedCount}.`, user, logDetails);
+
 
     await session.commitTransaction();
     res.status(200).json({
-      message: 'Item deleted, backed up, and purchase references updated successfully.',
+      message: 'Item deleted, backed up, and related records updated successfully.',
       originalId: itemToBackup._id,
       backupId: newBackupEntry._id
     });
@@ -806,16 +880,17 @@ exports.deleteItem = async (req, res) => {
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
-      logger.warn('delete', `[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, user, { ...logDetails, errorMessage: error.message });
+      logger.warn('delete', `[ROLLBACK_TRANSACTION] Transaction rolled back due to error during Item deletion process for ID: ${itemId}.`, user, { ...logDetails, errorMessage: error.message, stack: error.stack });
     }
     logger.error('delete', `[DELETE_ERROR] Error during Item deletion process for ID: ${itemId}.`, error, user, logDetails);
     res.status(500).json({ message: 'Server error during the deletion process. Please check server logs.' });
   } finally {
-    session.endSession();
+    if (session && session.endSession) {
+        session.endSession();
+    }
   }
 };
 
-// Get purchase history for specific item
 exports.getItemPurchaseHistory = async (req, res) => {
   try {
     const user = req.user || null;
@@ -838,11 +913,15 @@ exports.getItemPurchaseHistory = async (req, res) => {
       companyName: 1,
       gstNumber: 1,
       invoiceNumber: 1,
-      'items.$': 1
-    }).sort({ date: -1 }).limit(50);
+      'items.$': 1, // Get only the matching item from the array
+      createdBy: 1 // To get createdByName
+    })
+    .populate('createdBy', 'firstname lastname') // Populate createdBy for the purchase document
+    .sort({ date: -1 }).limit(50);
 
     const formattedPurchases = purchases.map(purchase => {
-      const itemData = purchase.items[0];
+      const itemData = purchase.items[0]; // Should be only one due to .$
+      const createdByName = purchase.createdBy ? `${purchase.createdBy.firstname || ''} ${purchase.createdBy.lastname || ''}`.trim() : 'System';
 
       return {
         _id: purchase._id,
@@ -855,7 +934,8 @@ exports.getItemPurchaseHistory = async (req, res) => {
         gstRate: itemData?.gstRate || 0,
         amount: (itemData?.price || 0) * (itemData?.quantity || 0),
         totalWithGst: (itemData?.price || 0) * (itemData?.quantity || 0) *
-                      (1 + (itemData?.gstRate || 0) / 100)
+                      (1 + (itemData?.gstRate || 0) / 100),
+        createdByName: createdByName
       };
     });
 
@@ -869,52 +949,37 @@ exports.getItemPurchaseHistory = async (req, res) => {
   }
 };
 
-// New controller function for restock summary
 exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
-  // lowGlobalThreshold is used for "Low Stock Warning" (0 <= qty < threshold)
-  const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3;
+  const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3; // Default from frontend
 
   try {
     logger.debug('item', "Fetching restock summary", user, { lowGlobalThreshold });
 
-    // Restock Needed: quantity < 0
-    // The `needsRestock: true` flag is now redundant if we strictly define restock by quantity < 0
-    // However, keeping it in $or might catch legacy data or items manually flagged.
-    // For strictness, we can rely solely on quantity.
     const restockNeededCount = await Item.countDocuments({
-      quantity: { $lt: 0 }
-      // $or: [
-      //   { needsRestock: true }, // This can be removed if needsRestock is always synced with qty < 0
-      //   { quantity: { $lt: 0 } }
-      // ]
+      quantity: { $lt: 0 },
+      status: 'approved' // Only count approved items for restock alerts
     });
 
-    // Low Stock Warning: 0 <= quantity < lowGlobalThreshold
-    // This count should be distinct from restockNeededCount.
     const lowStockWarningCount = await Item.countDocuments({
-      quantity: { $gte: 0, $lt: lowGlobalThreshold }
+      quantity: { $gte: 0, $lt: lowGlobalThreshold },
+      status: 'approved' // Only count approved items for low stock warnings
     });
 
     res.json({
       restockNeededCount: restockNeededCount,
       lowStockWarningCount: lowStockWarningCount,
-      // items: itemsActuallyNeedingRestock // Removed as Navbar only uses counts
     });
   } catch (error) {
-    logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold });
-    res.status(500).json({ message: 'Server error while fetching restock summary' });
+     logger.error('item', "Error fetching restock summary", error, user, { lowGlobalThreshold, errorMessage: error.message, stack: error.stack });
+    res.status(500).json({ 
+      message: 'Server error while fetching restock summary',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred.'
+    });
+
   }
 };
 
-// IMPORTANT: If you have an `addPurchaseEntry` controller (or similar function that updates item quantities after a purchase),
-// you MUST ensure it also updates the `item.needsRestock` field based on the new quantity.
-// For example, after updating an item's quantity:
-//   `item.needsRestock = item.quantity < 0;`
-//   `await item.save();`
-// This is crucial for data consistency.
-
-// Get ticket usage history for a specific item
 exports.getItemTicketUsageHistory = async (req, res) => {
   const user = req.user || null;
   const { id: itemId } = req.params;
@@ -933,23 +998,30 @@ exports.getItemTicketUsageHistory = async (req, res) => {
 
     logger.debug('item_ticket_usage', `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`, user);
 
+    // Build query based on item's name and HSN code for robustness
+    // This assumes that when an item is added to a ticket, its name and HSN are stored.
     const queryConditions = {
       "goods.description": item.name,
+      // Optionally, match HSN code if available and reliable
+      // "goods.hsnSacCode": item.hsnCode 
     };
-    if (item.hsnCode && item.hsnCode.trim() !== "") {
-      queryConditions["goods.hsnSacCode"] = item.hsnCode;
-    }
+    // If you store itemId directly in ticket goods, the query would be simpler:
+    // const queryConditions = { "goods.itemId": new mongoose.Types.ObjectId(itemId) };
+
 
     const ticketsContainingItem = await Ticket.find(queryConditions)
       .populate('createdBy', 'firstname lastname')
       .select('ticketNumber goods createdAt createdBy')
+      .sort({ createdAt: -1 }) // Sort by ticket creation date
       .lean();
 
     const ticketUsageHistory = [];
 
     for (const ticket of ticketsContainingItem) {
+      // Find the specific good entry that matches the item
+      // This might need refinement if multiple goods in a ticket can have the same description/HSN
       const relevantGood = ticket.goods.find(
-        g => g.description === item.name && (item.hsnCode && item.hsnCode.trim() !== "" ? g.hsnSacCode === item.hsnCode : true)
+        g => g.description === item.name // Add HSN match if needed: && g.hsnSacCode === item.hsnCode
       );
 
       if (relevantGood && relevantGood.quantity > 0) {
@@ -958,14 +1030,14 @@ exports.getItemTicketUsageHistory = async (req, res) => {
           type: 'Ticket Usage',
           user: ticket.createdBy ? `${ticket.createdBy.firstname || ''} ${ticket.createdBy.lastname || ''}`.trim() : 'System',
           details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${ticket.ticketNumber}`,
-          quantityChange: -parseFloat(relevantGood.quantity) || 0,
+          quantityChange: -parseFloat(relevantGood.quantity) || 0, // Negative as it's usage
           ticketId: ticket._id,
           ticketNumber: ticket.ticketNumber,
         });
       }
     }
     
-    ticketUsageHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // No need to sort again if MongoDB already sorted
     logger.info('item_ticket_usage', `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`, user);
     res.json(ticketUsageHistory);
 

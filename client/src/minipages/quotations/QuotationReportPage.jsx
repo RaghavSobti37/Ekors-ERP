@@ -1,14 +1,6 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationReportPage.jsx
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Button,
-  Form,
-  Spinner,
-  Alert,
-  Table,
-  Row,
-  Col,
-} from "react-bootstrap";
+import { useState, useEffect, useCallback } from "react";
+import { Button, Form, Spinner, Alert, Table, Row, Col } from "react-bootstrap";
 import { FaFileExcel, FaChartBar } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 import {
@@ -20,10 +12,8 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import axios from "axios";
-import { getAuthToken } from "../../utils/authUtils";
+import apiClient from "../../utils/apiClient.js"; // Using global apiClient
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import { useNavigate } from "react-router-dom";
 
 ChartJS.register(
   CategoryScale,
@@ -34,10 +24,6 @@ ChartJS.register(
   Legend
 );
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
-});
-
 const QuotationReportPage = () => {
   const [period, setPeriod] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,7 +31,6 @@ const QuotationReportPage = () => {
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
-  const navigate = useNavigate();
 
   const periodOptions = [
     { value: "7days", label: "Last 7 Days" },
@@ -68,16 +53,8 @@ const QuotationReportPage = () => {
     setReportData(null);
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
-      const response = await apiClient.get(`quotations/report/summary`, {
+      const response = await apiClient(`/quotations/report/summary`, {
         params: { period },
-        headers: { Authorization: `Bearer ${token}` },
       });
       setReportData(response.data.data);
     } catch (err) {
@@ -103,23 +80,15 @@ const QuotationReportPage = () => {
     }
   }, [period]);
 
-  const handleExportToExcel = async () => {
+  const handleExportToExcel = useCallback(async () => {
     if (!period || !reportData) return;
     setExportLoading(true);
     setError("");
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setExportLoading(false);
-        return;
-      }
-
-      const response = await apiClient.get(`quotations/report/excel`, {
+      const response = await apiClient(`/quotations/report/excel`, {
         params: { period },
-        responseType: "blob",
-        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob", // apiClient should be configured to handle this or pass it to axios
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -131,8 +100,7 @@ const QuotationReportPage = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      let errorMessage =
-        "Failed to export report. An unknown error occurred.";
+      let errorMessage = "Failed to export report. An unknown error occurred.";
       if (err.response) {
         errorMessage =
           err.response.data?.message || `Server error: ${err.response.status}`;
@@ -145,14 +113,14 @@ const QuotationReportPage = () => {
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [period, reportData]);
 
   useEffect(() => {
     fetchReport();
-  }, [fetchReport]); // fetchReport is memoized with useCallback and depends on period
+  }, [fetchReport]);
 
   const renderSummaryTab = () => {
-    if (!reportData) return null; // Data presence checked before rendering tabs
+    if (!reportData) return null;
     return (
       <div className="report-summary">
         <Table striped bordered hover size="sm" className="mt-3">
@@ -192,7 +160,12 @@ const QuotationReportPage = () => {
   };
 
   const renderChartsTab = () => {
-    if (!reportData || !reportData.statusCounts) return <Alert variant="info" className="mt-3">Chart data is not available.</Alert>;
+    if (!reportData || !reportData.statusCounts)
+      return (
+        <Alert variant="info" className="mt-3">
+          Chart data is not available.
+        </Alert>
+      );
     const statusData = {
       labels: ["Open", "Running", "Hold", "Closed"],
       datasets: [
@@ -226,19 +199,25 @@ const QuotationReportPage = () => {
           <h5>Quotation Status Distribution</h5>
           <Bar
             data={statusData}
-            options={{ responsive: true, plugins: { legend: { position: "top" } } }}
+            options={{
+              responsive: true,
+              plugins: { legend: { position: "top" } },
+            }}
           />
         </div>
       </div>
     );
   };
-  
+
   const reportPageTitle = (
     <div>
       Quotation Activity Report
       {reportData && !loading && reportData.period && reportData.dateRange && (
-        <div style={{ fontSize: '0.8rem', fontWeight: 'normal', opacity: 0.9 }}>
-          Period: {periodOptions.find(p => p.value === reportData.period)?.label || reportData.period} ({reportData.dateRange})
+        <div style={{ fontSize: "0.8rem", fontWeight: "normal", opacity: 0.9 }}>
+          Period:{" "}
+          {periodOptions.find((p) => p.value === reportData.period)?.label ||
+            reportData.period}{" "}
+          ({reportData.dateRange})
         </div>
       )}
     </div>
@@ -289,7 +268,11 @@ const QuotationReportPage = () => {
             variant="outline-success"
             onClick={handleExportToExcel}
             disabled={
-              loading || exportLoading || !reportData || !period || reportData.totalQuotations === 0
+              loading ||
+              exportLoading ||
+              !reportData ||
+              !period ||
+              reportData.totalQuotations === 0
             }
           >
             {exportLoading ? (
@@ -305,13 +288,26 @@ const QuotationReportPage = () => {
           </Button>
         </Col>
       </Row>
-      
+
       {/* Content Display Area */}
-      {loading && <div className="text-center p-5"><Spinner animation="border" /><p>Loading report data...</p></div>}
+      {loading && (
+        <div className="text-center p-5">
+          <Spinner animation="border" />
+          <p>Loading report data...</p>
+        </div>
+      )}
       {!loading && error && <Alert variant="danger">{error}</Alert>}
-      {!loading && !error && !period && <Alert variant="info" className="text-center">Please select a report period to view data.</Alert>}
-      {!loading && !error && period && !reportData && <Alert variant="info" className="text-center">No data found for the selected period, or an error occurred.</Alert>}
-      
+      {!loading && !error && !period && (
+        <Alert variant="info" className="text-center">
+          Please select a report period to view data.
+        </Alert>
+      )}
+      {!loading && !error && period && !reportData && (
+        <Alert variant="info" className="text-center">
+          No data found for the selected period, or an error occurred.
+        </Alert>
+      )}
+
       {!loading && !error && period && reportData && (
         <div className="mt-3">
           {activeTab === "summary" && renderSummaryTab()}

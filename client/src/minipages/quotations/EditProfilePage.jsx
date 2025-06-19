@@ -1,5 +1,5 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/EditProfilePage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Form, Button as BsButton, Alert, Row, Col, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
@@ -7,6 +7,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { showToast, handleApiError } from "../../utils/helpers.js";
 import frontendLogger from "../../utils/frontendLogger.js";
+
+const MIN_PASSWORD_LENGTH = 5;
 
 const EditProfilePage = () => {
   const { user, updateUserContext, loading: authLoading } = useAuth();
@@ -35,11 +37,14 @@ const EditProfilePage = () => {
       // If no user and not loading, redirect to login
       navigate("/login");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate]); // navigate is stable, but explicit dependency is fine. Can be removed.
 
-  const handleInputChange = (e) => {
-    setProfileFormData({ ...profileFormData, [e.target.name]: e.target.value });
-  };
+  // Optimized handleInputChange with useCallback and functional update
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setProfileFormData(prevData => ({ ...prevData, [name]: value }));
+  }, [setProfileFormData]);
+
 
   const handleProfileSave = async () => {
     setError("");
@@ -50,8 +55,8 @@ const EditProfilePage = () => {
       setError("New passwords do not match.");
       return;
     }
-    if (profileFormData.newPassword && profileFormData.newPassword.length < 5) {
-      setError("New password must be at least 5 characters long.");
+    if (profileFormData.newPassword && profileFormData.newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
       return;
     }
 

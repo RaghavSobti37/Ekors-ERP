@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import ActionButtons from "../components/ActionButtons";
 import Footer from "../components/Footer";
@@ -7,76 +7,70 @@ import {
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
-import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Table, Button, Alert, Form, Offcanvas } from "react-bootstrap";
+import { Table, Button, Alert } from "react-bootstrap";
 import Pagination from "../components/Pagination";
 import ReusableTable from "../components/ReusableTable";
 import apiClient from "../utils/apiClient";
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
+import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import "../css/Style.css";
-import { FaPlus, FaFilter, FaSearch } from "react-icons/fa";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const itemsPerPage = 4;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const dateToYYYYMMDD = (dateObj) => {
+    return dateObj.toISOString().split("T")[0];
+  };
 
-  const fetchHistory = async () => {
+  const [totalHistoryCount, setTotalHistoryCount] = useState(0);
+
+  const fetchHistory = useCallback(async (page = 1, limit = itemsPerPage, sortKey = sortConfig.key, sortDirection = sortConfig.direction) => {
     setIsLoading(true);
     setError(null);
     try {
       const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
-      const data = await apiClient("/logtime/all");
 
-      const withTotal = data.map((entry) => {
+      const response = await apiClient("/logtime", { // Assuming endpoint supports pagination & sorting
+        params: { page, limit, sortKey, sortDirection },
+      });
+
+      const processedData = (response.data || []).map((entry) => {
         let totalMinutes = 0;
+        // Ensure logs is an array before trying to iterate
+        if (!Array.isArray(entry.logs)) entry.logs = []; 
         entry.logs?.forEach((log) => {
           const [h, m] = log.timeSpent.split(":").map(Number);
           if (!isNaN(h) && !isNaN(m)) totalMinutes += h * 60 + m;
         });
         return {
           ...entry,
-          totalTime: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
+          totalTime: `${Math.floor(totalMinutes / 60)} hours, ${
+            totalMinutes % 60
+          } minutes`,
           taskCount: entry.logs?.length || 0,
         };
       });
 
-      // Apply search filter if searchTerm exists
-      const filteredData = searchTerm 
-        ? withTotal.filter(entry => 
-            formatDisplayDateHelper(entry.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.totalTime.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.logs.some(log => log.task.toLowerCase().includes(searchTerm.toLowerCase()))
-          )
-        : withTotal;
-
-      setHistoryData(filteredData);
+      setHistoryData(processedData);
+      setTotalHistoryCount(response.totalItems || 0);
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
+      setHistoryData([]); setTotalHistoryCount(0);
       showToast(errorMessage, false);
       if (error.message.includes("authentication")) {
         navigate("/login");
@@ -84,254 +78,152 @@ export default function History() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemsPerPage, sortConfig.key, sortConfig.direction, navigate]); // Removed user from deps, handleApiError can take it as arg
 
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
-    fetchHistory();
-  }, [user, navigate, searchTerm]);
+    fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
+  }, [user, navigate, currentPage, itemsPerPage, sortConfig, fetchHistory]);
 
-  const handleSort = () => {
-    const newOrder = sortOrder === "asc" ? "desc" : "asc";
-    const sorted = [...historyData].sort((a, b) =>
-      newOrder === "asc"
-        ? new Date(a.date) - new Date(b.date)
-        : new Date(b.date) - new Date(a.date)
-    );
-    setSortOrder(newOrder);
-    setHistoryData(sorted);
-  };
+  const handleSort = useCallback((key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page on sort change
+  }, [sortConfig]);
 
-  const handleView = (entry) => setSelectedEntry(entry);
-  const handleEdit = (entry) => navigate(`/logtime/${entry.date}`);
+  const handleView = useCallback((entry) => setSelectedEntry(entry), []);
+  const handleEdit = useCallback((entry) => {
+    // entry.date is expected to be in YYYY-MM-DD format from the backend
+    navigate(`/logtime/${entry.date}`);
+  }, [navigate]);
 
-  const handleDelete = async (entryId) => {
+  const handleDelete = useCallback(async (entryId) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       const token = getAuthTokenUtil();
       if (!token) {
         showToast("Authentication token not found. Please log in again.", false);
-        setError("Authentication token not found. Please log in again.");
+        setError("Authentication token not found. Please log in again."); // Optional: set page error
+        // navigate("/login"); // Optional: redirect to login
         return;
       }
 
       try {
-        setIsLoading(true);
+        setIsLoading(true); // Set loading after token check
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
-        await fetchHistory();
         showToast("Entry deleted successfully!", true);
+        // Refresh logic
+        if (historyData.length === 1 && currentPage > 1) {
+          setCurrentPage(prevPage => prevPage - 1);
+        } else {
+          fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
+        }
       } catch (error) {
-        const errorMessage = handleApiError(error, `Failed to delete entry ${entryId}`);
+        const errorMessage = handleApiError(error, `Failed to delete entry ${entryId}`, user);
         setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     }
-  };
+  }, [historyData.length, currentPage, itemsPerPage, sortConfig, fetchHistory, user]);
 
-  const closeModal = () => setSelectedEntry(null);
+  const closeModal = useCallback(() => {
+    setSelectedEntry(null);
+  }, []);
 
-  const handleAddNewEntry = () => {
+  const handleAddNewEntry = useCallback(() => {
     const today = new Date();
-    const formattedDate = today.toISOString().split('T')[0];
-    navigate(`/logtime/${formattedDate}`);
-  };
+    const formattedDateYYYYMMDD = dateToYYYYMMDD(today);
+    navigate(`/logtime/${formattedDateYYYYMMDD}`);
+  }, [navigate]);
 
-  const currentEntries = historyData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const goToPage = (page) => {
-    if (page >= 1 && page <= Math.ceil(historyData.length / itemsPerPage)) {
+  const goToPage = useCallback((page) => {
+    const totalPages = Math.ceil(totalHistoryCount / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
-  };
+  }, [totalHistoryCount, itemsPerPage]);
 
   return (
-    <div className="history-page">
+    <div>
       <Navbar />
-      <div className="container mt-3">
-        {error && !selectedEntry && (
+      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
+      <div className="container mt-4">
+        {!isLoading && !authLoading && error && !selectedEntry && ( 
           <Alert variant="danger" onClose={() => setError(null)} dismissible>
             {error}
           </Alert>
         )}
 
-        {/* Mobile Header */}
-        {isMobileView && (
-          <div className="mobile-history-header">
-            <h2>Time Log History</h2>
-            <div className="mobile-history-actions">
-              <Button 
-                variant="outline-secondary" 
-                onClick={() => setShowMobileFilters(true)}
-                className="mobile-filter-btn"
-              >
-                <FaFilter /> Filters
-              </Button>
-              <Button 
-                variant="primary" 
-                onClick={handleAddNewEntry}
-                className="mobile-add-btn"
-              >
-                <FaPlus />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Desktop Header */}
-        {!isMobileView && (
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2 style={{ color: "black" }}>Time Log History</h2>
-            <div className="history-controls">
-              <Form.Control
-                type="text"
-                placeholder="Search entries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="history-search"
-              />
-              <Button variant="primary" onClick={handleAddNewEntry}>
+        {/* Render content only if not loading and no error, or handle error within components */}
+        {!isLoading && !authLoading && !error && (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 style={{ color: "black" }}>Time Log History</h2>
+              <Button variant="primary" onClick={handleAddNewEntry} disabled={isLoading || authLoading}>
                 + Add New Entry
               </Button>
             </div>
-          </div>
-        )}
 
-        {/* Mobile Filters Offcanvas */}
-        <Offcanvas 
-          show={showMobileFilters} 
-          onHide={() => setShowMobileFilters(false)}
-          placement="end"
-          className="mobile-filters-offcanvas"
-        >
-          <Offcanvas.Header closeButton>
-            <Offcanvas.Title>History Filters</Offcanvas.Title>
-          </Offcanvas.Header>
-          <Offcanvas.Body>
-            <div className="mobile-filter-options">
-              <Form.Group>
-                <Form.Label>Search Entries</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="Search by date, time or task..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+            <ReusableTable
+              columns={[
+                {
+                  key: "date",
+                  header: "Date",
+                  sortable: true,
+                  renderCell: (item) => formatDisplayDateHelper(item.date),
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "totalTime",
+                  header: "Total Time",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "taskCount",
+                  header: "Tasks",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+              ]}
+              data={historyData}
+              keyField="_id"
+              isLoading={(isLoading || authLoading) && historyData.length === 0}
+              error={error && historyData.length === 0 ? error : null}
+              onSort={handleSort}
+              sortConfig={{
+                key: sortConfig.key,
+                direction: sortConfig.direction === "asc" ? "ascending" : "descending",
+              }}
+              renderActions={(entry) => (
+                <ActionButtons
+                  item={entry}
+                  onView={() => handleView(entry)}
+                  onEdit={handleEdit}
+                  onDelete={() => handleDelete(entry._id)}
+                  isLoading={isLoading || authLoading}
                 />
-              </Form.Group>
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setShowMobileFilters(false);
-                }}
-                className="mt-3"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          </Offcanvas.Body>
-        </Offcanvas>
-
-        {isLoading && historyData.length === 0 ? (
-          <div className="loading-history">
-            <p>Loading history entries...</p>
-          </div>
-        ) : historyData.length === 0 ? (
-          <div className="empty-history">
-            <p>No time log history found.</p>
-            {searchTerm && (
-              <Button variant="link" onClick={() => setSearchTerm("")}>
-                Clear search
-              </Button>
-            )}
-          </div>
-        ) : isMobileView ? (
-          // Mobile View - Card Layout
-          <div className="mobile-history-entries">
-            {currentEntries.map((entry) => (
-              <div key={entry._id} className="mobile-history-card">
-                <div className="mobile-history-card-header">
-                  <h5>{formatDisplayDateHelper(entry.date)}</h5>
-                  <span className="badge bg-primary">{entry.taskCount} tasks</span>
-                </div>
-                <div className="mobile-history-card-body">
-                  <div className="mobile-history-time">
-                    <strong>Total:</strong> {entry.totalTime}
-                  </div>
-                  <div className="mobile-history-actions">
-                    <ActionButtons
-                      item={entry}
-                      onView={handleView}
-                      onEdit={handleEdit}
-                      onDelete={() => handleDelete(entry._id)}
-                      isMobile={true}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          // Desktop View - Table Layout
-          <ReusableTable
-            columns={[
-              {
-                key: "date",
-                header: "Date",
-                sortable: true,
-                renderCell: (item) => formatDisplayDateHelper(item.date),
-                headerClassName: "centered",
-                cellClassName: "centered",
-              },
-              {
-                key: "totalTime",
-                header: "Total Time",
-                headerClassName: "centered",
-                cellClassName: "centered",
-              },
-              {
-                key: "taskCount",
-                header: "Tasks",
-                headerClassName: "centered",
-                cellClassName: "centered",
-                renderCell: (item) => <span className="badge bg-primary">{item.taskCount}</span>
-              },
-            ]}
-            data={currentEntries}
-            keyField="_id"
-            isLoading={isLoading && currentEntries.length === 0}
-            error={error && currentEntries.length === 0 ? error : null}
-            onSort={handleSort}
-            sortConfig={{
-              key: "date",
-              direction: sortOrder === "asc" ? "ascending" : "descending",
-            }}
-            renderActions={(entry) => (
-              <ActionButtons
-                item={entry}
-                onView={handleView}
-                onEdit={handleEdit}
-                onDelete={() => handleDelete(entry._id)}
-              />
-            )}
-            noDataMessage="No time log history found."
-            tableClassName="mt-3"
-            theadClassName="table-dark"
-          />
+              )}
+              noDataMessage="No time log history found."
+              tableClassName="mt-3"
+              theadClassName="table-dark"
+            />
+          </>
         )}
 
-        {historyData.length > 0 && (
+        {totalHistoryCount > 0 && !isLoading && !authLoading && (
           <Pagination
             currentPage={currentPage}
-            totalItems={historyData.length}
+            totalItems={totalHistoryCount}
             itemsPerPage={itemsPerPage}
             onPageChange={goToPage}
-            isMobile={isMobileView}
           />
         )}
       </div>
@@ -347,15 +239,9 @@ export default function History() {
               Close
             </Button>
           }
-          size="lg"
         >
           {error && <Alert variant="danger">{error}</Alert>}
-          <div className="modal-time-summary">
-            <strong>Total Time:</strong> {selectedEntry.totalTime}
-            <br />
-            <strong>Tasks:</strong> {selectedEntry.taskCount}
-          </div>
-          <Table striped bordered hover responsive className="modal-time-table">
+          <Table striped bordered hover responsive>
             <thead className="table-dark">
               <tr>
                 <th>Task</th>
@@ -364,7 +250,7 @@ export default function History() {
                 <th>Time Spent</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-center">
               {selectedEntry.logs.map((log, i) => (
                 <tr key={i}>
                   <td>{log.task}</td>
