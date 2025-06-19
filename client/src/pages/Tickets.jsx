@@ -450,6 +450,7 @@ export default function Dashboard() {
                     </>
                   );
                 },
+                tooltip: "Meaning of colour:\nSky Blue - Quotation Sent \nDark Blue - PO Received \nYellow - Payment \nSlate Grey - Inspection \nBlack - Packing \nLight Green - Invoice \nRed - Hold \nDark Blue - Closed",
               },
             ]}
             data={tickets} keyField="_id" 
