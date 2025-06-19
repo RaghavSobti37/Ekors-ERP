@@ -7,9 +7,10 @@ import {
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Table, Button, Alert } from "react-bootstrap";
+import { Table, Button, Alert, Form, Offcanvas } from "react-bootstrap";
 import Pagination from "../components/Pagination";
 import ReusableTable from "../components/ReusableTable";
 import apiClient from "../utils/apiClient";
@@ -17,7 +18,7 @@ import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import "../css/Style.css";
-import "react-toastify/dist/ReactToastify.css";
+import { FaPlus, FaFilter, FaSearch } from "react-icons/fa";
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -26,14 +27,22 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const itemsPerPage = 4;
   const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
 
-  const dateToYYYYMMDD = (dateObj) => {
-    return dateObj.toISOString().split("T")[0];
-  };
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [totalHistoryCount, setTotalHistoryCount] = useState(0);
 
@@ -58,15 +67,21 @@ export default function History() {
         });
         return {
           ...entry,
-          totalTime: `${Math.floor(totalMinutes / 60)} hours, ${
-            totalMinutes % 60
-          } minutes`,
+          totalTime: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
           taskCount: entry.logs?.length || 0,
         };
       });
 
-      setHistoryData(processedData);
-      setTotalHistoryCount(response.totalItems || 0);
+      // Apply search filter if searchTerm exists
+      const filteredData = searchTerm 
+        ? withTotal.filter(entry => 
+            formatDisplayDateHelper(entry.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.totalTime.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.logs.some(log => log.task.toLowerCase().includes(searchTerm.toLowerCase()))
+          )
+        : withTotal;
+
+      setHistoryData(filteredData);
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
@@ -85,8 +100,8 @@ export default function History() {
       navigate("/login");
       return;
     }
-    fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
-  }, [user, navigate, currentPage, itemsPerPage, sortConfig, fetchHistory]);
+    fetchHistory();
+  }, [user, navigate, searchTerm]);
 
   const handleSort = useCallback((key) => {
     let direction = "asc";
@@ -114,8 +129,9 @@ export default function History() {
       }
 
       try {
-        setIsLoading(true); // Set loading after token check
+        setIsLoading(true);
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
+        await fetchHistory();
         showToast("Entry deleted successfully!", true);
         // Refresh logic
         if (historyData.length === 1 && currentPage > 1) {
@@ -150,7 +166,7 @@ export default function History() {
   }, [totalHistoryCount, itemsPerPage]);
 
   return (
-    <div>
+    <div className="history-page">
       <Navbar />
       <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
@@ -239,9 +255,15 @@ export default function History() {
               Close
             </Button>
           }
+          size="lg"
         >
           {error && <Alert variant="danger">{error}</Alert>}
-          <Table striped bordered hover responsive>
+          <div className="modal-time-summary">
+            <strong>Total Time:</strong> {selectedEntry.totalTime}
+            <br />
+            <strong>Tasks:</strong> {selectedEntry.taskCount}
+          </div>
+          <Table striped bordered hover responsive className="modal-time-table">
             <thead className="table-dark">
               <tr>
                 <th>Task</th>
@@ -250,7 +272,7 @@ export default function History() {
                 <th>Time Spent</th>
               </tr>
             </thead>
-            <tbody className="text-center">
+            <tbody>
               {selectedEntry.logs.map((log, i) => (
                 <tr key={i}>
                   <td>{log.task}</td>

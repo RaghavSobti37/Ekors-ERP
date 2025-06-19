@@ -3,10 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import ReusablePageStructure from "../components/ReusablePageStructure";
 import apiClient from "../utils/apiClient";
 import { showToast, handleApiError, formatDisplayDate as formatDisplayDateHelper } from "../utils/helpers";
-import { Button, Table, Alert, Form } from "react-bootstrap";
-import "../css/Logtime.css"; // You might want to create/use a specific CSS file or reuse styles
+import { Button, Table, Alert, Form, Stack, Offcanvas } from "react-bootstrap";
+import "../css/Style.css";
+import { FaPlus, FaFilter, FaSearch, FaSave, FaTimes } from "react-icons/fa";
 
-// Helper to format a Date object or YYYY-MM-DD string to YYYY-MM-DD string
 const ensureYYYYMMDDFormat = (dateInput) => {
   if (dateInput instanceof Date) {
     const year = dateInput.getFullYear();
@@ -17,29 +17,36 @@ const ensureYYYYMMDDFormat = (dateInput) => {
   if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
     return dateInput;
   }
-  // Fallback or error for unexpected formats - for now, assume valid input or handle elsewhere
-  console.warn("ensureYYYYMMDDFormat: Unexpected date format", dateInput);
-  // Default to today if format is problematic
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 };
 
 export default function LogTimePage() {
-  const { date: dateParam } = useParams(); // YYYY-MM-DD from URL
+  const { date: dateParam } = useParams();
   const navigate = useNavigate();
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [logData, setLogData] = useState([]);
   const [totalTime, setTotalTime] = useState("0 hours, 0 minutes");
-  const [selectedDate, setSelectedDate] = useState(""); // YYYY-MM-DD
-  const [displayDate, setDisplayDate] = useState("");   // DD-Month-YYYY
-
+  const [selectedDate, setSelectedDate] = useState("");
+  const [displayDate, setDisplayDate] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const formatDateForDisplay = useCallback((yyyyMmDdDate) => {
     if (!yyyyMmDdDate) return "N/A";
-    return formatDisplayDateHelper(yyyyMmDdDate); // Use the helper from utils
+    return formatDisplayDateHelper(yyyyMmDdDate);
   }, []);
 
   useEffect(() => {
@@ -132,7 +139,6 @@ export default function LogTimePage() {
     const newDateYYYYMMDD = e.target.value;
     setSelectedDate(newDateYYYYMMDD);
     setDisplayDate(formatDateForDisplay(newDateYYYYMMDD));
-    // Fetch logs for the new date - this will be triggered by selectedDate useEffect
   };
 
   const handleSave = async () => {
@@ -154,7 +160,7 @@ export default function LogTimePage() {
     for (const log of logData) {
       if (log.finish) {
         const logFinishDateTime = new Date(`${selectedDate}T${log.finish}`);
-        if (logFinishDateTime > now && inputDate.getTime() === today.getTime()) { // Only check future time for today's logs
+        if (logFinishDateTime > now && inputDate.getTime() === today.getTime()) {
           const futureTimeError = `Finish time for task "${log.task}" cannot be in the future.`;
           setError(futureTimeError);
           showToast(futureTimeError, false);
@@ -169,26 +175,12 @@ export default function LogTimePage() {
       }
     }
 
-    // Allow saving even if rows are incomplete, but not if logData is empty and we intend to save.
-    // The backend handles if `logs` array is empty.
-    // If logData is empty, we might not even enable the save button or just return.
-    if (logData.length === 0) {
-        showToast("No log entries to save.", false);
-        // Or, if you want to allow "saving" an empty state (which might delete logs for the day if backend supports it)
-        // you'd proceed. Current backend POST requires non-empty logs array if logs key is present.
-        // For now, let's assume we only save if there's something, or user explicitly clears and wants to save "nothing".
-        // The backend will return 400 if `logs` is an empty array.
-        // To delete all logs for a day, the user should use the delete feature on the History page.
-        // So, if logData is empty, we can just navigate back or show a message.
-        // For now, the save button will likely be disabled or the backend will reject empty `logs`.
-    }
-
     try {
       await apiClient("/logtime", {
         method: "POST",
         body: {
-          logs: logData, // Send all logs, complete or incomplete
-          date: selectedDate, // YYYY-MM-DD
+          logs: logData,
+          date: selectedDate,
         },
       });
       showToast("Logs saved successfully!", true);
@@ -204,7 +196,7 @@ export default function LogTimePage() {
 
   const pageTitle = `Log Time for ${displayDate}`;
 
-  if (isLoading && !selectedDate) { // Initial load before selectedDate is set
+  if (isLoading && !selectedDate) {
     return <ReusablePageStructure title="Loading..."><p>Loading date information...</p></ReusablePageStructure>;
   }
 
@@ -212,17 +204,32 @@ export default function LogTimePage() {
     <ReusablePageStructure
       title={pageTitle}
       footerContent={
-        <>
+        <div className="logtime-footer-actions">
           <Button variant="secondary" onClick={() => navigate("/history")} disabled={isSaving}>
-            Cancel
+            <FaTimes className="me-1" /> Cancel
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={isSaving || isLoading || !selectedDate}>
-            {isSaving ? "Saving..." : "Save Logs"}
+            <FaSave className="me-1" /> {isSaving ? "Saving..." : "Save Logs"}
           </Button>
-        </>
+        </div>
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}
+
+      {/* Mobile Header */}
+      {isMobileView && (
+        <div className="mobile-logtime-header">
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => setShowMobileFilters(true)}
+            className="mobile-filter-btn"
+          >
+            <FaFilter /> Filters
+          </Button>
+        </div>
+      )}
+
+      {/* Date Selection */}
       <Form.Group className="mb-3">
         <Form.Label>Select Date:</Form.Label>
         <Form.Control
@@ -230,7 +237,7 @@ export default function LogTimePage() {
           value={selectedDate}
           onChange={handleDateChange}
           disabled={isSaving || isLoading}
-          max={ensureYYYYMMDDFormat(new Date())} // Prevent future dates
+          max={ensureYYYYMMDDFormat(new Date())}
         />
       </Form.Group>
 
@@ -238,9 +245,89 @@ export default function LogTimePage() {
         <strong>Total Hours Worked:</strong> {totalTime}
       </div>
 
+      {/* Mobile Filters Offcanvas */}
+      <Offcanvas 
+        show={showMobileFilters} 
+        onHide={() => setShowMobileFilters(false)}
+        placement="end"
+        className="mobile-filters-offcanvas"
+      >
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>Log Time Filters</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <div className="mobile-filter-options">
+            <Form.Group>
+              <Form.Label>Select Date:</Form.Label>
+              <Form.Control
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                disabled={isSaving || isLoading}
+                max={ensureYYYYMMDDFormat(new Date())}
+              />
+            </Form.Group>
+          </div>
+        </Offcanvas.Body>
+      </Offcanvas>
+
       {isLoading && logData.length === 0 ? (
         <p>Loading log entries...</p>
+      ) : isMobileView ? (
+        // Mobile View - Card Layout
+        <div className="mobile-logtime-entries">
+          {logData.map((entry, index) => (
+            <div key={index} className="mobile-logtime-card">
+              <div className="mobile-logtime-card-header">
+                <Form.Control
+                  type="text"
+                  value={entry.task}
+                  onChange={(e) => handleLogChange(index, "task", e.target.value)}
+                  placeholder="Task description"
+                  disabled={isSaving}
+                  className="mobile-logtime-task-input"
+                />
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => removeLogRow(index)}
+                  disabled={isSaving}
+                  className="mobile-logtime-remove-btn"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="mobile-logtime-time-inputs">
+                <Form.Group>
+                  <Form.Label>Start:</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={entry.start}
+                    onChange={(e) => handleLogChange(index, "start", e.target.value)}
+                    disabled={isSaving}
+                  />
+                </Form.Group>
+                
+                <Form.Group>
+                  <Form.Label>Finish:</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={entry.finish}
+                    onChange={(e) => handleLogChange(index, "finish", e.target.value)}
+                    disabled={isSaving}
+                  />
+                </Form.Group>
+              </div>
+              
+              <div className="mobile-logtime-total">
+                <strong>Time Spent:</strong> {entry.timeSpent}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
+        // Desktop View - Table Layout
         <Table striped bordered hover responsive className="log-time-table">
           <thead>
             <tr>
@@ -288,7 +375,7 @@ export default function LogTimePage() {
                     disabled={isSaving}
                     title="Remove log"
                   >
-                    🗑️
+                    ×
                   </Button>
                 </td>
               </tr>
@@ -297,8 +384,13 @@ export default function LogTimePage() {
         </Table>
       )}
 
-      <Button variant="success" onClick={addEmptyRow} disabled={isSaving || isLoading} className="mt-2">
-        + Add Row
+      <Button 
+        variant="success" 
+        onClick={addEmptyRow} 
+        disabled={isSaving || isLoading} 
+        className="mt-2 add-row-btn"
+      >
+        <FaPlus className="me-1" /> Add Row
       </Button>
     </ReusablePageStructure>
   );

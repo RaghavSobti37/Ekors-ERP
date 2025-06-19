@@ -278,6 +278,7 @@ const CreateTicketPage = () => {
     }
   };
 
+  // Handle pincode change (same as before)
   const handlePincodeChange = (e, addressType) => {
     const pincode = e.target.value;
     setTicketData((prev) => {
@@ -299,6 +300,7 @@ const CreateTicketPage = () => {
       setTimeout(() => fetchAddressFromPincode(pincode, addressType), 0);
   };
 
+  // Handle address change (same as before)
   const handleAddressChange = (e, addressType, fieldOrIndex) => {
     const { value } = e.target;
     setTicketData((prev) => {
@@ -344,6 +346,7 @@ const CreateTicketPage = () => {
     ); // Use showToast helper
   };
 
+  // Handle same as billing change (same as before)
   const handleSameAsBillingChange = (e) => {
     const isChecked = e.target.checked;
     setTicketData((prev) => {
@@ -362,6 +365,8 @@ const CreateTicketPage = () => {
         shippingAddressObj: newShippingAddressObj,
       };
     });
+
+
   };
 
   const handlePreviewPI = () => {
