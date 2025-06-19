@@ -74,12 +74,12 @@ export default function History() {
 
       // Apply search filter if searchTerm exists
       const filteredData = searchTerm 
-        ? withTotal.filter(entry => 
+        ? processedData.filter(entry => 
             formatDisplayDateHelper(entry.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
             entry.totalTime.toLowerCase().includes(searchTerm.toLowerCase()) ||
             entry.logs.some(log => log.task.toLowerCase().includes(searchTerm.toLowerCase()))
           )
-        : withTotal;
+        : processedData;
 
       setHistoryData(filteredData);
     } catch (error) {
