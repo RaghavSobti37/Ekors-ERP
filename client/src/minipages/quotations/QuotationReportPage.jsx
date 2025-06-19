@@ -53,10 +53,12 @@ const QuotationReportPage = () => {
     setReportData(null);
 
     try {
-      const response = await apiClient(`/quotations/report/summary`, {
+      // Updated endpoint to use the reports base path
+      const response = await apiClient(`/reports/quotations/summary`, { // Using apiClient as a function
         params: { period },
+        method: 'GET'
       });
-      setReportData(response.data.data);
+      setReportData(response.data);
     } catch (err) {
       let errorMessage = "Failed to fetch report. An unknown error occurred.";
       if (err.response) {
@@ -86,9 +88,11 @@ const QuotationReportPage = () => {
     setError("");
 
     try {
-      const response = await apiClient(`/quotations/report/excel`, {
+      // Updated endpoint to use the reports base path
+      const response = await apiClient(`/reports/quotations/excel`, { // Using apiClient as a function
         params: { period },
         responseType: "blob", // apiClient should be configured to handle this or pass it to axios
+        method: 'GET'
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));

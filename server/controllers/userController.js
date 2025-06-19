@@ -1,5 +1,5 @@
 const User = require("../models/users");
-const UserBackup = require("../models/userBackup"); // Import backup model
+const UniversalBackup = require("../models/universalBackup"); // Import backup model
 const asyncHandler = require("express-async-handler");
 const logger = require("../utils/logger"); // Import logger
 
@@ -192,8 +192,8 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   const logDetails = { performingUserId, userIdToDelete, model: 'User', performingUserEmail };
   let backupEntrySaved = false; // To track if backup was successful
 
-  if (!UserBackup) {
-    logger.fatal('MODEL_LOAD_ERROR', 'UserBackup model is not available. This is a critical server configuration issue. User deletion functionality is impaired.', performingUser, logDetails);
+  if (!UniversalBackup) {
+    logger.fatal('MODEL_LOAD_ERROR', 'UniversalBackup model is not available. This is a critical server configuration issue. User deletion functionality is impaired.', performingUser, logDetails);
     return res.status(500).json({ message: 'Server configuration error: Backup service unavailable. User not deleted.' });
   }
 
@@ -234,7 +234,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
     delete backupData.password; // Ensure password is not in backupData
     delete backupData.__v;
 
-    const newBackupEntry = new UserBackup({
+    const newBackupEntry = new UniversalBackup({
       ...backupData,
       originalId: userToBackup._id,
       deletedBy: performingUserId,
@@ -247,7 +247,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
     logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for User ID: ${userToBackup._id} (${userToBackup.email}).`, performingUser, { ...logDetails, originalId: userToBackup._id });
     await newBackupEntry.save();
     backupEntrySaved = true; // Mark backup as successful
-    logger.info('delete', `[BACKUP_SUCCESS] User successfully backed up. Backup ID: ${newBackupEntry._id}.`, performingUser, { ...logDetails, originalId: userToBackup._id, backupId: newBackupEntry._id, backupModel: 'UserBackup' });
+    logger.info('delete', `[BACKUP_SUCCESS] User successfully backed up. Backup ID: ${newBackupEntry._id}.`, performingUser, { ...logDetails, originalId: userToBackup._id, backupId: newBackupEntry._id, backupModel: 'UniversalBackup' });
 
     logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original User ID: ${userToBackup._id} (${userToBackup.email}).`, performingUser, { ...logDetails, originalId: userToBackup._id });
     await User.findByIdAndDelete(userIdToDelete);

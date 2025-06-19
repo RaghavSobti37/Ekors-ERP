@@ -9,6 +9,7 @@ const fs = require("fs-extra"); // fs-extra for recursive directory removal
 const path = require("path");
 const asyncHandler = require("express-async-handler");
 const mongoose = require("mongoose"); // Added mongoose for session
+const ReportController = require("./reportController"); // Import the report controller
 
 // Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
@@ -704,6 +705,11 @@ exports.updateTicket = async (req, res) => {
   const {
     shippingSameAsBilling,
     statusChangeComment,
+        roundOff, // Capture roundOff sent from frontend
+    finalRoundedAmount, // Capture finalRoundedAmount sent from frontend (will be recalculated)
+    // Destructure other calculated fields to ensure backend recalculates them
+    totalQuantity, totalAmount, gstBreakdown, totalCgstAmount, totalSgstAmount, totalIgstAmount, finalGstAmount, grandTotal, isBillingStateSameAsCompany,
+
     ...updatedTicketPayload
   } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
@@ -887,6 +893,101 @@ exports.updateTicket = async (req, res) => {
         }
       }
     }
+
+        // --- Recalculate Totals and GST based on updated goods ---
+    // This block is crucial to ensure backend data integrity
+    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
+        ticketDataForUpdate.totalQuantity = ticketDataForUpdate.goods.reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0
+        );
+        ticketDataForUpdate.totalAmount = ticketDataForUpdate.goods.reduce(
+            (sum, item) => Number(item.amount || 0), // Assuming item.amount is quantity * price
+            0
+        ); // Pre-GST - FIX: This should be sum, not just the last item's amount
+         ticketDataForUpdate.totalAmount = ticketDataForUpdate.goods.reduce(
+            (sum, item) => sum + Number(item.amount || 0),
+            0
+        ); // Corrected sum calculation
+
+        // Ensure billingAddress is in the expected array format for calculation
+        const currentBillingAddress = Array.isArray(ticketDataForUpdate.billingAddress) && ticketDataForUpdate.billingAddress.length === 5
+            ? ticketDataForUpdate.billingAddress
+            : Array.isArray(originalTicket.billingAddress) && originalTicket.billingAddress.length === 5
+                ? originalTicket.billingAddress
+                : ["", "", "", "", ""]; // Fallback
+
+        const billingState = (currentBillingAddress[2] || "")
+            .toUpperCase()
+            .trim(); // Assuming state is at index 2
+        const isBillingStateSameAsCompany =
+            billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+        ticketDataForUpdate.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+
+        const gstGroups = {};
+        ticketDataForUpdate.goods.forEach((item) => {
+            const itemGstRate = parseFloat(item.gstRate);
+            if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+                if (!gstGroups[itemGstRate])
+                    gstGroups[itemGstRate] = { taxableAmount: 0 };
+                gstGroups[itemGstRate].taxableAmount += item.amount || 0;
+            }
+        });
+
+        const newGstBreakdown = [];
+        let runningTotalCgst = 0,
+            runningTotalSgst = 0,
+            runningTotalIgst = 0;
+
+        for (const rateKey in gstGroups) {
+            const group = gstGroups[rateKey];
+            const itemGstRate = parseFloat(rateKey);
+            if (isNaN(itemGstRate) || itemGstRate < 0) continue;
+
+            const taxableAmount = group.taxableAmount;
+            let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+            let cgstRate = 0, sgstRate = 0, igstRate = 0;
+
+            if (itemGstRate > 0) {
+                if (isBillingStateSameAsCompany) {
+                    cgstRate = itemGstRate / 2; sgstRate = itemGstRate / 2;
+                    cgstAmount = (taxableAmount * cgstRate) / 100; sgstAmount = (taxableAmount * sgstRate) / 100;
+                    runningTotalCgst += cgstAmount; runningTotalSgst += sgstAmount;
+                } else {
+                    igstRate = itemGstRate;
+                    igstAmount = (taxableAmount * igstRate) / 100;
+                    runningTotalIgst += igstAmount;
+                }
+            }
+            newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
+        }
+        ticketDataForUpdate.gstBreakdown = newGstBreakdown;
+        ticketDataForUpdate.totalCgstAmount = runningTotalCgst;
+        ticketDataForUpdate.totalSgstAmount = runningTotalSgst;
+        ticketDataForUpdate.totalIgstAmount = runningTotalIgst;
+        ticketDataForUpdate.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+        ticketDataForUpdate.grandTotal = (ticketDataForUpdate.totalAmount || 0) + (ticketDataForUpdate.finalGstAmount || 0);
+
+        // Use the roundOff sent from the frontend and calculate finalRoundedAmount based on the NEW grandTotal
+        ticketDataForUpdate.roundOff = roundOff || 0; // Use the roundOff captured from req.body
+        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+
+    } else {
+        // Handle case with no goods or invalid goods array
+        ticketDataForUpdate.totalQuantity = 0;
+        ticketDataForUpdate.totalAmount = 0;
+        ticketDataForUpdate.gstBreakdown = [];
+        ticketDataForUpdate.totalCgstAmount = 0;
+        ticketDataForUpdate.totalSgstAmount = 0;
+        ticketDataForUpdate.totalIgstAmount = 0;
+        ticketDataForUpdate.finalGstAmount = 0;
+        ticketDataForUpdate.grandTotal = 0;
+        ticketDataForUpdate.isBillingStateSameAsCompany = false;
+        ticketDataForUpdate.roundOff = roundOff || 0; // Still capture roundOff if sent
+        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+    }
+    // --- End Recalculation ---
+
     const ticket = await Ticket.findOneAndUpdate(
       { _id: ticketId },
       ticketDataForUpdate,
@@ -1636,3 +1737,8 @@ exports.serveFile_IndexLogic = (req, res) => {
   });
   fs.createReadStream(filePath).pipe(res);
 };
+
+// exports.generateTicketsReport = async (req, res) => {
+//   // Delegate to the dedicated report controller
+//   ReportController.generateTicketsReport(req, res);
+// };

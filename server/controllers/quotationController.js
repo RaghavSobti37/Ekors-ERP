@@ -776,53 +776,7 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
   }
 };
 
-// --- Report Generation ---
-// (generateQuotationsReport and exportToExcel logic from reportController.js would be here or imported)
-
-// Placeholder for generateQuotationsReport (actual logic in reportController.js)
-exports.generateQuotationsReport = async (req, res) => {
-  // This function's core logic should be in reportController.js
-  // For now, a placeholder or call the imported function
-  try {
-    // const reportData = await actualReportGenerationLogic(req.query.period, req.user);
-    // res.json({ success: true, data: reportData });
-    res
-      .status(501)
-      .json({
-        message:
-          "Report generation logic to be fully implemented in reportController.",
-      });
-  } catch (error) {
-    logger.error(
-      "quotation-report",
-      "Error generating quotation report summary",
-      error,
-      req.user
-    );
-    res.status(500).json({ message: "Failed to generate report summary." });
-  }
-};
-
-exports.exportQuotationsToExcel = async (req, res) => {
-  // This function's core logic should be in reportController.js
-  try {
-    // const excelBuffer = await actualExcelExportLogic(req.query.period, req.user);
-    // res.setHeader('Content-Disposition', 'attachment; filename="quotations_report.xlsx"');
-    // res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    // res.send(excelBuffer);
-    res
-      .status(501)
-      .json({
-        message:
-          "Excel export logic to be fully implemented in reportController.",
-      });
-  } catch (error) {
-    logger.error(
-      "quotation-report",
-      "Error exporting quotations to Excel",
-      error,
-      req.user
-    );
-    res.status(500).json({ message: "Failed to export quotations to Excel." });
-  }
-};
+// exports.generateQuotationsReport = async (req, res) => {
+//   req.query.exportToExcel = "true"; // Ensure the flag is set for the report controller
+//   ReportController.generateQuotationsReport(req, res);
+//  };
