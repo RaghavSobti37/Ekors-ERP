@@ -15,6 +15,7 @@ import ReusableTable from "../components/ReusableTable";
 import apiClient from "../utils/apiClient";
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
+import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import "../css/Style.css";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -27,7 +28,7 @@ export default function History() {
   const [error, setError] = useState(null);
 
   const itemsPerPage = 4;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
 
   const dateToYYYYMMDD = (dateObj) => {
@@ -151,67 +152,73 @@ export default function History() {
   return (
     <div>
       <Navbar />
+      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
-        {error && !selectedEntry && ( // Simplified error display condition
+        {!isLoading && !authLoading && error && !selectedEntry && ( 
           <Alert variant="danger" onClose={() => setError(null)} dismissible>
             {error}
           </Alert>
         )}
 
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Time Log History</h2>
-          <Button variant="primary" onClick={handleAddNewEntry}>
-            + Add New Entry
-          </Button>
-        </div>
+        {/* Render content only if not loading and no error, or handle error within components */}
+        {!isLoading && !authLoading && !error && (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 style={{ color: "black" }}>Time Log History</h2>
+              <Button variant="primary" onClick={handleAddNewEntry} disabled={isLoading || authLoading}>
+                + Add New Entry
+              </Button>
+            </div>
 
-        <ReusableTable
-          columns={[
-            {
-              key: "date",
-              header: "Date",
-              sortable: true,
-              renderCell: (item) => formatDisplayDateHelper(item.date),
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-            {
-              key: "totalTime",
-              header: "Total Time",
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-            {
-              key: "taskCount",
-              header: "Tasks",
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-          ]}
-          data={historyData} // ReusableTable expects the current page's data
-          keyField="_id"
-          isLoading={isLoading && historyData.length === 0}
-          error={error && historyData.length === 0 ? error : null}
-          onSort={handleSort}
-          sortConfig={{
-            key: sortConfig.key,
-            direction: sortConfig.direction === "asc" ? "ascending" : "descending",
-          }}
-          renderActions={(entry) => (
-            <ActionButtons
-              item={entry}
-              onView={() => handleView(entry)} // Ensure correct entry is passed
-              onEdit={handleEdit}
-              onDelete={() => handleDelete(entry._id)}
-              isLoading={isLoading}
+            <ReusableTable
+              columns={[
+                {
+                  key: "date",
+                  header: "Date",
+                  sortable: true,
+                  renderCell: (item) => formatDisplayDateHelper(item.date),
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "totalTime",
+                  header: "Total Time",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "taskCount",
+                  header: "Tasks",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+              ]}
+              data={historyData}
+              keyField="_id"
+              isLoading={(isLoading || authLoading) && historyData.length === 0}
+              error={error && historyData.length === 0 ? error : null}
+              onSort={handleSort}
+              sortConfig={{
+                key: sortConfig.key,
+                direction: sortConfig.direction === "asc" ? "ascending" : "descending",
+              }}
+              renderActions={(entry) => (
+                <ActionButtons
+                  item={entry}
+                  onView={() => handleView(entry)}
+                  onEdit={handleEdit}
+                  onDelete={() => handleDelete(entry._id)}
+                  isLoading={isLoading || authLoading}
+                />
+              )}
+              noDataMessage="No time log history found."
+              tableClassName="mt-3"
+              theadClassName="table-dark"
             />
-          )}
-          noDataMessage="No time log history found."
-          tableClassName="mt-3"
-          theadClassName="table-dark"
-        />
+          </>
+        )}
 
-        {totalHistoryCount > 0 && (
+        {totalHistoryCount > 0 && !isLoading && !authLoading && (
           <Pagination
             currentPage={currentPage}
             totalItems={totalHistoryCount}

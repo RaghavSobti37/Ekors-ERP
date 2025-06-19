@@ -7,16 +7,16 @@ import ReusableTable from "../components/ReusableTable"; // Component for displa
 import { Button, Alert, Modal } from "react-bootstrap"; // Added Modal
 import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
 import { showToast, handleApiError } from "../utils/helpers"; // Import helpers
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
 
 export default function Challan() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
   const [challans, setChallans] = useState([]); // Holds current page's challans
   const [totalChallansCount, setTotalChallansCount] = useState(0); // Total number of challans for pagination
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,69 +137,73 @@ export default function Challan() {
   return (
     <div>
       <Navbar />
+      <LoadingSpinner show={loading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Challan Records</h2>
-          <Button
-            variant="primary"
-            onClick={() => navigate("/challans/create")} // Navigate to a create page
-          >
-            + Add New Challan
-          </Button>
-        </div>
+        {!loading && !authLoading && error && <Alert variant="danger">{error}</Alert>}
 
-        {loading && <div className="text-center my-3">Loading...</div>}
-        {/* Display main error state here */}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {!loading && !authLoading && !error && (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 style={{ color: "black" }}>Challan Records</h2>
+              <Button
+                variant="primary"
+                onClick={() => navigate("/challans/create")}
+                disabled={loading || authLoading}
+              >
+                + Add New Challan
+              </Button>
+            </div>
 
-        <ReusableTable
-          columns={[
-            { key: "companyName", header: "Company Name" },
-            { key: "phone", header: "Phone" },
-            { key: "email", header: "Email" },
-            { key: "totalBilling", header: "Total Bill (₹)" },
-            {
-              key: "billNumber",
-              header: "Bill Number",
-              renderCell: (item) => item.billNumber || "-",
-            },
-            {
-              key: "createdBy",
-              header: "Created By",
-              renderCell: (item) => (
-                <div>
-                  <div>
-                    {`${item.createdBy?.firstname || ""} ${
-                      item.createdBy?.lastname || ""
-                    }`.trim() || "System"}
-                  </div>
-                  <small>{new Date(item.createdAt).toLocaleString()}</small>
-                </div>
-              ),
-            },
-          ]}
-          data={challans}
-          keyField="_id"
-          isLoading={loading && challans.length === 0} // Show table loading only if no items yet
-          error={error && challans.length === 0 ? error : null} // Show table error only if no items yet
-          renderActions={(challan) => (
-            <ActionButtons
-              item={challan}
-              onView={handleViewChallan} // Changed to navigation handler
-              onEdit={handleEditChallan} // Changed to navigation handler
-              onDelete={
-                user?.role === "super-admin"
-                  ? () => handleDelete(challan._id)
-                  : undefined
-              }
-              isLoading={loading} // Pass loading state for individual button disabling if needed
-              onPreviewDocument={() => previewDocument(challan._id)} // Example if ActionButtons has a preview button
+            <ReusableTable
+              columns={[
+                { key: "companyName", header: "Company Name" },
+                { key: "phone", header: "Phone" },
+                { key: "email", header: "Email" },
+                { key: "totalBilling", header: "Total Bill (₹)" },
+                {
+                  key: "billNumber",
+                  header: "Bill Number",
+                  renderCell: (item) => item.billNumber || "-",
+                },
+                {
+                  key: "createdBy",
+                  header: "Created By",
+                  renderCell: (item) => (
+                    <div>
+                      <div>
+                        {`${item.createdBy?.firstname || ""} ${
+                          item.createdBy?.lastname || ""
+                        }`.trim() || "System"}
+                      </div>
+                      <small>{new Date(item.createdAt).toLocaleString()}</small>
+                    </div>
+                  ),
+                },
+              ]}
+              data={challans}
+              keyField="_id"
+              isLoading={(loading || authLoading) && challans.length === 0}
+              error={error && challans.length === 0 ? error : null}
+              renderActions={(challan) => (
+                <ActionButtons
+                  item={challan}
+                  onView={handleViewChallan}
+                  onEdit={handleEditChallan}
+                  onDelete={
+                    user?.role === "super-admin"
+                      ? () => handleDelete(challan._id)
+                      : undefined
+                  }
+                  isLoading={loading || authLoading}
+                  onPreviewDocument={() => previewDocument(challan._id)}
+                />
+              )}
+              noDataMessage="No challans found"
+              tableClassName="mt-3"
+              theadClassName="table-dark"
             />
-          )}
-          noDataMessage="No challans found"
-          tableClassName="mt-3"
-          theadClassName="table-dark"
-        />
+          </>
+        )}
 
         {/* This modal shows when documentPreview.url is set */}
         {documentPreview && documentPreview.url && (
@@ -236,7 +240,7 @@ export default function Challan() {
           </Modal>
         )}
 
-        {totalChallansCount > 0 && (
+        {totalChallansCount > 0 && !loading && !authLoading && (
           <Pagination
             currentPage={currentPage}
             totalItems={totalChallansCount}
