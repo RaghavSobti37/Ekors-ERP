@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const LogTime = require('../models/LogTime');
-const LogTimeBackup = require('../models/LogtimeBackup.js'); // Import the backup model
+const UniversalBackup = require('../models/universalBackup.js');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger'); // Assuming logger is setup
 
@@ -151,19 +151,42 @@ router.get('/today', auth, async (req, res) => {
   }
 });
 
-router.get('/all', auth, async (req, res) => {
+// GET all log entries for the user with pagination and sorting
+// This will replace/enhance the previous '/all' route
+router.get('/', auth, async (req, res) => {
+  const { 
+    page = 1, 
+    limit = 4, // Default to 4 as per frontend History.jsx
+    sortKey = 'date', 
+    sortDirection = 'desc' 
+  } = req.query;
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const skip = (pageNum - 1) * limitNum;
+
   try {
-    const allLogs = await LogTime.find({ user: req.user._id })
-      .sort({ date: -1 }) // Sort by date descending (most recent first)
+    const query = { user: req.user._id };
+    const totalItems = await LogTime.countDocuments(query);
+
+    const logEntries = await LogTime.find(query)
+      .sort({ [sortKey]: sortDirection === 'asc' ? 1 : -1 })
+      .skip(skip)
+      .limit(limitNum)
       .lean(); // Use .lean() for faster queries if not modifying docs
     
     // Sort logs within each entry by start time
-    const sorted = allLogs.map(entry => ({
+     const processedEntries = logEntries.map(entry => ({
+
       ...entry,
       logs: entry.logs.sort((a, b) => a.start.localeCompare(b.start))
     }));
-    res.json(sorted);
-  } catch (err) {
+    res.json({
+      data: processedEntries,
+      totalItems,
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalItems / limitNum)
+    });  } catch (err) {
     console.error('Error fetching log history:', err);
     res.status(500).json({ error: 'Error fetching history' });
   }
@@ -188,8 +211,10 @@ router.delete('/:id', auth, async (req, res) => {
     logger.debug('delete-logtime', `[FETCH_SUCCESS] Found LogTime ID: ${logEntryId}. Preparing for backup.`, req.user, logDetails);
 
     const backupData = logEntryToBackup.toObject();
-    const newBackupEntry = new LogTimeBackup({
-      ...backupData,
+    const newBackupEntry = new UniversalBackup({ // Changed to UniversalBackup
+      originalModel: 'LogTime', // Specify the model
+      data: backupData, // Store the original data
+      // ...backupData, // No longer spread directly, use the 'data' field
       originalId: logEntryToBackup._id,
       deletedBy: userId,
       deletedAt: new Date(),

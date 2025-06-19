@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReusablePageStructure from "../components/ReusablePageStructure";
 import apiClient from "../utils/apiClient";
-import { showToast, handleApiError, formatDisplayDate as formatDisplayDateHelper } from "../utils/helpers";
-import { Button, Table, Alert, Form } from "react-bootstrap";
+import { showToast, handleApiError, formatDisplayDate as formatDisplayDateHelper } from "../utils/helpers"; // prettier-ignore
+import { Button, Table, Alert, Form, Row, Col } from "react-bootstrap";
 import "../css/Logtime.css"; // You might want to create/use a specific CSS file or reuse styles
 
 // Helper to format a Date object or YYYY-MM-DD string to YYYY-MM-DD string
@@ -223,20 +223,25 @@ export default function LogTimePage() {
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}
-      <Form.Group className="mb-3">
-        <Form.Label>Select Date:</Form.Label>
-        <Form.Control
-          type="date"
-          value={selectedDate}
-          onChange={handleDateChange}
-          disabled={isSaving || isLoading}
-          max={ensureYYYYMMDDFormat(new Date())} // Prevent future dates
-        />
-      </Form.Group>
-
-      <div className="log-info total-hours mb-3">
-        <strong>Total Hours Worked:</strong> {totalTime}
-      </div>
+      <Row className="mb-3 align-items-end">
+        <Col md={6} className="mb-3 mb-md-0">
+          <Form.Group>
+            <Form.Label>Select Date:</Form.Label>
+            <Form.Control
+              type="date"
+              value={selectedDate}
+              onChange={handleDateChange}
+              disabled={isSaving || isLoading}
+              max={ensureYYYYMMDDFormat(new Date())} // Prevent future dates
+            />
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <div className="log-info total-hours text-md-end">
+            <strong>Total Hours Worked:</strong> {totalTime}
+          </div>
+        </Col>
+      </Row>
 
       {isLoading && logData.length === 0 ? (
         <p>Loading log entries...</p>

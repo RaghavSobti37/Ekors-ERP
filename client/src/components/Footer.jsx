@@ -4,7 +4,7 @@ import '../css/Footer.css';
 
 const HelpFooter = () => {
   const openGoogleSheet = () => {
-    window.open('https://docs.google.com/spreadsheets/d/1Pgl_otIevtC7tEBE5lcSIstMoK9g-S4E46uXWQaUitM/edit?gid=0#gid=0', '_blank');
+    window.open('https://docs.google.com/spreadsheets/d/1Pgl_otIevtC7tEBE5lcSIstMoK9g-S4E46uXWQaUitM/edit?usp=sharing', '_blank');
   };
 
   return (
@@ -23,4 +23,4 @@ const HelpFooter = () => {
   );
 };
 
-export default HelpFooter;
+export default React.memo(HelpFooter);

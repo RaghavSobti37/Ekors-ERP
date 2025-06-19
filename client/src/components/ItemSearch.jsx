@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "../css/ItemSearchComponent.css";
 import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
-import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
+import { handleApiError } from "../utils/helpers";
 import ReactDOM from "react-dom";
 
 const ItemSearchComponent = ({
@@ -13,8 +12,7 @@ const ItemSearchComponent = ({
   onDropdownToggle,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [items, setItems] = useState([]);
-  const [filteredItems, setFilteredItems] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -35,26 +33,46 @@ const ItemSearchComponent = ({
     }
   }, [showDropdown, onDropdownToggle]);
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  const searchItems = useCallback(
+    async (termToSearch) => {
+      const trimmedTerm = termToSearch.trim();
+      if (!trimmedTerm || trimmedTerm.length < 1) {
+        // Allow search with 1 char if desired, or adjust
+        setSearchResults([]);
+        setShowDropdown(false);
+        setError(null);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        // apiClient is expected to handle auth.
+    // Use the main items endpoint with a searchTerm parameter
+        const response = await apiClient(
+          `/items?searchTerm=${encodeURIComponent(trimmedTerm)}&limit=10&status=approved`
+        );
+        setSearchResults(response.data || []); // Assuming response is { data: [], ... }
+        setShowDropdown(true); // Show results area
+        updateDropdownPosition(); // Update position as results are now available
+      } catch (err) {
+        setError(handleApiError(err, "Failed to search items."));
+        setSearchResults([]);
+        setShowDropdown(false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleApiError]
+  ); // handleApiError should be stable
 
   useEffect(() => {
-    if (searchTerm.trim() !== "") {
-      const filtered = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.hsnCode &&
-            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredItems(filtered);
-      setShowDropdown(true);
-      updateDropdownPosition();
-    } else {
-      setFilteredItems([]);
-      setShowDropdown(false);
-    }
-  }, [searchTerm, items]);
+    const trimmedSearchTerm = searchTerm.trim();
+    const timerId = setTimeout(() => {
+      searchItems(trimmedSearchTerm);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timerId);
+  }, [searchTerm, searchItems]);
 
   // Update dropdown position when it becomes visible
   useEffect(() => {
@@ -69,7 +87,6 @@ const ItemSearchComponent = ({
       setDropdownPosition({
         top: rect.bottom,
         left: rect.left,
-
         width: rect.width,
       });
     }
@@ -91,28 +108,10 @@ const ItemSearchComponent = ({
     };
   }, [showDropdown]);
 
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-      // Use apiClient for the request
-      const data = await apiClient("/items");
-      setItems(data);
-    } catch (err) {
-      console.error("Error fetching items:", err);
-      setError("Failed to load items. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleItemClick = (item) => {
     onItemSelect(item);
     setSearchTerm("");
+    setSearchResults([]);
     setShowDropdown(false);
   };
 
@@ -127,7 +126,7 @@ const ItemSearchComponent = ({
 
   return (
     <div className={`item-search-component ${className}`}>
-      {error && <div className="search-error">{error}</div>}
+      {error && <div className="search-error text-danger small">{error}</div>}
 
       <div className="search-input-container">
         <input
@@ -138,18 +137,24 @@ const ItemSearchComponent = ({
           value={searchTerm}
           onChange={handleSearchChange}
           onFocus={() => {
-            // Show dropdown on focus only if there's already a search term or to allow typing
-            // The main logic for showing dropdown is in the searchTerm effect
-            updateDropdownPosition(); // Ensure position is updated on focus
-            if (searchTerm || filteredItems.length > 0) setShowDropdown(true);
+            updateDropdownPosition();
+            if (searchTerm.trim().length > 0 || searchResults.length > 0)
+              setShowDropdown(true);
           }}
           onBlur={handleBlur}
           disabled={disabled || loading}
         />
-        {loading && <div className="search-loading">Loading...</div>}
+        {loading && (
+          <div
+            className="search-loading spinner-border spinner-border-sm text-primary"
+            role="status"
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        )}
         {/* Portal for suggestions dropdown */}
         {showDropdown &&
-          filteredItems.length > 0 &&
+          searchResults.length > 0 &&
           ReactDOM.createPortal(
             <div
               ref={dropdownRef}
@@ -163,7 +168,7 @@ const ItemSearchComponent = ({
                 zIndex: Z_INDEX_DROPDOWN,
               }}
             >
-              {filteredItems.map((item) => (
+              {searchResults.map((item) => (
                 <div
                   key={item._id}
                   className="search-suggestion-item"
@@ -190,23 +195,22 @@ const ItemSearchComponent = ({
 
         {showDropdown &&
           searchTerm &&
-          filteredItems.length === 0 &&
-          !loading && (
-            ReactDOM.createPortal(
-              <div
-                className="search-no-results"
-                style={{
-                  position: "fixed",
-                  top: `${dropdownPosition.top}px`,
-                  left: `${dropdownPosition.left}px`,
-                  width: `${dropdownPosition.width}px`,
-                  zIndex: Z_INDEX_DROPDOWN,
-                }}
-              >
-                No items found
-              </div>,
-              document.body // Target for the portal
-            )
+          searchResults.length === 0 &&
+          !loading &&
+          ReactDOM.createPortal(
+            <div
+              className="search-no-results"
+              style={{
+                position: "fixed",
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                width: `${dropdownPosition.width}px`,
+                zIndex: Z_INDEX_DROPDOWN,
+              }}
+            >
+              No items found
+            </div>,
+            document.body // Target for the portal
           )}
       </div>
     </div>

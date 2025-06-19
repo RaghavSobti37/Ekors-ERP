@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SortIndicator = ({ columnKey, sortConfig }) => {
+const SortIndicatorComponent = ({ columnKey, sortConfig }) => {
   if (!sortConfig || sortConfig.key !== columnKey) {
     return null;
   }
@@ -11,4 +11,4 @@ const SortIndicator = ({ columnKey, sortConfig }) => {
   );
 };
 
-export default SortIndicator;
+export default React.memo(SortIndicatorComponent);

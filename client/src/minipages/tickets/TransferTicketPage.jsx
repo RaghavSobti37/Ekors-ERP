@@ -39,18 +39,17 @@ const TransferTicketPage = () => {
     }
   }, [ticketIdFromParams, navigate, authUser, ticketToTransfer]);
 
-  useEffect(() => {
+  useEffect(() => { // This effect correctly calls the memoized fetchTicketDetails
     if (!location.state?.ticketDataForTransfer && ticketIdFromParams) {
       fetchTicketDetails();
     }
   }, [ticketIdFromParams, location.state, fetchTicketDetails]);
-
-  const handleUserSelect = (user) => {
+  const handleUserSelect = useCallback((user) => {
     setSelectedUserToTransfer(user);
     setError(null);
-  };
+  }, [setSelectedUserToTransfer, setError]); // setError and setSelectedUserToTransfer are stable
 
-  const handleConfirmTransfer = async () => {
+  const handleConfirmTransfer = useCallback(async () => {
     if (!selectedUserToTransfer) { setError("Please select a user to transfer the ticket to."); toast.warn("Select user."); return; }
     setIsLoading(true); setError(null);
     try {
@@ -67,7 +66,7 @@ const TransferTicketPage = () => {
       setError(errorMsg); toast.error(errorMsg);
       frontendLogger.error("ticketActivity", `Failed to transfer ticket ${ticketToTransfer?._id}`, authUser, { ticketId: ticketToTransfer?._id, action: "TRANSFER_TICKET_FAILURE" });
     } finally { setIsLoading(false); }
-  };
+  }, [selectedUserToTransfer, ticketToTransfer?._id, transferNote, navigate, authUser, setIsLoading, setError]);
 
   if (authLoading || (isLoading && !ticketToTransfer)) {
     return <ReusablePageStructure title="Loading Transfer Details..."><div className="text-center"><Spinner animation="border" /></div></ReusablePageStructure>;

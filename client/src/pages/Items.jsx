@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React ,{ useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
@@ -30,8 +30,10 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
 
 export default function Items() {
   const [items, setItems] = useState([]);
-    const [pendingReviewItems, setPendingReviewItems] = useState([]);
-
+  const [totalItems, setTotalItems] = useState(0);
+  const [pendingReviewItems, setPendingReviewItems] = useState([]);
+  const [totalPendingReviewItems, setTotalPendingReviewItems] = useState(0);
+  
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,9 +102,10 @@ export default function Items() {
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
 
-  
   const { user } = useAuth(); // Get user for role checks
   const location = useLocation();
+  const [currentPagePending, setCurrentPagePending] = useState(1); // Pagination for pending items
+
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
     [location.search]
@@ -134,50 +137,69 @@ export default function Items() {
     setCurrentPage(1); // Reset to the first page
   };
 
-  // const handleGlobalThresholdChange = (e) => { // This function seems unused, can be removed if not needed
-  //   const newThreshold =
-  //     parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
-  //   setEffectiveLowStockThreshold(newThreshold);
-  //   localStorage.setItem(
-  //     LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
-  //     newThreshold.toString()
-  //   );
-  // };
-
   const showSuccess = (message) => {
     showToast(message, true);
   };
 
-  // useEffect(() => {}, [items, categories]); // This useEffect is empty, can be removed
-
-  const fetchItems = useCallback(async () => {
+  const fetchItems = useCallback(async (page = currentPage, limit = itemsPerPage) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient("/items"); // Use apiClient
-       if (Array.isArray(response)) {
-        if (user && (user.role === 'admin' || user.role === 'super-admin')) {
-          setPendingReviewItems(response.filter(item => item.status === 'pending_review'));
-          setItems(response.filter(item => item.status !== 'pending_review'));
-        } else {
-          // Regular users only see approved items
-          setItems(response.filter(item => item.status === 'approved'));
-          setPendingReviewItems([]);
-        }
-      } else {
-        setItems([]);
+      const params = {
+        page,
+        limit,
+        sortKey: sortConfig.key,
+        sortDirection: sortConfig.direction,
+        status: 'approved', // Fetch only approved items for the main list
+      };
+      if (searchTerm) params.searchTerm = searchTerm;
+      if (selectedCategory !== "All") params.category = selectedCategory;
+      if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory;
+      if (quantityFilterThreshold !== null && quantityFilterThreshold !== "All") {
+        params.quantityThreshold = quantityFilterThreshold;
       }
+      if (stockAlertFilterActive) {
+        params.filter = "stock_alerts";
+        params.lowThreshold = Number.isFinite(lowStockWarningQueryThreshold) 
+          ? lowStockWarningQueryThreshold 
+          : effectiveLowStockThreshold;
+      }
+
+
+      const response = await apiClient("/items", { params });
+      setItems(response.data || []);
+      setTotalItems(response.totalItems || 0);
       setError(null);
     } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to load items. Please try again."
-      );
+      const errorMessage = handleApiError(err, "Failed to load items. Please try again.", user);
       setError(errorMessage);
+      setItems([]);
+      setTotalItems(0);
     } finally {
       setLoading(false); // Ensure loading is set to false in finally
     }
-  }, [user]);
+  }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, selectedSubcategory, quantityFilterThreshold, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user]);
+
+  const fetchPendingReviewItems = useCallback(async (page = currentPagePending, limit = itemsPerPage) => {
+    if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
+      setPendingReviewItems([]);
+      setTotalPendingReviewItems(0);
+      return;
+    }
+    try {
+      setLoading(true); // Consider a separate loading state if fetches overlap significantly
+      const params = { page, limit, status: 'pending_review', sortKey: 'createdAt', sortDirection: 'desc' };
+      const response = await apiClient("/items", { params });
+      setPendingReviewItems(response.data || []);
+      setTotalPendingReviewItems(response.totalItems || 0);
+    } catch (err) {
+      handleApiError(err, "Failed to load pending review items.", user);
+      setPendingReviewItems([]);
+      setTotalPendingReviewItems(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, itemsPerPage, currentPagePending]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -197,25 +219,7 @@ export default function Items() {
         );
       }
     } catch (err) {
-      // const errorDetails = { // This variable seems unused
-      //   message: err.message,
-      //   status: err.response?.status,
-      //   data: err.response?.data,
-      //   config: err.config,
-      // };
-
-      let errorMessage = handleApiError(err, "Failed to load categories.");
-      if (err.response) {
-        errorMessage += ` (${err.response.status})`;
-        if (err.response.data?.message) {
-          errorMessage += `: ${err.response.data.message}`;
-        }
-      } else if (err.request) {
-        errorMessage += ": No response from server";
-      } else {
-        errorMessage += `: ${err.message}`;
-      }
-
+      const errorMessage = handleApiError(err, "Failed to load categories.", user);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -224,13 +228,14 @@ export default function Items() {
 
   useEffect(() => {
     fetchItems();
+    fetchPendingReviewItems();
     fetchCategories();
-
     return () => {
       setItems([]);
+      setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchCategories]);
+  }, [fetchItems, fetchPendingReviewItems, fetchCategories]); // Dependencies updated
 
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
@@ -252,36 +257,29 @@ export default function Items() {
 
   const fetchPurchaseHistory = useCallback(async (itemId) => {
     try {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
+      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: true }));
       setError(null);
 
       const response = await apiClient(`/items/${itemId}/purchases`, {
         timeout: 5000,
       });
 
-      setPurchaseHistory((prev) => ({
+      setPurchaseHistory(prev => ({
         ...prev,
         [itemId]: response || [],
       }));
       setError(null);
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load history.");
-      // setError(errorMessage); // Already set by handleApiError
+      handleApiError(err, "Failed to load history.", user);
       console.error("Fetch purchase history error:", err);
-      // setError(errorMessage); // Duplicate setError
-      setPurchaseHistory((prev) => ({
+      setPurchaseHistory(prev => ({
         ...prev,
         [itemId]: [],
       }));
     } finally {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
+      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: false }));
     }
-  }, []);
-
-  // const handleSearchChange = (e) => { // This function seems unused, SearchBar component handles its own state
-  //   setSearchTerm(e.target.value.toLowerCase());
-  //   setCurrentPage(1);
-  // };
+  }, [user]);
 
   const requestSort = (key) => {
     let direction = "asc";
@@ -289,102 +287,10 @@ export default function Items() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page when sort changes
   };
 
-  const itemsToDisplay = useMemo(() => {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-
-    let processedItems = [...items];
-
-    const currentLowThreshold =
-      stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
-        ? lowStockWarningQueryThreshold
-        : effectiveLowStockThreshold;
-
-    if (stockAlertFilterActive) {
-      processedItems = processedItems.filter(
-        (item) => item.needsRestock || item.quantity < currentLowThreshold
-      );
-    } else {
-      processedItems = processedItems.filter((item) => {
-        const matchesCategory =
-          selectedCategory === "All" || item.category === selectedCategory;
-        const matchesSubcategory =
-          selectedSubcategory === "All" ||
-          item.subcategory === selectedSubcategory;
-        const matchesSearch =
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.hsnCode &&
-            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
-        return matchesCategory && matchesSubcategory && matchesSearch;
-      });
-
-      if (
-        quantityFilterThreshold !== null &&
-        Number.isFinite(quantityFilterThreshold)
-      ) {
-        processedItems = processedItems.filter(
-          (item) => item.quantity <= quantityFilterThreshold
-        );
-      }
-    }
-
-    processedItems.sort((a, b) => {
-      if (stockAlertFilterActive) {
-        if (a.quantity < b.quantity) return -1;
-        if (a.quantity > b.quantity) return 1;
-      } else {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-      }
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    });
-    return processedItems;
-  }, [
-    items,
-    stockAlertFilterActive,
-    lowStockWarningQueryThreshold,
-    effectiveLowStockThreshold,
-    selectedCategory,
-    selectedSubcategory,
-    searchTerm,
-    quantityFilterThreshold,
-    sortConfig,
-  ]);
-
-  const currentItems = useMemo(() => {
-    const indexOfLast = currentPage * itemsPerPage;
-    const indexOfFirst = indexOfLast - itemsPerPage;
-    return itemsToDisplay.slice(indexOfFirst, indexOfLast);
-  }, [itemsToDisplay, currentPage, itemsPerPage]);
-
-  // const addExistingItemToPurchase = (item) => { // This function seems unused
-  //   setPurchaseData({
-  //     ...purchaseData,
-  //     items: [
-  //       ...(purchaseData.items || []),
-  //       {
-  //         itemId: item._id,
-  //         description: item.name,
-  //         quantity: "1",
-  //         price: item.buyingPrice
-  //           ? item.buyingPrice.toString()
-  //           : item.lastPurchasePrice
-  //           ? item.lastPurchasePrice.toString()
-  //           : "0",
-  //         gstRate: item.gstRate.toString(),
-  //       },
-  //     ],
-  //   });
-  //   setItemSearchTerm("");
-  //   setShowItemSearch(false);
-  // };
+  // currentItems will now be directly `items` from state, as server handles pagination.
 
   const handleEditItem = (item) => {
     setEditingItem(item);
@@ -432,13 +338,13 @@ export default function Items() {
       setShowEditItemModal(false);
       setEditingItem(null);
       showSuccess("Item updated successfully!");
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to update item.");
+    } catch (err) { // eslint-disable-line no-shadow
+      const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }; // eslint-disable-line no-shadow
 
    const handleApproveItem = async (itemId) => {
     if (!window.confirm("Are you sure you want to approve this item?")) return;
@@ -447,8 +353,9 @@ export default function Items() {
       await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
       showSuccess("Item approved successfully!");
       await fetchItems(); // Refetch all items to update lists
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to approve item.");
+      await fetchPendingReviewItems();
+    } catch (err) { // eslint-disable-line no-shadow
+      const errorMessage = handleApiError(err, "Failed to approve item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -595,10 +502,7 @@ export default function Items() {
       setError(null);
       showSuccess("Item added successfully!");
     } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to add item. Please try again."
-      );
+      const errorMessage = handleApiError(err, "Failed to add item. Please try again.", user);
       setError(errorMessage);
       console.error("Error adding item:", err);
     } finally {
@@ -623,25 +527,38 @@ export default function Items() {
     setItemHistoryLoading(true);
     setError(null);
     let combinedHistory = [];
-
-    if (item.excelImportHistory && item.excelImportHistory.length > 0) {
+    // 1. Excel Import History (Local Data)
+    if (Array.isArray(item.excelImportHistory) && item.excelImportHistory.length > 0) {
       item.excelImportHistory.forEach((entry) => {
-        let quantityChange = 0;
+        let quantityChange = 0; // Default to 0
         let details = `File: ${entry.fileName || "N/A"}. `;
         let oldQtyText = "";
         let newQtyText = "";
+
+        // Determine user display name for Excel import
+        let importedByUserDisplay = "System";
+        if (entry.importedBy) {
+          if (entry.importedBy.firstname && entry.importedBy.lastname) {
+            importedByUserDisplay = `${entry.importedBy.firstname} ${entry.importedBy.lastname}`;
+          } else if (entry.importedBy.firstname) {
+            importedByUserDisplay = entry.importedBy.firstname;
+          } else if (entry.importedBy.email) { // Fallback to email
+            importedByUserDisplay = entry.importedBy.email;
+          }
+        }
+
         if (entry.action === "created") {
           const createdQty = entry.snapshot?.quantity;
           quantityChange = parseFloat(createdQty) || 0;
           newQtyText = ` (New Qty: ${quantityChange})`;
-          details += `Item created.`;
+          details += `Item created via Excel.`;
         } else if (entry.action === "updated") {
           const qtyChangeInfo = entry.changes?.find(
             (c) => c.field === "quantity"
           );
           if (qtyChangeInfo) {
-            const oldQty = parseFloat(qtyChangeInfo.oldValue);
-            const newQty = parseFloat(qtyChangeInfo.newValue);
+            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
             quantityChange = newQty - oldQty;
             oldQtyText = ` (Old: ${oldQty} -> New: ${newQty})`;
           }
@@ -649,28 +566,57 @@ export default function Items() {
         }
         combinedHistory.push({
           date: new Date(entry.importedAt),
-          type: `Excel Import (${entry.action})`,
-          user: entry.importedBy?.firstname || "System",
+          type: `Excel (${entry.action})`,
+          user: importedByUserDisplay,
           details: details.trim() + oldQtyText + newQtyText,
           quantityChange: quantityChange,
         });
       });
     }
 
-    const existingPurchaseHistory = purchaseHistory[item._id];
-    if (existingPurchaseHistory && existingPurchaseHistory.length > 0) {
-      existingPurchaseHistory.forEach((purchase) => {
-        combinedHistory.push({
-          date: new Date(purchase.date),
-          type: "Purchase Entry",
-          user: purchase.createdByName || "System",
-          details: `Purchased from ${purchase.companyName} (Inv: ${
-            purchase.invoiceNumber
-          }). Price: ₹${purchase.price?.toFixed(2)}/unit.`,
-          quantityChange: parseFloat(purchase.quantity) || 0,
+    // 2. Purchase History (Fetch Fresh)
+    try {
+      const itemPurchases = await apiClient(`/items/${item._id}/purchases`);
+      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+        itemPurchases.forEach((purchase) => {
+          combinedHistory.push({
+            date: new Date(purchase.date),
+            type: "Purchase Entry",
+            user: purchase.createdByName || "System", // Ensure your backend provides this if needed
+            details: `Purchased from ${purchase.companyName} (Inv: ${
+              purchase.invoiceNumber
+            }). Price: ₹${(parseFloat(purchase.price) || 0).toFixed(2)}/unit. Qty: ${parseFloat(purchase.quantity) || 0}`,
+            quantityChange: parseFloat(purchase.quantity) || 0,
+          });
         });
-      });
+      }
+    } catch (err) {
+      console.error("Error fetching purchase history for modal:", err);
+      showToast("Failed to load purchase history.", false);
+      // Optionally set an error state for the modal if needed
     }
+
+    // 3. Ticket Usage History (Fetch Fresh)
+    try {
+      const ticketUsageData = await apiClient(`/items/${item._id}/ticket-usage`);
+      if (Array.isArray(ticketUsageData) && ticketUsageData.length > 0) {
+        ticketUsageData.forEach((usage) => {
+          combinedHistory.push({
+            date: new Date(usage.date),
+            type: usage.type || "Ticket Interaction",
+            user: usage.user || "System",
+            details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+            quantityChange: parseFloat(usage.quantityChange) || 0, // This should be negative
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching ticket usage history:", err);
+      showToast("Failed to load ticket usage history.", false);
+      // Optionally set an error state for the modal if needed
+    }
+
+    // Sort all combined history entries by date
     combinedHistory.sort((a, b) => b.date - a.date);
     setItemHistory(combinedHistory);
     setItemHistoryLoading(false);
@@ -682,9 +628,10 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
+        await fetchPendingReviewItems(); // Also refresh pending items if one was deleted from there
         showSuccess("Item Deleted Successfully");
-      } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to delete item.");
+      } catch (err) { // eslint-disable-line no-shadow
+        const errorMessage = handleApiError(err, "Failed to delete item.", user);
         setError(errorMessage);
         console.error("Error deleting item:", err);
       } finally {
@@ -884,8 +831,7 @@ export default function Items() {
       await fetchCategories();
       setFormData((prevFormData) => ({
         ...prevFormData,
-        category: newCategoryName.trim(),
-        subcategory: "General",
+        category: newCategoryName.trim(), subcategory: "General",
       }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -894,7 +840,7 @@ export default function Items() {
         true
       );
     } catch (err) {
-      handleApiError(err, "Failed to add new category.");
+      handleApiError(err, "Failed to add new category.", user);
     } finally {
       setIsSubmittingCategory(false);
     }
@@ -932,7 +878,7 @@ export default function Items() {
         true
       );
     } catch (err) {
-      handleApiError(err, "Failed to add new subcategory.");
+      handleApiError(err, "Failed to add new subcategory.", user);
     } finally {
       setIsSubmittingSubcategory(false);
     }
@@ -956,7 +902,7 @@ export default function Items() {
         )}
 
                 {/* Pending Review Section for Admins */}
-        {user && (user.role === 'admin' || user.role === 'super-admin') && pendingReviewItems.length > 0 && (
+        {user && (user.role === 'admin' || user.role === 'super-admin') && totalPendingReviewItems > 0 && (
           <Card className="mb-4 border-warning">
             <Card.Header className="bg-warning text-dark">
               <ShieldFillCheck size={20} className="me-2"/> Items Pending Review ({pendingReviewItems.length})
@@ -1000,6 +946,15 @@ export default function Items() {
             <Card.Footer className="text-muted small">
               These items were created by users and require your approval before being widely available or used in reports. Approving an item will make it part of the main item list. Editing an item will also automatically approve it.
             </Card.Footer>
+            {totalPendingReviewItems > itemsPerPage && (
+              <Pagination
+                currentPage={currentPagePending}
+                totalItems={totalPendingReviewItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={(page) => setCurrentPagePending(page)}
+                // onItemsPerPageChange can be added if needed for pending items list
+              />
+            )}
           </Card>
         )}
 
@@ -1201,7 +1156,7 @@ export default function Items() {
                     cursor: anyLoading ? "not-allowed" : "pointer",
                   }}
                 >
-                  Max Disc. %
+                  Disc. %
                   {sortConfig.key === "maxDiscountPercentage" &&
                     (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
@@ -1209,8 +1164,8 @@ export default function Items() {
               </tr>
             </thead>
             <tbody>
-              {currentItems.length > 0 ? (
-                currentItems.map((item) => (
+              {items.length > 0 ? ( // Use `items` state directly
+                items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
                       <td>{item.name}</td>
@@ -1220,33 +1175,17 @@ export default function Items() {
                           {item.quantity <= 0 || item.needsRestock ? (
                             <span
                               className="badge bg-danger ms-2"
-                              title={
-                                item.quantity <= 0
-                                  ? "Out of stock! Needs immediate restock."
-                                  : `Below item specific threshold (${
-                                      item.lowStockThreshold || "Not Set"
-                                    }). Needs restock.`
-                              }
-                            >
+    title="Negative stock! Needs immediate restock."                            >
                               ⚠️ Restock
                             </span>
-                          ) : (
-                            item.quantity <
-                              (stockAlertFilterActive
-                                ? lowStockWarningQueryThreshold
-                                : effectiveLowStockThreshold) && (
+                                                  ) : item.quantity >= 0 && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? ( 
                               <span
                                 className="badge bg-warning text-dark ms-2"
-                                title={`Below page display threshold (< ${
-                                  stockAlertFilterActive
-                                    ? lowStockWarningQueryThreshold
-                                    : effectiveLowStockThreshold
-                                }`}
+                                 title={`Low Stock (Qty: ${item.quantity}). Warning if < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}.`}
                               >
                                 🔥 Low Stock
                               </span>
-                            )
-                          )}
+                            ) : null}
                         </>
                       </td>
                       <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
@@ -1414,16 +1353,14 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          {itemsToDisplay.length > 0 && (
+          {totalItems > 0 && ( // Use totalItems for pagination
             <Pagination
               currentPage={currentPage}
-              totalItems={itemsToDisplay.length}
+              totalItems={totalItems}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
-                const totalPages = Math.ceil(
-                  itemsToDisplay.length / itemsPerPage
-                );
-                if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                if (page >= 1 && page <= totalPages) { setCurrentPage(page); }
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
             />
@@ -1466,8 +1403,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice ||
-                    !formData.category ||
+                    !formData.sellingPrice || !formData.category ||
                     isSubmitting ||
                     isAddingNewCategory || isAddingNewSubcategory
                   }
@@ -1487,7 +1423,7 @@ export default function Items() {
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
-                    <label>Name*</label>
+                    <label>Name <span className="text-danger">*</span></label>
                     <input
                       className="form-control mb-2"
                       placeholder="Name"
@@ -1513,7 +1449,7 @@ export default function Items() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Selling Price*</label>
+                    <label>Selling Price <span className="text-danger">*</span></label>
                     <input
                       type="number"
                       step="0.01"
@@ -1915,8 +1851,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice ||
-                    !formData.category ||
+                    !formData.sellingPrice || !formData.category ||
                     isSubmitting
                   }
                 >

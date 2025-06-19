@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar"; // Navigation bar component
 import ActionButtons from "../components/ActionButtons"; // Component for table action buttons
 import Pagination from "../components/Pagination"; // Component for table pagination
@@ -6,18 +6,17 @@ import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable"; // Component for displaying data in a table
 import { Button, Alert, Modal } from "react-bootstrap"; // Added Modal
 import apiClient from "../utils/apiClient"; // Changed from axios to apiClient
-import { showToast, handleApiError } from '../utils/helpers'; // Import helpers
-import { useAuth } from "../context/AuthContext";
+import { showToast, handleApiError } from "../utils/helpers"; // Import helpers
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
 
 export default function Challan() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default items per page
-  const [allChallans, setAllChallans] = useState([]);
-  // State related to form modal (showPopup, formData, viewMode, editMode, editId, viewData) is removed
-  // as form operations will be handled by separate pages.
-
+  const [challans, setChallans] = useState([]); // Holds current page's challans
+  const [totalChallansCount, setTotalChallansCount] = useState(0); // Total number of challans for pagination
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,168 +24,186 @@ export default function Challan() {
     url: null,
     type: null,
   });
-  // const challanFormId = "challan-form"; // No longer needed as form is on a separate page
 
-  // Fetch all challans on component mount
-  useEffect(() => {
-    fetchChallans();
-  }, []);
-
-  const fetchChallans = async () => {
-    try {
-      setLoading(true);
-      const responseData = await apiClient("challans"); // Use apiClient
-        setAllChallans(responseData);
-        setError(null);
-      } catch (err) { // eslint-disable-line no-shadow
-        const errorMessage = handleApiError(err, "Failed to load challans.");
-        setError(errorMessage);
-        console.error("Error fetching challans:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this challan?")) {
+  const fetchChallans = useCallback(
+    async (page = 1, limit = itemsPerPage) => {
       try {
         setLoading(true);
-        await apiClient(`challans/${id}`, { method: "DELETE" }); // Use apiClient
-        showToast("Challan deleted successfully!", true);
-        fetchChallans(); // Refreshes the list
-      } catch (err) { // eslint-disable-line no-shadow
-        const errorMessage = handleApiError(err, "Failed to delete challan.");
+        // Assuming API returns { data: challansArray, totalItems: count }
+        const response = await apiClient("/challans", {
+          params: { page, limit },
+        });
+        setChallans(response.data || []);
+        setTotalChallansCount(response.totalItems || 0);
+        setError(null);
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to load challans.",
+          user
+        );
         setError(errorMessage);
-        console.error("Error deleting challan:", err);
+        setChallans([]); // Clear data on error
+        setTotalChallansCount(0);
+        console.error("Error fetching challans:", err);
       } finally {
         setLoading(false);
       }
-    }
-  };
+    },
+    [itemsPerPage, user]
+  ); // user is a dependency for handleApiError
 
-  // handleInputChange, handleFileChange, handleSubmit, resetForm, handleClientSelect are removed
-  // as they belong to the form, which will be on a separate page.
+  useEffect(() => {
+    fetchChallans(currentPage, itemsPerPage);
+  }, [currentPage, itemsPerPage, fetchChallans]);
+
+  const handleDelete = useCallback(
+    async (id) => {
+      if (window.confirm("Are you sure you want to delete this challan?")) {
+        try {
+          setLoading(true);
+          await apiClient(`challans/${id}`, { method: "DELETE" });
+          showToast("Challan deleted successfully!", true);
+          // Refresh logic: if last item on a page (not first page), go to prev page.
+          if (challans.length === 1 && currentPage > 1) {
+            setCurrentPage((prevPage) => prevPage - 1);
+          } else {
+            fetchChallans(currentPage, itemsPerPage);
+          }
+        } catch (err) {
+          const errorMessage = handleApiError(
+            err,
+            "Failed to delete challan.",
+            user
+          );
+          setError(errorMessage);
+          console.error("Error deleting challan:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    },
+    [challans.length, currentPage, itemsPerPage, fetchChallans, user]
+  );
 
   const handleViewChallan = (challan) => {
-    // Data fetching for view will occur on the dedicated view page
     navigate(`/challans/view/${challan._id}`);
   };
 
   const handleEditChallan = (challan) => {
-    // Data fetching for edit will occur on the dedicated edit page
     navigate(`/challans/edit/${challan._id}`);
   };
 
-  // openViewPopup and openEditPopup are replaced by handleViewChallan and handleEditChallan
-  // which navigate to new pages.
+  const previewDocument = useCallback(
+    async (challanId) => {
+      try {
+        setLoading(true);
+        // Clear previous errors before attempting fetch
+        setError(null);
+        const blob = await apiClient(`challans/${challanId}/document`, {
+          // Use apiClient
+          responseType: "blob", // Tell apiClient to expect a blob
+        });
+        const contentType = blob.type; // Blob object has a 'type' property
+        const url = window.URL.createObjectURL(blob);
+        setDocumentPreview({ url, type: contentType });
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to load document. Please check the server."
+        );
+        setError(errorMessage);
+        // Ensure preview state is cleared on error
+        setDocumentPreview({ url: null, type: null });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user]
+  ); // user is a dependency for handleApiError
 
-  const previewDocument = async (challanId) => {
-    try {
-      setLoading(true);
-      // Clear previous errors before attempting fetch
-      setError(null);
-      const blob = await apiClient(`challans/${challanId}/document`, { // Use apiClient
-        responseType: 'blob', // Tell apiClient to expect a blob
-      });
-      const contentType = blob.type; // Blob object has a 'type' property
-      const url = window.URL.createObjectURL(blob);
-      setDocumentPreview({ url, type: contentType });
-    } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to load document. Please check the server."
-      );
-      setError(errorMessage);
-      // Ensure preview state is cleared on error
-      setDocumentPreview({ url: null, type: null });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const closePreview = () => {
+  const closePreview = useCallback(() => {
     if (documentPreview && documentPreview.url) {
       window.URL.revokeObjectURL(documentPreview.url);
     }
     setDocumentPreview({ url: null, type: null });
-  };
-
-  // Pagination calculations
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = allChallans.slice(indexOfFirstItem, indexOfLastItem);
+  }, [documentPreview]);
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1); // Reset to the first page
   };
 
-  // renderForm() is removed as its content will be part of a new page component.
-
   return (
     <div>
       <Navbar />
+      <LoadingSpinner show={loading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Challan Records</h2>
-          <Button
-            variant="primary"
-            onClick={() => navigate("/challans/create")} // Navigate to a create page
-          >
-            + Add New Challan
-          </Button>
-        </div>
+        {!loading && !authLoading && error && <Alert variant="danger">{error}</Alert>}
 
-        {loading && (
-          <div className="text-center my-3">Loading...</div>
-        )}
-        {/* Display main error state here */}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {!loading && !authLoading && !error && (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 style={{ color: "black" }}>Challan Records</h2>
+              <Button
+                variant="primary"
+                onClick={() => navigate("/challans/create")}
+                disabled={loading || authLoading}
+              >
+                + Add New Challan
+              </Button>
+            </div>
 
-        <ReusableTable
-          columns={[
-            { key: "companyName", header: "Company Name" },
-            { key: "phone", header: "Phone" },
-            { key: "email", header: "Email" },
-            { key: "totalBilling", header: "Total Bill (₹)" },
-            {
-              key: "billNumber",
-              header: "Bill Number",
-              renderCell: (item) => item.billNumber || "-",
-            },
-            {
-              key: "createdBy",
-              header: "Created By",
-              renderCell: (item) => (
-                <div>
-                  <div>{`${item.createdBy?.firstname || ''} ${item.createdBy?.lastname || ''}`.trim() || "System"}</div>
-                  <small>{new Date(item.createdAt).toLocaleString()}</small>
-                </div>
-              ),
-            },
-          ]}
-          data={currentItems}
-          keyField="_id"
-          isLoading={loading && currentItems.length === 0} // Show loading only if no items yet
-          error={error && currentItems.length === 0 ? error : null}
-          renderActions={(challan) => (
-            <ActionButtons
-              item={challan}
-              onView={handleViewChallan} // Changed to navigation handler
-              onEdit={handleEditChallan} // Changed to navigation handler
-              onDelete={user?.role === 'super-admin' ? () => handleDelete(challan._id) : undefined}
-              isLoading={loading} // Pass loading state for individual button disabling if needed
-              // Add a specific prop for document preview if ActionButtons handles it
-              onPreviewDocument={() => previewDocument(challan._id)} // Example if ActionButtons has a preview button
+            <ReusableTable
+              columns={[
+                { key: "companyName", header: "Company Name" },
+                { key: "phone", header: "Phone" },
+                { key: "email", header: "Email" },
+                { key: "totalBilling", header: "Total Bill (₹)" },
+                {
+                  key: "billNumber",
+                  header: "Bill Number",
+                  renderCell: (item) => item.billNumber || "-",
+                },
+                {
+                  key: "createdBy",
+                  header: "Created By",
+                  renderCell: (item) => (
+                    <div>
+                      <div>
+                        {`${item.createdBy?.firstname || ""} ${
+                          item.createdBy?.lastname || ""
+                        }`.trim() || "System"}
+                      </div>
+                      <small>{new Date(item.createdAt).toLocaleString()}</small>
+                    </div>
+                  ),
+                },
+              ]}
+              data={challans}
+              keyField="_id"
+              isLoading={(loading || authLoading) && challans.length === 0}
+              error={error && challans.length === 0 ? error : null}
+              renderActions={(challan) => (
+                <ActionButtons
+                  item={challan}
+                  onView={handleViewChallan}
+                  onEdit={handleEditChallan}
+                  onDelete={
+                    user?.role === "super-admin"
+                      ? () => handleDelete(challan._id)
+                      : undefined
+                  }
+                  isLoading={loading || authLoading}
+                  onPreviewDocument={() => previewDocument(challan._id)}
+                />
+              )}
+              noDataMessage="No challans found"
+              tableClassName="mt-3"
+              theadClassName="table-dark"
             />
-          )}
-          noDataMessage="No challans found"
-          tableClassName="mt-3"
-          theadClassName="table-dark"
-        />
-
-        {/* The main form modal (previously ReusableModal) is removed. */}
-        {/* Form interactions will be handled on separate pages. */}
+          </>
+        )}
 
         {/* This modal shows when documentPreview.url is set */}
         {documentPreview && documentPreview.url && (
@@ -211,21 +228,29 @@ export default function Challan() {
                 <img
                   src={documentPreview.url}
                   alt="Document Preview"
-                  style={{ maxWidth: "100%", maxHeight: "75vh", display: "block", margin: "auto" }}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "75vh",
+                    display: "block",
+                    margin: "auto",
+                  }}
                 />
               )}
             </Modal.Body>
           </Modal>
         )}
 
-        {allChallans.length > 0 && (
+        {totalChallansCount > 0 && !loading && !authLoading && (
           <Pagination
             currentPage={currentPage}
-            totalItems={allChallans.length}
+            totalItems={totalChallansCount}
             itemsPerPage={itemsPerPage}
             onPageChange={(page) => {
-              const totalPages = Math.ceil(allChallans.length / itemsPerPage);
-              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+              // Basic validation, Pagination component might handle this more robustly
+              const totalPages = Math.ceil(totalChallansCount / itemsPerPage);
+              if (page >= 1 && page <= totalPages) {
+                setCurrentPage(page);
+              }
             }}
             onItemsPerPageChange={handleItemsPerPageChange}
           />

@@ -8,7 +8,7 @@ import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput } from "../../utils/helpers";
 import frontendLogger from "../../utils/frontendLogger.js";
 
-const ViewChallanPage = () => {
+const ViewChallanPageComponent = () => {
   const { id: challanId } = useParams();
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
@@ -38,7 +38,7 @@ const ViewChallanPage = () => {
     fetchChallanDetails();
   }, [fetchChallanDetails]);
 
-  const previewDocument = async () => {
+  const previewDocument = useCallback(async () => {
     if (!challanData || !challanData.document) {
       toast.warn("No document available for this challan.");
       return;
@@ -56,12 +56,12 @@ const ViewChallanPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [challanData, challanId, authUser]);
 
-  const closePreview = () => {
+  const closePreview = useCallback(() => {
     if (documentPreview.url) window.URL.revokeObjectURL(documentPreview.url);
     setDocumentPreview({ url: null, type: null, show: false });
-  };
+  }, [documentPreview.url]);
 
   if (isLoading && !challanData) {
     return <ReusablePageStructure title="Loading Challan..."><div className="text-center p-5"><Spinner animation="border" /></div></ReusablePageStructure>;
@@ -129,4 +129,4 @@ const ViewChallanPage = () => {
   );
 };
 
-export default ViewChallanPage;
+export default React.memo(ViewChallanPageComponent);

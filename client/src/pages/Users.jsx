@@ -16,6 +16,8 @@ import { handleApiError } from "../utils/helpers";
 import { PlusCircle } from "react-bootstrap-icons";
 import ReusableModal from "../components/ReusableModal";
 import UserReportModal from "../components/UserReportModal";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import "../css/Users.css";
 
 //to-do add getauth token
@@ -25,7 +27,7 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true); // Renamed for clarity
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -45,10 +47,11 @@ const Users = () => {
   const navigate = useNavigate();
   const [showUserReportModal, setShowUserReportModal] = useState(false);
   const [selectedUserForReport, setSelectedUserForReport] = useState(null);
+  const { loading: authLoading } = useAuth(); // Get authLoading state
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      setPageLoading(true);
       const response = await apiClient("/users");
       setUsers(response.data);
       setError("");
@@ -61,7 +64,7 @@ const Users = () => {
         setIsUnauthorized(true);
       }
     } finally {
-      setLoading(false);
+      setPageLoading(false);
     }
   };
 
@@ -222,6 +225,7 @@ const Users = () => {
   return (
     <>
       <Navbar />
+      <LoadingSpinner show={pageLoading || authLoading} /> {/* Show spinner during page load or auth loading */}
       <div className="container mt-4">
         {error && (
           <Alert variant="danger" onClose={() => setError("")} dismissible>
@@ -229,87 +233,94 @@ const Users = () => {
           </Alert>
         )}
 
-        <div
-          className="d-flex justify-content-between align-items-center mb-4"
-          style={{ width: "100%", overflow: "hidden" }}
-        >
-          <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
-            User Management
-          </h2>
+        {!pageLoading && !authLoading && !isUnauthorized && (
+          <>
           <div
-            className="d-flex align-items-center"
-            style={{ width: "60%", minWidth: "300px" }}
+            className="d-flex justify-content-between align-items-center mb-4"
+            style={{ width: "100%", overflow: "hidden" }}
           >
-            <SearchBar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              placeholder="Search users..."
-              showButton={true}
-              onAddNew={() => handleEdit(null)}
-              buttonText="Add New User"
-              buttonIcon={<PlusCircle size={18} />}
-              style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
-            />
+            <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
+              User Management
+            </h2>
+            <div
+              className="d-flex align-items-center"
+              style={{ width: "60%", minWidth: "300px" }}
+            >
+              <SearchBar
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                placeholder="Search users..."
+                showButton={true}
+                onAddNew={() => handleEdit(null)}
+                buttonText="Add New User"
+                buttonIcon={<PlusCircle size={18} />}
+                style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
+                disabled={pageLoading || authLoading}
+              />
+            </div>
           </div>
-        </div>
 
-        <ReusableTable
-          columns={[
-            {
-              key: "name",
-              header: "Name",
-              renderCell: (user) => (
-                <div className="user-avatar">
-                  <span>{user.firstname?.charAt(0).toUpperCase()}</span>
-                  {user.firstname} {user.lastname}
-                  {user.role === "super-admin" && (
-                    <FaUserShield
-                      className="super-admin-icon"
-                      title="Super Admin"
-                    />
-                  )}
-                </div>
-              ),
-            },
-            { key: "email", header: "Email" },
-            {
-              key: "role",
-              header: "Role",
-              renderCell: (user) => (
-                <span className={`role-badge ${user.role.toLowerCase()}`}>
-                  {user.role}
-                </span>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              renderCell: (user) => (
-                <Form.Check
-                  type="switch"
-                  checked={user.isActive}
-                  onChange={() => handleToggleActiveStatus(user)}
-                />
-              ),
-            },
-          ]}
-          data={currentItems}
-          keyField="_id"
-          isLoading={loading}
-          error={error}
-          renderActions={(user) => (
-            <ActionButtons
-              item={user}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onGenerateReport={handleOpenReportModal}
-            />
-          )}
-          noDataMessage="No users found"
-        />
+          <ReusableTable
+            columns={[
+              {
+                key: "name",
+                header: "Name",
+                renderCell: (user) => (
+                  <div className="user-avatar">
+                    <span>{user.firstname?.charAt(0).toUpperCase()}</span>
+                    {user.firstname} {user.lastname}
+                    {user.role === "super-admin" && (
+                      <FaUserShield
+                        className="super-admin-icon"
+                        title="Super Admin"
+                      />
+                    )}
+                  </div>
+                ),
+              },
+              { key: "email", header: "Email" },
+              {
+                key: "role",
+                header: "Role",
+                renderCell: (user) => (
+                  <span className={`role-badge ${user.role.toLowerCase()}`}>
+                    {user.role}
+                  </span>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                renderCell: (user) => (
+                  <Form.Check
+                    type="switch"
+                    checked={user.isActive}
+                    onChange={() => handleToggleActiveStatus(user)}
+                    disabled={pageLoading || authLoading}
+                  />
+                ),
+              },
+            ]}
+            data={currentItems}
+            keyField="_id"
+            isLoading={pageLoading || authLoading} // Use combined loading state for table
+            error={error && !pageLoading && !authLoading ? error : null} // Show error if not loading
+            renderActions={(user) => (
+              <ActionButtons
+                item={user}
+                onView={handleView}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onGenerateReport={handleOpenReportModal}
+                isLoading={pageLoading || authLoading} // Disable actions while loading
+              />
+            )}
+            noDataMessage="No users found"
+          />
+        </>
+        )}
 
-        {filteredUsers.length > 0 && (
+        {!pageLoading && !authLoading && filteredUsers.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalItems={filteredUsers.length}

@@ -88,7 +88,6 @@ mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
 app.use('/api/uploads', express.static(serverUploadsPath));
-console.log(`[ROUTE MOUNTED] /api/uploads (static) -> ${serverUploadsPath}`);
 
 // ---------------------------
 // Static Serving for Frontend (React) - This section is NOT needed when frontend is on Vercel.

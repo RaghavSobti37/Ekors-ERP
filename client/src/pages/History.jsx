@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import ActionButtons from "../components/ActionButtons";
 import Footer from "../components/Footer";
@@ -6,62 +6,87 @@ import {
   showToast,
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
+  dateToYYYYMMDD, // Import the missing function
 } from "../utils/helpers";
-import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Table, Button, Alert } from "react-bootstrap";
+import { Table, Button, Alert, Form, Offcanvas } from "react-bootstrap";
 import Pagination from "../components/Pagination";
 import ReusableTable from "../components/ReusableTable";
 import apiClient from "../utils/apiClient";
 import { getAuthToken as getAuthTokenUtil } from "../utils/authUtils";
 import ReusableModal from "../components/ReusableModal.jsx";
+import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import "../css/Style.css";
-import "react-toastify/dist/ReactToastify.css";
+import { FaPlus, FaFilter, FaSearch } from "react-icons/fa";
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const itemsPerPage = 4;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Get authLoading state
   const navigate = useNavigate();
 
-  const dateToYYYYMMDD = (dateObj) => {
-    return dateObj.toISOString().split('T')[0];
-  };
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  const fetchHistory = async () => {
+  const [totalHistoryCount, setTotalHistoryCount] = useState(0);
+
+  const fetchHistory = useCallback(async (page = 1, limit = itemsPerPage, sortKey = sortConfig.key, sortDirection = sortConfig.direction) => {
     setIsLoading(true);
     setError(null);
     try {
       const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
-      const data = await apiClient("/logtime/all");
 
-      const withTotal = data.map((entry) => {
+      const response = await apiClient("/logtime", { // Assuming endpoint supports pagination & sorting
+        params: { page, limit, sortKey, sortDirection },
+      });
+
+      const processedData = (response.data || []).map((entry) => {
         let totalMinutes = 0;
+        // Ensure logs is an array before trying to iterate
+        if (!Array.isArray(entry.logs)) entry.logs = []; 
         entry.logs?.forEach((log) => {
           const [h, m] = log.timeSpent.split(":").map(Number);
           if (!isNaN(h) && !isNaN(m)) totalMinutes += h * 60 + m;
         });
         return {
           ...entry,
-          totalTime: `${Math.floor(totalMinutes / 60)} hours, ${
-            totalMinutes % 60
-          } minutes`,
+          totalTime: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
           taskCount: entry.logs?.length || 0,
         };
       });
 
-      setHistoryData(withTotal);
+      // Apply search filter if searchTerm exists
+      const filteredData = searchTerm 
+        ? processedData.filter(entry => 
+            formatDisplayDateHelper(entry.date).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.totalTime.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            entry.logs.some(log => log.task.toLowerCase().includes(searchTerm.toLowerCase()))
+          )
+        : processedData;
+
+      setHistoryData(filteredData);
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
+      setHistoryData([]); setTotalHistoryCount(0);
       showToast(errorMessage, false);
       if (error.message.includes("authentication")) {
         navigate("/login");
@@ -69,7 +94,7 @@ export default function History() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemsPerPage, sortConfig.key, sortConfig.direction, navigate]); // Removed user from deps, handleApiError can take it as arg
 
   useEffect(() => {
     if (!user) {
@@ -77,146 +102,147 @@ export default function History() {
       return;
     }
     fetchHistory();
-  }, [user, navigate]);
+  }, [user, navigate, searchTerm]);
 
-  const handleSort = () => {
-    const newOrder = sortOrder === "asc" ? "desc" : "asc";
-    const sorted = [...historyData].sort((a, b) =>
-      newOrder === "asc"
-        ? new Date(a.date) - new Date(b.date)
-        : new Date(b.date) - new Date(a.date)
-    );
-    setSortOrder(newOrder);
-    setHistoryData(sorted);
-  };
+  const handleSort = useCallback((key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page on sort change
+  }, [sortConfig]);
 
-  const handleView = (entry) => setSelectedEntry(entry);
-  const handleEdit = (entry) => {
+  const handleView = useCallback((entry) => setSelectedEntry(entry), []);
+  const handleEdit = useCallback((entry) => {
     // entry.date is expected to be in YYYY-MM-DD format from the backend
     navigate(`/logtime/${entry.date}`);
-  };
+  }, [navigate]);
 
-  const handleDelete = async (entryId) => {
+  const handleDelete = useCallback(async (entryId) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       const token = getAuthTokenUtil();
       if (!token) {
-        showToast(
-          "Authentication token not found. Please log in again.",
-          false
-        );
+        showToast("Authentication token not found. Please log in again.", false);
         setError("Authentication token not found. Please log in again."); // Optional: set page error
         // navigate("/login"); // Optional: redirect to login
         return;
       }
 
       try {
-        setIsLoading(true); // Set loading after token check
+        setIsLoading(true);
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
-
         await fetchHistory();
         showToast("Entry deleted successfully!", true);
+        // Refresh logic
+        if (historyData.length === 1 && currentPage > 1) {
+          setCurrentPage(prevPage => prevPage - 1);
+        } else {
+          fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
+        }
       } catch (error) {
-        const errorMessage = handleApiError(
-          error,
-          `Failed to delete entry ${entryId}`
-        );
-
+        const errorMessage = handleApiError(error, `Failed to delete entry ${entryId}`, user);
         setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     }
-  };
+  }, [historyData.length, currentPage, itemsPerPage, sortConfig, fetchHistory, user]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedEntry(null);
-  };
+  }, []);
 
-  const handleAddNewEntry = () => {
+  const handleAddNewEntry = useCallback(() => {
     const today = new Date();
     const formattedDateYYYYMMDD = dateToYYYYMMDD(today);
     navigate(`/logtime/${formattedDateYYYYMMDD}`);
-  };
+  }, [navigate]);
 
-  const currentEntries = historyData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-  };
-
-  const totalPages = Math.ceil(historyData.length / itemsPerPage);
+  const goToPage = useCallback((page) => {
+    const totalPages = Math.ceil(totalHistoryCount / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  }, [totalHistoryCount, itemsPerPage]);
 
   return (
-    <div>
+    <div className="history-page">
       <Navbar />
+      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
       <div className="container mt-4">
-        {error && !selectedEntry && ( // Simplified error display condition
+        {!isLoading && !authLoading && error && !selectedEntry && ( 
           <Alert variant="danger" onClose={() => setError(null)} dismissible>
             {error}
           </Alert>
         )}
 
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 style={{ color: "black" }}>Time Log History</h2>
-          <Button variant="primary" onClick={handleAddNewEntry}>
-            + Add New Entry
-          </Button>
-        </div>
+        {/* Render content only if not loading and no error, or handle error within components */}
+        {!isLoading && !authLoading && !error && (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2 style={{ color: "black" }}>Time Log History</h2>
+              <Button variant="primary" onClick={handleAddNewEntry} disabled={isLoading || authLoading}>
+                + Add New Entry
+              </Button>
+            </div>
 
-        <ReusableTable
-          columns={[
-            {
-              key: "date",
-              header: "Date",
-              sortable: true,
-              renderCell: (item) => formatDisplayDateHelper(item.date),
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-            {
-              key: "totalTime",
-              header: "Total Time",
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-            {
-              key: "taskCount",
-              header: "Tasks",
-              headerClassName: "centered",
-              cellClassName: "centered",
-            },
-          ]}
-          data={currentEntries}
-          keyField="_id"
-          isLoading={isLoading && currentEntries.length === 0}
-          error={error && currentEntries.length === 0 ? error : null}
-          onSort={handleSort}
-          sortConfig={{
-            key: "date",
-            direction: sortOrder === "asc" ? "ascending" : "descending",
-          }}
-          renderActions={(entry) => (
-            <ActionButtons
-              item={entry}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={() => handleDelete(entry._id)}
-              isLoading={isLoading}
+            <ReusableTable
+              columns={[
+                {
+                  key: "date",
+                  header: "Date",
+                  sortable: true,
+                  renderCell: (item) => formatDisplayDateHelper(item.date),
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "totalTime",
+                  header: "Total Time",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+                {
+                  key: "taskCount",
+                  header: "Tasks",
+                  headerClassName: "centered",
+                  cellClassName: "centered",
+                },
+              ]}
+              data={historyData}
+              keyField="_id"
+              isLoading={(isLoading || authLoading) && historyData.length === 0}
+              error={error && historyData.length === 0 ? error : null}
+              onSort={handleSort}
+              sortConfig={{
+                key: sortConfig.key,
+                direction: sortConfig.direction === "asc" ? "ascending" : "descending",
+              }}
+              renderActions={(entry) => (
+                <ActionButtons
+                  item={entry}
+                  onView={() => handleView(entry)}
+                  onEdit={handleEdit}
+                  onDelete={() => handleDelete(entry._id)}
+                  isLoading={isLoading || authLoading}
+                />
+              )}
+              noDataMessage="No time log history found."
+              tableClassName="mt-3"
+              theadClassName="table-dark"
             />
-          )}
-          noDataMessage="No time log history found."
-          tableClassName="mt-3"
-          theadClassName="table-dark"
-        />
+          </>
+        )}
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={goToPage}
-        />
+        {totalHistoryCount > 0 && !isLoading && !authLoading && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalHistoryCount}
+            itemsPerPage={itemsPerPage}
+            onPageChange={goToPage}
+          />
+        )}
       </div>
 
       {/* View Modal */}
@@ -230,9 +256,15 @@ export default function History() {
               Close
             </Button>
           }
+          size="lg"
         >
           {error && <Alert variant="danger">{error}</Alert>}
-          <Table striped bordered hover responsive>
+          <div className="modal-time-summary">
+            <strong>Total Time:</strong> {selectedEntry.totalTime}
+            <br />
+            <strong>Tasks:</strong> {selectedEntry.taskCount}
+          </div>
+          <Table striped bordered hover responsive className="modal-time-table">
             <thead className="table-dark">
               <tr>
                 <th>Task</th>
@@ -241,7 +273,7 @@ export default function History() {
                 <th>Time Spent</th>
               </tr>
             </thead>
-            <tbody className="text-center">
+            <tbody>
               {selectedEntry.logs.map((log, i) => (
                 <tr key={i}>
                   <td>{log.task}</td>

@@ -1,5 +1,5 @@
 const Challan = require("../models/challan");
-const ChallanBackup = require("../models/challanBackup"); // Import backup model
+const UniversalBackup = require("../models/universalBackup.js"); // Import backup model
 const logger = require("../utils/logger"); // Import logger
 
 // Create or Submit Challan
@@ -42,8 +42,10 @@ exports.createChallan = async (req, res) => {
 
 // Get All Challans
 exports.getAllChallans = async (req, res) => {
-  const user = req.user; // Get the authenticated user
-  try {
+  const user = req.user;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10; // Default limit to 10, adjust as needed
+  const skip = (page - 1) * limit;  try {
     let query = {};
 
     // If the user is not a super-admin, filter challans by createdBy
@@ -51,13 +53,23 @@ exports.getAllChallans = async (req, res) => {
       query.createdBy = user._id;
     }
 
+        const totalItems = await Challan.countDocuments(query);
+
+
     const challans = await Challan.find(query) // Apply the query
       .sort({ createdAt: -1 }) // Sort by creation date, newest first
+      .skip(skip)
+      .limit(limit)
       .select("-document")
       .populate('createdBy', 'firstname lastname email') // Populate creator info
       .populate('updatedBy', 'firstname lastname email'); // Populate updater info
       
-    res.json(challans);
+    res.json({
+      data: challans,
+      totalItems,
+      currentPage: page,
+      totalPages: Math.ceil(totalItems / limit),
+    });
   } catch (err) {
     logger.error('challan', `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`, err, user);
     res.status(500).json({ error: "Failed to fetch challans" });
@@ -172,7 +184,7 @@ exports.deleteChallan = async (req, res) => {
 
     const backupData = challanToBackup.toObject();
 
-    newBackupEntry = new ChallanBackup({ // Assign to the already declared variable
+    newBackupEntry = new UniversalBackup({ // Assign to the already declared variable
       ...backupData,
       originalId: challanToBackup._id,
       deletedBy: userId,
@@ -184,7 +196,7 @@ exports.deleteChallan = async (req, res) => {
 
     logger.debug('delete', `[PRE_BACKUP_SAVE] Attempting to save backup for Challan ID: ${challanToBackup._id}.`, user, { ...logDetails, originalId: challanToBackup._id });
     await newBackupEntry.save();
-    logger.info('delete', `[BACKUP_SUCCESS] Challan successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: challanToBackup._id, backupId: newBackupEntry._id, backupModel: 'ChallanBackup' });
+    logger.info('delete', `[BACKUP_SUCCESS] Challan successfully backed up. Backup ID: ${newBackupEntry._id}.`, user, { ...logDetails, originalId: challanToBackup._id, backupId: newBackupEntry._id, backupModel: 'UniversalBackup' });
 
     logger.debug('delete', `[PRE_ORIGINAL_DELETE] Attempting to delete original Challan ID: ${challanToBackup._id}.`, user, { ...logDetails, originalId: challanToBackup._id });
     await Challan.findByIdAndDelete(challanId);
@@ -204,7 +216,7 @@ exports.deleteChallan = async (req, res) => {
     if (error.name === 'ValidationError' || !newBackupEntry || (newBackupEntry && newBackupEntry.isNew)) {
         logger.warn('delete', `[ROLLBACK_DELETE] Backup failed or error before backup for Challan ID: ${challanId}. Original document will not be deleted.`, user, logDetails);
     } else {
-        const backupExists = await ChallanBackup.findOne({ originalId: challanId });
+        const backupExists = await UniversalBackup.findOne({ originalId: challanId });
         if (backupExists && !(await Challan.findById(challanId))) {
             logger.info('delete', `[CRITICAL_STATE] Challan was backed up (ID: ${backupExists._id}) but original might not have been deleted or error occurred after backup. Manual check recommended.`, user, { ...logDetails, backupId: backupExists._id });
         } else if (backupExists) {
