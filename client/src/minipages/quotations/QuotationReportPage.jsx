@@ -53,8 +53,8 @@ const QuotationReportPage = () => {
     setReportData(null);
 
     try {
-      // Updated endpoint to use the reports base path
-      const response = await apiClient(`/reports/quotations/summary`, { // Using apiClient as a function
+      // Align endpoint with backend: /api/reports/quotations
+      const response = await apiClient(`/reports/quotations`, { // Using apiClient as a function
         params: { period },
         method: 'GET'
       });
@@ -88,8 +88,8 @@ const QuotationReportPage = () => {
     setError("");
 
     try {
-      // Updated endpoint to use the reports base path
-      const response = await apiClient(`/reports/quotations/excel`, { // Using apiClient as a function
+      // Align endpoint with backend: /api/reports/quotations/export
+      const response = await apiClient(`/reports/quotations/export`, { // Using apiClient as a function
         params: { period },
         responseType: "blob", // apiClient should be configured to handle this or pass it to axios
         method: 'GET'
