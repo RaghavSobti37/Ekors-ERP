@@ -1,15 +1,15 @@
-import React ,{ useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
-import { useAuth } from "../context/AuthContext.jsx"; 
+import { useAuth } from "../context/AuthContext.jsx";
 
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
-import SearchBar from "../components/Searchbar.jsx"; 
-import ActionButtons from "../components/ActionButtons.jsx"; 
+import SearchBar from "../components/Searchbar.jsx";
+import ActionButtons from "../components/ActionButtons.jsx";
 
 import Footer from "../components/Footer";
 import {
@@ -19,11 +19,11 @@ import {
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
   ClockHistory, // For Item History
-   CheckCircleFill, ShieldFillCheck, PencilSquare 
+  CheckCircleFill, ShieldFillCheck, PencilSquare
 } from "react-bootstrap-icons";
 import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
-import "../css/Style.css"; 
+import "../css/Style.css";
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
@@ -33,7 +33,7 @@ export default function Items() {
   const [totalItems, setTotalItems] = useState(0);
   const [pendingReviewItems, setPendingReviewItems] = useState([]);
   const [totalPendingReviewItems, setTotalPendingReviewItems] = useState(0);
-  
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -89,7 +89,7 @@ export default function Items() {
     success: null,
     details: [],
   });
-  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); 
+  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false);
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -97,7 +97,7 @@ export default function Items() {
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
-  
+
   // New states for separated history data in modal
   const [excelHistoryData, setExcelHistoryData] = useState([]);
   const [purchaseHistoryData, setPurchaseHistoryData] = useState([]);
@@ -133,11 +133,11 @@ export default function Items() {
         ? parseInt(storedThreshold, 10)
         : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
     );
-  }, []); 
+  }, []);
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const showSuccess = (message) => {
@@ -153,7 +153,7 @@ export default function Items() {
         limit,
         sortKey: sortConfig.key,
         sortDirection: sortConfig.direction,
-        status: 'approved', 
+        status: 'approved',
       };
       if (searchTerm) params.searchTerm = searchTerm;
       if (selectedCategory !== "All") params.category = selectedCategory;
@@ -163,13 +163,13 @@ export default function Items() {
       }
       if (stockAlertFilterActive) {
         params.filter = "stock_alerts";
-        params.lowThreshold = Number.isFinite(lowStockWarningQueryThreshold) 
-          ? lowStockWarningQueryThreshold 
+        params.lowThreshold = Number.isFinite(lowStockWarningQueryThreshold)
+          ? lowStockWarningQueryThreshold
           : effectiveLowStockThreshold;
       }
 
       // Fetch items with populated inventoryLog for the history modal
-      const response = await apiClient("/items", { params: {...params, populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy'} });
+      const response = await apiClient("/items", { params: { ...params, populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' } });
       setItems(response.data || []);
       setTotalItems(response.totalItems || 0);
       setError(null);
@@ -179,7 +179,7 @@ export default function Items() {
       setItems([]);
       setTotalItems(0);
     } finally {
-      setLoading(false); 
+      setLoading(false);
     }
   }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, selectedSubcategory, quantityFilterThreshold, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user]);
 
@@ -190,7 +190,7 @@ export default function Items() {
       return;
     }
     try {
-      setLoading(true); 
+      setLoading(true);
       const params = { page, limit, status: 'pending_review', sortKey: 'createdAt', sortDirection: 'desc', populate: 'createdBy' };
       const response = await apiClient("/items", { params });
       setPendingReviewItems(response.data || []);
@@ -206,7 +206,7 @@ export default function Items() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true); 
+      setLoading(true);
       setError(null);
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
@@ -238,7 +238,7 @@ export default function Items() {
       setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchPendingReviewItems, fetchCategories]); 
+  }, [fetchItems, fetchPendingReviewItems, fetchCategories]);
 
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
@@ -290,7 +290,7 @@ export default function Items() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
 
@@ -340,23 +340,23 @@ export default function Items() {
       setShowEditItemModal(false);
       setEditingItem(null);
       showSuccess("Item updated successfully!");
-    } catch (err) { 
+    } catch (err) {
       const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-  }; 
+  };
 
-   const handleApproveItem = async (itemId) => {
+  const handleApproveItem = async (itemId) => {
     if (!window.confirm("Are you sure you want to approve this item?")) return;
     setIsSubmitting(true);
     try {
       await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
       showSuccess("Item approved successfully!");
-      await fetchItems(); 
+      await fetchItems();
       await fetchPendingReviewItems();
-    } catch (err) { 
+    } catch (err) {
       const errorMessage = handleApiError(err, "Failed to approve item.", user);
       setError(errorMessage);
     } finally {
@@ -365,7 +365,7 @@ export default function Items() {
   };
 
   const handleReviewAndEditItem = (item) => {
-    handleEditItem(item); 
+    handleEditItem(item);
   };
 
   const handleItemChange = (index, field, value) => {
@@ -487,7 +487,7 @@ export default function Items() {
       };
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
-      setShowAddItemModal(false); 
+      setShowAddItemModal(false);
       setFormData({
         name: "",
         quantity: "",
@@ -544,112 +544,112 @@ export default function Items() {
     let tempItemEdits = [];
 
     try {
-        const fetchedItem = await apiClient(`/items/${item._id}`, {
-            params: { populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' }
+      const fetchedItem = await apiClient(`/items/${item._id}`, {
+        params: { populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' }
+      });
+      console.log("Fetched item for history:", fetchedItem); // Debug log: See the full item data fetched
+      console.log("Inventory Log:", fetchedItem.inventoryLog); // Debug log: See the raw inventoryLog array
+      setEditingItem(fetchedItem); // Update with fully populated item
+
+      // 1. Excel Import History (from fetchedItem)
+      fetchedItem.excelImportHistory?.forEach((entry) => {
+        let importedByUserDisplay = "System";
+        if (entry.importedBy) {
+          importedByUserDisplay = `${entry.importedBy.firstname || ''} ${entry.importedBy.lastname || ''}`.trim() || entry.importedBy.email;
+        }
+        let oldQtyText = "";
+        let newQtyText = "";
+        if (entry.action === "created") {
+          const createdQty = entry.snapshot?.quantity;
+          newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
+        } else if (entry.action === "updated") {
+          const qtyChangeInfo = entry.changes?.find(c => c.field === "quantity");
+          if (qtyChangeInfo) {
+            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
+            oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
+          }
+        }
+        tempExcelHistory.push({
+          date: new Date(entry.importedAt),
+          action: entry.action,
+          user: importedByUserDisplay,
+          fileName: entry.fileName || "N/A",
+          changesSummary: entry.action === 'updated'
+            ? entry.changes?.map(c => `${c.field}: ${c.oldValue} -> ${c.newValue}`).join('; ') + oldQtyText
+            : `Initial state set.` + newQtyText,
         });
-        console.log("Fetched item for history:", fetchedItem); // Debug log: See the full item data fetched
-        console.log("Inventory Log:", fetchedItem.inventoryLog); // Debug log: See the raw inventoryLog array
-        setEditingItem(fetchedItem); // Update with fully populated item
+      });
+      setExcelHistoryData(tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
-        // 1. Excel Import History (from fetchedItem)
-        fetchedItem.excelImportHistory?.forEach((entry) => {
-            let importedByUserDisplay = "System";
-            if (entry.importedBy) {
-                importedByUserDisplay = `${entry.importedBy.firstname || ''} ${entry.importedBy.lastname || ''}`.trim() || entry.importedBy.email;
-            }
-            let oldQtyText = "";
-            let newQtyText = "";
-            if (entry.action === "created") {
-                const createdQty = entry.snapshot?.quantity;
-                newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
-            } else if (entry.action === "updated") {
-                const qtyChangeInfo = entry.changes?.find(c => c.field === "quantity");
-                if (qtyChangeInfo) {
-                    const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
-                    const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
-                    oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
-                }
-            }
-            tempExcelHistory.push({
-                date: new Date(entry.importedAt),
-                action: entry.action,
-                user: importedByUserDisplay,
-                fileName: entry.fileName || "N/A",
-                changesSummary: entry.action === 'updated' 
-                    ? entry.changes?.map(c => `${c.field}: ${c.oldValue} -> ${c.newValue}`).join('; ') + oldQtyText
-                    : `Initial state set.` + newQtyText,
-            });
+      // 2. Purchase History (Fetch Fresh)
+      const itemPurchases = await apiClient(`/items/${fetchedItem._id}/purchases`);
+      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+        tempPurchaseHistory = itemPurchases.map((purchase) => ({
+          _id: purchase._id,
+          date: new Date(purchase.date),
+          companyName: purchase.companyName,
+          invoiceNumber: purchase.invoiceNumber,
+          createdByName: purchase.createdByName || "System",
+          quantity: parseFloat(purchase.quantity) || 0,
+          price: parseFloat(purchase.price) || 0,
+          gstRate: parseFloat(purchase.gstRate) || 0,
+          amount: purchase.amount,
+        }));
+      }
+      setPurchaseHistoryData(tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+      // 3. Ticket Usage History (Fetch Fresh - this might be simplified if inventoryLog is comprehensive)
+      const ticketUsageRaw = await apiClient(`/items/${fetchedItem._id}/ticket-usage`);
+      if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
+        tempTicketUsage = ticketUsageRaw.map((usage) => ({
+          date: new Date(usage.date),
+          type: usage.type || "Ticket Interaction",
+          user: usage.user || "System",
+          details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+          quantityChange: parseFloat(usage.quantityChange) || 0,
+          ticketNumber: usage.ticketNumber,
+        }));
+      }
+      setTicketUsageData(tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+      // 4. Process inventoryLog for Adjustments and Item Edits
+      if (Array.isArray(fetchedItem.inventoryLog) && fetchedItem.inventoryLog.length > 0) {
+        fetchedItem.inventoryLog.forEach(log => {
+          const commonLogData = {
+            date: new Date(log.date),
+            type: log.type,
+            user: log.userReference
+              ? `${log.userReference.firstname || ''} ${log.userReference.lastname || ''}`.trim() || log.userReference.email
+              : 'System',
+            details: log.ticketReference && log.ticketReference.ticketNumber
+              ? `${log.details || log.type}`
+              : (log.details || log.type),
+            quantityChange: parseFloat(log.quantityChange) || 0,
+            ticketNumber: log.ticketReference?.ticketNumber
+          };
+
+          if (log.type === "Item Details Updated") {
+            tempItemEdits.push(commonLogData);
+          } else if (
+            !log.type.toLowerCase().includes('excel import') &&
+            !log.type.toLowerCase().includes('purchase entry') &&
+            !log.type.toLowerCase().includes('ticket deduction (initial)') // Assuming initial deduction is covered by ticket usage
+          ) {
+            tempInventoryAdjustments.push(commonLogData);
+          }
         });
-        setExcelHistoryData(tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-        // 2. Purchase History (Fetch Fresh)
-        const itemPurchases = await apiClient(`/items/${fetchedItem._id}/purchases`);
-        if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
-            tempPurchaseHistory = itemPurchases.map((purchase) => ({
-                _id: purchase._id,
-                date: new Date(purchase.date),
-                companyName: purchase.companyName,
-                invoiceNumber: purchase.invoiceNumber,
-                createdByName: purchase.createdByName || "System",
-                quantity: parseFloat(purchase.quantity) || 0,
-                price: parseFloat(purchase.price) || 0,
-                gstRate: parseFloat(purchase.gstRate) || 0,
-                amount: purchase.amount,
-            }));
-        }
-        setPurchaseHistoryData(tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-        // 3. Ticket Usage History (Fetch Fresh - this might be simplified if inventoryLog is comprehensive)
-        const ticketUsageRaw = await apiClient(`/items/${fetchedItem._id}/ticket-usage`);
-        if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
-            tempTicketUsage = ticketUsageRaw.map((usage) => ({
-                date: new Date(usage.date),
-                type: usage.type || "Ticket Interaction",
-                user: usage.user || "System",
-                details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
-                quantityChange: parseFloat(usage.quantityChange) || 0,
-                ticketNumber: usage.ticketNumber,
-            }));
-        }
-        setTicketUsageData(tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        
-        // 4. Process inventoryLog for Adjustments and Item Edits
-        if (Array.isArray(fetchedItem.inventoryLog) && fetchedItem.inventoryLog.length > 0) {
-            fetchedItem.inventoryLog.forEach(log => {
-                const commonLogData = {
-                    date: new Date(log.date),
-                    type: log.type,
-                    user: log.userReference 
-                        ? `${log.userReference.firstname || ''} ${log.userReference.lastname || ''}`.trim() || log.userReference.email
-                        : 'System',
-                    details: log.ticketReference && log.ticketReference.ticketNumber 
-                        ? `${log.details || log.type}`
-                        : (log.details || log.type),
-                    quantityChange: parseFloat(log.quantityChange) || 0,
-                    ticketNumber: log.ticketReference?.ticketNumber
-                };
-
-                if (log.type === "Item Details Updated") {
-                    tempItemEdits.push(commonLogData);
-                } else if (
-                    !log.type.toLowerCase().includes('excel import') && 
-                    !log.type.toLowerCase().includes('purchase entry') &&
-                    !log.type.toLowerCase().includes('ticket deduction (initial)') // Assuming initial deduction is covered by ticket usage
-                ) {
-                    tempInventoryAdjustments.push(commonLogData);
-                }
-            });
-        }
-        setInventoryAdjustmentsLogData(tempInventoryAdjustments.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        setItemEditsLogData(tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        console.log("Processed Item Edits Log Data:", tempItemEdits); // Debug log: See what data is prepared for the edits table
+      }
+      setInventoryAdjustmentsLogData(tempInventoryAdjustments.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setItemEditsLogData(tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      console.log("Processed Item Edits Log Data:", tempItemEdits); // Debug log: See what data is prepared for the edits table
 
     } catch (err) {
-        console.error("Error fetching full item details for history modal:", err);
-        handleApiError(err, "Failed to load item history.", user);
-        setError("Failed to load item history.");
+      console.error("Error fetching full item details for history modal:", err);
+      handleApiError(err, "Failed to load item history.", user);
+      setError("Failed to load item history.");
     } finally {
-        setItemHistoryLoading(false);
+      setItemHistoryLoading(false);
     }
   };
 
@@ -660,9 +660,9 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
-        await fetchPendingReviewItems(); 
+        await fetchPendingReviewItems();
         showSuccess("Item Deleted Successfully");
-      } catch (err) { 
+      } catch (err) {
         const errorMessage = handleApiError(err, "Failed to delete item.", user);
         setError(errorMessage);
         console.error("Error deleting item:", err);
@@ -680,7 +680,7 @@ export default function Items() {
         setError(
           "Please fill all required fields and ensure each item has a description, quantity, and price"
         );
-        setIsSubmitting(false); 
+        setIsSubmitting(false);
         return false;
       }
       const purchaseDataToSend = {
@@ -756,10 +756,10 @@ export default function Items() {
       return;
     }
     try {
-      
-      const blob = await apiClient("items/export-excel", { 
+
+      const blob = await apiClient("items/export-excel", {
         method: "GET",
-        responseType: 'blob' 
+        responseType: 'blob'
       });
 
       if (!blob) {
@@ -777,7 +777,7 @@ export default function Items() {
       console.error("Error exporting to Excel:", err);
       const message = err.data?.message || err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); 
+      setError(message);
     } finally {
       setIsExportingExcel(false);
     }
@@ -791,26 +791,26 @@ export default function Items() {
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-          "Are you absolutely sure you want to proceed?"
+        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+        "Are you absolutely sure you want to proceed?"
       )
     ) {
-      event.target.value = null; 
+      event.target.value = null;
       return;
     }
     setIsProcessingExcel(true);
     const formData = new FormData();
     formData.append("excelFile", file);
     try {
-      
-      const responseData = await apiClient("items/import-uploaded-excel", { 
+
+      const responseData = await apiClient("items/import-uploaded-excel", {
         method: "POST",
         body: formData,
-        
+
       });
 
-      
+
       let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
         } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
         } deleted.`;
@@ -838,11 +838,11 @@ export default function Items() {
       fetchItems();
     } catch (err) {
       console.error("Error updating from Excel:", err);
-      const message = err.data?.message || 
+      const message = err.data?.message ||
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); 
+      setError(message);
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -904,8 +904,7 @@ export default function Items() {
       setIsAddingNewSubcategory(false);
       setNewSubcategoryName("");
       showToast(
-        `Subcategory "${newSubcategoryName.trim()}" added to "${
-          formData.category
+        `Subcategory "${newSubcategoryName.trim()}" added to "${formData.category
         }".`,
         true
       );
@@ -922,7 +921,7 @@ export default function Items() {
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( 
+        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && (
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
@@ -933,11 +932,11 @@ export default function Items() {
           </div>
         )}
 
-                
+
         {user && (user.role === 'admin' || user.role === 'super-admin') && totalPendingReviewItems > 0 && (
           <Card className="mb-4 border-warning">
             <Card.Header className="bg-warning text-dark">
-              <ShieldFillCheck size={20} className="me-2"/> Items Pending Review ({pendingReviewItems.length})
+              <ShieldFillCheck size={20} className="me-2" /> Items Pending Review ({pendingReviewItems.length})
             </Card.Header>
             <Card.Body>
               <div className="table-responsive">
@@ -984,90 +983,113 @@ export default function Items() {
                 totalItems={totalPendingReviewItems}
                 itemsPerPage={itemsPerPage}
                 onPageChange={(page) => setCurrentPagePending(page)}
-                
+
               />
             )}
           </Card>
         )}
 
 
-        
+
         <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
-            </h2>
+          <div style={{ width: '100%', minWidth: '800px' }}> {/* Adjust minWidth to match your table's minimum width */}
+            <div className="d-flex justify-content-between align-items-center mb-2" style={{
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+              gap: '12px',
+              width: '100%'
+            }}>
+              {/* Title */}
+              <h2 style={{
+                color: "black",
+                margin: 0,
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}>
+                {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
+              </h2>
 
-        {excelUpdateStatus.success && (
-          <div className="alert alert-success" role="alert">
-            {excelUpdateStatus.success}
-          </div>
-        )}
+              {/* Success Alert */}
+              {excelUpdateStatus.success && (
+                <div className="alert alert-success py-1 mb-0" style={{
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  maxWidth: '300px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }} role="alert">
+                  {excelUpdateStatus.success}
+                </div>
+              )}
 
-        <div className="top-controls-container">
-            <div className="d-flex align-items-center gap-2">
-              <SearchBar
-                searchTerm={searchTerm}
-                setSearchTerm={(value) => {
-                  setSearchTerm(value.toLowerCase());
-                  setCurrentPage(1);
-                }}
-                placeholder="Search items or HSN codes..."
-                showButton={false}
-                className="flex-grow-1"
-                disabled={anyLoading || stockAlertFilterActive}
-              />
-              <button
-                onClick={handleExportToExcel}
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Export to Excel"
-              >
-                Export Excel
-                {isExportingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowDown />
-                )}
-              </button>
-              <button
-                onClick={() =>
-                  document.getElementById("excel-upload-input")?.click()
-                }
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Upload & Update from Excel"
-              >
-                Upload Excel
-                {isProcessingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowUp />
-                )}
-              </button>
-              <button
-                onClick={() => setShowAddItemModal(true)} 
-                className="btn btn-success d-flex align-items-center"
-                disabled={anyLoading}
-                title="Add New Item"
-                style={{ gap: "0.35rem" }}
-              >
-                {isSubmitting ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <PlusCircle size={18} />
-                    Add New Item
-                  </>
-                )}
-              </button>
+              {/* Search Bar - will grow to available space */}
+              <div style={{
+                minWidth: '150px',
+                flexGrow: 1,
+                maxWidth: '400px'
+              }}>
+                <SearchBar
+                  searchTerm={searchTerm}
+                  setSearchTerm={(value) => {
+                    setSearchTerm(value.toLowerCase());
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search items or HSN codes..."
+                  showButton={false}
+                  disabled={anyLoading || stockAlertFilterActive}
+                />
+              </div>
+
+              {/* Button Group - won't shrink */}
+              <div className="d-flex align-items-center" style={{
+                gap: '8px',
+                flexShrink: 0,
+                marginLeft: 'auto'
+              }}>
+                <button
+                  onClick={handleExportToExcel}
+                  className="btn btn-info d-flex align-items-center gap-1"
+                  disabled={anyLoading}
+                  title="Export to Excel"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Export Excel
+                  {isExportingExcel ? (
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  ) : (
+                    <FileEarmarkArrowDown size={16} />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => document.getElementById("excel-upload-input")?.click()}
+                  className="btn btn-info d-flex align-items-center gap-1"
+                  disabled={anyLoading}
+                  title="Upload & Update from Excel"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Upload Excel
+                  {isProcessingExcel ? (
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  ) : (
+                    <FileEarmarkArrowUp size={16} />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setShowAddItemModal(true)}
+                  className="btn btn-success d-flex align-items-center gap-1"
+                  disabled={anyLoading}
+                  title="Add New Item"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  <PlusCircle size={16} />
+                  Add New Item
+                  {isSubmitting && (
+                    <span className="spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true"></span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
           <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
@@ -1196,7 +1218,7 @@ export default function Items() {
               </tr>
             </thead>
             <tbody>
-              {items.length > 0 ? ( 
+              {items.length > 0 ? (
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
@@ -1207,17 +1229,17 @@ export default function Items() {
                           {item.quantity <= 0 || item.needsRestock ? (
                             <span
                               className="badge bg-danger ms-2"
-    title="Negative stock! Needs immediate restock."                            >
+                              title="Negative stock! Needs immediate restock."                            >
                               ⚠️ Restock
                             </span>
-                                                  ) : item.quantity >= 0 && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? ( 
-                              <span
-                                className="badge bg-warning text-dark ms-2"
-                                 title={`Low Stock (Qty: ${item.quantity}). Warning if < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}.`}
-                              >
-                                🔥 Low Stock
-                              </span>
-                            ) : null}
+                          ) : item.quantity >= 0 && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? (
+                            <span
+                              className="badge bg-warning text-dark ms-2"
+                              title={`Low Stock (Qty: ${item.quantity}). Warning if < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}.`}
+                            >
+                              🔥 Low Stock
+                            </span>
+                          ) : null}
                         </>
                       </td>
                       <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
@@ -1247,7 +1269,7 @@ export default function Items() {
                             disabled={anyLoading}
                             title="View Item History"
                           >
-                            <ClockHistory /> 
+                            <ClockHistory />
                           </button>
                         </div>
                       </td>
@@ -1287,18 +1309,16 @@ export default function Items() {
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Item specific restock threshold: ${
-                                            item.lowStockThreshold || "Not Set"
-                                          })`
+                                        : ` (Item specific restock threshold: ${item.lowStockThreshold || "Not Set"
+                                        })`
                                       : item.quantity <
-                                          (stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold) &&
-                                        ` (Page display low stock threshold: < ${
-                                          stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold
-                                        })`}
+                                      (stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold) &&
+                                      ` (Page display low stock threshold: < ${stockAlertFilterActive
+                                        ? lowStockWarningQueryThreshold
+                                        : effectiveLowStockThreshold
+                                      })`}
                                   </td>
                                 </tr>
                                 <tr>
@@ -1335,7 +1355,7 @@ export default function Items() {
                               <h6>Purchase History (Expanded Row)</h6>
                             </div>
                             {purchaseHistoryLoading[item._id] ? (
-                               <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
+                              <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
                             ) : purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
                                 <thead className="table-secondary">
@@ -1365,7 +1385,7 @@ export default function Items() {
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error && expandedRow === item._id 
+                                {error && expandedRow === item._id
                                   ? `Error loading history: ${error}`
                                   : "No purchase history found for this item."}
                               </div>
@@ -1385,7 +1405,7 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          {totalItems > 0 && ( 
+          {totalItems > 0 && (
             <Pagination
               currentPage={currentPage}
               totalItems={totalItems}
@@ -1404,19 +1424,19 @@ export default function Items() {
             show={showAddItemModal}
             onHide={() => {
               setShowAddItemModal(false);
-              setFormData({ 
+              setFormData({
                 name: "", quantity: "", sellingPrice: "", buyingPrice: "",
                 gstRate: "0", hsnCode: "", unit: "Nos", category: "",
                 subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
               });
-              setError(null); 
+              setError(null);
             }}
             title="Add New Item"
             footerContent={
               <>
                 <button
                   type="button"
-                  className="btn btn-secondary" 
+                  className="btn btn-secondary"
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
@@ -1451,7 +1471,7 @@ export default function Items() {
             isLoading={isSubmitting}
           >
             <>
-              {error && <div className="alert alert-danger">{error}</div>} 
+              {error && <div className="alert alert-danger">{error}</div>}
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
@@ -1801,7 +1821,7 @@ export default function Items() {
               setTicketUsageData([]);
               setInventoryAdjustmentsLogData([]);
               setItemEditsLogData([]);
-              setError(null); 
+              setError(null);
             }}
             title={`Item History: ${editingItem.name}`}
             footerContent={
@@ -1838,7 +1858,7 @@ export default function Items() {
                   {inventoryAdjustmentsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Inventory Adjustments & Ticket Interactions</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1871,7 +1891,7 @@ export default function Items() {
                   {itemEditsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Item Detail Edits </h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1887,7 +1907,7 @@ export default function Items() {
                                 <td>{new Date(entry.date).toLocaleString()}</td>
                                 {/* <td>{entry.type}</td> */}
                                 <td>{entry.user}</td>
-                                <td style={{whiteSpace: 'pre-wrap'}}>{entry.details}</td>
+                                <td style={{ whiteSpace: 'pre-wrap' }}>{entry.details}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1900,7 +1920,7 @@ export default function Items() {
                   {purchaseHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Purchase History</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1923,7 +1943,7 @@ export default function Items() {
                                 <td className="text-success fw-bold">+{entry.quantity}</td>
                                 <td>₹{entry.price.toFixed(2)}</td>
                                 <td>{entry.gstRate}%</td>
-                                <td>₹{entry.amount?.toFixed(2) || ((entry.price * entry.quantity) * (1 + entry.gstRate/100)).toFixed(2) }</td>
+                                <td>₹{entry.amount?.toFixed(2) || ((entry.price * entry.quantity) * (1 + entry.gstRate / 100)).toFixed(2)}</td>
                                 <td>{entry.createdByName}</td>
                               </tr>
                             ))}
@@ -1968,7 +1988,7 @@ export default function Items() {
                   {excelHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Excel Import History</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1997,12 +2017,12 @@ export default function Items() {
 
                   {/* No History Found Message */}
                   {inventoryAdjustmentsLogData.length === 0 &&
-                   itemEditsLogData.length === 0 &&
-                   purchaseHistoryData.length === 0 &&
-                   ticketUsageData.length === 0 &&
-                   excelHistoryData.length === 0 && !itemHistoryLoading && (
-                    <div className="alert alert-info">No history found for this item.</div>
-                  )}
+                    itemEditsLogData.length === 0 &&
+                    purchaseHistoryData.length === 0 &&
+                    ticketUsageData.length === 0 &&
+                    excelHistoryData.length === 0 && !itemHistoryLoading && (
+                      <div className="alert alert-info">No history found for this item.</div>
+                    )}
                 </>
               )}
             </>
@@ -2265,7 +2285,7 @@ export default function Items() {
                   disabled={!isPurchaseDataValid() || isSubmitting}
                 >
                   {isSubmitting ? (
-                     <>
+                    <>
                       <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Submitting...
                     </>
                   ) : "Submit Purchase"}
