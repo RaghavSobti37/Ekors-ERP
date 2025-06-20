@@ -60,6 +60,10 @@ const Pagination = ({
   onPageChange,
   onItemsPerPageChange,
   itemsPerPageOptions = [5, 10, 20, 50, 100],
+  onExportExcel, // New prop for Export Excel button
+  onImportExcel, // New prop for Import Excel button
+  isExporting, // Loading state for Export Excel
+  isImporting, // Loading state for Import Excel
   reportButton, // New prop for the report button
   siblingCount = 1, // Added siblingCount as a prop
 }) => {
@@ -109,6 +113,24 @@ const Pagination = ({
                 </select>
               </div>
             )}
+          {onExportExcel && (
+            <button
+              onClick={onExportExcel}
+              className="btn btn-outline-secondary btn-sm"
+              disabled={isExporting || isImporting}
+            >
+              {isExporting ? "Exporting..." : "Export Excel"}
+            </button>
+          )}
+          {onImportExcel && (
+            <button
+              onClick={onImportExcel}
+              className="btn btn-outline-secondary btn-sm"
+              disabled={isExporting || isImporting}
+            >
+              {isImporting ? "Importing..." : "Import Excel"}
+            </button>
+          )}
           {reportButton && (
             <div className="report-button-container">{reportButton}</div>
           )}

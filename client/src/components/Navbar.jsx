@@ -10,6 +10,7 @@ import {
   FaUsers,
   FaExclamationTriangle, // For restock alerts
   FaExclamationCircle, // For low quantity warnings
+  FaCogs, // For Management
 } from "react-icons/fa";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -21,6 +22,7 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 function NavbarComponent({ showPurchaseModal }) {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
+  const [showManagementDropdown, setShowManagementDropdown] = useState(false);
   const navigate = useNavigate();
   const [restockAlertCount, setRestockAlertCount] = useState(0);
   const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
@@ -28,6 +30,7 @@ function NavbarComponent({ showPurchaseModal }) {
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
+  const managementDropdownTimeoutRef = useRef(null);
 
   const fetchRestockData = useCallback(async () => {
     if (!user) return; // Don't fetch if not logged in or user context not yet available
@@ -93,11 +96,20 @@ function NavbarComponent({ showPurchaseModal }) {
     }, 300);
   };
 
+  const handleMouseEnterManagementDropdown = () => {
+    clearTimeout(managementDropdownTimeoutRef.current);
+    setShowManagementDropdown(true);
+  };
+
+  const handleMouseLeaveManagementDropdown = () => {
+    managementDropdownTimeoutRef.current = setTimeout(() => {
+      setShowManagementDropdown(false);
+    }, 300);
+  };
   const handleStockAlertClick = () => {
     const currentThreshold =
-      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
-      DEFAULT_LOW_QUANTITY_THRESHOLD;
-    navigate(`/itemslist?filter=stock_alerts&lowThreshold=${currentThreshold}`); // Corrected path
+      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
+    navigate(`/itemslist?filter=stock_alerts`); 
   };
 
   return (
@@ -183,16 +195,29 @@ function NavbarComponent({ showPurchaseModal }) {
             )}
 
             {user && user.role !== "user" && (
-              <NavLink
-                to="/users"
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
+              <div
+                className="dropdown-wrapper"
+                onMouseEnter={handleMouseEnterManagementDropdown}
+                onMouseLeave={handleMouseLeaveManagementDropdown}
               >
-                <FaUsers /> Users
-              </NavLink>
+                <span className="nav-link" style={{ cursor: "default" }}> {/* Make it look like a NavLink but not clickable itself */}
+                  <FaCogs /> Management
+                </span>
+                {showManagementDropdown && (
+                  <div className="dropdown-menu">
+                    <NavLink to="/users" className="dropdown-item-navlink"> {/* Custom class for NavLink styling */}
+                       Users 
+                    </NavLink>
+                    <NavLink to="/clients" className="dropdown-item-navlink">
+                      Clients 
+                    </NavLink>
+                    {/* <NavLink to="/suppliers" className="dropdown-item-navlink">Suppliers</NavLink> */} {/* Add when ready */}
+                    <NavLink to="/backups" className="dropdown-item-navlink">Backups</NavLink>
+                  </div>
+                )}
+              </div>
             )}
-
+            
             {/* Stock Alert Notification Area */}
             {(restockAlertCount > 0 || lowStockWarningCount > 0) &&
               user &&
@@ -200,10 +225,9 @@ function NavbarComponent({ showPurchaseModal }) {
                 <div
                   className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
                   onClick={handleStockAlertClick}
-                  title={`Restock Needed: ${restockAlertCount} items. Low Stock (<${
-                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
+  title={`Restock Needed (Qty <= 0): ${restockAlertCount} items. Low Stock (Qty < global threshold ${                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
                     DEFAULT_LOW_QUANTITY_THRESHOLD
-                  }): ${lowStockWarningCount} items. Click to view.`}
+                  }): ${lowStockWarningCount} items. Click to view all items below their specific low stock thresholds.`}
                 >
                   <FaExclamationTriangle className="icon-low-stock" />
                   <span className="alert-count">{restockAlertCount}</span>

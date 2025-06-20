@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
 import { useAuth } from "../context/AuthContext.jsx"; 
 
+
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
 import SearchBar from "../components/Searchbar.jsx"; 
 import ActionButtons from "../components/ActionButtons.jsx"; 
@@ -29,6 +30,7 @@ const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
 export default function Items() {
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [pendingReviewItems, setPendingReviewItems] = useState([]);
@@ -54,7 +56,7 @@ export default function Items() {
     hsnCode: "",
     unit: "Nos",
     category: "",
-    subcategory: "General",
+    // subcategory: "General", // Removed
     maxDiscountPercentage: "",
     lowStockThreshold: "5", // Added for consistency with item schema
   });
@@ -65,9 +67,9 @@ export default function Items() {
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item for expanded row
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [currentItemIndex, setCurrentItemIndex] = useState(-1);
+  // const [currentItemIndex, setCurrentItemIndex] = useState(-1); // currentItemIndex seems unused for purchase modal item search, review if needed
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("All");
+  // const [selectedSubcategory, setSelectedSubcategory] = useState("All");
   const [purchaseData, setPurchaseData] = useState({
     companyName: "",
     gstNumber: "",
@@ -93,19 +95,17 @@ export default function Items() {
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [isAddingNewSubcategory, setIsAddingNewSubcategory] = useState(false);
-  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  // const [isAddingNewSubcategory, setIsAddingNewSubcategory] = useState(false); // Removed
+  // const [newSubcategoryName, setNewSubcategoryName] = useState(""); // Removed
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
-  const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
+  // const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false); // Removed
   
   // New states for separated history data in modal
-  const [excelHistoryData, setExcelHistoryData] = useState([]);
+  const [excelHistoryData, setExcelHistoryData] = useState([]); // This state seems unused, consider removing if not needed for display
   const [purchaseHistoryData, setPurchaseHistoryData] = useState([]);
   const [ticketUsageData, setTicketUsageData] = useState([]);
   const [inventoryAdjustmentsLogData, setInventoryAdjustmentsLogData] = useState([]);
   const [itemEditsLogData, setItemEditsLogData] = useState([]);
-
-  const { user } = useAuth(); // Get user for role checks
   const location = useLocation();
   const [currentPagePending, setCurrentPagePending] = useState(1); // Pagination for pending items
 
@@ -113,16 +113,21 @@ export default function Items() {
     () => new URLSearchParams(location.search),
     [location.search]
   );
-  const stockAlertFilterActive = queryParams.get("filter") === "stock_alerts";
+  const stockAlertFilterActive = useMemo(() => queryParams.get("filter") === "stock_alerts", [queryParams]);
+
   const lowStockWarningQueryThreshold = parseInt(
     queryParams.get("lowThreshold"),
     10
   );
-  const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // null means 'All'
+  // const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // Replaced by quantityFilterInputValue
 
   const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
     DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
   );
+
+  // State for the quantity filter input on the main items page
+  const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
+  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] = useState('');
 
   useEffect(() => {
     const storedThreshold = localStorage.getItem(
@@ -133,7 +138,23 @@ export default function Items() {
         ? parseInt(storedThreshold, 10)
         : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
     );
-  }, []); 
+  }, []);
+
+  useEffect(() => {
+    if (stockAlertFilterActive) {
+        // Initialize with URL param if present, else global default
+        const initialThreshold = Number.isFinite(lowStockWarningQueryThreshold)
+            ? lowStockWarningQueryThreshold
+            : effectiveLowStockThreshold;
+        setStockAlertsPageFilterThreshold(initialThreshold.toString());
+                setSearchTerm(""); 
+
+    } else {
+        setStockAlertsPageFilterThreshold(''); // Clear when not on stock alerts page
+    }
+  }, [stockAlertFilterActive, effectiveLowStockThreshold, lowStockWarningQueryThreshold]);
+
+
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
@@ -156,16 +177,19 @@ export default function Items() {
         status: 'approved', 
       };
       if (searchTerm) params.searchTerm = searchTerm;
-      if (selectedCategory !== "All") params.category = selectedCategory;
-      if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory;
-      if (quantityFilterThreshold !== null && quantityFilterThreshold !== "All") {
-        params.quantityThreshold = quantityFilterThreshold;
-      }
+       if (searchTerm) params.searchTerm = searchTerm.toLowerCase(); 
+      // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
+
       if (stockAlertFilterActive) {
         params.filter = "stock_alerts";
-        params.lowThreshold = Number.isFinite(lowStockWarningQueryThreshold) 
-          ? lowStockWarningQueryThreshold 
-          : effectiveLowStockThreshold;
+        const thresholdToUse = parseInt(stockAlertsPageFilterThreshold, 10);
+        params.lowThreshold = Number.isFinite(thresholdToUse) && thresholdToUse >= 0 ? thresholdToUse : effectiveLowStockThreshold;
+      } else {
+        // Apply quantity filter for main page if a value is set
+        const qtyFilterVal = parseInt(quantityFilterInputValue, 10);
+        if (Number.isFinite(qtyFilterVal) && quantityFilterInputValue.trim() !== "") {
+          params.quantityThreshold = qtyFilterVal;
+        }
       }
 
       // Fetch items with populated inventoryLog for the history modal
@@ -181,7 +205,7 @@ export default function Items() {
     } finally {
       setLoading(false); 
     }
-  }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, selectedSubcategory, quantityFilterThreshold, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user]);
+  }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user, stockAlertsPageFilterThreshold]);
 
   const fetchPendingReviewItems = useCallback(async (page = currentPagePending, limit = itemsPerPage) => {
     if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
@@ -240,14 +264,31 @@ export default function Items() {
     };
   }, [fetchItems, fetchPendingReviewItems, fetchCategories]); 
 
+  // Effect for search, category, quantity filter, and sort changes
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      if (!authLoading && user) { // Use `user` from useAuth() and ensure authLoading is checked
+        fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
+      }
+    }, 500); // 500ms debounce for search term
+    return () => clearTimeout(timerId);
+  }, [authLoading, user, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, stockAlertsPageFilterThreshold, sortConfig, itemsPerPage, fetchItems]);
+
+  // Effect for pagination changes (when filters/search/sort are stable)
+  useEffect(() => {
+    if (!authLoading && user) { // Ensure authLoading and user (from useAuth) are used
+      fetchItems(currentPage, itemsPerPage);
+    }
+  }, [authLoading, user, currentPage, itemsPerPage, fetchItems]); // Added itemsPerPage back as it's used in fetchItems
+
+  // This useEffect is specifically for the itemSearchTerm used in the purchase modal,
+  // it should remain as is if that's its sole purpose.
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
-      if (Array.isArray(items) && items.length > 0) {
+      if (Array.isArray(items) && items.length > 0) { // Should this be a different list of items for the modal?
         const filtered = items.filter(
           (item) =>
-            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
-            (item.hsnCode &&
-              item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
+            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) || (item.hsnCode && item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
         );
         setFilteredItemsList(filtered);
       } else {
@@ -256,7 +297,7 @@ export default function Items() {
     } else {
       setFilteredItemsList([]);
     }
-  }, [itemSearchTerm, items]);
+  }, [itemSearchTerm, items]); // `items` dependency here might be problematic if it's the main page's items list.
 
   const fetchPurchaseHistoryForExpandedRow = useCallback(async (itemId) => { // Renamed for clarity
     try {
@@ -304,8 +345,7 @@ export default function Items() {
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
-      category: item.category || "",
-      subcategory: item.subcategory || "General",
+      category: item.category || "", 
       lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
     });
@@ -317,20 +357,23 @@ export default function Items() {
       setError("Item name is required for editing.");
       return;
     }
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    if (buyingPrice > sellingPrice) {
+      setError("Buying price cannot be greater than selling price.");
+      return;
+    }
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { ...formData };
-      updatedItemPayload.quantity =
-        parseFloat(updatedItemPayload.quantity) || 0;
-      updatedItemPayload.sellingPrice =
-        parseFloat(updatedItemPayload.sellingPrice) || 0;
-      updatedItemPayload.buyingPrice =
-        parseFloat(updatedItemPayload.buyingPrice) || 0;
-      updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
-      updatedItemPayload.lowStockThreshold =
-        parseFloat(updatedItemPayload.lowStockThreshold) || 0;
-      updatedItemPayload.maxDiscountPercentage =
-        parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
+      const updatedItemPayload = { ...formData }; // formData has string values from form
+      
+      // Ensure numeric fields that should be numbers are parsed
+      updatedItemPayload.quantity = parseFloat(formData.quantity) || 0;
+      updatedItemPayload.sellingPrice = sellingPrice; 
+      updatedItemPayload.buyingPrice = buyingPrice; 
+      updatedItemPayload.gstRate = parseFloat(formData.gstRate) || 0;
+      updatedItemPayload.maxDiscountPercentage = parseFloat(formData.maxDiscountPercentage) || 0;
+      // lowStockThreshold will be sent as a string from formData, backend will parse robustly
 
       await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
@@ -456,9 +499,6 @@ export default function Items() {
       stateName: "",
       invoiceNumber: "",
       date: new Date().toISOString().split("T")[0],
-      // quantity: "", // These were single item fields, now part of items array
-      // price: "",
-      // gstRate: "0",
       items: [],
     });
     setItemSearchTerm("");
@@ -470,19 +510,24 @@ export default function Items() {
       setError("Item name is required");
       return;
     }
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    if (buyingPrice > sellingPrice) {
+      setError("Buying price cannot be greater than selling price.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        sellingPrice: parseFloat(formData.sellingPrice) || 0,
-        buyingPrice: parseFloat(formData.buyingPrice) || 0,
+        sellingPrice: sellingPrice,
+        buyingPrice: buyingPrice,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
         category: formData.category,
-        subcategory: formData.subcategory,
-        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0, 
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
       };
       await apiClient("/items", { method: "POST", body: newItemPayload });
@@ -496,8 +541,7 @@ export default function Items() {
         gstRate: "0",
         hsnCode: "",
         unit: "Nos",
-        category: "",
-        subcategory: "General",
+        category: "", 
         maxDiscountPercentage: "",
         lowStockThreshold: "5",
       });
@@ -524,13 +568,11 @@ export default function Items() {
   };
 
   const handleShowItemHistoryModal = async (item) => {
-    // Fetch the full item details again to ensure inventoryLog is populated
     setItemHistoryLoading(true);
     setError(null);
     setShowItemHistoryModal(true);
-    setEditingItem(item); // Set the item for context, even if we refetch
+    setEditingItem(item); 
 
-    // Reset individual history states
     setExcelHistoryData([]);
     setPurchaseHistoryData([]);
     setTicketUsageData([]);
@@ -547,11 +589,8 @@ export default function Items() {
         const fetchedItem = await apiClient(`/items/${item._id}`, {
             params: { populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' }
         });
-        console.log("Fetched item for history:", fetchedItem); // Debug log: See the full item data fetched
-        console.log("Inventory Log:", fetchedItem.inventoryLog); // Debug log: See the raw inventoryLog array
-        setEditingItem(fetchedItem); // Update with fully populated item
+        setEditingItem(fetchedItem); 
 
-        // 1. Excel Import History (from fetchedItem)
         fetchedItem.excelImportHistory?.forEach((entry) => {
             let importedByUserDisplay = "System";
             if (entry.importedBy) {
@@ -582,7 +621,6 @@ export default function Items() {
         });
         setExcelHistoryData(tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
-        // 2. Purchase History (Fetch Fresh)
         const itemPurchases = await apiClient(`/items/${fetchedItem._id}/purchases`);
         if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
             tempPurchaseHistory = itemPurchases.map((purchase) => ({
@@ -599,7 +637,6 @@ export default function Items() {
         }
         setPurchaseHistoryData(tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
-        // 3. Ticket Usage History (Fetch Fresh - this might be simplified if inventoryLog is comprehensive)
         const ticketUsageRaw = await apiClient(`/items/${fetchedItem._id}/ticket-usage`);
         if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
             tempTicketUsage = ticketUsageRaw.map((usage) => ({
@@ -613,7 +650,6 @@ export default function Items() {
         }
         setTicketUsageData(tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date)));
         
-        // 4. Process inventoryLog for Adjustments and Item Edits
         if (Array.isArray(fetchedItem.inventoryLog) && fetchedItem.inventoryLog.length > 0) {
             fetchedItem.inventoryLog.forEach(log => {
                 const commonLogData = {
@@ -634,7 +670,7 @@ export default function Items() {
                 } else if (
                     !log.type.toLowerCase().includes('excel import') && 
                     !log.type.toLowerCase().includes('purchase entry') &&
-                    !log.type.toLowerCase().includes('ticket deduction (initial)') // Assuming initial deduction is covered by ticket usage
+                    !log.type.toLowerCase().includes('ticket deduction (initial)') 
                 ) {
                     tempInventoryAdjustments.push(commonLogData);
                 }
@@ -642,7 +678,6 @@ export default function Items() {
         }
         setInventoryAdjustmentsLogData(tempInventoryAdjustments.sort((a, b) => new Date(b.date) - new Date(a.date)));
         setItemEditsLogData(tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        console.log("Processed Item Edits Log Data:", tempItemEdits); // Debug log: See what data is prepared for the edits table
 
     } catch (err) {
         console.error("Error fetching full item details for history modal:", err);
@@ -859,11 +894,11 @@ export default function Items() {
       await apiClient("/items/categories", {
         method: "POST",
         body: { categoryName: newCategoryName.trim() },
-      });
+      }); 
       await fetchCategories();
       setFormData((prevFormData) => ({
         ...prevFormData,
-        category: newCategoryName.trim(), subcategory: "General",
+        category: newCategoryName.trim(), 
       }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -878,45 +913,24 @@ export default function Items() {
     }
   };
 
-  const handleAddNewSubcategory = async () => {
-    if (!newSubcategoryName.trim()) {
-      showToast("Subcategory name cannot be empty.", false);
-      return;
-    }
-    if (!formData.category) {
-      showToast("Please select a category first.", false);
-      return;
-    }
-    setIsSubmittingSubcategory(true);
-    try {
-      await apiClient(`/items/categories/subcategory`, {
-        method: "POST",
-        body: {
-          categoryName: formData.category,
-          subcategoryName: newSubcategoryName.trim(),
-        },
-      });
-      await fetchCategories();
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        subcategory: newSubcategoryName.trim(),
-      }));
-      setIsAddingNewSubcategory(false);
-      setNewSubcategoryName("");
-      showToast(
-        `Subcategory "${newSubcategoryName.trim()}" added to "${
-          formData.category
-        }".`,
-        true
-      );
-    } catch (err) {
-      handleApiError(err, "Failed to add new subcategory.", user);
-    } finally {
-      setIsSubmittingSubcategory(false);
+
+  const handleUpdateGlobalLowStockThreshold = (newThresholdValue) => {
+    const newNumThreshold = parseInt(newThresholdValue, 10);
+    if (Number.isFinite(newNumThreshold) && newNumThreshold >= 0) {
+        setEffectiveLowStockThreshold(newNumThreshold);
+        localStorage.setItem(LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE, newNumThreshold.toString());
+        showToast(`Global low stock threshold updated to ${newNumThreshold}.`, true);
+    } else {
+        showToast("Invalid threshold value.", false);
     }
   };
 
-  const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
+  const applyStockAlertFilter = () => {
+      setCurrentPage(1); 
+      fetchItems(); 
+  };
+
+  const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel || loading;
 
   return (
     <div className="items-container">
@@ -955,7 +969,7 @@ export default function Items() {
                     {pendingReviewItems.map(item => (
                       <tr key={item._id}>
                         <td>{item.name}</td>
-                        <td>{item.category}{item.subcategory ? ` / ${item.subcategory}` : ''}</td>
+                        <td>{item.category}</td>
                         <td>{item.createdBy?.firstname || 'N/A'} {item.createdBy?.lastname || ''}</td>
                         <td>{new Date(item.createdAt).toLocaleDateString()}</td>
                         <td>
@@ -984,7 +998,7 @@ export default function Items() {
                 totalItems={totalPendingReviewItems}
                 itemsPerPage={itemsPerPage}
                 onPageChange={(page) => setCurrentPagePending(page)}
-                
+                // Note: Export/Import buttons could be passed as props here if moved to Pagination component
               />
             )}
           </Card>
@@ -992,159 +1006,105 @@ export default function Items() {
 
 
         
-        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive ? `Stock Alerts` : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
+        <div className="mb-3">
+          {/* Controls Area - Single Line */}
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
+            {/* Title */}
+            <h2 style={{ color: "black", margin: 0 }} className="me-3 text-nowrap">
+              {stockAlertFilterActive 
+                ? `Stock Alerts (Qty < ${parseInt(stockAlertsPageFilterThreshold,10) || effectiveLowStockThreshold})` 
+                : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
             </h2>
 
-        {excelUpdateStatus.success && (
-          <div className="alert alert-success" role="alert">
-            {excelUpdateStatus.success}
-          </div>
-        )}
-
-        <div className="top-controls-container">
-            <div className="d-flex align-items-center gap-2">
+            {/* Search Bar */}
+            <div className="flex-grow-1" style={{ minWidth: '200px', maxWidth: '400px' }}>
               <SearchBar
                 searchTerm={searchTerm}
-                setSearchTerm={(value) => {
-                  setSearchTerm(value.toLowerCase());
-                  setCurrentPage(1);
-                }}
-                placeholder="Search items or HSN codes..."
+               setSearchTerm={setSearchTerm} // Pass setSearchTerm directly
+
+                placeholder={stockAlertFilterActive ? "Search alerts..." : "Search items/HSN..."}
                 showButton={false}
-                className="flex-grow-1"
-                disabled={anyLoading || stockAlertFilterActive}
+                disabled={anyLoading}
               />
-              <button
-                onClick={handleExportToExcel}
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Export to Excel"
-              >
-                Export Excel
-                {isExportingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowDown />
-                )}
-              </button>
-              <button
-                onClick={() =>
-                  document.getElementById("excel-upload-input")?.click()
-                }
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Upload & Update from Excel"
-              >
-                Upload Excel
-                {isProcessingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowUp />
-                )}
-              </button>
-              <button
-                onClick={() => setShowAddItemModal(true)} 
-                className="btn btn-success d-flex align-items-center"
-                disabled={anyLoading}
-                title="Add New Item"
-                style={{ gap: "0.35rem" }}
-              >
-                {isSubmitting ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <PlusCircle size={18} />
-                    Add New Item
-                  </>
-                )}
-              </button>
             </div>
+            
+            {/* Spacer for Stock Alerts Page or Filters for Main Page */}
+            {stockAlertFilterActive ? (
+              <div className="d-flex align-items-center gap-2 ms-auto">
+                <label htmlFor="stockAlertThresholdInput" className="form-label mb-0 me-1 text-nowrap">Alert Qty &lt;</label>
+                <input
+                  type="number"
+                  id="stockAlertThresholdInput"
+                  className="form-control form-control-sm"
+                  value={stockAlertsPageFilterThreshold}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || parseInt(val, 10) >= 0) {
+                        setStockAlertsPageFilterThreshold(val);
+                    } else if (parseInt(val, 10) < 0) {
+                        setStockAlertsPageFilterThreshold("0");
+                    }
+                  }}
+                  onBlur={applyStockAlertFilter}
+                  onKeyPress={(e) => e.key === 'Enter' && applyStockAlertFilter()}
+                  style={{width: '70px'}}
+                  min="0"
+                  disabled={anyLoading}
+                />
+                <Button size="sm" variant="primary" onClick={applyStockAlertFilter} disabled={anyLoading}>Apply</Button>
+                <Button size="sm" variant="outline-secondary" onClick={() => handleUpdateGlobalLowStockThreshold(stockAlertsPageFilterThreshold)} disabled={anyLoading} title="Set as global default">Set Default</Button>
+              </div>
+            ) : (
+              // Filters and Add Item Button for Main Page
+              <div className="d-flex align-items-center gap-2 ms-auto">
+                <div style={{ minWidth: "130px" }}>
+                  <select
+                    className="form-select form-select-sm w-100"
+                    value={selectedCategory}
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={anyLoading}
+                  >
+                    <option value="All">All Categories</option>
+                    {Array.isArray(categories) &&
+                      categories.map((cat) => (
+                        <option key={cat.category} value={cat.category}>
+                          {cat.category}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="d-flex align-items-center gap-1" style={{ minWidth: "130px" }}>
+                  <label htmlFor="quantityFilterInput" className="form-label mb-0 text-nowrap small visually-hidden">Qty &le;</label>
+                  <input
+                      type="number"
+                      id="quantityFilterInput"
+                      className="form-control form-control-sm"
+                      placeholder="Qty &le;"
+                      value={quantityFilterInputValue}
+                      onChange={(e) => setQuantityFilterInputValue(e.target.value)}
+                      onKeyPress={(e) => { if (e.key === 'Enter') { setCurrentPage(1); /* fetchItems(); */ } }} // Removed fetchItems from here
+                      style={{width: '70px'}}
+                      min="0"
+                      disabled={anyLoading}
+                  />
+                   <Button size="sm" variant="outline-secondary" onClick={() => {setCurrentPage(1); fetchItems();}} disabled={anyLoading}>Filter</Button>
+                </div>
+                <Button variant="success" size="sm" onClick={() => setShowAddItemModal(true)} disabled={anyLoading} title="Add New Item" className="d-flex align-items-center" style={{gap: "0.25rem"}}>
+                  <PlusCircle size={16} /> Add Item
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setSelectedSubcategory("All");
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-              >
-                <option value="All">All Categories</option>
-                {Array.isArray(categories) &&
-                  categories.map((cat) => (
-                    <option key={cat.category} value={cat.category}>
-                      {cat.category}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                value={selectedSubcategory}
-                onChange={(e) => {
-                  setSelectedSubcategory(e.target.value);
-                  setCurrentPage(1);
-                }}
-                disabled={
-                  selectedCategory === "All" ||
-                  anyLoading ||
-                  stockAlertFilterActive
-                }
-              >
-                <option value="All">All Subcategories</option>
-                {selectedCategory !== "All" &&
-                  Array.isArray(categories) &&
-                  categories
-                    .find((c) => c.category === selectedCategory)
-                    ?.subcategories.map((subcat) => (
-                      <option key={subcat} value={subcat}>
-                        {subcat}
-                      </option>
-                    ))}
-              </select>
-            </div>
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                value={
-                  quantityFilterThreshold === null
-                    ? "All"
-                    : quantityFilterThreshold
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setQuantityFilterThreshold(
-                    value === "All" ? null : parseInt(value, 10)
-                  );
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-                title="Filter by quantity"
-              >
-                <option value="All">All Quantities</option>
-                <option value="0">0 (Out of Stock)</option>
-                <option value="1">1 and below</option>
-                <option value="3">3 and below</option>
-                <option value="5">5 and below</option>
-                <option value="10">10 and below</option>
-                <option value="20">20 and below</option>
-              </select>
-            </div>
-          </div>
+          {excelUpdateStatus.success && !stockAlertFilterActive && (
+            <Alert variant="success" className="mt-2 py-1 px-2 small">
+              {excelUpdateStatus.success}
+            </Alert>
+          )}
         </div>
+
 
         <input
           type="file"
@@ -1204,16 +1164,16 @@ export default function Items() {
                       <td>
                         <>
                           {item.quantity}{" "}
-                          {item.quantity <= 0 || item.needsRestock ? (
+                          {item.quantity <= 0 ? (
                             <span
                               className="badge bg-danger ms-2"
-    title="Negative stock! Needs immediate restock."                            >
+                              title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}                            >
                               ⚠️ Restock
                             </span>
-                                                  ) : item.quantity >= 0 && item.quantity < (stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold) ? ( 
+                          ) : item.quantity > 0 && item.quantity <= item.lowStockThreshold ? ( 
                               <span
                                 className="badge bg-warning text-dark ms-2"
-                                 title={`Low Stock (Qty: ${item.quantity}). Warning if < ${stockAlertFilterActive ? lowStockWarningQueryThreshold : effectiveLowStockThreshold}.`}
+                                 title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
                               >
                                 🔥 Low Stock
                               </span>
@@ -1277,8 +1237,6 @@ export default function Items() {
                                   <td>{item.category || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Subcategory</strong></td>
-                                  <td>{item.subcategory || "-"}</td>
                                 </tr>
                                 <tr>
                                   <td><strong>Quantity</strong></td>
@@ -1287,17 +1245,10 @@ export default function Items() {
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Item specific restock threshold: ${
-                                            item.lowStockThreshold || "Not Set"
-                                          })`
-                                      : item.quantity <
-                                          (stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold) &&
-                                        ` (Page display low stock threshold: < ${
-                                          stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold
+                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"})`
+                                      : item.quantity > 0 && item.quantity <= item.lowStockThreshold &&
+                                        ` (Low stock based on item's threshold: ${
+                                          item.lowStockThreshold
                                         })`}
                                   </td>
                                 </tr>
@@ -1395,6 +1346,11 @@ export default function Items() {
                 if (page >= 1 && page <= totalPages) { setCurrentPage(page); }
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
+              // Pass export/import handlers
+              onExportExcel={!stockAlertFilterActive ? handleExportToExcel : undefined}
+              onImportExcel={!stockAlertFilterActive ? () => document.getElementById("excel-upload-input")?.click() : undefined}
+              isExporting={isExportingExcel}
+              isImporting={isProcessingExcel}
             />
           )}
         </div>
@@ -1405,9 +1361,9 @@ export default function Items() {
             onHide={() => {
               setShowAddItemModal(false);
               setFormData({ 
-                name: "", quantity: "", sellingPrice: "", buyingPrice: "",
+                name: "", quantity: "0", sellingPrice: "", buyingPrice: "", 
                 gstRate: "0", hsnCode: "", unit: "Nos", category: "",
-                subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
+                maxDiscountPercentage: "", lowStockThreshold: "5", 
               });
               setError(null); 
             }}
@@ -1420,9 +1376,7 @@ export default function Items() {
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
-                      name: "", quantity: "", sellingPrice: "", buyingPrice: "",
-                      gstRate: "0", hsnCode: "", unit: "Nos", category: "",
-                      subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
+                      name: "", quantity: "0", sellingPrice: "", buyingPrice: "", gstRate: "0", hsnCode: "", unit: "Nos", category: "", maxDiscountPercentage: "", lowStockThreshold: "5", 
                     });
                     setError(null);
                   }}
@@ -1437,7 +1391,7 @@ export default function Items() {
                     !formData.name ||
                     !formData.sellingPrice || !formData.category ||
                     isSubmitting ||
-                    isAddingNewCategory || isAddingNewSubcategory
+                    isAddingNewCategory 
                   }
                 >
                   {isSubmitting ? (
@@ -1475,8 +1429,14 @@ export default function Items() {
                       placeholder="Quantity"
                       name="quantity"
                       value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || parseInt(val, 10) >= 0) {
+                          setFormData({ ...formData, quantity: val });
+                        } else if (parseInt(val, 10) < 0) {
+                          setFormData({ ...formData, quantity: "0"});
+                        }
+                      }
                       }
                     />
                   </div>
@@ -1618,8 +1578,7 @@ export default function Items() {
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                category: e.target.value,
-                                subcategory: "General",
+                                category: e.target.value, 
                               })
                             }
                           >
@@ -1639,102 +1598,6 @@ export default function Items() {
                             type="button"
                             onClick={() => setIsAddingNewCategory(true)}
                             title="Add new category"
-                          >
-                            <PlusCircle size={18} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <div className="input-group mb-2">
-                      {isAddingNewSubcategory ? (
-                        <>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter new subcategory name"
-                            value={newSubcategoryName}
-                            onChange={(e) =>
-                              setNewSubcategoryName(e.target.value)
-                            }
-                            disabled={
-                              isSubmittingSubcategory || !formData.category
-                            }
-                          />
-                          <button
-                            className="btn btn-success"
-                            type="button"
-                            onClick={handleAddNewSubcategory}
-                            disabled={
-                              isSubmittingSubcategory ||
-                              !newSubcategoryName.trim() ||
-                              !formData.category
-                            }
-                          >
-                            {isSubmittingSubcategory ? (
-                              <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                role="status"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              "Save"
-                            )}
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => {
-                              setIsAddingNewSubcategory(false);
-                              setNewSubcategoryName("");
-                            }}
-                            disabled={isSubmittingSubcategory}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <select
-                            className="form-control"
-                            name="subcategory"
-                            value={formData.subcategory}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                subcategory: e.target.value,
-                              })
-                            }
-                            disabled={
-                              !formData.category || isAddingNewCategory
-                            }
-                          >
-                            <option value="General">General</option>
-                            {formData.category &&
-                              !isAddingNewCategory &&
-                              Array.isArray(categories) &&
-                              categories
-                                .find((c) => c.category === formData.category)
-                                ?.subcategories.map((subcat) => (
-                                  <option key={subcat} value={subcat}>
-                                    {subcat}
-                                  </option>
-                                ))}
-                          </select>
-                          <button
-                            className="btn btn-outline-primary"
-                            type="button"
-                            onClick={() => setIsAddingNewSubcategory(true)}
-                            title="Add new subcategory"
-                            disabled={
-                              !formData.category ||
-                              isAddingNewCategory ||
-                              isAddingNewSubcategory
-                            }
                           >
                             <PlusCircle size={18} />
                           </button>
@@ -1795,7 +1658,6 @@ export default function Items() {
             onHide={() => {
               setShowItemHistoryModal(false);
               setEditingItem(null);
-              // Clear individual history states
               setExcelHistoryData([]);
               setPurchaseHistoryData([]);
               setTicketUsageData([]);
@@ -1821,7 +1683,7 @@ export default function Items() {
                 Close
               </button>
             }
-            size="xl" // Make modal larger for multiple tables
+            size="xl" 
           >
             <>
               {itemHistoryLoading ? (
@@ -1834,7 +1696,6 @@ export default function Items() {
                 <div className="alert alert-danger">{error}</div>
               ) : (
                 <>
-                  {/* Inventory Adjustments & Ticket Interactions Table */}
                   {inventoryAdjustmentsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Inventory Adjustments & Ticket Interactions</h5>
@@ -1867,7 +1728,6 @@ export default function Items() {
                     </div>
                   )}
 
-                  {/* Item Detail Edits Table */}
                   {itemEditsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Item Detail Edits </h5>
@@ -1876,7 +1736,6 @@ export default function Items() {
                           <thead className="table-light sticky-top">
                             <tr>
                               <th>Date</th>
-                              {/* <th>Type</th> */}
                               <th>User/Source</th>
                               <th>Details of Changes</th>
                             </tr>
@@ -1885,7 +1744,6 @@ export default function Items() {
                             {itemEditsLogData.map((entry, index) => (
                               <tr key={`edit-${index}`}>
                                 <td>{new Date(entry.date).toLocaleString()}</td>
-                                {/* <td>{entry.type}</td> */}
                                 <td>{entry.user}</td>
                                 <td style={{whiteSpace: 'pre-wrap'}}>{entry.details}</td>
                               </tr>
@@ -1896,7 +1754,6 @@ export default function Items() {
                     </div>
                   )}
 
-                  {/* Purchase History Table */}
                   {purchaseHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Purchase History</h5>
@@ -1933,38 +1790,6 @@ export default function Items() {
                     </div>
                   )}
 
-                  {/* Ticket Usage History Table (from dedicated endpoint) */}
-                  {/* {ticketUsageData.length > 0 && (
-                    <div className="mb-4">
-                      <h5>Ticket Usage (Initial Deductions)</h5>
-                       <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
-                        <table className="table table-sm table-striped table-bordered">
-                          <thead className="table-light sticky-top">
-                            <tr>
-                              <th>Date</th>
-                              <th>Ticket No.</th>
-                              <th>User</th>
-                              <th>Details</th>
-                              <th>Qty Change</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ticketUsageData.map((entry, index) => (
-                              <tr key={`ticket-${index}`}>
-                                <td>{new Date(entry.date).toLocaleString()}</td>
-                                <td>{entry.ticketNumber}</td>
-                                <td>{entry.user}</td>
-                                <td>{entry.details}</td>
-                                <td className="text-danger fw-bold">{entry.quantityChange}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )} */}
-
-                  {/* Excel Import History Table */}
                   {excelHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Excel Import History</h5>
@@ -1995,7 +1820,6 @@ export default function Items() {
                     </div>
                   )}
 
-                  {/* No History Found Message */}
                   {inventoryAdjustmentsLogData.length === 0 &&
                    itemEditsLogData.length === 0 &&
                    purchaseHistoryData.length === 0 &&
@@ -2040,6 +1864,12 @@ export default function Items() {
                     isSubmitting
                   }
                 >
+                  {parseFloat(formData.buyingPrice) > parseFloat(formData.sellingPrice) && (
+                     <Alert variant="warning" className="p-2 small mb-0 me-2">
+                       Buying price cannot be greater than Selling price!
+                     </Alert>
+                  )}
+
                   {isSubmitting ? (
                     <>
                       <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Updating...
@@ -2073,8 +1903,14 @@ export default function Items() {
                       className="form-control mb-2"
                       name="quantity"
                       value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || parseInt(val, 10) >= 0) {
+                          setFormData({ ...formData, quantity: val });
+                        } else if (parseInt(val, 10) < 0) {
+                          setFormData({ ...formData, quantity: "0"});
+                        }
+                      }
                       }
                     />
                   </div>
@@ -2163,7 +1999,7 @@ export default function Items() {
                       name="category"
                       value={formData.category}
                       onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value, subcategory: "General" }) // Reset subcategory
+                        setFormData({ ...formData, category: e.target.value }) 
                       }
                     >
                       <option value="">Select Category</option>
@@ -2173,32 +2009,6 @@ export default function Items() {
                             {cat.category}
                           </option>
                         ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <select
-                      className="form-control mb-2"
-                      name="subcategory"
-                      value={formData.subcategory}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          subcategory: e.target.value,
-                        })
-                      }
-                      disabled={!formData.category}
-                    >
-                      <option value="General">General</option>
-                      {formData.category &&
-                        Array.isArray(categories) &&
-                        categories
-                          .find((c) => c.category === formData.category)
-                          ?.subcategories.map((subcat) => (
-                            <option key={subcat} value={subcat}>
-                              {subcat}
-                            </option>
-                          ))}
                     </select>
                   </div>
                   <div className="form-group">
@@ -2372,18 +2182,17 @@ export default function Items() {
                     <input
                       className="form-control mb-2"
                       placeholder="Search item by name or HSN..."
-                      value={idx === currentItemIndex ? itemSearchTerm : ""}
-                      onChange={(e) => {
+                      value={itemSearchTerm} // Use a single itemSearchTerm for the active input
+                      onChange={(e) => { 
                         setItemSearchTerm(e.target.value);
-                        setCurrentItemIndex(idx);
+                        // setCurrentItemIndex(idx); // This state seems unused, removing direct use
                         setShowItemSearch(true);
                       }}
-                      onFocus={() => setCurrentItemIndex(idx)}
+                      onFocus={() => { /* setCurrentItemIndex(idx); */ setShowItemSearch(true); }} 
                       disabled={isSubmitting}
                     />
                     {filteredItemsList.length > 0 &&
-                      currentItemIndex === idx &&
-                      showItemSearch && (
+                      showItemSearch && ( // Simpler condition for showing dropdown
                         <div className="suggestions-dropdown">
                           {filteredItemsList.map((suggestion, i) => (
                             <div
@@ -2393,7 +2202,7 @@ export default function Items() {
                                 handleItemChange(idx, "description", suggestion.name);
                                 handleItemChange(idx, "price", suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0"));
                                 handleItemChange(idx, "gstRate", suggestion.gstRate.toString());
-                                setItemSearchTerm("");
+                                setItemSearchTerm(""); // Clear search term after selection
                                 setShowItemSearch(false);
                               }}
                             >

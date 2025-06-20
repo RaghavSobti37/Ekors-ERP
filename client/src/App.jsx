@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+window.Buffer = Buffer;
+
 import "bootstrap/dist/css/bootstrap.min.css";
 import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
@@ -17,7 +20,7 @@ import "react-toastify/dist/ReactToastify.css"; // Import CSS for react-toastify
 // Import new page components
 import QuotationFormPage from "./minipages/quotations/QuotationFormPage.jsx";
 import QuotationPreviewPage from "./minipages/quotations/QuotationPreviewPage.jsx";
-import QuotationReportPage from "./minipages/quotations/QuotationReportPage.jsx"; // Assuming QuotationReportModal.jsx was refactored to QuotationReportPage
+import QuotationReportPage from "./minipages/quotations/QuotationReportPage.jsx";
 import CreateTicketPage from "./components/CreateTicketModal.jsx"; // Assuming CreateTicketModal.jsx was refactored to CreateTicketPage
 import PIPreviewPage from "./minipages/quotations/PIPreviewPage.jsx"; // Assuming you create this for PI Previews
 import EditProfilePage from "./minipages/quotations/EditProfilePage.jsx"; // Import the new EditProfilePage
@@ -29,6 +32,10 @@ import CreateChallanPage from "./minipages/challans/CreateChallanPage";
 import EditChallanPage from "./minipages/challans/EditChallanPage";
 import ViewChallanPage from "./minipages/challans/ViewChallanPage";
 import LogTimePage from "./pages/LogTimePage";
+import ViewClientPage from "./minipages/clients/ViewClientPage";
+import EditClientPage from "./minipages/clients/EditClientPage";
+import ClientsPage from "./pages/ClientsPage.jsx"; // ClientsPage is now used for the /clients route
+import BackupsPage from "./pages/BackupsPage.jsx"; // Import the new BackupsPage
 
 function App() {
   return (
@@ -54,7 +61,38 @@ function App() {
           <Route path="/login" element={<Login />} />
           {/* Removed direct routes to PDF components or generic components like Footer/Pagination */}
           <Route path="/users" element={<Users />} />
+
+          {/* Route for Clients Page */}
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
+                <ClientsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/backups"
+            element={
+              <ProtectedRoute allowedRoles={["super-admin"]}> {/* Strictly super-admin */}
+                <BackupsPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Protected Routes */}
+          <Route
+            path="/clients/view/:id"
+            element={<ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}><ViewClientPage /></ProtectedRoute>} // Allow user/admin to view their own
+          />
+          <Route
+            path="/clients/edit/:id"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}> {/* Allow user/admin owners to edit */}
+                <EditClientPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/tickets"
             element={

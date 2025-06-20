@@ -20,7 +20,7 @@ const clientRoutes = require('./routes/clients');
 const ticketsRouter = require('./routes/tickets'); 
 const reportRoutes = require("./routes/reportRoutes");
 const auditLogRoutes = require('./routes/auditLogRoutes');
-const frontendLogRoute = require('./routes/frontendLogRoute.js');
+const frontendLogRoute = require('./routes/frontendLogRoute.js');const backupRoutes = require('./routes/backupRoutes'); 
 
 const app = express();
 connectDB();
@@ -87,6 +87,7 @@ mountRoute('/api/reports', reportRoutes);
 mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
+app.use('/api/backups', backupRoutes);
 app.use('/api/uploads', express.static(serverUploadsPath));
 
 // ---------------------------

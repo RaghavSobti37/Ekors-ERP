@@ -136,11 +136,11 @@ const itemSchema = new mongoose.Schema(
       default: "Other",
       index: true,
     },
-    subcategory: {
-      type: String,
-      default: "General",
-      index: true,
-    },
+    // subcategory: {
+    //   type: String,
+    //   default: "General",
+    //   index: true,
+    // },
     gstRate: {
       type: Number,
       default: 0,
@@ -247,7 +247,8 @@ purchaseSchema.pre("save", function (next) {
 });
 
 // Create a compound index for better performance on common queries
-itemSchema.index({ category: 1, subcategory: 1 });
+// itemSchema.index({ category: 1, subcategory: 1 });
+itemSchema.index({ category: 1 });
 purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ companyName: 1 });
 purchaseSchema.index({ "items.itemId": 1 });

@@ -1,4 +1,4 @@
-// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/TicketDetailsPage.jsx
+// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/tickets/TicketDetailsPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Card, Badge, ButtonGroup } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -131,24 +131,30 @@ const TicketDetailsPage = () => {
   const renderPdfPreviewModal = () => (
     <ReusablePageStructure
         showBackButton={true} // This modal is now a page, so back button is good
-        title={`${pdfPreviewConfig.type?.toUpperCase()} Preview - ${ticket?.ticketNumber}`}
+        title={`${pdfPreviewConfig.type?.toUpperCase()} Preview - ${ticket?.ticketNumber || ticket?.quotationNumber}`}
         footerContent={
             <> {/* PIActions might need to be adapted if it's for a modal context */}
-                {pdfPreviewConfig.type === "PI" && ticket && <PIActions ticket={ticket} />}
+                {/* Pass the ticket data from the preview config to PIActions */}
+                {pdfPreviewConfig.type === "pi" && pdfPreviewConfig.data && <PIActions ticket={pdfPreviewConfig.data} />}
                 <BsButton variant="secondary" onClick={() => setShowPdfPreviewModal(false)}>Close Preview</BsButton>
             </>
         }
     >
-        {pdfPreviewConfig.type && ticket && (
+        {/* Ensure pdfPreviewConfig.data is available before rendering PDFViewer */}
+        {pdfPreviewConfig.type && pdfPreviewConfig.data ? (
             <div style={{ height: 'calc(100vh - 220px)', overflowY: 'auto' }}> {/* Adjust height */}
                 <PDFViewer width="100%" height="99%">
                     {pdfPreviewConfig.type === "quotation" ? (
-                        <QuotationPDF quotation={{ ...ticket, client: ticket.client || { companyName: ticket.companyName }, referenceNumber: ticket.quotationNumber }} />
+                        // Pass the fetched quotation data directly
+                        <QuotationPDF quotation={pdfPreviewConfig.data} />
                     ) : (
-                        <PIPDF ticket={ticket} />
+                        // Pass the ticket data as ticketData prop for PIPDF
+                        <PIPDF ticketData={pdfPreviewConfig.data} />
                     )}
                 </PDFViewer>
             </div>
+        ) : (
+             <div style={{textAlign: "center", marginTop: 50}}><p>Preparing PDF data...</p></div>
         )}
     </ReusablePageStructure>
   );
@@ -161,12 +167,11 @@ const TicketDetailsPage = () => {
     return <ReusablePageStructure title="Loading Ticket Details..."><div className="text-center"><Spinner animation="border" /></div></ReusablePageStructure>;
   }
 
-  const documentTypes = [
-    { label: "Quotation", type: "quotation", canGenerate: true, canPreview: true },
+  const documentTypesConfig = [    { label: "Quotation", type: "quotation", canGenerate: true, canPreview: true },
     { label: "Purchase Order (PO)", type: "po" },
     { label: "Performa Invoice (PI)", type: "pi", canGenerate: true, canPreview: true, canDownloadWord: true },
-    { label: "Challan", type: "challan" },
-    { label: "Packing List", type: "packingList" },
+    // { label: "Challan", type: "challan" },
+    // { label: "Packing List", type: "packingList" },
     { label: "Feedback Form", type: "feedback" },
   ];
 
@@ -194,13 +199,39 @@ const TicketDetailsPage = () => {
             ) : (
               <p className="text-muted">Not uploaded</p>
             )}
+             <p className="small text-muted mt-1 mb-0">
+              Accepted: .pdf, .doc(x), .xls(x), .jpg, .png
+            </p>
             <div className="mt-2">
               <input type="file" id={`${docConfig.type}-upload`} style={{ display: 'none' }} onChange={e => handleDocumentUpload(e.target.files[0], docConfig.type)} accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" />
               <BsButton variant="outline-success" size="sm" onClick={() => document.getElementById(`${docConfig.type}-upload`).click()} className="me-2" title="Upload Document">
                 <FaUpload /> Upload
               </BsButton>
               {docConfig.canGenerate && (
-                <BsButton variant="outline-primary" size="sm" onClick={() => { setPdfPreviewConfig({ type: docConfig.type, data: ticket }); setShowPdfPreviewModal(true); }} title={`Generate/Preview ${docConfig.label}`}>
+                <BsButton variant="outline-primary" size="sm" onClick={async () => {
+                  if (docConfig.type === 'quotation') {
+                    if (!ticket.quotationNumber) {
+                        toast.warn("No quotation number linked to this ticket.");
+                        return;
+                    }
+                    try {
+                      setIsLoading(true); // Use main page loading spinner
+                      // Assuming you have a backend endpoint to fetch quotation by ref number
+                      // This endpoint might need to allow access for users who can view the ticket
+                      const fetchedQuotation = await apiClient(`/quotations/ref/${ticket.quotationNumber}`);
+                      setPdfPreviewConfig({ type: docConfig.type, data: fetchedQuotation });
+                      setShowPdfPreviewModal(true);
+                    } catch (e) {
+                      handleApiError(e, 'Failed to load quotation for preview.', authUser, 'ticketDetailsActivity');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  } else { // For PI and other potential generated docs based on ticket data
+                    // For PI, the ticket data itself is sufficient
+                    setPdfPreviewConfig({ type: docConfig.type, data: ticket });
+                    setShowPdfPreviewModal(true);
+                  }
+                }} title={`Generate/Preview ${docConfig.label}`} disabled={isLoading}>
                   <FaFilePdf /> Preview
                 </BsButton>
               )}
@@ -245,7 +276,8 @@ const TicketDetailsPage = () => {
           </Card>
 
           <h5 className="mt-4 mb-3">Primary Documents</h5>
-          <Row>{documentTypes.map(renderDocumentCard)}</Row>
+                 <Row>{documentTypesConfig.map(renderDocumentCard)}</Row>
+
 
           <Card className="mb-3 mt-3">
             <Card.Header as="h6">Other Documents</Card.Header>
@@ -259,6 +291,10 @@ const TicketDetailsPage = () => {
                     <FaUpload /> Upload Other
                   </BsButton>
                 </Col>
+                              </Form.Group>
+              <Form.Group as={Row} className="mb-3">
+                <Col sm={{span: 8, offset: 0}}><p className="small text-muted mt-0 mb-0">Accepted: .pdf, .doc(x), .xls(x), .jpg, .png</p></Col>
+
               </Form.Group>
               {ticket.documents?.other && ticket.documents.other.length > 0 ? (
                 <Table striped bordered hover size="sm">
@@ -295,7 +331,7 @@ const TicketDetailsPage = () => {
           {ticket.statusHistory && ticket.statusHistory.length > 0 && (
             <Card className="mb-3"><Card.Header>Status History</Card.Header><Card.Body>
               <Table striped bordered hover size="sm"><thead><tr><th>Date</th><th>Status</th><th>Comment</th><th>By</th></tr></thead><tbody>
-                {ticket.statusHistory.map(s => (<tr key={s._id}><td>{formatDateTime(s.changedAt)}</td><td><Badge bg={getStatusBadgeColor(s.status)}>{s.status}</Badge></td><td>{s.comment || 'N/A'}</td><td>{s.changedBy?.firstname}</td></tr>))}
+                {ticket.statusHistory.map(s => (<tr key={s._id}><td>{formatDateTime(s.changedAt)}</td><td><Badge bg={getStatusBadgeColor(s.status)}>{s.status}</Badge></td><td>{s.note || '-'}</td><td>{s.changedBy?.firstname || 'N/A'}</td></tr>))}
               </tbody></Table></Card.Body></Card>
           )}
         </Col>

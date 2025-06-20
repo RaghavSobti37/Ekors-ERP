@@ -14,7 +14,7 @@ const PIPreviewPage = () => {
   if (!ticketForPreview) {
     return (
       <ReusablePageStructure showBackButton={true} title="Error">
-        <Alert variant="danger">No Proforma Invoice data available for preview. Please go back and try again.</Alert>
+        <Alert variant="danger">No Performa Invoice data available for preview. Please go back and try again.</Alert>
         <Button variant="primary" onClick={() => navigate(-1)}>Go Back</Button>
       </ReusablePageStructure>
     );
@@ -25,10 +25,15 @@ const PIPreviewPage = () => {
       title={`PI Preview - ${ticketForPreview.ticketNumber || ticketForPreview.quotationNumber}`}
       footerContent={<Button variant="secondary" onClick={() => navigate(-1)}>Close Preview</Button>}
     >
-      <div style={{ height: 'calc(100vh - 200px)', overflowY: 'auto' }}> {/* Adjust height as needed */}
-        <PDFViewer width="100%" height="99%">
-          <PIPDF ticket={ticketForPreview} />
-        </PDFViewer>
+          <div style={{ height: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+            {ticketForPreview ? (
+              <PDFViewer width="100%" height="99%">
+                {/* Pass the full ticket object as ticketData */}
+                <PIPDF ticketData={ticketForPreview} />
+              </PDFViewer>
+            ) : (
+              <div style={{textAlign: "center", marginTop: 50}}><p>Preparing PI data...</p></div> 
+            )}
       </div>
     </ReusablePageStructure>
   );

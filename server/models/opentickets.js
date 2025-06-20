@@ -125,17 +125,6 @@ dispatchDays: { type: String, default: "7-10 working days" } // Add this line
 
 }, { timestamps: true });
 
-// Removed gstAmount as it's superseded by detailed GST fields
-+// Removed arrayLimit function as validation is inline
-
-// Add a pre-save hook to automatically populate the status history
-// Removing this pre-save hook. Status history should be managed explicitly
-// in controller/route handlers where user context (for changedBy) and comments (for note) are available.
-// This prevents incomplete history entries.
-// ticketSchema.pre('save', function(next) {
-  // ... existing pre-save logic if any, but the statusHistory part is removed ...
-//   next();
-// });
 
 // Pre-save hook to set finalRoundedAmount if not explicitly provided by client
 ticketSchema.pre('save', function(next) {
