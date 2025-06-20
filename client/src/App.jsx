@@ -3,6 +3,7 @@ import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
 import History from "./pages/History";
+import {ConfigService} from "./utils/ConfigService.js";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
@@ -54,6 +55,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           {/* Removed direct routes to PDF components or generic components like Footer/Pagination */}
           <Route path="/users" element={<Users />} />
+          <Route path="/configService" element={<configService />} />
           {/* Protected Routes */}
           <Route
             path="/tickets"

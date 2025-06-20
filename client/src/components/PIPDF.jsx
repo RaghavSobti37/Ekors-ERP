@@ -8,7 +8,8 @@ import {
   StyleSheet,
   Image,
 } from "@react-pdf/renderer";
-
+import { getCompanyInfo } from "../utils/ConfigService";
+import config from "../constants/appconfig.json"
 import apiClient from "../utils/apiClient"; // Assuming apiClient is in utils
 import LoadingSpinner from "./LoadingSpinner"; 
 
@@ -266,6 +267,36 @@ const styles = StyleSheet.create({
   },
 });
 
+const Quotation = ({ quotation }) => {
+  const [config, setConfig] = useState({
+    officeAddress: "",
+    gstin: "",
+    companyName: "",
+    companyAddress: "",
+    contactNumbers: "",
+    email: ""
+  });
+
+  // Load config from public file
+  useEffect(() => {
+    fetch('/appconfig.json')
+      .then(response => response.json())
+      .then(data => setConfig(data))
+      .catch(error => {
+        console.error("Error loading config:", error);
+        // Fallback values if config fails to load
+        setConfig({
+          officeAddress: "A-1, Sector-59, Noida-201301",
+          gstin: "09AAICE2056P1Z5",
+          companyName: "E-KORS PRIVATE LIMITED",
+          companyAddress: "PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307",
+          contactNumbers: "9711725989 / 9897022545",
+          email: "sales@ekors.in"
+        });
+      });
+  }, []);
+};
+
 // Helper function to get parts of an address
 const getAddressPart = (address, part) => {
   if (!address) return "";
@@ -458,18 +489,18 @@ const PIPDF = ({ ticketId }) => {
     ticket.finalRoundedAmount !== undefined
       ? ticket.finalRoundedAmount
       : ticket.grandTotal;
-
+  
+  const company = getCompanyInfo();    
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <Image style={styles.logo} src="/src/assets/logo.png" />
 
         <View style={styles.headerSection}>
-          <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
-          <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+          <Text style={styles.gstinHeader}>GSTIN: {config.company.gstin}</Text>
+          <Text style={styles.companyNameHeader}>{config.company.companyName}</Text>
           <Text style={styles.companyAddressHeader}>
-            PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh,
-            201307
+            {config.company.addresses.companyAddress}
           </Text>
         </View>
 
@@ -845,7 +876,7 @@ const PIPDF = ({ ticketId }) => {
         <View style={styles.footer}>
           {/* <Text>This is a computer-generated Performa Invoice.</Text> */}
           <View style={styles.authSignatory}>
-            <Text>For E-KORS PRIVATE LIMITED</Text>
+            <Text style={styles.companyNameHeader}> For {config.company.companyName}</Text>
             <View style={{ height: 30 }} /> {/* Spacer for signature */}
             <Text>Authorized Signatory</Text>
           </View>

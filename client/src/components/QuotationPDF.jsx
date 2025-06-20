@@ -8,6 +8,8 @@ import {
   Image,
   PDFDownloadLink,
 } from "@react-pdf/renderer";
+import { getCompanyInfo } from "../utils/ConfigService";
+import config from "../constants/appconfig.json"
 import { generateQuotationDocx } from "../utils/generateQuotationDocx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
@@ -146,6 +148,35 @@ const styles = StyleSheet.create({
   },
 });
 
+const Quotation = ({ quotation }) => {
+  const [config, setConfig] = useState({
+    officeAddress: "",
+    gstin: "",
+    companyName: "",
+    companyAddress: "",
+    contactNumbers: "",
+    email: ""
+  });
+
+  // Load config from public file
+  useEffect(() => {
+    fetch('/appconfig.json')
+      .then(response => response.json())
+      .then(data => setConfig(data))
+      .catch(error => {
+        console.error("Error loading config:", error);
+        // Fallback values if config fails to load
+        setConfig({
+          officeAddress: "A-1, Sector-59, Noida-201301",
+          gstin: "09AAICE2056P1Z5",
+          companyName: "E-KORS PRIVATE LIMITED",
+          companyAddress: "PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307",
+          contactNumbers: "9711725989 / 9897022545",
+          email: "sales@ekors.in"
+        });
+      });
+  }, []);
+};
 const QuotationActionsComponent = ({ quotation }) => {
   const handleDownloadWord = useCallback(async () => {
     try {
@@ -178,18 +209,20 @@ const QuotationActionsComponent = ({ quotation }) => {
 };
 
 // Component
-const QuotationPDF = ({ quotation }) => (
+const QuotationPDF = ({ quotation }) => {
+  const company = getCompanyInfo();
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.document}>
         <View style={styles.pageContent}>
           {/* Centered Header with Logo */}
           <View style={styles.headerSection}>
-                  <View style={styles.companyInfoContainer}>
-              <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
-              <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+              <View style={styles.companyInfoContainer}>
+              <Text style={styles.gstinHeader}>GSTIN: {config.company.gstin}</Text>
+              <Text style={styles.companyNameHeader}>{config.company.companyName}</Text>
               <Text style={styles.companyAddressHeader}>
-                PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
+                {config.company.addresses.companyAddress}
               </Text>
             </View>
             <View style={styles.logoContainer}>
@@ -325,15 +358,18 @@ const QuotationPDF = ({ quotation }) => (
           </View>
 
           <View style={styles.footerContact}>
-            <Text>Com Add: Pole No. 02, Sector 115 Noida - 201307</Text>
-            <Text>Ph. No. 9711725989 / 9897022545</Text>
-            <Text>Email: sales@ekors.in</Text>
+            <Text style={styles.companyAddressHeader}>
+              {config.company.addresses.companyAddress}
+            </Text>
+            <Text>Ph. No. {config.company.contacts.contactNumbers.join(' / ')}</Text>
+            <Text>Email: {config.company.contacts.email}</Text>
           </View>
         </View>
       </View>
     </Page>
   </Document>
-);
+  );
+};
 
 export default QuotationPDF;
 
