@@ -507,7 +507,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
               data: backupDocData,
               deletedBy: importUserId,
               deletedAt: new Date(),
-              backupReason: "Deleted during Excel synchronization",
+              // backupReason: "Deleted during Excel synchronization",
               originalCreatedAt: itemToDelete.createdAt,
               originalUpdatedAt: itemToDelete.updatedAt,
             },
@@ -1557,7 +1557,7 @@ exports.deleteItem = async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: itemToBackup.createdAt,
       originalUpdatedAt: itemToBackup.updatedAt,
-      backupReason: "User-initiated deletion via API",
+      // backupReason: "User-initiated deletion via API",
     };
 
     const newBackupEntry = new UniversalBackup(backupData);

@@ -230,7 +230,7 @@ exports.deleteChallan = async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: challanToBackup.createdAt,
       originalUpdatedAt: challanToBackup.updatedAt,
-      backupReason: "User-initiated deletion via API",
+      // backupReason: "User-initiated deletion via API",
     });
 
     logger.debug(

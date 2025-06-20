@@ -305,7 +305,7 @@ exports.deleteClient = async (req, res) => {
             originalModel: 'Client',
             data: client.toObject(), // Store the full client document
             deletedBy: userId,
-            backupReason: `Client deleted by super-admin ${userRole}`, // Or a more specific reason if provided
+            // backupReason: `Client deleted by super-admin ${userRole}`, // Or a more specific reason if provided
             originalCreatedAt: client.createdAt,
             originalUpdatedAt: client.updatedAt,
         });

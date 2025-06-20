@@ -570,7 +570,7 @@ exports.deleteQuotation = async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: quotationToBackup.createdAt,
       originalUpdatedAt: quotationToBackup.updatedAt,
-      backupReason: "Admin-initiated deletion via API",
+      // backupReason: "Admin-initiated deletion via API",
     };
     const newBackupEntry = new UniversalBackup(backupData);
     await newBackupEntry.save({ session });
