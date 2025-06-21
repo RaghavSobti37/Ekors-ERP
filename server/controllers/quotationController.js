@@ -81,17 +81,11 @@ exports.handleQuotationUpsert = async (req, res) => {
 
     let processedClient;
     if (clientInput && clientInput._id) {
-      processedClient = await Client.findOne({
-        _id: clientInput._id,
-        user: user._id,
-      }).session(session);
+      // Fetch client by ID, regardless of who owns it
+      processedClient = await Client.findById(clientInput._id).session(session);
       if (!processedClient) {
         await session.abortTransaction();
-        return res
-          .status(404)
-          .json({
-            message: "Client not found or does not belong to this user.",
-          });
+        return res.status(404).json({ message: "Client not found." });
       }
       // Update existing client if details are different
       const { _id, ...updateData } = clientInput;
@@ -116,7 +110,7 @@ exports.handleQuotationUpsert = async (req, res) => {
 
         processedClient = await Client.findByIdAndUpdate(
           clientInput._id,
-          { ...clientUpdatePayload, user: user._id },
+          clientUpdatePayload, // Pass only the fields to be updated
           { new: true, runValidators: true, session }
         );
       }
@@ -152,12 +146,10 @@ exports.handleQuotationUpsert = async (req, res) => {
         }).session(session);
         if (gstCheck) {
           await session.abortTransaction();
-          return res
-            .status(400)
-            .json({
-              message: "GST Number already exists for another client.",
-              field: "gstNumber",
-            });
+          return res.status(400).json({
+            message: "GST Number already exists for another client.",
+            field: "gstNumber",
+          });
         }
         processedClient = new Client({
           ...clientInput,
@@ -206,10 +198,15 @@ exports.handleQuotationUpsert = async (req, res) => {
     let quotation;
     if (quotationId) {
       // Update
-      const existingQuotation = await Quotation.findOne({
-        _id: quotationId,
-        user: user._id,
-      }).session(session);
+      // For update, find the existing quotation. Super-admins can update any, others only their own.
+      let findExistingQuery = { _id: quotationId };
+      let updateQuery = { _id: quotationId };
+      if (user.role !== "super-admin") {
+        findExistingQuery.user = user._id;
+      }
+      const existingQuotation = await Quotation.findOne(
+        findExistingQuery
+      ).session(session);
       if (!existingQuotation) {
         await session.abortTransaction();
         return res
@@ -223,30 +220,25 @@ exports.handleQuotationUpsert = async (req, res) => {
       ) {
         if (["running", "closed"].includes(existingQuotation.status)) {
           await session.abortTransaction();
-          return res
-            .status(400)
-            .json({
-              message: `Cannot manually change status from '${existingQuotation.status}'.`,
-            });
+          return res.status(400).json({
+            message: `Cannot manually change status from '${existingQuotation.status}'.`,
+          });
         }
         if (!["open", "hold"].includes(quotationPayload.status)) {
           await session.abortTransaction();
-          return res
-            .status(400)
-            .json({
-              message:
-                "Status can only be manually changed to 'open' or 'hold'.",
-            });
+          return res.status(400).json({
+            message: "Status can only be manually changed to 'open' or 'hold'.",
+          });
         }
       } else if (!quotationPayload.hasOwnProperty("status")) {
         data.status = existingQuotation.status;
       }
 
-      quotation = await Quotation.findOneAndUpdate(
-        { _id: quotationId, user: user._id },
-        data,
-        { new: true, runValidators: true, session }
-      );
+      quotation = await Quotation.findOneAndUpdate(updateQuery, data, {
+        new: true,
+        runValidators: true,
+        session,
+      });
     } else {
       // Create
       quotation = new Quotation(data);
@@ -427,13 +419,15 @@ exports.getAllQuotations = async (req, res) => {
       }
       // Add $or for client fields to the clientSearchQuery
       clientSearchQuery.$or = [
-          { companyName: searchRegex },
-          { clientName: searchRegex },
-          { gstNumber: searchRegex },
-          { email: searchRegex },
-        ];
+        { companyName: searchRegex },
+        { clientName: searchRegex },
+        { gstNumber: searchRegex },
+        { email: searchRegex },
+      ];
 
- const matchingClients = await Client.find(clientSearchQuery).select("_id").lean();
+      const matchingClients = await Client.find(clientSearchQuery)
+        .select("_id")
+        .lean();
       const clientIds = matchingClients.map((c) => c._id);
 
       const searchOrConditions = [{ referenceNumber: searchRegex }];
@@ -592,12 +586,10 @@ exports.deleteQuotation = async (req, res) => {
         user,
         logDetails
       );
-      return res
-        .status(500)
-        .json({
-          message:
-            "Failed to delete quotation after backup. Operation rolled back.",
-        });
+      return res.status(500).json({
+        message:
+          "Failed to delete quotation after backup. Operation rolled back.",
+      });
     }
 
     if (quotationToBackup.client) {
@@ -665,14 +657,12 @@ exports.deleteQuotation = async (req, res) => {
       user,
       { ...logDetails, backupId: newBackupEntry._id }
     );
-    res
-      .status(200)
-      .json({
-        message:
-          "Quotation deleted, backed up, and linked entities updated successfully.",
-        originalId: quotationToBackup._id,
-        backupId: newBackupEntry._id,
-      });
+    res.status(200).json({
+      message:
+        "Quotation deleted, backed up, and linked entities updated successfully.",
+      originalId: quotationToBackup._id,
+      backupId: newBackupEntry._id,
+    });
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction();
@@ -684,12 +674,10 @@ exports.deleteQuotation = async (req, res) => {
       user,
       logDetails
     );
-    res
-      .status(500)
-      .json({
-        message:
-          "Server error during the deletion process. Please check server logs.",
-      });
+    res.status(500).json({
+      message:
+        "Server error during the deletion process. Please check server logs.",
+    });
   } finally {
     if (session && session.endSession) {
       session.endSession();
@@ -742,11 +730,14 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
   try {
     const { refNumber } = req.params;
     const user = req.user;
-    // Quotations are user-specific, so include user in the query
-    const quotation = await Quotation.findOne({
-      referenceNumber: refNumber,
-      user: user._id,
-    })
+    let query = { referenceNumber: refNumber };
+    // If user is not admin/super-admin, restrict to their own quotations
+    // For the purpose of ticket details page preview, admins/super-admins should see any linked quotation.
+    if (user.role !== "admin" && user.role !== "super-admin") {
+      query.user = user._id;
+    }
+
+    const quotation = await Quotation.findOne(query)
       .populate("client")
       .populate("user", "firstname lastname email")
       .populate("orderIssuedBy", "firstname lastname");
@@ -755,7 +746,7 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
       logger.warn(
         "quotation",
         `Quotation not found by reference: ${refNumber} for user ${user._id}`,
-        user
+        { userId: user._id, role: user.role, queryUsed: JSON.stringify(query) }
       );
       return res.status(404).json({ message: "Quotation not found." });
     }
@@ -767,12 +758,10 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
       error,
       req.user
     );
-    res
-      .status(500)
-      .json({
-        message: "Failed to fetch quotation details.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to fetch quotation details.",
+      error: error.message,
+    });
   }
 };
 

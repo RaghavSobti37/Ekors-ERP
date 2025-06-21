@@ -18,7 +18,7 @@ exports.getAllItems = async (req, res) => {
     sortDirection = "asc",
     searchTerm,
     category,
-    subcategory,
+    // subcategory, // Removed
     quantityThreshold,
     status, // e.g., 'approved', 'pending_review'
     filter, // Special filter like 'stock_alerts'
@@ -40,8 +40,8 @@ exports.getAllItems = async (req, res) => {
     }
     if (category && category !== "All" && category !== "undefined")
       query.category = category;
-    if (subcategory && subcategory !== "All" && subcategory !== "undefined")
-      query.subcategory = subcategory;
+    // if (subcategory && subcategory !== "All" && subcategory !== "undefined") // Removed
+    //   query.subcategory = subcategory;
 
     if (
       quantityThreshold !== undefined &&
@@ -50,7 +50,10 @@ exports.getAllItems = async (req, res) => {
       quantityThreshold !== "null"
     ) {
       query.quantity = { $lte: parseInt(quantityThreshold, 10) };
+    } else if (quantityThreshold === "0") { // Explicitly handle "0" if sent as string
+      query.quantity = { $lte: 0 };
     }
+
 
     if (status && status !== "undefined") query.status = status;
 
@@ -59,8 +62,14 @@ exports.getAllItems = async (req, res) => {
       lowThreshold !== undefined &&
       lowThreshold !== "undefined"
     ) {
+      const thresholdValue = parseInt(lowThreshold, 10);
       // This overrides other quantity filters if stock_alerts is active
-      query.quantity = { $lt: parseInt(lowThreshold, 10) };
+      if (Number.isFinite(thresholdValue)) {
+        query.quantity = { $lt: thresholdValue };
+      } else {
+        // Potentially log a warning if lowThreshold is not a valid number
+        logger.warn("item", `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`, user);
+      }
     }
 
     const totalItems = await Item.countDocuments(query);
@@ -136,7 +145,7 @@ exports.exportItemsToExcel = async (req, res) => {
       "Buying Price": item.buyingPrice,
       Unit: item.unit,
       Category: item.category,
-      Subcategory: item.subcategory,
+      // Subcategory: item.subcategory, // Removed
       "HSN Code": item.hsnCode,
       "GST Rate": item.gstRate,
       "Max Discount Percentage": item.maxDiscountPercentage,
@@ -346,7 +355,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         buyingPrice: excelItemData.buyingPrice || 0,
         unit: excelItemData.unit || "Nos",
         category: excelItemData.category || "Other",
-        subcategory: excelItemData.subcategory || "General",
+        // subcategory: excelItemData.subcategory || "General", // Removed
         gstRate: excelItemData.gstRate || 0,
         hsnCode: excelItemData.hsnCode || "",
         maxDiscountPercentage: excelItemData.maxDiscountPercentage || 0,
@@ -886,24 +895,24 @@ exports.getCategories = async (req, res) => {
   const user = req.user || null;
   try {
     logger.debug("item", "Attempting to fetch categories", user);
-    // Fetch distinct categories and their subcategories efficiently
+    // Fetch distinct categories efficiently
     const aggregationResult = await Item.aggregate([
       { $match: { status: "approved" } }, // Only consider approved items for category listing
       {
         $group: {
           _id: "$category",
-          subcategories: { $addToSet: "$subcategory" },
+          // subcategories: { $addToSet: "$subcategory" }, // Removed
         },
       },
-      { $project: { category: "$_id", subcategories: 1, _id: 0 } },
+      { $project: { category: "$_id", _id: 0 } }, // subcategories: 1 removed
       { $sort: { category: 1 } },
     ]);
 
     const categories = aggregationResult.map((catGroup) => ({
       category: catGroup.category || "Other",
-      subcategories: (catGroup.subcategories || ["General"])
-        .filter(Boolean)
-        .sort(), // Filter out null/empty and sort
+      // subcategories: (catGroup.subcategories || ["General"]) // Removed
+      //   .filter(Boolean)
+      //   .sort(),
     }));
 
     logger.debug("item", "Categories fetched successfully", user, {
@@ -992,94 +1001,94 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-exports.createSubcategory = async (req, res) => {
-  const user = req.user || null;
-  const { categoryName, subcategoryName } = req.body;
-  const logDetails = { userId: user?._id, categoryName, subcategoryName };
+// exports.createSubcategory = async (req, res) => {
+//   const user = req.user || null;
+//   const { categoryName, subcategoryName } = req.body;
+//   const logDetails = { userId: user?._id, categoryName, subcategoryName };
 
-  if (
-    !categoryName ||
-    typeof categoryName !== "string" ||
-    categoryName.trim() === ""
-  ) {
-    logger.warn(
-      "item",
-      "API: createSubcategory - Invalid or missing categoryName",
-      user,
-      logDetails
-    );
-    return res.status(400).json({ message: "Category name is required." });
-  }
-  if (
-    !subcategoryName ||
-    typeof subcategoryName !== "string" ||
-    subcategoryName.trim() === ""
-  ) {
-    logger.warn(
-      "item",
-      "API: createSubcategory - Invalid or missing subcategoryName",
-      user,
-      logDetails
-    );
-    return res.status(400).json({ message: "Subcategory name is required." });
-  }
+//   if (
+//     !categoryName ||
+//     typeof categoryName !== "string" ||
+//     categoryName.trim() === ""
+//   ) {
+//     logger.warn(
+//       "item",
+//       "API: createSubcategory - Invalid or missing categoryName",
+//       user,
+//       logDetails
+//     );
+//     return res.status(400).json({ message: "Category name is required." });
+//   }
+//   if (
+//     !subcategoryName ||
+//     typeof subcategoryName !== "string" ||
+//     subcategoryName.trim() === ""
+//   ) {
+//     logger.warn(
+//       "item",
+//       "API: createSubcategory - Invalid or missing subcategoryName",
+//       user,
+//       logDetails
+//     );
+//     return res.status(400).json({ message: "Subcategory name is required." });
+//   }
 
-  const trimmedCategoryName = categoryName.trim();
-  const trimmedSubcategoryName = subcategoryName.trim();
+//   const trimmedCategoryName = categoryName.trim();
+//   const trimmedSubcategoryName = subcategoryName.trim();
 
-  try {
-    logger.info(
-      "item",
-      `API: createSubcategory - Attempting to add subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`,
-      user,
-      logDetails
-    );
+//   try {
+//     logger.info(
+//       "item",
+//       `API: createSubcategory - Attempting to add subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`,
+//       user,
+//       logDetails
+//     );
 
-    const existingSubcategory = await Item.findOne({
-      category: trimmedCategoryName,
-      subcategory: trimmedSubcategoryName,
-    });
-    if (existingSubcategory) {
-      logger.info(
-        "item",
-        `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}"`,
-        user,
-        logDetails
-      );
-      return res
-        .status(409)
-        .json({
-          message: `Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}".`,
-        });
-    }
+//     const existingSubcategory = await Item.findOne({
+//       category: trimmedCategoryName,
+//       // subcategory: trimmedSubcategoryName, // Subcategory removed
+//     });
+//     if (existingSubcategory) {
+//       logger.info(
+//         "item",
+//         `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}"`,
+//         user,
+//         logDetails
+//       );
+//       return res
+//         .status(409)
+//         .json({
+//           message: `Subcategory "${trimmedSubcategoryName}" already exists under category "${trimmedCategoryName}".`,
+//         });
+//     }
 
-    logger.info(
-      "item",
-      `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" under category "${trimmedCategoryName}" is available for use.`,
-      user,
-      logDetails
-    );
-    res
-      .status(201)
-      .json({
-        message: `Subcategory "${trimmedSubcategoryName}" is available for category "${trimmedCategoryName}". It will be formally created when an item is saved with it.`,
-        category: trimmedCategoryName,
-        subcategory: trimmedSubcategoryName,
-      });
-  } catch (error) {
-    logger.error(
-      "item",
-      `API: createSubcategory - Error adding subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`,
-      error,
-      user,
-      logDetails
-    );
-    res.status(500).json({
-      message: "Server error while adding subcategory",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-};
+//     logger.info(
+//       "item",
+//       `API: createSubcategory - Subcategory "${trimmedSubcategoryName}" under category "${trimmedCategoryName}" is available for use.`,
+//       user,
+//       logDetails
+//     );
+//     res
+//       .status(201)
+//       .json({
+//         message: `Subcategory "${trimmedSubcategoryName}" is available for category "${trimmedCategoryName}". It will be formally created when an item is saved with it.`,
+//         category: trimmedCategoryName,
+//         // subcategory: trimmedSubcategoryName, // Subcategory removed
+//       });
+//   } catch (error) {
+//     logger.error(
+//       "item",
+//       `API: createSubcategory - Error adding subcategory "${trimmedSubcategoryName}" to category "${trimmedCategoryName}"`,
+//       error,
+//       user,
+//       logDetails
+//     );
+//     res.status(500).json({
+//       message: "Server error while adding subcategory",
+//       error: process.env.NODE_ENV === "development" ? error.message : undefined,
+//     });
+//   }
+// };
 
 exports.getItemById = async (req, res) => {
   const { id } = req.params;
@@ -1144,17 +1153,26 @@ exports.createItem = async (req, res) => {
     const lowStockThreshold = req.body.lowStockThreshold
       ? parseInt(req.body.lowStockThreshold, 10)
       : 5;
+    const sellingPrice = parseFloat(req.body.sellingPrice) || 0;
+    const buyingPrice = parseFloat(req.body.buyingPrice) || 0;
+
+    if (buyingPrice > sellingPrice) {
+      logger.warn("item", "Create item attempt with buying price > selling price.", user, req.body);
+      return res.status(400).json({
+        message: "Buying price cannot be greater than selling price.",
+      });
+    }
 
     const newItemData = {
       name: req.body.name,
       quantity: quantity,
-      sellingPrice: parseFloat(req.body.sellingPrice) || 0,
-      buyingPrice: parseFloat(req.body.buyingPrice) || 0,
+      sellingPrice: sellingPrice,
+      buyingPrice: buyingPrice,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       unit: req.body.unit || "Nos",
       category: req.body.category || "Other",
-      subcategory: req.body.subcategory || "General",
+      // subcategory: req.body.subcategory || "General", // Removed
       maxDiscountPercentage: req.body.maxDiscountPercentage
         ? parseFloat(req.body.maxDiscountPercentage)
         : 0,
@@ -1221,8 +1239,6 @@ exports.updateItem = async (req, res) => {
     }
 
     const itemId = req.params.id;
-    // Fetch the item as it exists before any updates
-    // Use .lean() if you only need to read, but for comparison and then saving inventoryLog, a Mongoose doc is fine.
     const existingItem = await Item.findById(itemId);
     if (!existingItem) {
       logger.warn("item", `Item not found for update: ${itemId}`, user, {
@@ -1232,29 +1248,52 @@ exports.updateItem = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const quantity =
-      req.body.quantity !== undefined
-        ? parseFloat(req.body.quantity) || 0
-        : existingItem.quantity;
+    const quantity = req.body.quantity !== undefined
+      ? parseFloat(req.body.quantity) || 0
+      : existingItem.quantity;
+
+    // Robust handling for lowStockThreshold
+    let resolvedLowStockThreshold;
+    if (req.body.lowStockThreshold === undefined || req.body.lowStockThreshold === null || String(req.body.lowStockThreshold).trim() === '') {
+        resolvedLowStockThreshold = existingItem.lowStockThreshold !== undefined ? existingItem.lowStockThreshold : 5;
+    } else {
+        const parsed = parseInt(String(req.body.lowStockThreshold), 10); // Ensure it's a string before parseInt
+        if (Number.isFinite(parsed) && parsed >= 0) {
+            resolvedLowStockThreshold = parsed;
+        } else {
+            logger.warn(`item`, `Invalid lowStockThreshold value "${req.body.lowStockThreshold}" for item ${itemId}. Using existing or default.`, user);
+            resolvedLowStockThreshold = existingItem.lowStockThreshold !== undefined ? existingItem.lowStockThreshold : 5;
+        }
+    }
     const lowStockThreshold = req.body.lowStockThreshold
       ? parseInt(req.body.lowStockThreshold, 10)
       : existingItem.lowStockThreshold || 5;
+    
+    const sellingPrice = req.body.sellingPrice !== undefined ? parseFloat(req.body.sellingPrice) : existingItem.sellingPrice;
+    const buyingPrice = req.body.buyingPrice !== undefined ? parseFloat(req.body.buyingPrice) : existingItem.buyingPrice;
+
+    if (buyingPrice > sellingPrice) {
+      logger.warn("item", `Update item attempt for ${itemId} with buying price > selling price.`, user, req.body);
+      return res.status(400).json({
+        message: "Buying price cannot be greater than selling price.",
+      });
+    }
 
     const updatePayload = {
       name: req.body.name,
       quantity: quantity,
-      sellingPrice: req.body.sellingPrice || 0,
-      buyingPrice: req.body.buyingPrice || 0,
+      sellingPrice: sellingPrice,
+      buyingPrice: buyingPrice,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       unit: req.body.unit || "Nos",
       category: req.body.category || "Other",
-      subcategory: req.body.subcategory || "General",
+      // subcategory: req.body.subcategory || "General", // Removed
       maxDiscountPercentage: req.body.maxDiscountPercentage
         ? parseFloat(req.body.maxDiscountPercentage)
         : 0,
-      lowStockThreshold: lowStockThreshold,
-      needsRestock: quantity < lowStockThreshold,
+     lowStockThreshold: resolvedLowStockThreshold, // Use the resolved value
+      needsRestock: quantity < resolvedLowStockThreshold,
     };
 
     // Handle status update logic
@@ -1322,11 +1361,9 @@ exports.updateItem = async (req, res) => {
       )
         continue; // Skip quantity as it's handled, and internal/status fields
 
-      // Ensure proper comparison, especially for numbers vs strings from req.body
       let existingValue = existingItem[key];
       let newValue = updatePayload[key];
 
-      // Normalize for comparison if necessary (e.g. numbers)
       if (
         typeof existingValue === "number" ||
         !isNaN(parseFloat(existingValue))
@@ -1348,7 +1385,7 @@ exports.updateItem = async (req, res) => {
       inventoryLogEntries.push({
         type: "Item Details Updated",
         date: new Date(),
-        quantityChange: 0, // No direct quantity change from these field updates
+        quantityChange: 0, 
         details: `${changedFieldsDetails.join(", ")}.`,
         userReference: user._id,
       });
@@ -1358,7 +1395,7 @@ exports.updateItem = async (req, res) => {
       itemId,
       {
         $set: updatePayload,
-        $push: { inventoryLog: { $each: inventoryLogEntries } }, // Add new log entries
+        $push: { inventoryLog: { $each: inventoryLogEntries } }, 
       },
       { new: true, runValidators: true }
     );
@@ -1390,7 +1427,6 @@ exports.updateItem = async (req, res) => {
       { requestBody: req.body, userId: req.user?._id }
     );
     if (error.code === 11000) {
-      // Duplicate key error for name
       return res
         .status(400)
         .json({
@@ -1439,7 +1475,7 @@ exports.approveItem = async (req, res) => {
         user,
         { itemId }
       );
-      return res.status(200).json(itemToApprove); // Return the already approved item
+      return res.status(200).json(itemToApprove); 
     }
 
     itemToApprove.status = "approved";
@@ -1469,7 +1505,7 @@ exports.approveItem = async (req, res) => {
 exports.deleteItem = async (req, res) => {
   const itemId = req.params.id;
   const userId = req.user ? req.user._id : null;
-  const user = req.user || null; // For logging context
+  const user = req.user || null; 
   const session = await mongoose.startSession();
   const logDetails = {
     userId,
@@ -1516,7 +1552,7 @@ exports.deleteItem = async (req, res) => {
     const backupData = {
       originalId: itemToBackup._id,
       originalModel: "Item",
-      data: itemToBackup.toObject(), // Store the full item data
+      data: itemToBackup.toObject(), 
       deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: itemToBackup.createdAt,
@@ -1553,7 +1589,6 @@ exports.deleteItem = async (req, res) => {
     );
     const deleteResult = await Item.findByIdAndDelete(itemId, { session });
     if (!deleteResult) {
-      // This case should ideally not be hit if findById found it, but as a safeguard:
       await session.abortTransaction();
       logger.error(
         "delete",
@@ -1713,24 +1748,21 @@ exports.getItemPurchaseHistory = async (req, res) => {
 
 exports.getRestockSummary = async (req, res) => {
   const user = req.user || null;
-  const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3;
+  // const lowGlobalThreshold = parseInt(req.query.lowGlobalThreshold, 10) || 3; // This param is not used per new logic
 
   try {
-    logger.debug("item", "Fetching restock summary", user, {
-      lowGlobalThreshold,
-    });
+    logger.debug("item", "Fetching restock summary", user);
 
-    // Count items where quantity is less than their specific lowStockThreshold
+    // Restock: quantity <= 0
     const restockNeededCount = await Item.countDocuments({
-      $expr: { $lt: ["$quantity", "$lowStockThreshold"] }, // quantity < lowStockThreshold
+      quantity: { $lte: 0 },
       status: "approved",
     });
 
-    // For low stock warning, we can use a global threshold if needed, or stick to item-specific
-    // The query param lowGlobalThreshold seems to imply a global view for "warnings"
-    // If you want warnings based on item's own threshold, it's similar to restockNeededCount
+    // Low stock: quantity > 0 AND quantity <= item.lowStockThreshold
     const lowStockWarningCount = await Item.countDocuments({
-      quantity: { $gte: 0, $lt: lowGlobalThreshold }, // Using global threshold for this count
+      quantity: { $gt: 0 }, // quantity must be greater than 0
+      $expr: { $lte: ["$quantity", "$lowStockThreshold"] }, // and quantity <= item's own lowStockThreshold
       status: "approved",
     });
 
@@ -1740,7 +1772,7 @@ exports.getRestockSummary = async (req, res) => {
     });
   } catch (error) {
     logger.error("item", "Error fetching restock summary", error, user, {
-      lowGlobalThreshold,
+      // lowGlobalThreshold, // Removed as it's not used
       errorMessage: error.message,
       stack: error.stack,
     });
@@ -1778,15 +1810,15 @@ exports.getItemTicketUsageHistory = async (req, res) => {
 
     const queryConditions = {
       "goods.description": item.name,
-      ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }), // Match HSN if available
+      ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }), 
     };
 
     const ticketsContainingItem = await Ticket.find(queryConditions)
       .populate("createdBy", "firstname lastname")
-      .populate("currentAssignee", "firstname lastname email") // Populate currentAssignee
+      .populate("currentAssignee", "firstname lastname email") 
       .select(
         "ticketNumber goods createdAt createdBy currentAssignee statusHistory"
-      ) // Include statusHistory
+      ) 
       .sort({ createdAt: -1 })
       .lean();
 
@@ -1800,9 +1832,8 @@ exports.getItemTicketUsageHistory = async (req, res) => {
       );
 
       if (relevantGood && relevantGood.quantity > 0) {
-        // Initial deduction when ticket was likely created or items added
         ticketUsageHistory.push({
-          date: ticket.createdAt, // Use ticket creation as a baseline
+          date: ticket.createdAt, 
           type: "Ticket Deduction (Initial)",
           user: ticket.createdBy
             ? `${ticket.createdBy.firstname || ""} ${

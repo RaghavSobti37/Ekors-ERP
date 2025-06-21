@@ -11,7 +11,7 @@ router.get('/purchases/all', auth, purchaseController.getAllPurchases); // Get a
 router.post('/purchase', auth, purchaseController.addBulkPurchase);     // Add bulk purchase
 router.get('/categories', itemController.getCategories);          // GET categories
 router.post('/categories', auth, itemController.createCategory); // POST new category (Protected)
-router.post('/categories/subcategory', auth, itemController.createSubcategory); // POST new subcategory (Protected)
+// router.post('/categories/subcategory', auth, itemController.createSubcategory); // POST new subcategory (Protected)
 router.get('/export-excel', auth, itemController.exportItemsToExcel); // New route for export
 router.post('/import-uploaded-excel', auth, itemController.uploadMiddleware, itemController.importItemsFromUploadedExcel); // New route for uploaded excel import
 router.get('/restock-summary', auth, itemController.getRestockSummary); // Added route for restock summary

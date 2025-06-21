@@ -502,9 +502,15 @@ export default function Dashboard() {
             <Modal.Title>PI Preview - {ticketForPIPreview.ticketNumber || ticketForPIPreview.quotationNumber}</Modal.Title>
           </Modal.Header>
           <Modal.Body style={{ height: '80vh', overflowY: 'auto' }}>
-            <PDFViewer width="100%" height="99%">
-              <PIPDF ticketId={ticketForPIPreview?._id} />
-            </PDFViewer>
+            {/* Ensure ticketForPIPreview is available before rendering PDFViewer */}
+            {ticketForPIPreview ? (
+              <PDFViewer width="100%" height="99%">
+                {/* Pass the full ticket object as ticketData */}
+                <PIPDF ticketData={ticketForPIPreview} />
+              </PDFViewer>
+            ) : (
+              <div style={{textAlign: "center", marginTop: 50}}><p>Preparing PI data...</p></div> 
+            )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowPIPreviewModal(false)}>

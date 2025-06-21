@@ -629,7 +629,7 @@ exports.getUserTickets = async (req, res) => {
 };
 
 // Get single ticket (only if created by the user or assigned, or if super-admin)
-exports.getTicket = async (req, res) => {
+exports.getTicketById = async (req, res) => { 
   try {
     const user = req.user || null;
     let query = { _id: req.params.id };
@@ -1722,10 +1722,91 @@ exports.createTicket_IndexLogic = async (req, res) => {
   }
 };
 
-exports.uploadDocument_IndexLogic = async (req, res) => {
-  const user = req.user || null;
+
+exports.getQuotationByReference = asyncHandler(async (req, res) =>{
+  const user = req.user;
+  const { quotationNumber } = req.params;
+
+  if (!user || !user.id) {
+    logger.error(
+      "quotation-fetch-by-ref",
+      "Authentication error: User or User ID not found in request.",
+      null,
+      { quotationNumber }
+    );
+    return res
+      .status(401)
+      .json({ message: "Authentication required or user session invalid." });
+  }
+
+  const logContext = {
+    initiatorId: user.id,
+    initiatorEmail: user.email,
+    quotationNumber,
+    action: "FETCH_QUOTATION_BY_REF",
+  };
+
   try {
+    // Find the quotation by reference number
+    const quotation = await Quotation.findOne({ referenceNumber: quotationNumber })
+      .populate("user", "firstname lastname email") // Populate the user who created the quotation
+      .populate("client", "companyName phone gstNumber") // Populate client details
+      .lean(); // Use lean() for faster reads if you don't need Mongoose document methods
+
+    if (!quotation) {
+      logger.warn(
+        "quotation-fetch-by-ref",
+        `Quotation not found for reference number: ${quotationNumber}.`,
+        user,
+        logContext
+      );
+      return res.status(404).json({ message: "Quotation not found." });
+    }
+
+    // Optional Authorization Check:
+    // You might want to add a check here to ensure the requesting user is authorized
+    // to view this specific quotation. For example, check if they are the creator,
+    // an admin, or perhaps linked to a ticket created from this quotation.
+    // For simplicity, this example assumes any authenticated user can fetch a quotation by ref,
+    // but you should implement stricter checks based on your application's logic.
+    // Example check:
+    // if (user.role !== 'super-admin' &amp;&amp; user.role !== 'admin' &amp;&amp; quotation.user.toString() !== user.id.toString()) {
+    //     logger.warn("quotation-fetch-by-ref", `Unauthorized access attempt for quotation ${quotationNumber}.`, user, logContext);
+    //     return res.status(403).json({ message: "Forbidden: You do not have permission to view this quotation." });
+    // }
+
+    logger.info(
+      "quotation-fetch-by-ref",
+      `Successfully fetched quotation ${quotationNumber}.`,
+      user,
+      logContext
+    );
+    res.status(200).json(quotation);
+  } catch (error) {
+    logger.error(
+      "quotation-fetch-by-ref",
+      `Failed to fetch quotation by reference number: ${quotationNumber}.`,
+      error,
+      user,
+      { ...logContext, errorMessage: error.message, stack: error.stack }
+    );
+    res.status(500).json({
+      message: "Failed to load quotation.",
+      details: error.message,
+    });
+  }
+});
+// --- End New Controller Function ---
+
+exports.uploadTicketDocument = async (req, res) => {
+  const user = req.user || null;
+    const ticketId = req.params.id; // Assuming ticketId is in params
+  const session = await mongoose.startSession();
+  try {
+        session.startTransaction();
     const { documentType } = req.body;
+    const isOther = req.body.isOther === 'true' || req.body.isOther === true;
+
     if (!req.file) {
       logger.warn(
         "ticket-controller",
@@ -1735,27 +1816,40 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
       );
       return res.status(400).json({ error: "No file uploaded" });
     }
-    const filePath = req.file.filename;
-    const update = {};
-    update[`documents.${documentType}`] = {
-      path: filePath,
-      originalName: req.file.originalname,
-      uploadedAt: new Date(),
-    };
-    const updatedTicket = await OpenticketModel.findByIdAndUpdate(
-      req.params.id,
-      { $set: update },
-      { new: true }
-    );
-    if (!updatedTicket) {
+const ticketId = req.params.id;
+    const ticket = await OpenticketModel.findById(ticketId);
+
+    if (!ticket) {
+      // It's good practice to remove the uploaded file if the parent record doesn't exist
+      if (req.file && req.file.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (unlinkErr) {
+          logger.error("document-upload-cleanup", `Failed to delete orphaned file: ${req.file.path} for non-existent ticket ${ticketId}`, unlinkErr);
+        }
+      }
       logger.warn(
         "ticket-controller",
         "Ticket not found for document upload (index.js logic)",
         user,
-        { ticketId: req.params.id }
+        { ticketId: ticketId }
       );
       return res.status(404).json({ error: "Ticket not found" });
     }
+
+    const newDocumentData = {
+      path: req.file.filename, // filename as saved by multer
+      originalName: req.file.originalname,
+      uploadedAt: new Date(),
+       uploadedBy: user._id,
+    };
+      if (documentType === 'other') {
+      ticket.documents.other.push(newDocumentData);
+    } else {
+      ticket.documents[documentType] = newDocumentData;
+    }
+    const updatedTicket = await ticket.save();
+
     logger.info(
       "ticket-controller",
       `Document uploaded (index.js logic)`,
@@ -1774,6 +1868,94 @@ exports.uploadDocument_IndexLogic = async (req, res) => {
     res.status(500).json({ error: "Error uploading document" });
   }
 };
+
+exports.deleteTicketDocument = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { ticketId } = req.params; // Assuming ticketId is in URL params for DELETE
+    const { documentType, documentId, isOther } = req.body; // Get these from request body
+    const user = req.user;
+
+    if (!documentType) {
+      await session.abortTransaction();
+      return res.status(400).json({ message: 'Document type is required.' });
+    }
+
+    const ticket = await Ticket.findById(ticketId).session(session);
+    if (!ticket) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'Ticket not found.' });
+    }
+
+    // Authorization: Ensure user can modify this ticket (e.g., creator, assignee, admin)
+    const canModify = user.role === 'super-admin' ||
+                      user.role === 'admin' ||
+                      (ticket.createdBy && ticket.createdBy.toString() === user._id.toString()) ||
+                      (ticket.currentAssignee && ticket.currentAssignee.toString() === user._id.toString());
+
+    if (!canModify) {
+      await session.abortTransaction();
+      return res.status(403).json({ message: 'You are not authorized to delete documents for this ticket.' });
+    }
+
+    let filePathToDelete;
+    let documentDeleted = false;
+
+    if (isOther === true || isOther === 'true') {
+      if (ticket.documents && ticket.documents.other && documentId) {
+        const docIndex = ticket.documents.other.findIndex(doc => doc._id && doc._id.toString() === documentId);
+        if (docIndex > -1) {
+          filePathToDelete = ticket.documents.other[docIndex].path;
+          ticket.documents.other.splice(docIndex, 1);
+          documentDeleted = true;
+        }
+      }
+    } else {
+      if (ticket.documents && ticket.documents[documentType] && ticket.documents[documentType].path) {
+        filePathToDelete = ticket.documents[documentType].path;
+        ticket.documents[documentType] = null; // Or an empty object if schema requires
+        documentDeleted = true;
+      }
+    }
+
+    if (!documentDeleted) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'Document not found on the ticket.' });
+    }
+
+    await ticket.save({ session });
+
+    // Delete the physical file
+    if (filePathToDelete) {
+      const fullPath = path.join(process.cwd(), 'uploads', ticket._id.toString(), filePathToDelete);
+      try {
+        if (await fs.pathExists(fullPath)) {
+          await fs.unlink(fullPath);
+          logger.info('document-delete', `Successfully deleted physical file: ${fullPath}`, user, { ticketId });
+        } else {
+          logger.warn('document-delete', `Physical file not found for deletion: ${fullPath}`, user, { ticketId });
+        }
+      } catch (fileError) {
+        logger.error('document-delete', `Error deleting physical file ${fullPath}:`, fileError, user, { ticketId });
+        // Decide if this should cause the transaction to abort.
+        // For now, we'll let the DB change persist even if file deletion fails, but log it.
+      }
+    }
+
+    await session.commitTransaction();
+    logger.info('document-delete', `Document ${documentType} (ID: ${documentId || 'N/A'}) deleted for ticket ${ticketId}`, user);
+    res.status(200).json({ message: 'Document deleted successfully.', ticket });
+
+  } catch (error) {
+    await session.abortTransaction();
+    logger.error('document-delete', `Error deleting document for ticket ${req.params.ticketId || req.params.id}`, error, req.user);
+    res.status(500).json({ message: 'Server error while deleting document.', error: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
 
 exports.updateTicket_IndexLogic = async (req, res) => {
   const user = req.user || null;

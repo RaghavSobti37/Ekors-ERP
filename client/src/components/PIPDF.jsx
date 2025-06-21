@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from "react";
 
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
-import { getCompanyInfo } from "../utils/ConfigService";
-import config from "../constants/appconfig.json"
-import apiClient from "../utils/apiClient"; // Assuming apiClient is in utils
-import LoadingSpinner from "./LoadingSpinner"; 
+
+// import apiClient from "../utils/apiClient"; // No longer needed for fetching
+// import LoadingSpinner from "./LoadingSpinner"; // No longer needed for fetching
 
 // Styles
+// ... (styles remain the same)
 const styles = StyleSheet.create({
   page: {
     paddingTop: 35,
@@ -299,13 +294,13 @@ const Quotation = ({ quotation }) => {
 
 // Helper function to get parts of an address
 const getAddressPart = (address, part) => {
-  if (!address) return "";
+  if (!address) return " " ;
   if (Array.isArray(address)) {
     switch (part) {
       case "address1":
         return address[0] || " ";
       case "address2":
-        return address[1] || "";
+        return address[1] || " " ;
       case "city":
         return address[3] || " ";
       case "state":
@@ -320,7 +315,7 @@ const getAddressPart = (address, part) => {
       case "address1":
         return address.address1 || " ";
       case "address2":
-        return address.address2 || "";
+        return address.address2 || " " ;
       case "city":
         return address.city || " ";
       case "state":
@@ -331,12 +326,12 @@ const getAddressPart = (address, part) => {
         return " ";
     }
   }
-  return part === "address2" ? "" : " ";
+  return part === "address2" ? " "  : " ";
 };
 
 const toWords = (num) => {
   const a = [
-    "",
+    " " ,
     "one ",
     "two ",
     "three ",
@@ -358,8 +353,8 @@ const toWords = (num) => {
     "nineteen ",
   ];
   const b = [
-    "",
-    "",
+    " " ,
+    " " ,
     "twenty",
     "thirty",
     "forty",
@@ -374,73 +369,49 @@ const toWords = (num) => {
   const n = ("000000000" + s)
     .substring(-9)
     .match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-  if (!n) return "";
-  let str = "";
+  if (!n) return " " ;
+  let str = " " ;
   str +=
     n[1] != 0
       ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + "crore "
-      : "";
+      : " " ;
   str +=
     n[2] != 0
       ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + "lakh "
-      : "";
+      : " " ;
   str +=
     n[3] != 0
       ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + "thousand "
-      : "";
+      : " " ;
   str +=
     n[4] != 0
       ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + "hundred "
-      : "";
+      : " " ;
   str +=
     n[5] != 0
-      ? (str != "" ? "and " : "") +
+      ? (str != " "  ? "and " : " " ) +
         (a[Number(n[5])] || b[n[5][0]] + " " + a[n[5][1]])
-      : "";
-  return str.trim() === "" ? "zero" : str.trim() + " only";
+      : " " ;
+  return str.trim() === " "  ? "zero" : str.trim() + " only";
 };
 
-const PIPDF = ({ ticketId }) => {
-  const [ticket, setTicket] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const PIPDF = ({ ticketData }) => {
+  // This component now expects ticketData to be provided by its parent.
+  // It does not handle fetching, loading states, or errors related to fetching.
+  // The parent component is responsible for fetching the data and handling its loading/error states.
 
-  useEffect(() => {
-    if (!ticketId) {
-      setError("No Ticket ID provided.");
-      setLoading(false);
-      return;
-    }
-
-    const fetchTicketData = async () => {
-      setLoading(true);
-      try {
-        // Adjust the populate string as per your backend's capabilities and PI needs.
-        // Ensure client, goods, gstBreakdown, billingAddress, shippingAddress are available.
-        // If billingAddress/shippingAddress are on the client, populate them: 'client.billingAddress,client.shippingAddress'
-        const data = await apiClient(`/tickets/${ticketId}`, {
-          params: { populate: "client,goods,gstBreakdown" }, // Example populate
-        });
-        setTicket(data);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching ticket data for PI PDF:", err);
-        setError(err.data?.message || err.message || "Failed to load ticket data.");
-        setTicket(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTicketData();
-  }, [ticketId]);
-
-  if (loading) {
+  // If ticketData is not provided, render a simple message.
+  // This indicates an issue in the component using PIPDF.
+  if (!ticketData) {
+    // You might want a more specific message or handle this in the parent
     return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Loading PI data...</Text></View></Page></Document>;
   }
 
-  if (error || !ticket) {
-    return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Error loading PI: {error || "Ticket data not found."}</Text></View></Page></Document>;
+  const ticket = ticketData; // Use the provided data directly
+
+  // Basic check for essential data structure within the provided ticketData
+  if (!ticket || !ticket.goods || !ticket.billingAddress) {
+     return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Error: Incomplete ticket data provided for PI.</Text></View></Page></Document>;
   }
 
   const clientPhone = ticket.clientPhone || " ";
@@ -459,10 +430,10 @@ const PIPDF = ({ ticketId }) => {
   const shippingPincode = getAddressPart(ticket.shippingAddress, "pincode");
 
   const fullBillingAddress = `${billingAddress1}${
-    billingAddress2 ? `, ${billingAddress2}` : ""
+    billingAddress2 ? `, ${billingAddress2}` : " " 
   }`;
   const fullShippingAddress = `${shippingAddress1}${
-    shippingAddress2 ? `, ${shippingAddress2}` : ""
+    shippingAddress2 ? `, ${shippingAddress2}` : " " 
   }`;
 
   const formatCityStatePin = (city, state, pincode) => {
@@ -494,7 +465,7 @@ const PIPDF = ({ ticketId }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Image style={styles.logo} src="/src/assets/logo.png" />
+        <Image style={styles.logo} src="/logo.png" /> 
 
         <View style={styles.headerSection}>
           <Text style={styles.gstinHeader}>GSTIN: {config.company.gstin}</Text>
@@ -885,4 +856,5 @@ const PIPDF = ({ ticketId }) => {
     </Document>
   );
 };
+// Memoize the component for performance if ticketData doesn't change frequently
 export default PIPDF;
