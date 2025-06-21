@@ -7,7 +7,7 @@ const universalBackupSchema = new mongoose.Schema({
   data: { type: mongoose.Schema.Types.Mixed, required: true }, // The actual data of the deleted document
   deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   deletedAt: { type: Date, default: Date.now },
-  backupReason: { type: String, default: "User-initiated deletion" },
+  // backupReason: { type: String, default: "User-initiated deletion" },
   originalCreatedAt: { type: Date },
   originalUpdatedAt: { type: Date },
   // Optional: For restoring relationships, this can get complex

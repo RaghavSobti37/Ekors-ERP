@@ -25,7 +25,7 @@ import {
 import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
 import "../css/Style.css"; 
-const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
+const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
@@ -176,8 +176,7 @@ export default function Items() {
         sortDirection: sortConfig.direction,
         status: 'approved', 
       };
-      if (searchTerm) params.searchTerm = searchTerm;
-       if (searchTerm) params.searchTerm = searchTerm.toLowerCase(); 
+      if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
       // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
 
       if (stockAlertFilterActive) {
@@ -270,9 +269,9 @@ export default function Items() {
       if (!authLoading && user) { // Use `user` from useAuth() and ensure authLoading is checked
         fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
       }
-    }, 500); // 500ms debounce for search term
+    }, 1000); // Increased debounce delay for search term to 1 second
     return () => clearTimeout(timerId);
-  }, [authLoading, user, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, stockAlertsPageFilterThreshold, sortConfig, itemsPerPage, fetchItems]);
+  }, [authLoading, user, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, stockAlertsPageFilterThreshold, sortConfig.key, sortConfig.direction, itemsPerPage, fetchItems]);
 
   // Effect for pagination changes (when filters/search/sort are stable)
   useEffect(() => {

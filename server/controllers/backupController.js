@@ -24,16 +24,20 @@ exports.listBackups = async (req, res) => {
 
     let query = {};
     if (search) {
-      // Search in originalModel or potentially in string fields within data (more complex)
-      // For simplicity, let's search in originalModel and backupReason
+      const searchRegex = { $regex: search, $options: 'i' };
       query.$or = [
-        { originalModel: { $regex: search, $options: 'i' } },
-        { backupReason: { $regex: search, $options: 'i' } },
-        // If you want to search by originalId, ensure search is a valid ObjectId or handle error
+        { originalModel: searchRegex },
+        // { backupReason: searchRegex },
+        // Search within the 'data' object for common identifier fields
+        { 'data.name': searchRegex },
+        { 'data.companyName': searchRegex },
+        { 'data.ticketNumber': searchRegex }, // Assuming ticketNumber can be searched as string
+        { 'data.referenceNumber': searchRegex }, // Assuming referenceNumber can be searched as string
+        { 'data.title': searchRegex },
       ];
       if (mongoose.Types.ObjectId.isValid(search)) {
-        query.$or.push({ originalId: search });
-        query.$or.push({ deletedBy: search });
+        query.$or.push({ originalId: search }); // Match originalId exactly
+        query.$or.push({ deletedBy: search }); // Match deletedBy (user ID) exactly
       }
     }
 

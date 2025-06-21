@@ -373,7 +373,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: userToBackup.createdAt,
       originalUpdatedAt: userToBackup.updatedAt,
-      backupReason: "Super-admin initiated deletion via API",
+      // backupReason: "Super-admin initiated deletion via API",
     });
 
     logger.debug(

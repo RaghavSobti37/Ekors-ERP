@@ -1278,9 +1278,9 @@ exports.deleteTicket = async (req, res) => {
       deletedAt: new Date(),
       originalCreatedAt: ticketToBackup.createdAt,
       originalUpdatedAt: ticketToBackup.updatedAt,
-      backupReason: `${
-        isSuperAdmin ? "Admin" : "User"
-      }-initiated deletion via API`,
+      // backupReason: `${
+      //   isSuperAdmin ? "Admin" : "User"
+      // }-initiated deletion via API`,
     };
     // Remove fields that are specific to the live Ticket model but not needed or problematic in backup's generic 'data'
     delete backupData.data._id;
