@@ -11,6 +11,7 @@ import {
   FaExclamationTriangle, // For restock alerts
   FaExclamationCircle, // For low quantity warnings
   FaCogs, // For Management
+  FaInfoCircle // For Static Info
 } from "react-icons/fa";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -106,10 +107,15 @@ function NavbarComponent({ showPurchaseModal }) {
       setShowManagementDropdown(false);
     }, 300);
   };
+  
   const handleStockAlertClick = () => {
     const currentThreshold =
       parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
     navigate(`/itemslist?filter=stock_alerts`); 
+  };
+
+  const handleStaticInfoClick = () => {
+    navigate("/staticinfo");
   };
 
   return (
@@ -218,6 +224,19 @@ function NavbarComponent({ showPurchaseModal }) {
               </div>
             )}
             
+            {/* Static Info Link - Only for super-admin */}
+            {user && user.role === "super-admin" && (
+              <NavLink
+                to="/staticinfo"
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+                onClick={handleStaticInfoClick}
+              >
+                <FaInfoCircle /> Static Info
+              </NavLink>
+            )}
+            
             {/* Stock Alert Notification Area */}
             {(restockAlertCount > 0 || lowStockWarningCount > 0) &&
               user &&
@@ -225,7 +244,7 @@ function NavbarComponent({ showPurchaseModal }) {
                 <div
                   className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
                   onClick={handleStockAlertClick}
-  title={`Restock Needed (Qty <= 0): ${restockAlertCount} items. Low Stock (Qty < global threshold ${                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
+                  title={`Restock Needed (Qty <= 0): ${restockAlertCount} items. Low Stock (Qty < global threshold ${                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
                     DEFAULT_LOW_QUANTITY_THRESHOLD
                   }): ${lowStockWarningCount} items. Click to view all items below their specific low stock thresholds.`}
                 >

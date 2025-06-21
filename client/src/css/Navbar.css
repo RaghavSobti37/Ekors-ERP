@@ -4,7 +4,7 @@
   justify-content: space-between;
   align-items: center;
   background-color: #1E293B;
-  padding: 12px 20px;
+  padding: 8px 15px; /* Reduced padding */
   color: white;
   font-family: Arial, sans-serif;
   position: relative;
@@ -20,34 +20,34 @@
 .logo {
   display: flex;
   align-items: center;
-  font-size: 18px;
+  font-size: 16px; /* Slightly smaller font */
   font-weight: bold;
-  margin-right: 20px;
+  margin-right: 15px; /* Reduced margin */
 }
 
 .logo-img {
-  width: 60px;
-  height: 40px;
-  margin-right: 10px;
+  width: 50px; /* Slightly smaller logo */
+  height: 35px; /* Slightly smaller logo */
+  margin-right: 8px; /* Reduced margin */
   object-fit: contain;
 }
 
 /* Navigation Links */
 .nav-links {
   display: flex;
-  gap: 20px;
+  gap: 12px; /* Reduced gap from 20px */
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* Reduced gap from 8px */
   color: white;
   text-decoration: none;
-  padding: 8px 16px;
+  padding: 6px 12px; /* Reduced padding */
   border-radius: 4px;
   transition: all 0.3s ease;
-  font-size: 16px;
+  font-size: 14px; /* Slightly smaller font */
   font-weight: 500;
 }
 
@@ -73,64 +73,66 @@
 }
 
 .profile-icon {
-  width: 30px;
-  height: 30px;
+  width: 28px; /* Slightly smaller */
+  height: 28px; /* Slightly smaller */
   background: orange;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  margin-right: 5px;
+  margin-right: 4px; /* Reduced margin */
 }
 
 .navbar-username {
-  margin-left: 5px;
+  margin-left: 4px; /* Reduced margin */
+  font-size: 14px; /* Slightly smaller font */
 }
 
 /* Profile Popup */
 .profile-popup {
   position: absolute;
-  top: 50px;
+  top: 45px; /* Reduced distance from profile */
   right: 0;
   background: #ffffff;
-  padding: 15px;
-  border-radius: 10px;
-  width: 220px;
+  padding: 12px; /* Reduced padding */
+  border-radius: 8px;
+  width: 200px; /* Slightly narrower */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 10;
   text-align: left;
 }
 
 .profile-details p {
-  font-size: 13px;
+  font-size: 12px; /* Slightly smaller font */
   font-weight: bold;
-  margin: 6px 0;
+  margin: 5px 0; /* Reduced margin */
   color: #000000;
 }
 
 .profile-avatar-large-placeholder {
-  width: 80px;
-  height: 80px;
+  width: 70px; /* Slightly smaller */
+  height: 70px; /* Slightly smaller */
   background: orange;
   color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 10px;
+  margin: 0 auto 8px; /* Reduced margin */
 }
 
 .logout-btn {
   width: 100%;
-  padding: 8px;
+  padding: 7px; /* Reduced padding */
   background: red;
   color: white;
   border: none;
   cursor: pointer;
   border-radius: 5px;
-  margin-top: 10px;
+  margin-top: 8px; /* Reduced margin */
   transition: background-color 0.2s;
+  font-size: 13px; /* Slightly smaller font */
 }
 
 .logout-btn:hover {
@@ -139,13 +141,14 @@
 
 .edit-btn {
   width: 100%;
-  padding: 8px;
+  padding: 7px; /* Reduced padding */
   background: #4b0082;
   color: white;
   border: none;
   cursor: pointer;
   border-radius: 5px;
   transition: background-color 0.2s;
+  font-size: 13px; /* Slightly smaller font */
 }
 
 .edit-btn:hover {
@@ -160,23 +163,23 @@
 .dropdown-menu {
   color: white;
   position: absolute;
-  top: 42px;
+  top: 38px; /* Reduced distance from parent */
   left: 0;
   background-color: #000000;
-  border-radius: 8px;
+  border-radius: 6px; /* Slightly smaller radius */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  padding: 10px 0;
+  padding: 8px 0; /* Reduced padding */
   z-index: 999;
-  min-width: 200px;
+  min-width: 180px; /* Slightly narrower */
   display: flex;
   flex-direction: column;
 }
 
 .dropdown-item {
-  padding: 10px 15px;
+  padding: 8px 12px; /* Reduced padding */
   color: white;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px; /* Slightly smaller font */
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -190,12 +193,13 @@
 .stock-alert-notification {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  margin-left: 15px;
+  padding: 6px 10px; /* Reduced padding */
+  margin-left: 10px; /* Reduced margin */
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.2s ease-in-out;
   color: #fff;
+  font-size: 13px; /* Slightly smaller font */
 }
 
 .stock-alert-notification:hover {
@@ -203,13 +207,13 @@
 }
 
 .stock-alert-notification svg {
-  font-size: 1.1em;
+  font-size: 1em; /* Slightly smaller */
 }
 
 .alert-count {
   font-weight: bold;
-  font-size: 0.9em;
-  margin-left: 4px;
+  font-size: 0.85em; /* Slightly smaller */
+  margin-left: 3px; /* Reduced margin */
 }
 
 .icon-restock {
@@ -218,7 +222,7 @@
 
 .icon-low-stock {
   color: #f56c6c;
-  margin-left: 12px;
+  margin-left: 8px; /* Reduced margin */
 }
 
 /* Mobile Menu Toggle */
@@ -227,149 +231,108 @@
   background: none;
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 22px; /* Slightly smaller */
   cursor: pointer;
-  padding: 8px;
-  margin-right: 10px;
+  padding: 6px; /* Reduced padding */
+  margin-right: 8px; /* Reduced margin */
+}
+
+.nav-link svg {
+  margin-right: 6px; /* Reduced margin */
 }
 
 /* Responsive Styles */
 @media (max-width: 1024px) {
   /* Tablet Styles */
   .nav-links {
-    gap: 12px;
+    gap: 10px; /* Reduced gap */
   }
   
   .nav-link {
-    font-size: 14px;
-    padding: 6px 10px;
+    font-size: 13px; /* Slightly smaller */
+    padding: 5px 8px; /* Reduced padding */
   }
   
   .logo-img {
-    width: 50px;
-    height: 35px;
+    width: 45px; /* Slightly smaller */
+    height: 30px; /* Slightly smaller */
   }
   
   .stock-alert-notification {
-    margin-left: 10px;
-    padding: 6px 10px;
+    margin-left: 8px; /* Reduced margin */
+    padding: 5px 8px; /* Reduced padding */
   }
 }
 
 @media (max-width: 768px) {
   /* Mobile Menu Styles */
   .mobile-menu-toggle {
-    display: block;
+    font-size: 20px; /* Slightly smaller */
+    padding: 5px; /* Reduced padding */
   }
   
   .nav-links {
-    position: fixed;
-    top: 70px;
-    left: 0;
-    width: 100%;
-    background-color: #1E293B;
-    flex-direction: column;
-    gap: 0;
-    padding: 10px 0;
-    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-    transform: translateY(-150%);
-    transition: transform 0.3s ease;
-    z-index: 999;
-  }
-  
-  .nav-links.active {
-    transform: translateY(0);
+    top: 65px; /* Reduced distance */
+    padding: 8px 0; /* Reduced padding */
   }
   
   .nav-link {
-    padding: 12px 20px;
-    border-radius: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .dropdown-wrapper {
-    width: 100%;
-  }
-  
-  .dropdown-menu {
-    position: static;
-    width: 100%;
-    border-radius: 0;
-    box-shadow: none;
-    margin-top: 0;
-  }
-  
-  .dropdown-item {
-    padding-left: 30px;
-  }
-  
-  .profile-wrapper {
-    margin-left: auto;
+    padding: 10px 15px; /* Reduced padding */
   }
   
   .stock-alert-notification {
-    margin: 10px 20px;
-    justify-content: center;
+    margin: 8px 15px; /* Reduced margin */
   }
 }
 
 @media (max-width: 480px) {
   /* Small Mobile Styles */
   .navbar {
-    padding: 10px 15px;
+    padding: 6px 10px; /* Reduced padding */
   }
   
   .logo {
-    margin-right: 10px;
+    margin-right: 8px; /* Reduced margin */
   }
   
   .logo-img {
-    width: 40px;
-    height: 30px;
+    width: 35px; /* Slightly smaller */
+    height: 25px; /* Slightly smaller */
   }
   
   .mobile-menu-toggle {
-    font-size: 20px;
-    padding: 6px;
+    font-size: 18px; /* Slightly smaller */
+    padding: 4px; /* Reduced padding */
   }
   
   .profile-section {
-    font-size: 14px;
+    font-size: 13px; /* Slightly smaller */
   }
   
   .profile-icon {
-    width: 25px;
-    height: 25px;
-    font-size: 12px;
+    width: 22px; /* Slightly smaller */
+    height: 22px; /* Slightly smaller */
+    font-size: 11px; /* Slightly smaller */
   }
   
   .profile-popup {
-    width: 200px;
-    right: -10px;
+    width: 180px; /* Slightly narrower */
+    right: -8px; /* Adjusted position */
   }
   
   .stock-alert-notification {
-    flex-direction: column;
-    gap: 5px;
-    padding: 8px;
-    text-align: center;
-  }
-  
-  .stock-alert-notification .icon-low-stock {
-    margin-left: 0;
+    padding: 6px; /* Reduced padding */
   }
 }
 
 /* Landscape Orientation for Mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .nav-links {
-    top: 60px;
-    max-height: calc(100vh - 60px);
-    overflow-y: auto;
+    top: 55px; /* Reduced distance */
   }
   
   .nav-link {
-    padding: 8px 20px;
+    padding: 6px 15px; /* Reduced padding */
   }
 }
 
