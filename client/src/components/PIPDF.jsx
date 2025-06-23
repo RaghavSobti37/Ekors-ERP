@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { getCompanyInfo } from "../utils/ConfigService";
+import config from "../constants/appconfig.json"
 
 // import apiClient from "../utils/apiClient"; // No longer needed for fetching
 // import LoadingSpinner from "./LoadingSpinner"; // No longer needed for fetching
@@ -262,14 +264,19 @@ const styles = StyleSheet.create({
   },
 });
 
-const Quotation = ({ quotation }) => {
+const Pi = ({ pi }) => {
   const [config, setConfig] = useState({
     officeAddress: "",
     gstin: "",
+    cin: "",
     companyName: "",
     companyAddress: "",
     contactNumbers: "",
-    email: ""
+    email: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    branch: ""
   });
 
   // Load config from public file
@@ -283,10 +290,15 @@ const Quotation = ({ quotation }) => {
         setConfig({
           officeAddress: "A-1, Sector-59, Noida-201301",
           gstin: "09AAICE2056P1Z5",
+          cin: "U40106UP2020PTC127954",
           companyName: "E-KORS PRIVATE LIMITED",
           companyAddress: "PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307",
           contactNumbers: "9711725989 / 9897022545",
-          email: "sales@ekors.in"
+          email: "sales@ekors.in",
+          bankName: "ICICI Bank",
+          accountNumber: "628906029990",
+          ifscCode: "ICIC0006284",
+          branch: "Sector 62, Noida"
         });
       });
   }, []);
@@ -838,10 +850,10 @@ const PIPDF = ({ ticketData }) => {
 
         <View style={styles.bankDetails}>
           <Text style={styles.bold}>Bank Details:</Text>
-          <Text>Bank: ICICI Bank</Text>
-          <Text>Account No.: 628906029990</Text>
-          <Text>IFSC Code: ICIC0006284</Text>
-          <Text>Branch: Sector 62, Noida</Text>
+          <Text>Bank: {config.company.bank.bankName}</Text>
+          <Text>Account No.: {config.company.bank.accountNumber}</Text>
+          <Text>IFSC Code: {config.company.bank.ifscCode}</Text>
+          <Text>Branch: {config.company.bank.branch}</Text>
         </View>
 
         <View style={styles.footer}>

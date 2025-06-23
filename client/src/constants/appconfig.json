@@ -10,6 +10,12 @@
     "contacts": {
       "contactNumbers": ["9711725989", "9897022545"],
       "email": "sales@ekors.in"
+    },
+    "bank":{
+        "bankName": "ICICI Bank",
+        "accountNumber": "628906029990",
+        "ifscCode": "ICIC0006284",
+        "branch": "Sector 62, Noida"
     }
   }
 }
