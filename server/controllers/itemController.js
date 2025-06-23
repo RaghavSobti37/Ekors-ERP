@@ -7,6 +7,7 @@ const path = "path"; // This was 'path' in your provided code, assuming it's a p
 const multer = require("multer");
 const xlsx = require("xlsx");
 const Ticket = require("../models/opentickets"); // Make sure this path is correct
+const exceljs = require("exceljs");
 
 // Get all items - Updated for server-side pagination, sorting, and filtering
 exports.getAllItems = async (req, res) => {
@@ -118,7 +119,7 @@ const upload = multer({
       );
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 exports.uploadMiddleware = upload.single("excelFile");
 
@@ -1155,6 +1156,7 @@ exports.createItem = async (req, res) => {
       : 5;
     const sellingPrice = parseFloat(req.body.sellingPrice) || 0;
     const buyingPrice = parseFloat(req.body.buyingPrice) || 0;
+        const image = req.body.image || "";
 
     if (buyingPrice > sellingPrice) {
       logger.warn("item", "Create item attempt with buying price > selling price.", user, req.body);
@@ -1177,7 +1179,8 @@ exports.createItem = async (req, res) => {
         ? parseFloat(req.body.maxDiscountPercentage)
         : 0,
       lowStockThreshold: lowStockThreshold,
-      createdBy: user._id,
+      createdBy: user._id,    
+      image: image,
       needsRestock: quantity < lowStockThreshold,
     };
 
@@ -1215,13 +1218,23 @@ exports.createItem = async (req, res) => {
         .json({
           message:
             "An item with this name already exists. Please use a unique name.",
+                      errorType: "DuplicateKeyError",
+
         });
     }
-    res.status(400).json({
-      message: error.message.includes("validation")
-        ? "Validation failed: " + error.message
-        : "Error creating item",
-    });
+   if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: `Validation failed: ${error.message}`,
+        errors: error.errors,
+        errorType: "ValidationError",
+      });
+    }
+
+    // For any other unexpected errors, return a 500 Internal Server Error
+    res.status(500).json({
+      message: "Server error during item creation.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      errorType: "InternalServerError",    });
   }
 };
 
@@ -1294,6 +1307,7 @@ exports.updateItem = async (req, res) => {
         : 0,
      lowStockThreshold: resolvedLowStockThreshold, // Use the resolved value
       needsRestock: quantity < resolvedLowStockThreshold,
+           ...(req.body.image !== undefined && { image: req.body.image }), 
     };
 
     // Handle status update logic

@@ -1,16 +1,15 @@
-import React ,{ useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
-import { useAuth } from "../context/AuthContext.jsx"; 
-
+import { useAuth } from "../context/AuthContext.jsx";
 
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
-import SearchBar from "../components/Searchbar.jsx"; 
-import ActionButtons from "../components/ActionButtons.jsx"; 
+import SearchBar from "../components/Searchbar.jsx";
+import ActionButtons from "../components/ActionButtons.jsx";
 
 import Footer from "../components/Footer";
 import {
@@ -20,11 +19,13 @@ import {
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
   ClockHistory, // For Item History
-   CheckCircleFill, ShieldFillCheck, PencilSquare 
+  CheckCircleFill,
+  ShieldFillCheck,
+  PencilSquare,
 } from "react-bootstrap-icons";
 import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
-import "../css/Style.css"; 
+import "../css/Style.css";
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
@@ -35,7 +36,7 @@ export default function Items() {
   const [totalItems, setTotalItems] = useState(0);
   const [pendingReviewItems, setPendingReviewItems] = useState([]);
   const [totalPendingReviewItems, setTotalPendingReviewItems] = useState(0);
-  
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,6 +60,7 @@ export default function Items() {
     // subcategory: "General", // Removed
     maxDiscountPercentage: "",
     lowStockThreshold: "5", // Added for consistency with item schema
+    image: "",
   });
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false); // Renamed from showModal for clarity
@@ -91,7 +93,8 @@ export default function Items() {
     success: null,
     details: [],
   });
-  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); 
+
+  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false);
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -99,12 +102,13 @@ export default function Items() {
   // const [newSubcategoryName, setNewSubcategoryName] = useState(""); // Removed
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   // const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false); // Removed
-  
+
   // New states for separated history data in modal
   const [excelHistoryData, setExcelHistoryData] = useState([]); // This state seems unused, consider removing if not needed for display
   const [purchaseHistoryData, setPurchaseHistoryData] = useState([]);
   const [ticketUsageData, setTicketUsageData] = useState([]);
-  const [inventoryAdjustmentsLogData, setInventoryAdjustmentsLogData] = useState([]);
+  const [inventoryAdjustmentsLogData, setInventoryAdjustmentsLogData] =
+    useState([]);
   const [itemEditsLogData, setItemEditsLogData] = useState([]);
   const location = useLocation();
   const [currentPagePending, setCurrentPagePending] = useState(1); // Pagination for pending items
@@ -113,7 +117,10 @@ export default function Items() {
     () => new URLSearchParams(location.search),
     [location.search]
   );
-  const stockAlertFilterActive = useMemo(() => queryParams.get("filter") === "stock_alerts", [queryParams]);
+  const stockAlertFilterActive = useMemo(
+    () => queryParams.get("filter") === "stock_alerts",
+    [queryParams]
+  );
 
   const lowStockWarningQueryThreshold = parseInt(
     queryParams.get("lowThreshold"),
@@ -127,7 +134,8 @@ export default function Items() {
 
   // State for the quantity filter input on the main items page
   const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
-  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] = useState('');
+  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] =
+    useState("");
 
   useEffect(() => {
     const storedThreshold = localStorage.getItem(
@@ -142,94 +150,136 @@ export default function Items() {
 
   useEffect(() => {
     if (stockAlertFilterActive) {
-        // Initialize with URL param if present, else global default
-        const initialThreshold = Number.isFinite(lowStockWarningQueryThreshold)
-            ? lowStockWarningQueryThreshold
-            : effectiveLowStockThreshold;
-        setStockAlertsPageFilterThreshold(initialThreshold.toString());
-                setSearchTerm(""); 
-
+      // Initialize with URL param if present, else global default
+      const initialThreshold = Number.isFinite(lowStockWarningQueryThreshold)
+        ? lowStockWarningQueryThreshold
+        : effectiveLowStockThreshold;
+      setStockAlertsPageFilterThreshold(initialThreshold.toString());
+      setSearchTerm("");
     } else {
-        setStockAlertsPageFilterThreshold(''); // Clear when not on stock alerts page
+      setStockAlertsPageFilterThreshold(""); // Clear when not on stock alerts page
     }
-  }, [stockAlertFilterActive, effectiveLowStockThreshold, lowStockWarningQueryThreshold]);
-
-
+  }, [
+    stockAlertFilterActive,
+    effectiveLowStockThreshold,
+    lowStockWarningQueryThreshold,
+  ]);
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
 
   const showSuccess = (message) => {
     showToast(message, true);
   };
 
-  const fetchItems = useCallback(async (page = currentPage, limit = itemsPerPage) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = {
-        page,
-        limit,
-        sortKey: sortConfig.key,
-        sortDirection: sortConfig.direction,
-        status: 'approved', 
-      };
-      if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
-      // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
+  const fetchItems = useCallback(
+    async (page = currentPage, limit = itemsPerPage) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = {
+          page,
+          limit,
+          sortKey: sortConfig.key,
+          sortDirection: sortConfig.direction,
+          status: "approved",
+        };
+        if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
+        // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
 
-      if (stockAlertFilterActive) {
-        params.filter = "stock_alerts";
-        const thresholdToUse = parseInt(stockAlertsPageFilterThreshold, 10);
-        params.lowThreshold = Number.isFinite(thresholdToUse) && thresholdToUse >= 0 ? thresholdToUse : effectiveLowStockThreshold;
-      } else {
-        // Apply quantity filter for main page if a value is set
-        const qtyFilterVal = parseInt(quantityFilterInputValue, 10);
-        if (Number.isFinite(qtyFilterVal) && quantityFilterInputValue.trim() !== "") {
-          params.quantityThreshold = qtyFilterVal;
+        if (stockAlertFilterActive) {
+          params.filter = "stock_alerts";
+          const thresholdToUse = parseInt(stockAlertsPageFilterThreshold, 10);
+          params.lowThreshold =
+            Number.isFinite(thresholdToUse) && thresholdToUse >= 0
+              ? thresholdToUse
+              : effectiveLowStockThreshold;
+        } else {
+          // Apply quantity filter for main page if a value is set
+          const qtyFilterVal = parseInt(quantityFilterInputValue, 10);
+          if (
+            Number.isFinite(qtyFilterVal) &&
+            quantityFilterInputValue.trim() !== ""
+          ) {
+            params.quantityThreshold = qtyFilterVal;
+          }
         }
+
+        // Fetch items with populated inventoryLog for the history modal
+        const response = await apiClient("/items", {
+          params: {
+            ...params,
+            populate:
+              "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
+          },
+        });
+        setItems(response.data || []);
+        setTotalItems(response.totalItems || 0);
+        setError(null);
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to load items. Please try again.",
+          user
+        );
+        setError(errorMessage);
+        setItems([]);
+        setTotalItems(0);
+      } finally {
+        setLoading(false);
       }
+    },
+    [
+      currentPage,
+      itemsPerPage,
+      sortConfig,
+      searchTerm,
+      selectedCategory,
+      quantityFilterInputValue,
+      stockAlertFilterActive,
+      lowStockWarningQueryThreshold,
+      effectiveLowStockThreshold,
+      user,
+      stockAlertsPageFilterThreshold,
+    ]
+  );
 
-      // Fetch items with populated inventoryLog for the history modal
-      const response = await apiClient("/items", { params: {...params, populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy'} });
-      setItems(response.data || []);
-      setTotalItems(response.totalItems || 0);
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load items. Please try again.", user);
-      setError(errorMessage);
-      setItems([]);
-      setTotalItems(0);
-    } finally {
-      setLoading(false); 
-    }
-  }, [currentPage, itemsPerPage, sortConfig, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, lowStockWarningQueryThreshold, effectiveLowStockThreshold, user, stockAlertsPageFilterThreshold]);
-
-  const fetchPendingReviewItems = useCallback(async (page = currentPagePending, limit = itemsPerPage) => {
-    if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
-      setPendingReviewItems([]);
-      setTotalPendingReviewItems(0);
-      return;
-    }
-    try {
-      setLoading(true); 
-      const params = { page, limit, status: 'pending_review', sortKey: 'createdAt', sortDirection: 'desc', populate: 'createdBy' };
-      const response = await apiClient("/items", { params });
-      setPendingReviewItems(response.data || []);
-      setTotalPendingReviewItems(response.totalItems || 0);
-    } catch (err) {
-      handleApiError(err, "Failed to load pending review items.", user);
-      setPendingReviewItems([]);
-      setTotalPendingReviewItems(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, itemsPerPage, currentPagePending]);
+  const fetchPendingReviewItems = useCallback(
+    async (page = currentPagePending, limit = itemsPerPage) => {
+      if (!user || (user.role !== "admin" && user.role !== "super-admin")) {
+        setPendingReviewItems([]);
+        setTotalPendingReviewItems(0);
+        return;
+      }
+      try {
+        setLoading(true);
+        const params = {
+          page,
+          limit,
+          status: "pending_review",
+          sortKey: "createdAt",
+          sortDirection: "desc",
+          populate: "createdBy",
+        };
+        const response = await apiClient("/items", { params });
+        setPendingReviewItems(response.data || []);
+        setTotalPendingReviewItems(response.totalItems || 0);
+      } catch (err) {
+        handleApiError(err, "Failed to load pending review items.", user);
+        setPendingReviewItems([]);
+        setTotalPendingReviewItems(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, itemsPerPage, currentPagePending]
+  );
 
   const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true); 
+      setLoading(true);
       setError(null);
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
@@ -245,7 +295,11 @@ export default function Items() {
         );
       }
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load categories.", user);
+      const errorMessage = handleApiError(
+        err,
+        "Failed to load categories.",
+        user
+      );
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -261,21 +315,35 @@ export default function Items() {
       setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchPendingReviewItems, fetchCategories]); 
+  }, [fetchItems, fetchPendingReviewItems, fetchCategories]);
 
   // Effect for search, category, quantity filter, and sort changes
   useEffect(() => {
     const timerId = setTimeout(() => {
-      if (!authLoading && user) { // Use `user` from useAuth() and ensure authLoading is checked
+      if (!authLoading && user) {
+        // Use `user` from useAuth() and ensure authLoading is checked
         fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
       }
     }, 1000); // Increased debounce delay for search term to 1 second
     return () => clearTimeout(timerId);
-  }, [authLoading, user, searchTerm, selectedCategory, quantityFilterInputValue, stockAlertFilterActive, stockAlertsPageFilterThreshold, sortConfig.key, sortConfig.direction, itemsPerPage, fetchItems]);
+  }, [
+    authLoading,
+    user,
+    searchTerm,
+    selectedCategory,
+    quantityFilterInputValue,
+    stockAlertFilterActive,
+    stockAlertsPageFilterThreshold,
+    sortConfig.key,
+    sortConfig.direction,
+    itemsPerPage,
+    fetchItems,
+  ]);
 
   // Effect for pagination changes (when filters/search/sort are stable)
   useEffect(() => {
-    if (!authLoading && user) { // Ensure authLoading and user (from useAuth) are used
+    if (!authLoading && user) {
+      // Ensure authLoading and user (from useAuth) are used
       fetchItems(currentPage, itemsPerPage);
     }
   }, [authLoading, user, currentPage, itemsPerPage, fetchItems]); // Added itemsPerPage back as it's used in fetchItems
@@ -284,10 +352,13 @@ export default function Items() {
   // it should remain as is if that's its sole purpose.
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
-      if (Array.isArray(items) && items.length > 0) { // Should this be a different list of items for the modal?
+      if (Array.isArray(items) && items.length > 0) {
+        // Should this be a different list of items for the modal?
         const filtered = items.filter(
           (item) =>
-            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) || (item.hsnCode && item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
+            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
+            (item.hsnCode &&
+              item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
         );
         setFilteredItemsList(filtered);
       } else {
@@ -298,31 +369,35 @@ export default function Items() {
     }
   }, [itemSearchTerm, items]); // `items` dependency here might be problematic if it's the main page's items list.
 
-  const fetchPurchaseHistoryForExpandedRow = useCallback(async (itemId) => { // Renamed for clarity
-    try {
-      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: true }));
-      setError(null);
+  const fetchPurchaseHistoryForExpandedRow = useCallback(
+    async (itemId) => {
+      // Renamed for clarity
+      try {
+        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
+        setError(null);
 
-      const response = await apiClient(`/items/${itemId}/purchases`, {
-        timeout: 5000,
-      });
+        const response = await apiClient(`/items/${itemId}/purchases`, {
+          timeout: 5000,
+        });
 
-      setPurchaseHistory(prev => ({
-        ...prev,
-        [itemId]: response || [],
-      }));
-      setError(null);
-    } catch (err) {
-      handleApiError(err, "Failed to load history.", user);
-      console.error("Fetch purchase history error:", err);
-      setPurchaseHistory(prev => ({
-        ...prev,
-        [itemId]: [],
-      }));
-    } finally {
-      setPurchaseHistoryLoading(prev => ({ ...prev, [itemId]: false }));
-    }
-  }, [user]);
+        setPurchaseHistory((prev) => ({
+          ...prev,
+          [itemId]: response || [],
+        }));
+        setError(null);
+      } catch (err) {
+        handleApiError(err, "Failed to load history.", user);
+        console.error("Fetch purchase history error:", err);
+        setPurchaseHistory((prev) => ({
+          ...prev,
+          [itemId]: [],
+        }));
+      } finally {
+        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
+      }
+    },
+    [user]
+  );
 
   const requestSort = (key) => {
     let direction = "asc";
@@ -330,9 +405,8 @@ export default function Items() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
-    setCurrentPage(1); 
+    setCurrentPage(1);
   };
-
 
   const handleEditItem = (item) => {
     setEditingItem(item);
@@ -344,9 +418,10 @@ export default function Items() {
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
-      category: item.category || "", 
+      category: item.category || "",
       lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
+      image: item.image || "", // Load existing image
     });
     setShowEditItemModal(true);
   };
@@ -365,14 +440,19 @@ export default function Items() {
     try {
       setIsSubmitting(true);
       const updatedItemPayload = { ...formData }; // formData has string values from form
-      
+
       // Ensure numeric fields that should be numbers are parsed
       updatedItemPayload.quantity = parseFloat(formData.quantity) || 0;
-      updatedItemPayload.sellingPrice = sellingPrice; 
-      updatedItemPayload.buyingPrice = buyingPrice; 
+      updatedItemPayload.sellingPrice = sellingPrice;
+      updatedItemPayload.buyingPrice = buyingPrice;
       updatedItemPayload.gstRate = parseFloat(formData.gstRate) || 0;
-      updatedItemPayload.maxDiscountPercentage = parseFloat(formData.maxDiscountPercentage) || 0;
+      updatedItemPayload.maxDiscountPercentage =
+        parseFloat(formData.maxDiscountPercentage) || 0;
       // lowStockThreshold will be sent as a string from formData, backend will parse robustly
+
+      if (formData.image !== undefined) {
+        updatedItemPayload.image = formData.image;
+      }
 
       await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
@@ -382,23 +462,24 @@ export default function Items() {
       setShowEditItemModal(false);
       setEditingItem(null);
       showSuccess("Item updated successfully!");
-    } catch (err) { 
+    } catch (err) {
       const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
-  }; 
+  };
 
-   const handleApproveItem = async (itemId) => {
+
+  const handleApproveItem = async (itemId) => {
     if (!window.confirm("Are you sure you want to approve this item?")) return;
     setIsSubmitting(true);
     try {
       await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
       showSuccess("Item approved successfully!");
-      await fetchItems(); 
+      await fetchItems();
       await fetchPendingReviewItems();
-    } catch (err) { 
+    } catch (err) {
       const errorMessage = handleApiError(err, "Failed to approve item.", user);
       setError(errorMessage);
     } finally {
@@ -407,7 +488,7 @@ export default function Items() {
   };
 
   const handleReviewAndEditItem = (item) => {
-    handleEditItem(item); 
+    handleEditItem(item);
   };
 
   const handleItemChange = (index, field, value) => {
@@ -526,12 +607,13 @@ export default function Items() {
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
         category: formData.category,
-        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0, 
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
+        image: formData.image || "",
       };
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
-      setShowAddItemModal(false); 
+      setShowAddItemModal(false);
       setFormData({
         name: "",
         quantity: "",
@@ -540,18 +622,35 @@ export default function Items() {
         gstRate: "0",
         hsnCode: "",
         unit: "Nos",
-        category: "", 
+        category: "",
         maxDiscountPercentage: "",
         lowStockThreshold: "5",
       });
       setError(null);
       showSuccess("Item added successfully!");
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to add item. Please try again.", user);
+      const errorMessage = handleApiError(
+        err,
+        "Failed to add item. Please try again.",
+        user
+      );
       setError(errorMessage);
       console.error("Error adding item:", err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      setIsSubmitting(true);
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, image: reader.result }));
+        setIsSubmitting(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -570,7 +669,7 @@ export default function Items() {
     setItemHistoryLoading(true);
     setError(null);
     setShowItemHistoryModal(true);
-    setEditingItem(item); 
+    setEditingItem(item);
 
     setExcelHistoryData([]);
     setPurchaseHistoryData([]);
@@ -585,108 +684,139 @@ export default function Items() {
     let tempItemEdits = [];
 
     try {
-        const fetchedItem = await apiClient(`/items/${item._id}`, {
-            params: { populate: 'inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy' }
+      const fetchedItem = await apiClient(`/items/${item._id}`, {
+        params: {
+          populate:
+            "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
+        },
+      });
+      setEditingItem(fetchedItem);
+
+      fetchedItem.excelImportHistory?.forEach((entry) => {
+        let importedByUserDisplay = "System";
+        if (entry.importedBy) {
+          importedByUserDisplay =
+            `${entry.importedBy.firstname || ""} ${
+              entry.importedBy.lastname || ""
+            }`.trim() || entry.importedBy.email;
+        }
+        let oldQtyText = "";
+        let newQtyText = "";
+        if (entry.action === "created") {
+          const createdQty = entry.snapshot?.quantity;
+          newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
+        } else if (entry.action === "updated") {
+          const qtyChangeInfo = entry.changes?.find(
+            (c) => c.field === "quantity"
+          );
+          if (qtyChangeInfo) {
+            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
+            oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
+          }
+        }
+        tempExcelHistory.push({
+          date: new Date(entry.importedAt),
+          action: entry.action,
+          user: importedByUserDisplay,
+          fileName: entry.fileName || "N/A",
+          changesSummary:
+            entry.action === "updated"
+              ? entry.changes
+                  ?.map((c) => `${c.field}: ${c.oldValue} -> ${c.newValue}`)
+                  .join("; ") + oldQtyText
+              : `Initial state set.` + newQtyText,
         });
-        setEditingItem(fetchedItem); 
+      });
+      setExcelHistoryData(
+        tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
 
-        fetchedItem.excelImportHistory?.forEach((entry) => {
-            let importedByUserDisplay = "System";
-            if (entry.importedBy) {
-                importedByUserDisplay = `${entry.importedBy.firstname || ''} ${entry.importedBy.lastname || ''}`.trim() || entry.importedBy.email;
-            }
-            let oldQtyText = "";
-            let newQtyText = "";
-            if (entry.action === "created") {
-                const createdQty = entry.snapshot?.quantity;
-                newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
-            } else if (entry.action === "updated") {
-                const qtyChangeInfo = entry.changes?.find(c => c.field === "quantity");
-                if (qtyChangeInfo) {
-                    const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
-                    const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
-                    oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
-                }
-            }
-            tempExcelHistory.push({
-                date: new Date(entry.importedAt),
-                action: entry.action,
-                user: importedByUserDisplay,
-                fileName: entry.fileName || "N/A",
-                changesSummary: entry.action === 'updated' 
-                    ? entry.changes?.map(c => `${c.field}: ${c.oldValue} -> ${c.newValue}`).join('; ') + oldQtyText
-                    : `Initial state set.` + newQtyText,
-            });
+      const itemPurchases = await apiClient(
+        `/items/${fetchedItem._id}/purchases`
+      );
+      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+        tempPurchaseHistory = itemPurchases.map((purchase) => ({
+          _id: purchase._id,
+          date: new Date(purchase.date),
+          companyName: purchase.companyName,
+          invoiceNumber: purchase.invoiceNumber,
+          createdByName: purchase.createdByName || "System",
+          quantity: parseFloat(purchase.quantity) || 0,
+          price: parseFloat(purchase.price) || 0,
+          gstRate: parseFloat(purchase.gstRate) || 0,
+          amount: purchase.amount,
+        }));
+      }
+      setPurchaseHistoryData(
+        tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
+
+      const ticketUsageRaw = await apiClient(
+        `/items/${fetchedItem._id}/ticket-usage`
+      );
+      if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
+        tempTicketUsage = ticketUsageRaw.map((usage) => ({
+          date: new Date(usage.date),
+          type: usage.type || "Ticket Interaction",
+          user: usage.user || "System",
+          details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+          quantityChange: parseFloat(usage.quantityChange) || 0,
+          ticketNumber: usage.ticketNumber,
+        }));
+      }
+      setTicketUsageData(
+        tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
+
+      if (
+        Array.isArray(fetchedItem.inventoryLog) &&
+        fetchedItem.inventoryLog.length > 0
+      ) {
+        fetchedItem.inventoryLog.forEach((log) => {
+          const commonLogData = {
+            date: new Date(log.date),
+            type: log.type,
+            user: log.userReference
+              ? `${log.userReference.firstname || ""} ${
+                  log.userReference.lastname || ""
+                }`.trim() || log.userReference.email
+              : "System",
+            details:
+              log.ticketReference && log.ticketReference.ticketNumber
+                ? `${log.details || log.type}`
+                : log.details || log.type,
+            quantityChange: parseFloat(log.quantityChange) || 0,
+            ticketNumber: log.ticketReference?.ticketNumber,
+          };
+
+          if (log.type === "Item Details Updated") {
+            tempItemEdits.push(commonLogData);
+          } else if (
+            !log.type.toLowerCase().includes("excel import") &&
+            !log.type.toLowerCase().includes("purchase entry") &&
+            !log.type.toLowerCase().includes("ticket deduction (initial)")
+          ) {
+            tempInventoryAdjustments.push(commonLogData);
+          }
         });
-        setExcelHistoryData(tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-        const itemPurchases = await apiClient(`/items/${fetchedItem._id}/purchases`);
-        if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
-            tempPurchaseHistory = itemPurchases.map((purchase) => ({
-                _id: purchase._id,
-                date: new Date(purchase.date),
-                companyName: purchase.companyName,
-                invoiceNumber: purchase.invoiceNumber,
-                createdByName: purchase.createdByName || "System",
-                quantity: parseFloat(purchase.quantity) || 0,
-                price: parseFloat(purchase.price) || 0,
-                gstRate: parseFloat(purchase.gstRate) || 0,
-                amount: purchase.amount,
-            }));
-        }
-        setPurchaseHistoryData(tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-        const ticketUsageRaw = await apiClient(`/items/${fetchedItem._id}/ticket-usage`);
-        if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
-            tempTicketUsage = ticketUsageRaw.map((usage) => ({
-                date: new Date(usage.date),
-                type: usage.type || "Ticket Interaction",
-                user: usage.user || "System",
-                details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
-                quantityChange: parseFloat(usage.quantityChange) || 0,
-                ticketNumber: usage.ticketNumber,
-            }));
-        }
-        setTicketUsageData(tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        
-        if (Array.isArray(fetchedItem.inventoryLog) && fetchedItem.inventoryLog.length > 0) {
-            fetchedItem.inventoryLog.forEach(log => {
-                const commonLogData = {
-                    date: new Date(log.date),
-                    type: log.type,
-                    user: log.userReference 
-                        ? `${log.userReference.firstname || ''} ${log.userReference.lastname || ''}`.trim() || log.userReference.email
-                        : 'System',
-                    details: log.ticketReference && log.ticketReference.ticketNumber 
-                        ? `${log.details || log.type}`
-                        : (log.details || log.type),
-                    quantityChange: parseFloat(log.quantityChange) || 0,
-                    ticketNumber: log.ticketReference?.ticketNumber
-                };
-
-                if (log.type === "Item Details Updated") {
-                    tempItemEdits.push(commonLogData);
-                } else if (
-                    !log.type.toLowerCase().includes('excel import') && 
-                    !log.type.toLowerCase().includes('purchase entry') &&
-                    !log.type.toLowerCase().includes('ticket deduction (initial)') 
-                ) {
-                    tempInventoryAdjustments.push(commonLogData);
-                }
-            });
-        }
-        setInventoryAdjustmentsLogData(tempInventoryAdjustments.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        setItemEditsLogData(tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
+      }
+      setInventoryAdjustmentsLogData(
+        tempInventoryAdjustments.sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        )
+      );
+      setItemEditsLogData(
+        tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
     } catch (err) {
-        console.error("Error fetching full item details for history modal:", err);
-        handleApiError(err, "Failed to load item history.", user);
-        setError("Failed to load item history.");
+      console.error("Error fetching full item details for history modal:", err);
+      handleApiError(err, "Failed to load item history.", user);
+      setError("Failed to load item history.");
     } finally {
-        setItemHistoryLoading(false);
+      setItemHistoryLoading(false);
     }
   };
-
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
@@ -694,10 +824,14 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
-        await fetchPendingReviewItems(); 
+        await fetchPendingReviewItems();
         showSuccess("Item Deleted Successfully");
-      } catch (err) { 
-        const errorMessage = handleApiError(err, "Failed to delete item.", user);
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to delete item.",
+          user
+        );
         setError(errorMessage);
         console.error("Error deleting item:", err);
       } finally {
@@ -714,7 +848,7 @@ export default function Items() {
         setError(
           "Please fill all required fields and ensure each item has a description, quantity, and price"
         );
-        setIsSubmitting(false); 
+        setIsSubmitting(false);
         return false;
       }
       const purchaseDataToSend = {
@@ -790,10 +924,9 @@ export default function Items() {
       return;
     }
     try {
-      
-      const blob = await apiClient("items/export-excel", { 
+      const blob = await apiClient("items/export-excel", {
         method: "GET",
-        responseType: 'blob' 
+        responseType: "blob",
       });
 
       if (!blob) {
@@ -809,9 +942,10 @@ export default function Items() {
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
       console.error("Error exporting to Excel:", err);
-      const message = err.data?.message || err.message || "Failed to export items to Excel.";
+      const message =
+        err.data?.message || err.message || "Failed to export items to Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); 
+      setError(message);
     } finally {
       setIsExportingExcel(false);
     }
@@ -830,24 +964,23 @@ export default function Items() {
           "Are you absolutely sure you want to proceed?"
       )
     ) {
-      event.target.value = null; 
+      event.target.value = null;
       return;
     }
     setIsProcessingExcel(true);
     const formData = new FormData();
     formData.append("excelFile", file);
     try {
-      
-      const responseData = await apiClient("items/import-uploaded-excel", { 
+      const responseData = await apiClient("items/import-uploaded-excel", {
         method: "POST",
         body: formData,
-        
       });
 
-      
-      let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
-        } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
-        } deleted.`;
+      let successMessage = `Excel sync complete: ${
+        responseData.itemsCreated || 0
+      } created, ${responseData.itemsUpdated || 0} updated, ${
+        responseData.itemsDeleted || 0
+      } deleted.`;
 
       if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
         successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
@@ -872,11 +1005,12 @@ export default function Items() {
       fetchItems();
     } catch (err) {
       console.error("Error updating from Excel:", err);
-      const message = err.data?.message || 
+      const message =
+        err.data?.message ||
         err.message ||
         "Failed to update items from Excel.";
       setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message); 
+      setError(message);
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -893,11 +1027,11 @@ export default function Items() {
       await apiClient("/items/categories", {
         method: "POST",
         body: { categoryName: newCategoryName.trim() },
-      }); 
+      });
       await fetchCategories();
       setFormData((prevFormData) => ({
         ...prevFormData,
-        category: newCategoryName.trim(), 
+        category: newCategoryName.trim(),
       }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -912,125 +1046,185 @@ export default function Items() {
     }
   };
 
-
   const handleUpdateGlobalLowStockThreshold = (newThresholdValue) => {
     const newNumThreshold = parseInt(newThresholdValue, 10);
     if (Number.isFinite(newNumThreshold) && newNumThreshold >= 0) {
-        setEffectiveLowStockThreshold(newNumThreshold);
-        localStorage.setItem(LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE, newNumThreshold.toString());
-        showToast(`Global low stock threshold updated to ${newNumThreshold}.`, true);
+      setEffectiveLowStockThreshold(newNumThreshold);
+      localStorage.setItem(
+        LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
+        newNumThreshold.toString()
+      );
+      showToast(
+        `Global low stock threshold updated to ${newNumThreshold}.`,
+        true
+      );
     } else {
-        showToast("Invalid threshold value.", false);
+      showToast("Invalid threshold value.", false);
     }
   };
 
   const applyStockAlertFilter = () => {
-      setCurrentPage(1); 
-      fetchItems(); 
+    setCurrentPage(1);
+    fetchItems();
   };
 
-  const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel || loading;
+  const anyLoading =
+    isSubmitting ||
+    isProcessingExcel ||
+    isExportingExcel ||
+    loading 
 
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( 
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
+        {error &&
+          !showAddItemModal &&
+          !showEditItemModal &&
+          !showPurchaseModal &&
+          !showItemHistoryModal && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
         {excelUpdateStatus.error && (
           <div className="alert alert-danger" role="alert">
             Excel Update Error: {excelUpdateStatus.error}
           </div>
         )}
 
-                
-        {user && (user.role === 'admin' || user.role === 'super-admin') && totalPendingReviewItems > 0 && (
-          <Card className="mb-4 border-warning">
-            <Card.Header className="bg-warning text-dark">
-              <ShieldFillCheck size={20} className="me-2"/> Items Pending Review ({pendingReviewItems.length})
-            </Card.Header>
-            <Card.Body>
-              <div className="table-responsive">
-                <table className="table table-sm table-hover">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Category</th>
-                      <th>Created By</th>
-                      <th>Created At</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingReviewItems.map(item => (
-                      <tr key={item._id}>
-                        <td>{item.name}</td>
-                        <td>{item.category}</td>
-                        <td>{item.createdBy?.firstname || 'N/A'} {item.createdBy?.lastname || ''}</td>
-                        <td>{new Date(item.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <Button variant="success" size="sm" className="me-1" onClick={() => handleApproveItem(item._id)} disabled={isSubmitting} title="Approve Item">
-                            <CheckCircleFill /> Approve
-                          </Button>
-                          <Button variant="info" size="sm" className="me-1" onClick={() => handleReviewAndEditItem(item)} disabled={isSubmitting} title="Review and Edit Item">
-                            <PencilSquare /> Edit
-                          </Button>
-                          <Button variant="danger" size="sm" onClick={() => handleDelete(item._id)} disabled={isSubmitting} title="Delete Item">
-                            <Trash /> Delete
-                          </Button>
-                        </td>
+        {user &&
+          (user.role === "admin" || user.role === "super-admin") &&
+          totalPendingReviewItems > 0 && (
+            <Card className="mb-4 border-warning">
+              <Card.Header className="bg-warning text-dark">
+                <ShieldFillCheck size={20} className="me-2" /> Items Pending
+                Review ({pendingReviewItems.length})
+              </Card.Header>
+              <Card.Body>
+                <div className="table-responsive">
+                  <table className="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Created By</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card.Body>
-            <Card.Footer className="text-muted small">
-              These items were created by users and require your approval before being widely available or used in reports. Approving an item will make it part of the main item list. Editing an item will also automatically approve it.
-            </Card.Footer>
-            {totalPendingReviewItems > itemsPerPage && (
-              <Pagination
-                currentPage={currentPagePending}
-                totalItems={totalPendingReviewItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={(page) => setCurrentPagePending(page)}
-                // Note: Export/Import buttons could be passed as props here if moved to Pagination component
-              />
-            )}
-          </Card>
-        )}
+                    </thead>
+                    <tbody>
+                      {pendingReviewItems.map((item) => (
+                        <tr key={item._id}>
+                          <td>{item.name}</td>
+                          <td>{item.category}</td>
+                          <td>
+                            {item.createdBy?.firstname || "N/A"}{" "}
+                            {item.createdBy?.lastname || ""}
+                          </td>
+                          <td>
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => handleApproveItem(item._id)}
+                              disabled={isSubmitting}
+                              title="Approve Item"
+                            >
+                              <CheckCircleFill /> Approve
+                            </Button>
+                            <Button
+                              variant="info"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => handleReviewAndEditItem(item)}
+                              disabled={isSubmitting}
+                              title="Review and Edit Item"
+                            >
+                              <PencilSquare /> Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDelete(item._id)}
+                              disabled={isSubmitting}
+                              title="Delete Item"
+                            >
+                              <Trash /> Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card.Body>
+              <Card.Footer className="text-muted small">
+                These items were created by users and require your approval
+                before being widely available or used in reports. Approving an
+                item will make it part of the main item list. Editing an item
+                will also automatically approve it.
+              </Card.Footer>
+              {totalPendingReviewItems > itemsPerPage && (
+                <Pagination
+                  currentPage={currentPagePending}
+                  totalItems={totalPendingReviewItems}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={(page) => setCurrentPagePending(page)}
+                  // Note: Export/Import buttons could be passed as props here if moved to Pagination component
+                />
+              )}
+            </Card>
+          )}
 
-
-        
         <div className="mb-3">
           {/* Controls Area - Single Line */}
           <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
             {/* Title */}
-            <h2 style={{ color: "black", margin: 0 }} className="me-3 text-nowrap">
-              {stockAlertFilterActive 
-                ? `Stock Alerts (Qty < ${parseInt(stockAlertsPageFilterThreshold,10) || effectiveLowStockThreshold})` 
-                : (user && (user.role === 'admin' || user.role === 'super-admin') ? "Items List (Approved)" : "All Items List")}
+            <h2
+              style={{ color: "black", margin: 0 }}
+              className="me-3 text-nowrap"
+            >
+              {stockAlertFilterActive
+                ? `Stock Alerts (Qty < ${
+                    parseInt(stockAlertsPageFilterThreshold, 10) ||
+                    effectiveLowStockThreshold
+                  })`
+                : user && (user.role === "admin" || user.role === "super-admin")
+                ? "Items List (Approved)"
+                : "All Items List"}
             </h2>
 
             {/* Search Bar */}
-            <div className="flex-grow-1" style={{ minWidth: '200px', maxWidth: '400px' }}>
+            <div
+              className="flex-grow-1"
+              style={{ minWidth: "200px", maxWidth: "400px" }}
+            >
               <SearchBar
                 searchTerm={searchTerm}
-               setSearchTerm={setSearchTerm} // Pass setSearchTerm directly
-
-                placeholder={stockAlertFilterActive ? "Search alerts..." : "Search items/HSN..."}
+                setSearchTerm={setSearchTerm} // Pass setSearchTerm directly
+                placeholder={
+                  stockAlertFilterActive
+                    ? "Search alerts..."
+                    : "Search items/HSN..."
+                }
                 showButton={false}
                 disabled={anyLoading}
               />
             </div>
-            
+
             {/* Spacer for Stock Alerts Page or Filters for Main Page */}
             {stockAlertFilterActive ? (
               <div className="d-flex align-items-center gap-2 ms-auto">
-                <label htmlFor="stockAlertThresholdInput" className="form-label mb-0 me-1 text-nowrap">Alert Qty &lt;</label>
+                <label
+                  htmlFor="stockAlertThresholdInput"
+                  className="form-label mb-0 me-1 text-nowrap"
+                >
+                  Alert Qty &lt;
+                </label>
                 <input
                   type="number"
                   id="stockAlertThresholdInput"
@@ -1039,19 +1233,40 @@ export default function Items() {
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === "" || parseInt(val, 10) >= 0) {
-                        setStockAlertsPageFilterThreshold(val);
+                      setStockAlertsPageFilterThreshold(val);
                     } else if (parseInt(val, 10) < 0) {
-                        setStockAlertsPageFilterThreshold("0");
+                      setStockAlertsPageFilterThreshold("0");
                     }
                   }}
                   onBlur={applyStockAlertFilter}
-                  onKeyPress={(e) => e.key === 'Enter' && applyStockAlertFilter()}
-                  style={{width: '70px'}}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && applyStockAlertFilter()
+                  }
+                  style={{ width: "70px" }}
                   min="0"
                   disabled={anyLoading}
                 />
-                <Button size="sm" variant="primary" onClick={applyStockAlertFilter} disabled={anyLoading}>Apply</Button>
-                <Button size="sm" variant="outline-secondary" onClick={() => handleUpdateGlobalLowStockThreshold(stockAlertsPageFilterThreshold)} disabled={anyLoading} title="Set as global default">Set Default</Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={applyStockAlertFilter}
+                  disabled={anyLoading}
+                >
+                  Apply
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  onClick={() =>
+                    handleUpdateGlobalLowStockThreshold(
+                      stockAlertsPageFilterThreshold
+                    )
+                  }
+                  disabled={anyLoading}
+                  title="Set as global default"
+                >
+                  Set Default
+                </Button>
               </div>
             ) : (
               // Filters and Add Item Button for Main Page
@@ -1075,26 +1290,59 @@ export default function Items() {
                       ))}
                   </select>
                 </div>
-                <div className="d-flex align-items-center gap-1" style={{ minWidth: "130px" }}>
-                  <label htmlFor="quantityFilterInput" className="form-label mb-0 text-nowrap small visually-hidden">Qty &le;</label>
+                <div
+                  className="d-flex align-items-center gap-1"
+                  style={{ minWidth: "130px" }}
+                >
+                  <label
+                    htmlFor="quantityFilterInput"
+                    className="form-label mb-0 text-nowrap small visually-hidden"
+                  >
+                    Qty &le;
+                  </label>
                   <input
-                      type="number"
-                      id="quantityFilterInput"
-                      className="form-control form-control-sm"
-                      placeholder="Qty &le;"
-                      value={quantityFilterInputValue}
-                      onChange={(e) => setQuantityFilterInputValue(e.target.value)}
-                      onKeyPress={(e) => { if (e.key === 'Enter') { setCurrentPage(1); /* fetchItems(); */ } }} // Removed fetchItems from here
-                      style={{width: '70px'}}
-                      min="0"
-                      disabled={anyLoading}
+                    type="number"
+                    id="quantityFilterInput"
+                    className="form-control form-control-sm"
+                    placeholder="Qty &le;"
+                    value={quantityFilterInputValue}
+                    onChange={(e) =>
+                      setQuantityFilterInputValue(e.target.value)
+                    }
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        setCurrentPage(1); /* fetchItems(); */
+                      }
+                    }} // Removed fetchItems from here
+                    style={{ width: "70px" }}
+                    min="0"
+                    disabled={anyLoading}
                   />
-                   <Button size="sm" variant="outline-secondary" onClick={() => {setCurrentPage(1); fetchItems();}} disabled={anyLoading}>Filter</Button>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => {
+                      setCurrentPage(1);
+                      fetchItems();
+                    }}
+                    disabled={anyLoading}
+                  >
+                    Filter
+                  </Button>
                 </div>
-                <Button variant="success" size="sm" onClick={() => setShowAddItemModal(true)} disabled={anyLoading} title="Add New Item" className="d-flex align-items-center" style={{gap: "0.25rem"}}>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => setShowAddItemModal(true)}
+                  disabled={anyLoading}
+                  title="Add New Item"
+                  className="d-flex align-items-center"
+                  style={{ gap: "0.25rem" }}
+                >
                   <PlusCircle size={16} /> Add Item
                 </Button>
-              </div>
+                {user &&
+    (user.role === "admin" || user.role === "super-admin") && (<></>)}              </div>
             )}
           </div>
           {excelUpdateStatus.success && !stockAlertFilterActive && (
@@ -1104,7 +1352,6 @@ export default function Items() {
           )}
         </div>
 
-
         <input
           type="file"
           id="excel-upload-input"
@@ -1112,6 +1359,7 @@ export default function Items() {
           accept=".xlsx, .xls"
           onChange={handleFileSelectedForUploadAndProcess}
           disabled={anyLoading}
+
         />
 
         <div className="table-responsive">
@@ -1151,11 +1399,13 @@ export default function Items() {
                   {sortConfig.key === "maxDiscountPercentage" &&
                     (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
+                <th>Image</th>
+
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {items.length > 0 ? ( 
+              {items.length > 0 ? (
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
@@ -1166,17 +1416,19 @@ export default function Items() {
                           {item.quantity <= 0 ? (
                             <span
                               className="badge bg-danger ms-2"
-                              title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}                            >
+                              title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}
+                            >
                               ⚠️ Restock
                             </span>
-                          ) : item.quantity > 0 && item.quantity <= item.lowStockThreshold ? ( 
-                              <span
-                                className="badge bg-warning text-dark ms-2"
-                                 title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
-                              >
-                                🔥 Low Stock
-                              </span>
-                            ) : null}
+                          ) : item.quantity > 0 &&
+                            item.quantity <= item.lowStockThreshold ? (
+                            <span
+                              className="badge bg-warning text-dark ms-2"
+                              title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
+                            >
+                              🔥 Low Stock
+                            </span>
+                          ) : null}
                         </>
                       </td>
                       <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
@@ -1190,13 +1442,41 @@ export default function Items() {
                           ? `${item.maxDiscountPercentage}%`
                           : "-"}
                       </td>
+                      <td className="text-center">
+                        {item.image ? (
+                          <a
+                            href={item.image}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              style={{
+                                width: "50px",
+                                height: "50px",
+                                objectFit: "cover",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <span className="text-muted small">No Image</span>
+                        )}
+                      </td>
+
                       <td>
                         <div className="d-flex gap-1 justify-content-center">
                           <ActionButtons
                             item={item}
-                            onView={(currentItem) => toggleExpandedRow(currentItem._id)}
+                            onView={(currentItem) =>
+                              toggleExpandedRow(currentItem._id)
+                            }
                             onEdit={handleEditItem}
-                            onDelete={(currentItem) => handleDelete(currentItem._id)}
+                            onDelete={(currentItem) =>
+                              handleDelete(currentItem._id)
+                            }
                             isLoading={anyLoading}
                             size="sm"
                           />
@@ -1206,14 +1486,18 @@ export default function Items() {
                             disabled={anyLoading}
                             title="View Item History"
                           >
-                            <ClockHistory /> 
+                            <ClockHistory />
                           </button>
                         </div>
                       </td>
                     </tr>
                     {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="8" className="expanded-row">
+                        <td
+                          colSpan="9
+                        "
+                          className="expanded-row"
+                        >
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
@@ -1228,51 +1512,77 @@ export default function Items() {
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td><strong>Name</strong></td>
+                                  <td>
+                                    <strong>Name</strong>
+                                  </td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Category</strong></td>
+                                  <td>
+                                    <strong>Category</strong>
+                                  </td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
+                                <tr></tr>
                                 <tr>
-                                </tr>
-                                <tr>
-                                  <td><strong>Quantity</strong></td>
+                                  <td>
+                                    <strong>Quantity</strong>
+                                  </td>
                                   <td>
                                     {item.quantity}
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"})`
-                                      : item.quantity > 0 && item.quantity <= item.lowStockThreshold &&
-                                        ` (Low stock based on item's threshold: ${
-                                          item.lowStockThreshold
-                                        })`}
+                                        : ` (Below item's restock threshold: ${
+                                            item.lowStockThreshold || "Not Set"
+                                          })`
+                                      : item.quantity > 0 &&
+                                        item.quantity <=
+                                          item.lowStockThreshold &&
+                                        ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Selling Price</strong></td>
-                                  <td>₹{parseFloat(item.sellingPrice).toFixed(2)}</td>
+                                  <td>
+                                    <strong>Selling Price</strong>
+                                  </td>
+                                  <td>
+                                    ₹{parseFloat(item.sellingPrice).toFixed(2)}
+                                  </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Buying Price</strong></td>
-                                  <td>₹{parseFloat(item.buyingPrice || 0).toFixed(2)}</td>
+                                  <td>
+                                    <strong>Buying Price</strong>
+                                  </td>
+                                  <td>
+                                    ₹
+                                    {parseFloat(item.buyingPrice || 0).toFixed(
+                                      2
+                                    )}
+                                  </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Unit</strong></td>
+                                  <td>
+                                    <strong>Unit</strong>
+                                  </td>
                                   <td>{item.unit || "Nos"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>GST Rate</strong></td>
+                                  <td>
+                                    <strong>GST Rate</strong>
+                                  </td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>HSN Code</strong></td>
+                                  <td>
+                                    <strong>HSN Code</strong>
+                                  </td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Max Discount</strong></td>
+                                  <td>
+                                    <strong>Max Discount</strong>
+                                  </td>
                                   <td>
                                     {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
@@ -1285,7 +1595,10 @@ export default function Items() {
                               <h6>Purchase History (Expanded Row)</h6>
                             </div>
                             {purchaseHistoryLoading[item._id] ? (
-                               <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
+                              <div className="text-center">
+                                <Spinner animation="border" size="sm" /> Loading
+                                history...
+                              </div>
                             ) : purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
                                 <thead className="table-secondary">
@@ -1302,9 +1615,15 @@ export default function Items() {
                                   {purchaseHistory[item._id].map(
                                     (purchase, idx) => (
                                       <tr key={purchase._id || idx}>
-                                        <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                                        <td>
+                                          {new Date(
+                                            purchase.date
+                                          ).toLocaleDateString()}
+                                        </td>
                                         <td>{purchase.companyName}</td>
-                                        <td>{purchase.createdByName || "N/A"}</td>
+                                        <td>
+                                          {purchase.createdByName || "N/A"}
+                                        </td>
                                         <td>{purchase.invoiceNumber}</td>
                                         <td>{purchase.quantity}</td>
                                         <td>₹{purchase.price.toFixed(2)}</td>
@@ -1315,7 +1634,7 @@ export default function Items() {
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error && expandedRow === item._id 
+                                {error && expandedRow === item._id
                                   ? `Error loading history: ${error}`
                                   : "No purchase history found for this item."}
                               </div>
@@ -1335,19 +1654,27 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          {totalItems > 0 && ( 
+          {totalItems > 0 && (
             <Pagination
               currentPage={currentPage}
               totalItems={totalItems}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
                 const totalPages = Math.ceil(totalItems / itemsPerPage);
-                if (page >= 1 && page <= totalPages) { setCurrentPage(page); }
+                if (page >= 1 && page <= totalPages) {
+                  setCurrentPage(page);
+                }
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
               // Pass export/import handlers
-              onExportExcel={!stockAlertFilterActive ? handleExportToExcel : undefined}
-              onImportExcel={!stockAlertFilterActive ? () => document.getElementById("excel-upload-input")?.click() : undefined}
+              onExportExcel={
+                !stockAlertFilterActive ? handleExportToExcel : undefined
+              }
+              onImportExcel={
+                !stockAlertFilterActive
+                  ? () => document.getElementById("excel-upload-input")?.click()
+                  : undefined
+              }
               isExporting={isExportingExcel}
               isImporting={isProcessingExcel}
             />
@@ -1359,23 +1686,41 @@ export default function Items() {
             show={showAddItemModal}
             onHide={() => {
               setShowAddItemModal(false);
-              setFormData({ 
-                name: "", quantity: "0", sellingPrice: "", buyingPrice: "", 
-                gstRate: "0", hsnCode: "", unit: "Nos", category: "",
-                maxDiscountPercentage: "", lowStockThreshold: "5", 
+              setFormData({
+                name: "",
+                quantity: "0",
+                sellingPrice: "",
+                buyingPrice: "",
+                image: "",
+                gstRate: "0",
+                hsnCode: "",
+                unit: "Nos",
+                category: "",
+                maxDiscountPercentage: "",
+                lowStockThreshold: "5",
               });
-              setError(null); 
+              setError(null);
             }}
             title="Add New Item"
             footerContent={
               <>
                 <button
                   type="button"
-                  className="btn btn-secondary" 
+                  className="btn btn-secondary"
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
-                      name: "", quantity: "0", sellingPrice: "", buyingPrice: "", gstRate: "0", hsnCode: "", unit: "Nos", category: "", maxDiscountPercentage: "", lowStockThreshold: "5", 
+                      name: "",
+                      quantity: "0",
+                      sellingPrice: "",
+                      buyingPrice: "",
+                      gstRate: "0",
+                      hsnCode: "",
+                      unit: "Nos",
+                      category: "",
+                      maxDiscountPercentage: "",
+                      lowStockThreshold: "5",
+                      image: "",
                     });
                     setError(null);
                   }}
@@ -1388,27 +1733,39 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || !formData.category ||
+                    !formData.sellingPrice ||
+                    !formData.category ||
                     isSubmitting ||
-                    isAddingNewCategory 
+                    isAddingNewCategory
                   }
                 >
                   {isSubmitting ? (
                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Adding...
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Adding...
                     </>
-                  ) : "Add New Item"}
+                  ) : (
+                    "Add New Item"
+                  )}
                 </button>
               </>
             }
             isLoading={isSubmitting}
           >
             <>
-              {error && <div className="alert alert-danger">{error}</div>} 
+              {error && <div className="alert alert-danger">{error}</div>}
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
-                    <label>Name <span className="text-danger">*</span></label>
+                    <label>
+                      Name <span className="text-danger">*</span>
+                    </label>
                     <input
                       className="form-control mb-2"
                       placeholder="Name"
@@ -1433,14 +1790,15 @@ export default function Items() {
                         if (val === "" || parseInt(val, 10) >= 0) {
                           setFormData({ ...formData, quantity: val });
                         } else if (parseInt(val, 10) < 0) {
-                          setFormData({ ...formData, quantity: "0"});
+                          setFormData({ ...formData, quantity: "0" });
                         }
-                      }
-                      }
+                      }}
                     />
                   </div>
                   <div className="form-group">
-                    <label>Selling Price <span className="text-danger">*</span></label>
+                    <label>
+                      Selling Price <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -1531,9 +1889,7 @@ export default function Items() {
                             className="form-control"
                             placeholder="Enter new category name"
                             value={newCategoryName}
-                            onChange={(e) =>
-                              setNewCategoryName(e.target.value)
-                            }
+                            onChange={(e) => setNewCategoryName(e.target.value)}
                             disabled={isSubmittingCategory}
                           />
                           <button
@@ -1577,17 +1933,14 @@ export default function Items() {
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                category: e.target.value, 
+                                category: e.target.value,
                               })
                             }
                           >
                             <option value="">Select Category</option>
                             {Array.isArray(categories) &&
                               categories.map((cat) => (
-                                <option
-                                  key={cat.category}
-                                  value={cat.category}
-                                >
+                                <option key={cat.category} value={cat.category}>
                                   {cat.category}
                                 </option>
                               ))}
@@ -1645,6 +1998,39 @@ export default function Items() {
                       min="0"
                     />
                   </div>
+                  <div className="form-group">
+                    <label>Image</label>
+                    <input
+                      type="file"
+                      className="form-control mb-2"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                    {formData.image && (
+                      <div className="mt-2 text-center">
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-danger ms-2"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, image: "" }))
+                          }
+                          title="Remove Image"
+                        >
+                          X
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -1662,7 +2048,7 @@ export default function Items() {
               setTicketUsageData([]);
               setInventoryAdjustmentsLogData([]);
               setItemEditsLogData([]);
-              setError(null); 
+              setError(null);
             }}
             title={`Item History: ${editingItem.name}`}
             footerContent={
@@ -1682,7 +2068,7 @@ export default function Items() {
                 Close
               </button>
             }
-            size="xl" 
+            size="xl"
           >
             <>
               {itemHistoryLoading ? (
@@ -1698,7 +2084,10 @@ export default function Items() {
                   {inventoryAdjustmentsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Inventory Adjustments & Ticket Interactions</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1715,9 +2104,22 @@ export default function Items() {
                                 <td>{new Date(entry.date).toLocaleString()}</td>
                                 <td>{entry.type}</td>
                                 <td>{entry.user}</td>
-                                <td>{entry.details}{entry.ticketNumber ? ` (Ticket: ${entry.ticketNumber})` : ''}</td>
-                                <td className={entry.quantityChange >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'}>
-                                  {entry.quantityChange > 0 ? `+${entry.quantityChange}` : entry.quantityChange}
+                                <td>
+                                  {entry.details}
+                                  {entry.ticketNumber
+                                    ? ` (Ticket: ${entry.ticketNumber})`
+                                    : ""}
+                                </td>
+                                <td
+                                  className={
+                                    entry.quantityChange >= 0
+                                      ? "text-success fw-bold"
+                                      : "text-danger fw-bold"
+                                  }
+                                >
+                                  {entry.quantityChange > 0
+                                    ? `+${entry.quantityChange}`
+                                    : entry.quantityChange}
                                 </td>
                               </tr>
                             ))}
@@ -1730,7 +2132,10 @@ export default function Items() {
                   {itemEditsLogData.length > 0 && (
                     <div className="mb-4">
                       <h5>Item Detail Edits </h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1744,7 +2149,9 @@ export default function Items() {
                               <tr key={`edit-${index}`}>
                                 <td>{new Date(entry.date).toLocaleString()}</td>
                                 <td>{entry.user}</td>
-                                <td style={{whiteSpace: 'pre-wrap'}}>{entry.details}</td>
+                                <td style={{ whiteSpace: "pre-wrap" }}>
+                                  {entry.details}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -1756,7 +2163,10 @@ export default function Items() {
                   {purchaseHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Purchase History</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1773,13 +2183,25 @@ export default function Items() {
                           <tbody>
                             {purchaseHistoryData.map((entry, index) => (
                               <tr key={`purchase-${index}`}>
-                                <td>{new Date(entry.date).toLocaleDateString()}</td>
+                                <td>
+                                  {new Date(entry.date).toLocaleDateString()}
+                                </td>
                                 <td>{entry.companyName}</td>
                                 <td>{entry.invoiceNumber}</td>
-                                <td className="text-success fw-bold">+{entry.quantity}</td>
+                                <td className="text-success fw-bold">
+                                  +{entry.quantity}
+                                </td>
                                 <td>₹{entry.price.toFixed(2)}</td>
                                 <td>{entry.gstRate}%</td>
-                                <td>₹{entry.amount?.toFixed(2) || ((entry.price * entry.quantity) * (1 + entry.gstRate/100)).toFixed(2) }</td>
+                                <td>
+                                  ₹
+                                  {entry.amount?.toFixed(2) ||
+                                    (
+                                      entry.price *
+                                      entry.quantity *
+                                      (1 + entry.gstRate / 100)
+                                    ).toFixed(2)}
+                                </td>
                                 <td>{entry.createdByName}</td>
                               </tr>
                             ))}
@@ -1792,7 +2214,10 @@ export default function Items() {
                   {excelHistoryData.length > 0 && (
                     <div className="mb-4">
                       <h5>Excel Import History</h5>
-                      <div className="table-responsive" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
                         <table className="table table-sm table-striped table-bordered">
                           <thead className="table-light sticky-top">
                             <tr>
@@ -1820,12 +2245,15 @@ export default function Items() {
                   )}
 
                   {inventoryAdjustmentsLogData.length === 0 &&
-                   itemEditsLogData.length === 0 &&
-                   purchaseHistoryData.length === 0 &&
-                   ticketUsageData.length === 0 &&
-                   excelHistoryData.length === 0 && !itemHistoryLoading && (
-                    <div className="alert alert-info">No history found for this item.</div>
-                  )}
+                    itemEditsLogData.length === 0 &&
+                    purchaseHistoryData.length === 0 &&
+                    ticketUsageData.length === 0 &&
+                    excelHistoryData.length === 0 &&
+                    !itemHistoryLoading && (
+                      <div className="alert alert-info">
+                        No history found for this item.
+                      </div>
+                    )}
                 </>
               )}
             </>
@@ -1859,21 +2287,32 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || !formData.category ||
+                    !formData.sellingPrice ||
+                    !formData.category ||
                     isSubmitting
                   }
                 >
-                  {parseFloat(formData.buyingPrice) > parseFloat(formData.sellingPrice) && (
-                     <Alert variant="warning" className="p-2 small mb-0 me-2">
-                       Buying price cannot be greater than Selling price!
-                     </Alert>
+                  {parseFloat(formData.buyingPrice) >
+                    parseFloat(formData.sellingPrice) && (
+                    <Alert variant="warning" className="p-2 small mb-0 me-2">
+                      Buying price cannot be greater than Selling price!
+                    </Alert>
                   )}
 
                   {isSubmitting ? (
                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Updating...
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Updating...
                     </>
-                  ) : "Update Item"}
+                  ) : (
+                    "Update Item"
+                  )}
                 </button>
               </>
             }
@@ -1907,10 +2346,9 @@ export default function Items() {
                         if (val === "" || parseInt(val, 10) >= 0) {
                           setFormData({ ...formData, quantity: val });
                         } else if (parseInt(val, 10) < 0) {
-                          setFormData({ ...formData, quantity: "0"});
+                          setFormData({ ...formData, quantity: "0" });
                         }
-                      }
-                      }
+                      }}
                     />
                   </div>
                   <div className="form-group">
@@ -1998,7 +2436,7 @@ export default function Items() {
                       name="category"
                       value={formData.category}
                       onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value }) 
+                        setFormData({ ...formData, category: e.target.value })
                       }
                     >
                       <option value="">Select Category</option>
@@ -2044,6 +2482,39 @@ export default function Items() {
                       min="0"
                     />
                   </div>
+                  <div className="form-group">
+                    <label>Image</label>
+                    <input
+                      type="file"
+                      className="form-control mb-2"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                    {formData.image && (
+                      <div className="mt-2 text-center">
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-danger ms-2"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, image: "" }))
+                          }
+                          title="Remove Image"
+                        >
+                          X
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -2053,7 +2524,11 @@ export default function Items() {
         {showPurchaseModal && (
           <ReusableModal
             show={showPurchaseModal}
-            onHide={() => { setShowPurchaseModal(false); resetPurchaseForm(); setError(null); }}
+            onHide={() => {
+              setShowPurchaseModal(false);
+              resetPurchaseForm();
+              setError(null);
+            }}
             title="Purchase Tracking"
             footerContent={
               <>
@@ -2074,10 +2549,19 @@ export default function Items() {
                   disabled={!isPurchaseDataValid() || isSubmitting}
                 >
                   {isSubmitting ? (
-                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Submitting...
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Submitting...
                     </>
-                  ) : "Submit Purchase"}
+                  ) : (
+                    "Submit Purchase"
+                  )}
                 </button>
               </>
             }
@@ -2182,12 +2666,14 @@ export default function Items() {
                       className="form-control mb-2"
                       placeholder="Search item by name or HSN..."
                       value={itemSearchTerm} // Use a single itemSearchTerm for the active input
-                      onChange={(e) => { 
+                      onChange={(e) => {
                         setItemSearchTerm(e.target.value);
                         // setCurrentItemIndex(idx); // This state seems unused, removing direct use
                         setShowItemSearch(true);
                       }}
-                      onFocus={() => { /* setCurrentItemIndex(idx); */ setShowItemSearch(true); }} 
+                      onFocus={() => {
+                        /* setCurrentItemIndex(idx); */ setShowItemSearch(true);
+                      }}
                       disabled={isSubmitting}
                     />
                     {filteredItemsList.length > 0 &&
@@ -2198,19 +2684,40 @@ export default function Items() {
                               key={i}
                               className="suggestion-item"
                               onClick={() => {
-                                handleItemChange(idx, "description", suggestion.name);
-                                handleItemChange(idx, "price", suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0"));
-                                handleItemChange(idx, "gstRate", suggestion.gstRate.toString());
+                                handleItemChange(
+                                  idx,
+                                  "description",
+                                  suggestion.name
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "price",
+                                  suggestion.buyingPrice
+                                    ? suggestion.buyingPrice.toString()
+                                    : suggestion.lastPurchasePrice
+                                    ? suggestion.lastPurchasePrice.toString()
+                                    : "0"
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "gstRate",
+                                  suggestion.gstRate.toString()
+                                );
                                 setItemSearchTerm(""); // Clear search term after selection
                                 setShowItemSearch(false);
                               }}
                             >
                               <strong>{suggestion.name}</strong>
                               <span className="text-muted">
-                                {" "}- SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP: ₹{(suggestion.buyingPrice || 0).toFixed(2)}
+                                {" "}
+                                - SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP:
+                                ₹{(suggestion.buyingPrice || 0).toFixed(2)}
                               </span>
                               <br />
-                              <small>HSN: {suggestion.hsnCode || "N/A"}, GST: {suggestion.gstRate || 0}%</small>
+                              <small>
+                                HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
+                                {suggestion.gstRate || 0}%
+                              </small>
                             </div>
                           ))}
                         </div>
@@ -2220,7 +2727,9 @@ export default function Items() {
                     <div className="selected-item-details mb-2 p-2 bg-light border rounded">
                       <strong>{item.description}</strong>
                       {item.price && (
-                        <small className="d-block">Price: ₹{item.price}, GST: {item.gstRate || 0}%</small>
+                        <small className="d-block">
+                          Price: ₹{item.price}, GST: {item.gstRate || 0}%
+                        </small>
                       )}
                     </div>
                   )}
@@ -2233,7 +2742,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Description"
                           value={item.description || ""}
-                          onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "description", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2247,7 +2758,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Price"
                           value={item.price || ""}
-                          onChange={(e) => handleItemChange(idx, "price", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "price", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2260,7 +2773,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Quantity"
                           value={item.quantity || ""}
-                          onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "quantity", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2274,7 +2789,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="GST Rate"
                           value={item.gstRate || "0"}
-                          onChange={(e) => handleItemChange(idx, "gstRate", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "gstRate", e.target.value)
+                          }
                         />
                       </div>
                     </div>
@@ -2298,7 +2815,9 @@ export default function Items() {
                   Add Another Item
                 </button>
                 <div className="total-amount">
-                  <strong>Total Amount: ₹{calculateTotalAmount().toFixed(2)}</strong>
+                  <strong>
+                    Total Amount: ₹{calculateTotalAmount().toFixed(2)}
+                  </strong>
                 </div>
               </div>
             </>
