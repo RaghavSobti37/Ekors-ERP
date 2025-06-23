@@ -109,6 +109,11 @@ const itemSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    image: {
+      type: String, // Will store the Base64 data URL
+      default: "",
+    },
+
     quantity: {
       type: Number,
       default: 0,
