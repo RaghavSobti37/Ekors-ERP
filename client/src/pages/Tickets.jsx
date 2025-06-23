@@ -121,7 +121,16 @@ export const UserSearchComponent = ({ onUserSelect, authContext }) => {
   };
 
   const handleBlur = () => {
-    setTimeout(() => setShowDropdown(false), 200);
+    // Use setTimeout to allow click events to process before hiding dropdown
+    setTimeout(() => {
+      setShowDropdown(false);
+    }, 200);
+  };
+
+  const handleFocus = () => {
+    if (searchTerm.trim() !== "" && filteredUsers.length > 0) {
+      setShowDropdown(true);
+    }
   };
 
   return (
@@ -134,7 +143,7 @@ export const UserSearchComponent = ({ onUserSelect, authContext }) => {
           placeholder="Search user by name or email..."
           value={searchTerm}
           onChange={handleSearchChange}
-          onFocus={() => setShowDropdown(true)}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={loading}
         />
@@ -146,6 +155,7 @@ export const UserSearchComponent = ({ onUserSelect, authContext }) => {
             <div
               key={user._id}
               className="search-suggestion-item"
+              onMouseDown={(e) => e.preventDefault()} // Prevent input blur on mouse down
               onClick={() => handleUserClick(user)}
             >
               <strong>
