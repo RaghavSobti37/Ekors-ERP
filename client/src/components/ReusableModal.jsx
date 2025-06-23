@@ -22,7 +22,7 @@ const fullScreenModalStyle = {
   flexDirection: "column",  // Added
 };
 
-const ReusableModal = ({
+const ReusableModalComponent = ({
   show,
   onHide,
   title,
@@ -93,4 +93,4 @@ const ReusableModal = ({
   );
 };
 
-export default ReusableModal;
+export default React.memo(ReusableModalComponent);

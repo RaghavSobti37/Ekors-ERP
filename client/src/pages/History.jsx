@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import ActionButtons from "../components/ActionButtons";
 import Footer from "../components/Footer";
@@ -7,7 +7,6 @@ import {
   handleApiError,
   formatDisplayDate as formatDisplayDateHelper,
 } from "../utils/helpers";
-import { toast } from "react-toastify"; // Library for toast notifications, ToastContainer removed
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Table, Button, Alert } from "react-bootstrap";
@@ -21,10 +20,10 @@ import "react-toastify/dist/ReactToastify.css";
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortConfig, setSortConfig] = useState({ key: "date", direction: "desc" });
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const itemsPerPage = 4;
@@ -32,19 +31,26 @@ export default function History() {
   const navigate = useNavigate();
 
   const dateToYYYYMMDD = (dateObj) => {
-    return dateObj.toISOString().split('T')[0];
+    return dateObj.toISOString().split("T")[0];
   };
 
-  const fetchHistory = async () => {
+  const [totalHistoryCount, setTotalHistoryCount] = useState(0);
+
+  const fetchHistory = useCallback(async (page = 1, limit = itemsPerPage, sortKey = sortConfig.key, sortDirection = sortConfig.direction) => {
     setIsLoading(true);
     setError(null);
     try {
       const token = getAuthTokenUtil();
       if (!token) throw new Error("No authentication token found");
-      const data = await apiClient("/logtime/all");
 
-      const withTotal = data.map((entry) => {
+      const response = await apiClient("/logtime", { // Assuming endpoint supports pagination & sorting
+        params: { page, limit, sortKey, sortDirection },
+      });
+
+      const processedData = (response.data || []).map((entry) => {
         let totalMinutes = 0;
+        // Ensure logs is an array before trying to iterate
+        if (!Array.isArray(entry.logs)) entry.logs = []; 
         entry.logs?.forEach((log) => {
           const [h, m] = log.timeSpent.split(":").map(Number);
           if (!isNaN(h) && !isNaN(m)) totalMinutes += h * 60 + m;
@@ -58,10 +64,12 @@ export default function History() {
         };
       });
 
-      setHistoryData(withTotal);
+      setHistoryData(processedData);
+      setTotalHistoryCount(response.totalItems || 0);
     } catch (error) {
       const errorMessage = handleApiError(error, "Failed to fetch history");
       setError(errorMessage);
+      setHistoryData([]); setTotalHistoryCount(0);
       showToast(errorMessage, false);
       if (error.message.includes("authentication")) {
         navigate("/login");
@@ -69,41 +77,36 @@ export default function History() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemsPerPage, sortConfig.key, sortConfig.direction, navigate]); // Removed user from deps, handleApiError can take it as arg
 
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
-    fetchHistory();
-  }, [user, navigate]);
+    fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
+  }, [user, navigate, currentPage, itemsPerPage, sortConfig, fetchHistory]);
 
-  const handleSort = () => {
-    const newOrder = sortOrder === "asc" ? "desc" : "asc";
-    const sorted = [...historyData].sort((a, b) =>
-      newOrder === "asc"
-        ? new Date(a.date) - new Date(b.date)
-        : new Date(b.date) - new Date(a.date)
-    );
-    setSortOrder(newOrder);
-    setHistoryData(sorted);
-  };
+  const handleSort = useCallback((key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page on sort change
+  }, [sortConfig]);
 
-  const handleView = (entry) => setSelectedEntry(entry);
-  const handleEdit = (entry) => {
+  const handleView = useCallback((entry) => setSelectedEntry(entry), []);
+  const handleEdit = useCallback((entry) => {
     // entry.date is expected to be in YYYY-MM-DD format from the backend
     navigate(`/logtime/${entry.date}`);
-  };
+  }, [navigate]);
 
-  const handleDelete = async (entryId) => {
+  const handleDelete = useCallback(async (entryId) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
       const token = getAuthTokenUtil();
       if (!token) {
-        showToast(
-          "Authentication token not found. Please log in again.",
-          false
-        );
+        showToast("Authentication token not found. Please log in again.", false);
         setError("Authentication token not found. Please log in again."); // Optional: set page error
         // navigate("/login"); // Optional: redirect to login
         return;
@@ -112,42 +115,38 @@ export default function History() {
       try {
         setIsLoading(true); // Set loading after token check
         await apiClient(`/logtime/${entryId}`, { method: "DELETE" });
-
-        await fetchHistory();
         showToast("Entry deleted successfully!", true);
+        // Refresh logic
+        if (historyData.length === 1 && currentPage > 1) {
+          setCurrentPage(prevPage => prevPage - 1);
+        } else {
+          fetchHistory(currentPage, itemsPerPage, sortConfig.key, sortConfig.direction);
+        }
       } catch (error) {
-        const errorMessage = handleApiError(
-          error,
-          `Failed to delete entry ${entryId}`
-        );
-
+        const errorMessage = handleApiError(error, `Failed to delete entry ${entryId}`, user);
         setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     }
-  };
+  }, [historyData.length, currentPage, itemsPerPage, sortConfig, fetchHistory, user]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedEntry(null);
-  };
+  }, []);
 
-  const handleAddNewEntry = () => {
+  const handleAddNewEntry = useCallback(() => {
     const today = new Date();
     const formattedDateYYYYMMDD = dateToYYYYMMDD(today);
     navigate(`/logtime/${formattedDateYYYYMMDD}`);
-  };
+  }, [navigate]);
 
-  const currentEntries = historyData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-  };
-
-  const totalPages = Math.ceil(historyData.length / itemsPerPage);
+  const goToPage = useCallback((page) => {
+    const totalPages = Math.ceil(totalHistoryCount / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  }, [totalHistoryCount, itemsPerPage]);
 
   return (
     <div>
@@ -189,19 +188,19 @@ export default function History() {
               cellClassName: "centered",
             },
           ]}
-          data={currentEntries}
+          data={historyData} // ReusableTable expects the current page's data
           keyField="_id"
-          isLoading={isLoading && currentEntries.length === 0}
-          error={error && currentEntries.length === 0 ? error : null}
+          isLoading={isLoading && historyData.length === 0}
+          error={error && historyData.length === 0 ? error : null}
           onSort={handleSort}
           sortConfig={{
-            key: "date",
-            direction: sortOrder === "asc" ? "ascending" : "descending",
+            key: sortConfig.key,
+            direction: sortConfig.direction === "asc" ? "ascending" : "descending",
           }}
           renderActions={(entry) => (
             <ActionButtons
               item={entry}
-              onView={handleView}
+              onView={() => handleView(entry)} // Ensure correct entry is passed
               onEdit={handleEdit}
               onDelete={() => handleDelete(entry._id)}
               isLoading={isLoading}
@@ -212,11 +211,14 @@ export default function History() {
           theadClassName="table-dark"
         />
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={goToPage}
-        />
+        {totalHistoryCount > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalHistoryCount}
+            itemsPerPage={itemsPerPage}
+            onPageChange={goToPage}
+          />
+        )}
       </div>
 
       {/* View Modal */}

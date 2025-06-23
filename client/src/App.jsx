@@ -1,6 +1,4 @@
-import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-// Removed direct PDF component imports as they are typically part of pages
 import Login from "./pages/Login.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
@@ -8,13 +6,11 @@ import History from "./pages/History";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
-// import AddNewItem from "./pages/AddNewItem.jsx";
 import PurchaseHistory from "./pages/PurchaseHistory.jsx";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
-// import { ToastContainer as BootstrapToastContainer } from "react-bootstrap"; // Can be removed if not used
 import { ToastContainer } from "react-toastify"; // For react-toastify notifications
 import "react-toastify/dist/ReactToastify.css"; // Import CSS for react-toastify
 

@@ -12,14 +12,27 @@ import { PDFViewer } from "@react-pdf/renderer";
 import PIPDF from "../../components/PIPDF.jsx";
 import QuotationPDF from "../../components/QuotationPDF.jsx";
 import { PIActions } from "../../pages/Tickets.jsx"; // Assuming PIActions is correctly defined and exported
-import { FaEye, FaDownload, FaUpload, FaTrash, FaFilePdf, FaFileWord, FaPlus } from "react-icons/fa";
+import { FaEye, FaUpload, FaTrash, FaFilePdf } from "react-icons/fa"; // Removed unused FaDownload, FaFileWord, FaPlus
+
+const getStatusBadgeColor = (status) => {
+  switch (status) {
+    case "Quotation Sent": return "info";
+    case "PO Received": return "primary";
+    case "Payment Pending": return "warning";
+    case "Inspection": return "secondary";
+    case "Packing List": return "dark";
+    case "Invoice Sent": return "success";
+    case "Hold": return "danger";
+    case "Closed": return "success";
+    default: return "dark";
+  }
+};
 
 const TicketDetailsPage = () => {
   const { id: ticketIdFromParams } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authUser, loading: authLoading } = useAuth();
-  const auth = useAuth();
 
   const [ticket, setTicket] = useState(location.state?.ticketData || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,15 +76,14 @@ const TicketDetailsPage = () => {
     }
   }, [ticketIdFromParams, location.state, fetchTicketDetails]);
 
-  const handlePaymentSubmit = async () => {
+  const handlePaymentSubmit = useCallback(async () => {
     setIsLoading(true); setError(null);
     try {
-      // TODO: Add paymentProof file upload if needed
       const responseData = await apiClient(`/tickets/${ticket._id}/payments`, {
         method: "POST", body: { amount: paymentAmount, date: paymentDate, reference: paymentReference },
       });
       if (responseData && responseData.ticket) {
-        fetchTicketDetails(); // Refresh ticket details to show new payment
+        fetchTicketDetails(); 
         toast.success("Payment recorded!");
         frontendLogger.info("paymentActivity", "Payment recorded", authUser, { ticketId: ticket._id, amount: paymentAmount, action: "RECORD_PAYMENT_SUCCESS" });
         setPaymentAmount(0); setPaymentReference(""); // Reset form
@@ -80,27 +92,26 @@ const TicketDetailsPage = () => {
       const errorMsg = handleApiError(err, "Failed to record payment", authUser, "paymentActivity");
       setError(errorMsg); toast.error(errorMsg);
     } finally { setIsLoading(false); }
-  };
+  }, [ticket?._id, paymentAmount, paymentDate, paymentReference, fetchTicketDetails, authUser, setIsLoading, setError, setPaymentAmount, setPaymentReference]);
 
-  const handleDocumentUpload = async (file, docType, isOther = false) => {
+  const handleDocumentUpload = useCallback(async (file, docType, isOther = false) => {
     if (!file) { toast.warn("Please select a file."); return; }
     setIsLoading(true);
     const formData = new FormData();
     formData.append("document", file);
     formData.append("documentType", docType);
     if (isOther) formData.append("isOther", "true");
-
     try {
       await apiClient(`/tickets/${ticket._id}/documents`, { method: "POST", body: formData });
-      fetchTicketDetails(); // Refresh
+      fetchTicketDetails();
       toast.success(`${docType.replace(/([A-Z])/g, ' $1').trim()} uploaded successfully.`);
       if (isOther) setOtherDocumentFile(null); // Clear file input for other docs
     } catch (err) {
       handleApiError(err, `Failed to upload ${docType}.`, authUser, "documentUpload");
     } finally { setIsLoading(false); }
-  };
+  }, [ticket?._id, fetchTicketDetails, authUser, setIsLoading, setOtherDocumentFile]);
 
-  const handleDocumentDelete = async (docType, documentId, isOther = false) => {
+  const handleDocumentDelete = useCallback(async (docType, documentId, isOther = false) => {
     if (!window.confirm(`Are you sure you want to delete this ${docType}?`)) return;
     setIsLoading(true);
     try {
@@ -108,14 +119,14 @@ const TicketDetailsPage = () => {
         method: "DELETE", 
         body: { documentType: docType, documentId: documentId, isOther } 
       });
-      fetchTicketDetails(); // Refresh
+      fetchTicketDetails();
       toast.success(`${docType.replace(/([A-Z])/g, ' $1').trim()} deleted.`);
     } catch (err) {
       handleApiError(err, `Failed to delete ${docType}.`, authUser, "documentDelete");
     } finally { 
       setIsLoading(false); 
     }
-  };
+  }, [ticket?._id, fetchTicketDetails, authUser, setIsLoading]);
 
   const renderPdfPreviewModal = () => (
     <ReusablePageStructure
@@ -193,22 +204,17 @@ const TicketDetailsPage = () => {
                   <FaFilePdf /> Preview
                 </BsButton>
               )}
-               {docConfig.type === "pi" && ticket && ( // Specific for PI Word download
+               {/* {docConfig.type === "pi" && ticket && ( // Specific for PI Word download
                  <BsButton variant="outline-secondary" size="sm" className="ms-2" onClick={() => PIActions({ ticket }).handleDownloadWord()} title="Download PI as Word">
                     <FaFileWord /> Word
                  </BsButton>
-               )}
+               )} */}
             </div>
           </Card.Body>
         </Card>
       </Col>
     );
   };
-
-  const getStatusBadgeColor = (status) => { // Copied from Tickets.jsx for consistency
-    // ... (implementation from Tickets.jsx)
-    return "secondary"; // Placeholder
-  }
 
   return (
     <ReusablePageStructure
@@ -279,16 +285,6 @@ const TicketDetailsPage = () => {
         </Col>
 
         <Col md={5}> {/* Sidebar for Payments, History */}
-          <Card className="mb-3">
-            <Card.Header>Record Payment</Card.Header>
-            <Card.Body>
-              <Form.Group className="mb-2"><Form.Label>Amount</Form.Label><Form.Control type="number" value={paymentAmount} onChange={e => setPaymentAmount(parseFloat(e.target.value))} /></Form.Group>
-              <Form.Group className="mb-2"><Form.Label>Date</Form.Label><Form.Control type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></Form.Group>
-              <Form.Group className="mb-3"><Form.Label>Reference (Optional)</Form.Label><Form.Control type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)} /></Form.Group>
-              {/* TODO: Add input for paymentProof file */}
-              <BsButton onClick={handlePaymentSubmit} disabled={isLoading || paymentAmount <= 0}>Record Payment</BsButton>
-            </Card.Body>
-          </Card>
 
           {ticket.payments && ticket.payments.length > 0 && (
             <Card className="mb-3"><Card.Header>Payment History</Card.Header><Card.Body>

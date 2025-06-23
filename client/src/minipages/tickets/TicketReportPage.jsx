@@ -1,5 +1,5 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/tickets/TicketReportPage.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Button,
   Form,
@@ -7,7 +7,6 @@ import {
   Alert,
   Row,
   Col,
-  // Nav, // Nav was unused
   Table,
 } from "react-bootstrap";
 import { FaFileExcel, FaChartBar } from "react-icons/fa";
@@ -21,10 +20,8 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import axios from "axios";
-import { getAuthToken } from "../../utils/authUtils";
+import apiClient from "../../utils/apiClient.js"; // Use global apiClient
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import { useNavigate } from "react-router-dom";
 
 ChartJS.register(
   CategoryScale,
@@ -35,10 +32,6 @@ ChartJS.register(
   Legend
 );
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
-});
-
 const TicketReportPage = () => {
   const [period, setPeriod] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +39,6 @@ const TicketReportPage = () => {
   const [error, setError] = useState("");
   const [reportData, setReportData] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
-  const navigate = useNavigate(); // useNavigate was unused, but good to keep if needed later
 
   const periodOptions = [
     { value: "7days", label: "Last 7 Days" },
@@ -79,16 +71,8 @@ const TicketReportPage = () => {
     setReportData(null);
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
-      const response = await apiClient.get(`reports/tickets`, {
+      const response = await apiClient.get(`/reports/tickets`, { // apiClient from import
         params: { period },
-        headers: { Authorization: `Bearer ${token}` },
       });
       setReportData(response.data.data);
     } catch (err) {
@@ -110,23 +94,15 @@ const TicketReportPage = () => {
     }
   }, [period]);
 
-  const handleExportToExcel = async () => {
+  const handleExportToExcel = useCallback(async () => {
     if (!period || !reportData) return;
     setExportLoading(true);
     setError("");
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setExportLoading(false);
-        return;
-      }
-
-      const response = await apiClient.get(`reports/tickets`, {
+      const response = await apiClient.get(`/reports/tickets`, { // apiClient from import
         params: { period, exportToExcel: "true" },
         responseType: "blob",
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -170,7 +146,7 @@ const TicketReportPage = () => {
     } finally {
       setExportLoading(false);
     }
-  };
+  }, [period, reportData]); // Added dependencies
 
   useEffect(() => {
     fetchReport();

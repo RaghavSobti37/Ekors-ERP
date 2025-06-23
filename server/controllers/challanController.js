@@ -42,8 +42,10 @@ exports.createChallan = async (req, res) => {
 
 // Get All Challans
 exports.getAllChallans = async (req, res) => {
-  const user = req.user; // Get the authenticated user
-  try {
+  const user = req.user;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10; // Default limit to 10, adjust as needed
+  const skip = (page - 1) * limit;  try {
     let query = {};
 
     // If the user is not a super-admin, filter challans by createdBy
@@ -51,13 +53,23 @@ exports.getAllChallans = async (req, res) => {
       query.createdBy = user._id;
     }
 
+        const totalItems = await Challan.countDocuments(query);
+
+
     const challans = await Challan.find(query) // Apply the query
       .sort({ createdAt: -1 }) // Sort by creation date, newest first
+      .skip(skip)
+      .limit(limit)
       .select("-document")
       .populate('createdBy', 'firstname lastname email') // Populate creator info
       .populate('updatedBy', 'firstname lastname email'); // Populate updater info
       
-    res.json(challans);
+    res.json({
+      data: challans,
+      totalItems,
+      currentPage: page,
+      totalPages: Math.ceil(totalItems / limit),
+    });
   } catch (err) {
     logger.error('challan', `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`, err, user);
     res.status(500).json({ error: "Failed to fetch challans" });

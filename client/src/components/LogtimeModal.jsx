@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../css/Logtime.css";
-import { showToast } from "../utils/helpers"; // For showing validation messages
+import { showToast, handleApiError } from "../utils/helpers";
 import apiClient from "../utils/apiClient"; // For consistency
 
 const LogtimeModal = ({
@@ -20,7 +20,6 @@ const LogtimeModal = ({
   const [displayDate, setDisplayDate] = useState("");
   const [isEditingDate, setIsEditingDate] = useState(false);
 
-  // Format date for display (DD-Month-YYYY)
   const formatDisplayDate = useCallback((dateInput) => {
     // dateInput can be YYYY-MM-DD string or Date object
     // A more robust way to handle YYYY-MM-DD specifically for date objects from input type=date
@@ -73,7 +72,6 @@ const LogtimeModal = ({
     )}-${today.getFullYear()}`;
   }, []);
 
-  // Format date for input[type=date] (YYYY-MM-DD)
   const formatInputDate = useCallback((dateInput) => {
     // dateInput can be DD-Month-YYYY string or Date object
     let date;
@@ -162,7 +160,7 @@ const LogtimeModal = ({
     setTotalTime(`${hours} hours, ${minutes} minutes`);
   }, [logData]);
 
-  const calculateTimeDifference = (start, finish) => {
+  const calculateTimeDifference = useCallback((start, finish) => {
     if (!start || !finish) return "0:00";
 
     const [startHours, startMinutes] = start.split(":").map(Number);
@@ -189,47 +187,49 @@ const LogtimeModal = ({
     const minutes = diff % 60;
 
     return `${hours}:${minutes.toString().padStart(2, "0")}`;
-  };
+  }, []);
 
-  const handleEdit = (index, field, value) => {
-    const updatedLogs = logData.map((log, i) => {
-      if (i === index) {
-        const newLog = { ...log, [field]: value };
-        if (field === "start" || field === "finish") {
-          newLog.timeSpent = calculateTimeDifference(
-            field === "start" ? value : newLog.start,
-            field === "finish" ? value : newLog.finish
-          );
+  const handleEdit = useCallback(
+    (index, field, value) => {
+      const updatedLogs = logData.map((log, i) => {
+        if (i === index) {
+          const newLog = { ...log, [field]: value };
+          if (field === "start" || field === "finish") {
+            newLog.timeSpent = calculateTimeDifference(
+              field === "start" ? value : newLog.start,
+              field === "finish" ? value : newLog.finish
+            );
+          }
+          return newLog;
         }
-        return newLog;
-      }
-      return log;
-    });
-    setLogData(updatedLogs);
-  };
+        return log;
+      });
+      setLogData(updatedLogs);
+    },
+    [logData, calculateTimeDifference]
+  );
 
-  // Handle date change from date picker (input type="date")
-  const handleDateChange = (e) => {
-    const newDateYYYYMMDD = e.target.value; // This is YYYY-MM-DD
-    setSelectedDate(newDateYYYYMMDD);
-    setDisplayDate(formatDisplayDate(newDateYYYYMMDD)); // Convert YYYY-MM-DD to DD-Month-YYYY for display
-    setIsEditingDate(false); // If date picker is used, assume manual edit mode is off
-  };
+  const handleDateChange = useCallback(
+    (e) => {
+      const newDateYYYYMMDD = e.target.value; // This is YYYY-MM-DD
+      setSelectedDate(newDateYYYYMMDD);
+      setDisplayDate(formatDisplayDate(newDateYYYYMMDD)); // Convert YYYY-MM-DD to DD-Month-YYYY for display
+      setIsEditingDate(false); // If date picker is used, assume manual edit mode is off
+    },
+    [formatDisplayDate]
+  );
 
-  // Handle manual date edit in text input
-  const handleManualDateChange = (e) => {
+  const handleManualDateChange = useCallback((e) => {
     setDisplayDate(e.target.value); // User types DD-Month-YYYY
-  };
+  }, []);
 
-  // Helper to parse DD-Month-YYYY string to Date object
-  const parseDisplayDateString = (dateString) => {
+  const parseDisplayDateString = useCallback((dateString) => {
     const parts = dateString.split("-");
     if (parts.length !== 3)
       throw new Error("Invalid date parts: Expected DD-Month-YYYY");
     const day = parseInt(parts[0], 10);
     const monthName = parts[1];
     const year = parseInt(parts[2], 10);
-
     const monthIndex = new Date(Date.parse(monthName + " 1, 2000")).getMonth(); // Get month index from name
     if (
       isNaN(day) ||
@@ -244,10 +244,9 @@ const LogtimeModal = ({
       throw new Error("Invalid date components in DD-Month-YYYY");
     }
     return new Date(year, monthIndex, day);
-  };
+  }, []);
 
-  // Save manually edited date (from text input)
-  const saveManualDate = () => {
+  const saveManualDate = useCallback(() => {
     try {
       // displayDate is expected to be DD-Month-YYYY
       const parsedFromDisplay = parseDisplayDateString(displayDate);
@@ -271,9 +270,9 @@ const LogtimeModal = ({
       // setDisplayDate(formatDisplayDate(selectedDate));
       // Keep editing open for correction
     }
-  };
+  }, [displayDate, parseDisplayDateString, formatInputDate, formatDisplayDate]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     setSaveError(null);
 
@@ -291,7 +290,6 @@ const LogtimeModal = ({
       setIsSaving(false);
       return;
     }
-
 
     const validLogs = logData.filter(
       (log) =>
@@ -313,10 +311,15 @@ const LogtimeModal = ({
           setIsSaving(false);
           return;
         }
-        if (log.start && new Date(`${selectedDate}T${log.start}`) > logFinishDateTime) {
-            setSaveError(`Start time cannot be after finish time for task "${log.task}".`);
-            setIsSaving(false);
-            return;
+        if (
+          log.start &&
+          new Date(`${selectedDate}T${log.start}`) > logFinishDateTime
+        ) {
+          setSaveError(
+            `Start time cannot be after finish time for task "${log.task}".`
+          );
+          setIsSaving(false);
+          return;
         }
       }
     }
@@ -348,27 +351,31 @@ const LogtimeModal = ({
       onClose(); // Call parent's onClose
     } catch (error) {
       console.error("Error saving logs:", error);
-      setSaveError(
-        error.data?.error ||
-          error.message ||
-          "Failed to save logs. Please try again."
+      const errorMsg = handleApiError(
+        error,
+        "Failed to save logs. Please try again."
       );
+      setSaveError(errorMsg);
+      showToast(errorMsg, false);
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [logData, selectedDate, onSave, onClose, handleApiError]);
 
-  const addEmptyRow = () => {
+  const addEmptyRow = useCallback(() => {
     setLogData([
       ...logData,
       { task: "", start: "", finish: "", timeSpent: "0:00" },
     ]);
-  };
+  }, [logData]);
 
-  const removeLogRow = (index) => {
-    const updatedLogs = logData.filter((_, i) => i !== index);
-    setLogData(updatedLogs);
-  };
+  const removeLogRow = useCallback(
+    (index) => {
+      const updatedLogs = logData.filter((_, i) => i !== index);
+      setLogData(updatedLogs);
+    },
+    [logData]
+  );
 
   return (
     <div className="modal-overlay">
@@ -409,8 +416,7 @@ const LogtimeModal = ({
                   setIsEditingDate(false);
                 }}
                 disabled={isSaving}
-              >
-              </button>
+              ></button>
             </div>
           ) : (
             <div className="date-display-container">
@@ -521,9 +527,7 @@ const LogtimeModal = ({
               onClick={onClose}
               disabled={isSaving}
               style={{ marginRight: "10px" }}
-            >
-            
-            </button>
+            ></button>
             <button
               className="save-btn modal-button primary"
               onClick={handleSave}
@@ -545,4 +549,4 @@ const LogtimeModal = ({
   );
 };
 
-export default LogtimeModal;
+export default React.memo(LogtimeModal);

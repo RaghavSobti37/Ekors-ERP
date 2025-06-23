@@ -1,5 +1,5 @@
-import React from 'react';
-import '../css/Pagination.css'
+import React, { useCallback } from "react";
+import "../css/Pagination.css";
 
 // Helper function to generate a range of numbers
 const range = (start, end) => {
@@ -8,7 +8,7 @@ const range = (start, end) => {
   return Array.from({ length }, (_, idx) => idx + start);
 };
 
-const DOTS = '...';
+const DOTS = "...";
 
 // siblingCount is the number of page numbers to show on each side of the current page
 const getPaginationItems = (currentPage, totalPages, siblingCount = 1) => {
@@ -17,44 +17,44 @@ const getPaginationItems = (currentPage, totalPages, siblingCount = 1) => {
   if (totalPageNumbersToDisplay >= totalPages) {
     return range(1, totalPages);
   }
-  
+
   const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
   const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
-  
+
   const shouldShowLeftDots = leftSiblingIndex > 2;
   const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
-  
+
   const firstPageIndex = 1;
   const lastPageIndex = totalPages;
-  
+
   if (!shouldShowLeftDots && shouldShowRightDots) {
     let leftItemCount = 3 + 2 * siblingCount;
     let leftRange = range(1, leftItemCount);
     return [...leftRange, DOTS, lastPageIndex];
   }
-  
+
   if (shouldShowLeftDots && !shouldShowRightDots) {
     let rightItemCount = 3 + 2 * siblingCount;
     let rightRange = range(totalPages - rightItemCount + 1, totalPages);
     return [firstPageIndex, DOTS, ...rightRange];
   }
-  
+
   if (shouldShowLeftDots && shouldShowRightDots) {
     let middleRange = range(leftSiblingIndex, rightSiblingIndex);
     return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex];
   }
-  
+
   // Fallback, though previous conditions should cover all scenarios with totalPages > totalPageNumbersToDisplay
   // This case should ideally not be reached if totalPages > totalPageNumbersToDisplay
   // and one of the DOTS conditions isn't met.
   // However, to be safe, if totalPages is small enough that no dots are needed,
   // but not small enough for the first condition, we return the full range.
   // This can happen if siblingCount is large relative to totalPages.
-  return range(1, totalPages); 
+  return range(1, totalPages);
 };
 
-const Pagination = ({ 
-  currentPage, 
+const Pagination = ({
+  currentPage,
   totalItems,
   itemsPerPage,
   onPageChange,
@@ -64,6 +64,14 @@ const Pagination = ({
   siblingCount = 1, // Added siblingCount as a prop
 }) => {
   const totalPages = totalItems > 0 ? Math.ceil(totalItems / itemsPerPage) : 0;
+  const handlePageChangeInternal = useCallback(
+    (page) => {
+      if (page >= 1 && page <= totalPages) {
+        onPageChange(page);
+      }
+    },
+    [onPageChange, totalPages]
+  );
 
   const pageItems = React.useMemo(() => {
     if (totalPages === 0) return []; // No pages to show if totalPages is 0
@@ -73,27 +81,34 @@ const Pagination = ({
   return (
     <div className="pagination-wrapper">
       <div className="pagination-controls">
-        <div className="pagination-left-slot d-flex align-items-center" style={{gap: "0.75rem"}}> {/* Made it a flex container */}
-          {itemsPerPageOptions && itemsPerPageOptions.length > 0 && totalItems > 0 && (
-            <div className="items-per-page-selector">
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  const newItemsPerPage = Number(e.target.value);
-                  onItemsPerPageChange(newItemsPerPage);
-                }}
-                className="form-select form-select-sm" // Using Bootstrap classes
-                style={{ width: 'auto' }}
-                aria-label="Items per page"
-              >
-                {itemsPerPageOptions.map(option => (
-                  <option key={option} value={option}>
-                    {option} per page
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        <div
+          className="pagination-left-slot d-flex align-items-center"
+          style={{ gap: "0.75rem" }}
+        >
+          {" "}
+          {/* Made it a flex container */}
+          {itemsPerPageOptions &&
+            itemsPerPageOptions.length > 0 &&
+            totalItems > 0 && (
+              <div className="items-per-page-selector">
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    const newItemsPerPage = Number(e.target.value);
+                    onItemsPerPageChange(newItemsPerPage);
+                  }}
+                  className="form-select form-select-sm" // Using Bootstrap classes
+                  style={{ width: "auto" }}
+                  aria-label="Items per page"
+                >
+                  {itemsPerPageOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option} per page
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           {reportButton && (
             <div className="report-button-container">{reportButton}</div>
           )}
@@ -101,10 +116,12 @@ const Pagination = ({
 
         <div className="pagination-right-slot">
           {totalPages > 0 && (
-            <div className="pagination-container"> {/* This is the group of prev/next/numbers */}
+            <div className="pagination-container">
+              {" "}
+              {/* This is the group of prev/next/numbers */}
               <button
                 className="pagination-arrow"
-                onClick={() => onPageChange(currentPage - 1)}
+                onClick={() => handlePageChangeInternal(currentPage - 1)}
                 disabled={currentPage === 1 || totalPages === 0}
               >
                 ← Prev
@@ -112,12 +129,21 @@ const Pagination = ({
               <div className="page-numbers">
                 {pageItems.map((item, index) => {
                   if (item === DOTS) {
-                    return <span key={`${item}-${index}`} className="pagination-item dots">{DOTS}</span>;
+                    return (
+                      <span
+                        key={`${item}-${index}`}
+                        className="pagination-item dots"
+                      >
+                        {DOTS}
+                      </span>
+                    );
                   }
                   return (
                     <button
                       key={item}
-                      className={`pagination-item ${currentPage === item ? 'active' : ''}`}
+                      className={`pagination-item ${
+                        currentPage === item ? "active" : ""
+                      }`}
                       onClick={() => onPageChange(item)}
                       disabled={currentPage === item}
                     >
@@ -128,7 +154,7 @@ const Pagination = ({
               </div>
               <button
                 className="pagination-arrow"
-                onClick={() => onPageChange(currentPage + 1)}
+                onClick={() => handlePageChangeInternal(currentPage + 1)}
                 disabled={currentPage === totalPages || totalPages === 0}
               >
                 Next →

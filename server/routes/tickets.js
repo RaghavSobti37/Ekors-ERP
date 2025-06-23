@@ -316,52 +316,9 @@ router.delete("/:id/documents", auth,
   }
 );
 
-// This is the GET /api/tickets route (for listing tickets)
-router.get("/", auth, async (req, res) => {
-  try {
-    let query = {};
+ // Use the new controller for the main ticket listing
+router.get("/", auth, ticketController.getAllTickets);
 
-    if (req.user.role === 'super-admin') {
-      if (req.query.status && req.query.status !== 'all') {
-        query.status = req.query.status;
-      }
-      if (req.query.companyName) {
-        query.companyName = { $regex: req.query.companyName, $options: "i" };
-      }
-    } else {
-      query = {
-        $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
-      };
-      if (req.query.status && req.query.status !== 'all') {
-        query.status = req.query.status;
-      }
-      if (req.query.companyName) {
-        query.companyName = { $regex: req.query.companyName, $options: "i" };
-      }
-    }
-
-    const tickets = await Ticket.find(query)
-      .populate({ path: "currentAssignee", select: "firstname lastname email" })
-      .populate({ path: "createdBy", select: "firstname lastname email" })
-      .populate({ path: "transferHistory.from", select: "firstname lastname email" })
-      .populate({ path: "transferHistory.to", select: "firstname lastname email" })
-      .populate({ path: "transferHistory.transferredBy", select: "firstname lastname email" })
-      .populate({ path: "documents.quotation.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.po.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.pi.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.challan.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.packingList.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.feedback.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "documents.other.uploadedBy", select: "firstname lastname email" })
-      .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" })
-      .sort({ createdAt: -1 });
-
-    res.json(tickets);
-  } catch (error) {
-    logger.error('ticket-list-error', "Error fetching tickets list", error, req.user);
-    res.status(500).json({ error: "Failed to fetch tickets" });
-  }
-});
 
 // ... (rest of your routes, e.g., /from-index/*)
 router.get("/from-index/all", ticketController.getAllTickets_IndexLogic);

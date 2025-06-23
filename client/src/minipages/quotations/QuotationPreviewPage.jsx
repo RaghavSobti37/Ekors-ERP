@@ -1,5 +1,5 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/QuotationPreviewPage.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { PDFViewer } from '@react-pdf/renderer';
 import { Spinner, Alert, Button } from 'react-bootstrap';

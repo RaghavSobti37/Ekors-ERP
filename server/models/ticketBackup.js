@@ -32,6 +32,8 @@ const ticketBackupSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   gstAmount: { type: Number, required: true },
   grandTotal: { type: Number, required: true },
+     roundOff: { type: Number, default: 0 }, // To store the round off amount
+  finalRoundedAmount: { type: Number },
   status: {
     type: String,
     required: true,

@@ -20,7 +20,6 @@ const EditTicketPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user: authUser, loading: authLoading } = useAuth();
-  const auth = useAuth();
 
   const initialTicketData = {
     companyName: "", quotationNumber: "",
@@ -44,6 +43,9 @@ const EditTicketPage = () => {
   const [originalStatus, setOriginalStatus] = useState("");
   const [statusChangeComment, setStatusChangeComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+    const [roundedGrandTotal, setRoundedGrandTotal] = useState(null);
+  const [roundOffAmount, setRoundOffAmount] = useState(0);
+
   const [error, setError] = useState(null);
   const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
@@ -87,6 +89,8 @@ const EditTicketPage = () => {
         })),
       });
       setOriginalStatus(data.status);
+       setRoundOffAmount(data.roundOff || 0);
+      setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null ? data.finalRoundedAmount : data.grandTotal + (data.roundOff || 0) );
     } catch (err) {
       handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
       navigate("/tickets");
@@ -123,6 +127,9 @@ const EditTicketPage = () => {
             })),
         });
         setOriginalStatus(initialData.status);
+        setRoundOffAmount(initialData.roundOff || 0);
+        setRoundedGrandTotal(initialData.finalRoundedAmount !== undefined && initialData.finalRoundedAmount !== null ? initialData.finalRoundedAmount : initialData.grandTotal + (initialData.roundOff || 0));
+
     } else if (ticketIdFromParams) {
       fetchTicketDetails();
     }
@@ -183,75 +190,97 @@ const EditTicketPage = () => {
     calculateTaxes();
   }, [calculateTaxes]);
 
-  const updateTotals = (goods) => {
-    const totalQuantity = goods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const totalAmount = goods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    setTicketData(prev => ({ ...prev, goods, totalQuantity, totalAmount }));
-    // calculateTaxes will be called by its own useEffect dependency on goods or totalAmount
-  };
+  const handleTicketGoodsChange = useCallback((index, field, value, subtextIndex = null) => {
+    setTicketData(prev => {
+      const updatedGoods = [...prev.goods];
+      const itemToUpdate = { ...updatedGoods[index] };
 
-  const handleTicketGoodsChange = (index, field, value, subtextIndex = null) => {
-    const updatedGoods = [...ticketData.goods];
-    if (field === "subtexts" && subtextIndex !== null) {
-      if (!updatedGoods[index].subtexts) updatedGoods[index].subtexts = [];
-      updatedGoods[index].subtexts[subtextIndex] = value;
-    } else if (field === "gstRate") {
-        updatedGoods[index][field] = value === "" ? null : parseFloat(value);
-    } else {
-      updatedGoods[index][field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
-    }
-    if (field === "quantity" || field === "price") {
-      updatedGoods[index].amount = (Number(updatedGoods[index].quantity) || 0) * (Number(updatedGoods[index].price) || 0);
-    }
-    updateTotals(updatedGoods);
-  };
+      if (field === "subtexts" && subtextIndex !== null) {
+        if (!itemToUpdate.subtexts) itemToUpdate.subtexts = [];
+        itemToUpdate.subtexts[subtextIndex] = value;
+      } else if (field === "gstRate") {
+        itemToUpdate[field] = value === "" ? null : parseFloat(value);
+      } else {
+        itemToUpdate[field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
+      }
 
-  const handleAddItemToTicket = (item) => {
-    const newGoods = [
-      ...ticketData.goods,
-      {
-        srNo: ticketData.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
+      if (field === "quantity" || field === "price") {
+        itemToUpdate.amount = (Number(itemToUpdate.quantity) || 0) * (Number(itemToUpdate.price) || 0);
+      }
+      updatedGoods[index] = itemToUpdate;
+
+      const totalQuantity = updatedGoods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+      const totalAmount = updatedGoods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      return { ...prev, goods: updatedGoods, totalQuantity, totalAmount };
+    });
+  }, [setTicketData]);
+
+  const handleAddItemToTicket = useCallback((item) => {
+    setTicketData(prev => {
+      const newGoodsItem = {
+        srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
         quantity: 1, unit: item.unit || "Nos", price: Number(item.sellingPrice) || 0,
         amount: (Number(item.sellingPrice) || 0) * 1, originalPrice: Number(item.sellingPrice) || 0,
         maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: [],
-      },
-    ];
-    updateTotals(newGoods);
-  };
+      };
+      const newGoods = [...prev.goods, newGoodsItem];
+      const totalQuantity = newGoods.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+      const totalAmount = newGoods.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+      return { ...prev, goods: newGoods, totalQuantity, totalAmount };
+    });
+  }, [setTicketData]);
 
-  const handleDeleteItemFromTicket = (indexToDelete) => {
-    const updatedGoods = ticketData.goods.filter((_, index) => index !== indexToDelete)
-      .map((item, index) => ({ ...item, srNo: index + 1 }));
-    updateTotals(updatedGoods);
-  };
+  const handleDeleteItemFromTicket = useCallback((indexToDelete) => {
+    setTicketData(prev => {
+      const updatedGoods = prev.goods.filter((_, index) => index !== indexToDelete)
+        .map((item, index) => ({ ...item, srNo: index + 1 }));
+      const totalQuantity = updatedGoods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+      const totalAmount = updatedGoods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+      return { ...prev, goods: updatedGoods, totalQuantity, totalAmount };
+    });
+  }, [setTicketData]);
 
-  const handleAddSubtextToTicketItem = (itemIndex) => {
-    const updatedGoods = [...ticketData.goods];
-    if (!updatedGoods[itemIndex].subtexts) updatedGoods[itemIndex].subtexts = [];
-    updatedGoods[itemIndex].subtexts.push("");
-    setTicketData((prevData) => ({ ...prevData, goods: updatedGoods }));
-  };
+  const handleAddSubtextToTicketItem = useCallback((itemIndex) => {
+    setTicketData(prev => {
+      const updatedGoods = [...prev.goods];
+      if (!updatedGoods[itemIndex].subtexts) updatedGoods[itemIndex].subtexts = [];
+      updatedGoods[itemIndex].subtexts.push("");
+      return { ...prev, goods: updatedGoods };
+    });
+  }, [setTicketData]);
 
-  const handleDeleteSubtextFromTicketItem = (itemIndex, subtextIndexToDelete) => {
-    const updatedGoods = [...ticketData.goods];
-    updatedGoods[itemIndex].subtexts.splice(subtextIndexToDelete, 1);
-    setTicketData((prevData) => ({ ...prevData, goods: updatedGoods }));
-  };
+  const handleDeleteSubtextFromTicketItem = useCallback((itemIndex, subtextIndexToDelete) => {
+    setTicketData(prev => {
+      const updatedGoods = [...prev.goods];
+      updatedGoods[itemIndex].subtexts.splice(subtextIndexToDelete, 1);
+      return { ...prev, goods: updatedGoods };
+    });
+  }, [setTicketData]);
 
-  const handleAddressChange = (type, field, value) => {
+  const handleAddressChange = useCallback((type, field, value) => {
     setTicketData(prev => {
       const newAddress = { ...(prev[type] || initialTicketData[type]), [field]: value };
-      return { ...prev, [type]: newAddress };
+      const newState = { ...prev, [type]: newAddress };
+      if (type === 'billingAddress' && prev.shippingSameAsBilling) {
+        newState.shippingAddress = { ...newAddress };
+      }
+      return newState;
     });
-    if (type === 'billingAddress' && field === 'state') {
-        // calculateTaxes will pick this up
-    }
-  };
+  }, [initialTicketData, setTicketData]);
 
-  const handlePincodeChangeForAddress = async (type, pincode) => {
-    handleAddressChange(type, 'pincode', pincode);
+  const handlePincodeChangeForAddress = useCallback(async (type, pincode) => {
+    // Update pincode in state immediately
+    setTicketData(prev => {
+      const newAddress = { ...(prev[type] || initialTicketData[type]), pincode };
+      const newState = { ...prev, [type]: newAddress };
+      if (type === 'billingAddress' && prev.shippingSameAsBilling) {
+        newState.shippingAddress = { ...newAddress };
+      }
+      return newState;
+    });
+
     if (pincode.length === 6) {
         setIsFetchingAddress(true);
         try {
@@ -259,26 +288,47 @@ const EditTicketPage = () => {
             const data = response.data[0];
             if (data.Status === "Success") {
                 const postOffice = data.PostOffice[0];
-                setTicketData(prev => { // Ensure prev[type] is not null
-                    const updatedAddress = { ...prev[type], city: postOffice.District, state: postOffice.State, pincode };
-                    const newTicketData = { ...prev, [type]: updatedAddress };
+                setTicketData(prev => {
+                    const currentAddress = { ...(prev[type] || initialTicketData[type]) };
+                    const updatedAddress = { ...currentAddress, city: postOffice.District, state: postOffice.State, pincode }; // Ensure pincode is also set here
+                    const newState = { ...prev, [type]: updatedAddress };
                     if (type === 'billingAddress' && prev.shippingSameAsBilling) {
-                        newTicketData.shippingAddress = { ...updatedAddress };
+                        newState.shippingAddress = { ...updatedAddress };
                     }
-                    return newTicketData;
+                    return newState;
                 });
             } else { toast.warn(`Pincode ${pincode} not found or invalid.`); }
         } catch (err) { toast.error("Error fetching address from pincode."); }
         finally { setIsFetchingAddress(false); }
     }
-  };
+  }, [initialTicketData, setTicketData, setIsFetchingAddress]);
 
-  const handleStatusChange = (status) => {
-    setTicketData({ ...ticketData, status });
-    if (status !== originalStatus) setStatusChangeComment(""); // Reset comment if status changes
-  };
+  const handleStatusChange = useCallback((status) => {
+    setTicketData(prev => ({ ...prev, status }));
+    if (status !== originalStatus) {
+        setStatusChangeComment(""); // setStatusChangeComment is stable
+    }
+  }, [originalStatus, setTicketData, setStatusChangeComment]);
 
-  const handleUpdateTicket = async () => {
+  const handleRoundOff = useCallback(() => {
+    const currentGrandTotal = ticketData.grandTotal || 0;
+    const decimalPart = currentGrandTotal - Math.floor(currentGrandTotal);
+    let newRoundedTotal;
+    let newRoundOffAmount;
+
+    if (decimalPart < 0.50) {
+      newRoundedTotal = Math.floor(currentGrandTotal);
+      newRoundOffAmount = -decimalPart;
+    } else {
+      newRoundedTotal = Math.ceil(currentGrandTotal);
+      newRoundOffAmount = 1 - decimalPart;
+    }
+    setRoundedGrandTotal(newRoundedTotal);
+    setRoundOffAmount(newRoundOffAmount);
+    toast.info(`Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`);
+  }, [ticketData.grandTotal, setRoundedGrandTotal, setRoundOffAmount]);
+
+  const handleUpdateTicket = useCallback(async () => {
     setFormValidated(true);
     // Basic form validation (can be expanded)
     if (!ticketData.companyName || !ticketData.billingAddress.address1 || !ticketData.billingAddress.pincode || !ticketData.billingAddress.city || !ticketData.billingAddress.state) {
@@ -312,6 +362,8 @@ const EditTicketPage = () => {
           originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
+         roundOff: roundOffAmount,
+        finalRoundedAmount: roundedGrandTotal !== null ? roundedGrandTotal : ticketData.grandTotal + roundOffAmount,
       };
       // Remove fields that shouldn't be sent or are managed by backend
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
@@ -327,10 +379,10 @@ const EditTicketPage = () => {
       const errorMsg = handleApiError(error, "Failed to update ticket", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
       frontendLogger.error("ticketActivity", `Failed to update ticket ${ticketData.ticketNumber}`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_FAILURE" });
-    } finally { setIsLoading(false); }
-  };
+    } finally { setIsLoading(false); } // Removed setFormValidated from here
+  }, [ticketData, originalStatus, statusChangeComment, ticketIdFromParams, navigate, authUser, roundOffAmount, roundedGrandTotal, setFormValidated, setIsLoading, setError, setStatusChangeComment]);
 
-  const handleQuotationNumberClick = async () => {
+  const handleQuotationNumberClick = useCallback(async () => {
     if (!ticketData.quotationNumber) {
       toast.info("No quotation number associated with this ticket.");
       return;
@@ -350,8 +402,8 @@ const EditTicketPage = () => {
       toast.error("Error navigating to quotation.");
     } finally {
       setIsFetchingQuotation(false);
-    }
-  };
+    } // Removed setFormValidated from here
+  }, [ticketData.quotationNumber, navigate, authUser, setIsFetchingQuotation]);
 
   const getStatusBadgeColor = (status) => {
     // Implementation based on your Tickets.jsx logic
@@ -602,8 +654,20 @@ const EditTicketPage = () => {
                                 )}
                                 </React.Fragment>
                             ))}
-                            <tr className="table-active"><td><strong>Total Tax</strong></td><td className="text-end"><strong>₹{(ticketData.finalGstAmount || 0).toFixed(2)}</strong></td></tr>
-                            <tr className="table-success"><td><strong>Grand Total</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
+<tr className="table-active">
+                                <td><strong>Total Tax</strong></td>
+                                <td className="text-end"><strong>₹{(ticketData.finalGstAmount || 0).toFixed(2)}</strong></td>
+                            </tr>
+                            <tr className="table-secondary"><td><strong>Grand Total (Before Round Off)</strong></td><td className="text-end"><strong>₹{(ticketData.grandTotal || 0).toFixed(2)}</strong></td></tr>
+                            {roundedGrandTotal !== null && (
+                                <>
+                                <tr>
+                                    <td>Round Off</td>
+                                    <td className="text-end">₹{roundOffAmount.toFixed(2)}</td>
+                                </tr>
+                                <tr className="table-success"><td><strong>Final Amount</strong></td><td className="text-end"><strong>₹{roundedGrandTotal.toFixed(2)}</strong></td></tr>
+                                </>
+                            )}
                         </tbody></Table>
                     </Col>
                 </Row>
@@ -611,6 +675,10 @@ const EditTicketPage = () => {
         </Card>
 
         <Form.Group className="mb-3">
+             {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
+                <BsButton variant="outline-primary" size="sm" onClick={handleRoundOff} className="mt-2 mb-3 float-end">Round Off Total</BsButton>
+            )}
+            <div style={{clear: "both"}}></div>
             {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
                 <i className="bi bi-card-checklist me-1"></i>Other Details
             </h5> */}

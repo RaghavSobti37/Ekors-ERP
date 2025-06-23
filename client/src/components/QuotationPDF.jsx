@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Document,
   Page,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     marginLeft: 10, // Indent subtext
     // paddingVertical: 1, // Small padding
   },
-    headerSection: {
+  headerSection: {
     textAlign: "center",
     marginBottom: 15,
   },
@@ -136,29 +136,33 @@ const styles = StyleSheet.create({
   },
 });
 
-export const QuotationActions = ({ quotation }) => {
-  const handleDownloadWord = async () => {
+const QuotationActionsComponent = ({ quotation }) => {
+  const handleDownloadWord = useCallback(async () => {
     try {
       const doc = generateQuotationDocx(quotation);
       const blob = await docx.Packer.toBlob(doc);
       saveAs(blob, `quotation_${quotation.referenceNumber}.docx`);
     } catch (error) {
       console.error("Error generating Word document:", error);
+      // Consider using a more integrated notification system if available, e.g., toast
       alert("Failed to generate Word document. Please try again.");
     }
-  };
+  }, [quotation]);
 
-    // Props for the PDF button in ActionButtons
-  const pdfButtonProps = {
-    document: <QuotationPDF quotation={quotation} />,
-    fileName: `quotation_${quotation.referenceNumber}.pdf`,
-  };
+  const pdfButtonProps = useMemo(
+    () => ({
+      document: <QuotationPDF quotation={quotation} />,
+      fileName: `quotation_${quotation.referenceNumber}.pdf`,
+    }),
+    [quotation]
+  );
 
   return (
     <ActionButtons
       item={quotation} // Pass the quotation item
       pdfProps={pdfButtonProps}
       onDownloadWord={handleDownloadWord}
+      // Add other actions like onEdit, onView if needed for quotations list
     />
   );
 };
@@ -167,13 +171,14 @@ export const QuotationActions = ({ quotation }) => {
 const QuotationPDF = ({ quotation }) => (
   <Document>
     <Page size="A4" style={styles.page}>
-         <View style={styles.headerSection}>
-              <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
-              <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
-              <Text style={styles.companyAddressHeader}>
-                PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307
-              </Text>
-            </View>
+      <View style={styles.headerSection}>
+        <Text style={styles.gstinHeader}>GSTIN: 09AAFCE8706R1ZV</Text>
+        <Text style={styles.companyNameHeader}>E-KORS PRIVATE LIMITED</Text>
+        <Text style={styles.companyAddressHeader}>
+          PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh,
+          201307
+        </Text>
+      </View>
       <View style={styles.document}>
         <View style={styles.pageContent}>
           <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
@@ -294,3 +299,5 @@ const QuotationPDF = ({ quotation }) => (
 );
 
 export default QuotationPDF;
+
+export const QuotationActions = React.memo(QuotationActionsComponent);

@@ -13,7 +13,7 @@ import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable.jsx";
 import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import frontendLogger from "../utils/frontendLogger.js";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -31,18 +31,15 @@ export default function Quotations() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [totalQuotations, setTotalQuotations] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "referenceNumber",
     direction: "descending",
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const { 
-    user, 
-    loading: authLoading, 
-    showPageLoader, 
-    hidePageLoader,
-    user: authUserFromContext 
-  } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { user: authUserFromContext } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
 
@@ -75,17 +72,26 @@ export default function Quotations() {
     },
   };
 
-  const fetchQuotations = useCallback(async () => {
+  const resetForm = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const fetchQuotations = useCallback(async (page = currentPage, limit = itemsPerPage) => {
     if (authLoading || !user) return;
-    showPageLoader();
+    setIsLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append("page", page.toString());
+      params.append("limit", limit.toString());
+      params.append("sortKey", sortConfig.key);
+      params.append("sortDirection", sortConfig.direction);
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (searchTerm) params.append("search", searchTerm);
 
       const endpoint = `/quotations${params.toString() ? `?${params.toString()}` : ""}`;
       const data = await apiClient(endpoint);
-      setQuotations(data);
+      setQuotations(data.data || []); 
+      setTotalQuotations(data.totalItems || 0);
       setError(null);
     } catch (error) {
       const errorMessage = handleApiError(
@@ -113,9 +119,9 @@ export default function Quotations() {
         navigate("/login", { state: { from: "/quotations" } });
       }
     } finally {
-      hidePageLoader();
+      setIsLoading(false);
     }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, showPageLoader, hidePageLoader]);
+  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, currentPage, itemsPerPage, sortConfig]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -155,10 +161,8 @@ export default function Quotations() {
         if (sortConfig.key === "grandTotal") {
           return sortConfig.direction === "ascending" ? a.grandTotal - b.grandTotal : b.grandTotal - a.grandTotal;
         }
-        const valA = sortConfig.key.includes(".") ? 
-          sortConfig.key.split(".").reduce((o, i) => o?.[i], a) : a[sortConfig.key];
-        const valB = sortConfig.key.includes(".") ? 
-          sortConfig.key.split(".").reduce((o, i) => o?.[i], b) : b[sortConfig.key];
+        const valA = sortConfig.key.includes(".") ? sortConfig.key.split(".").reduce((o, i) => o?.[i], a) : a[sortConfig.key];
+        const valB = sortConfig.key.includes(".") ? sortConfig.key.split(".").reduce((o, i) => o?.[i], b) : b[sortConfig.key];
 
         if (valA === null || valA === undefined) return 1;
         if (valB === null || valB === undefined) return -1;
@@ -185,6 +189,7 @@ export default function Quotations() {
       direction = "ascending";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1); 
   };
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
@@ -194,7 +199,7 @@ export default function Quotations() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, sortConfig]); 
 
   const generateTicketNumber = async () => {
     const now = new Date();
@@ -257,9 +262,7 @@ export default function Quotations() {
       status: "Quotation Sent",
       deadline: defaultDeadline.toISOString().split("T")[0],
     };
-    navigate("/tickets/create-from-quotation", { 
-      state: { ticketDataForForm, sourceQuotationData: quotation } 
-    });
+    navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
   };
 
   const handleEdit = async (quotation) => {
@@ -302,9 +305,7 @@ export default function Quotations() {
         _id: quotation.client?._id || null,
       },
     };
-    navigate(`/quotations/form/${quotation._id}`, { 
-      state: { quotationDataForForm, isEditing: true } 
-    });
+    navigate(`/quotations/form/${quotation._id}`, { state: { quotationDataForForm, isEditing: true } });
   };
 
   const openCreateModal = async () => {
@@ -318,23 +319,21 @@ export default function Quotations() {
       referenceNumber: generateQuotationNumber(),
       orderIssuedBy: user.id,
     };
-    navigate("/quotations/form", { 
-      state: { quotationDataForForm: newQuotationData, isEditing: false } 
-    });
+    navigate("/quotations/form", { state: { quotationDataForForm: newQuotationData, isEditing: false } });
   };
 
-  const handleDeleteQuotation = async (quotation) => {
+  const handleDeleteQuotation = useCallback(async (quotation) => {
     if (!quotation || !quotation._id) {
       toast.error("Invalid quotation.");
       return;
     }
     if (!window.confirm(`Delete quotation ${quotation.referenceNumber}?`)) return;
 
-    showPageLoader();
+    setIsLoading(true);
     setError(null);
     try {
       await apiClient(`/quotations/${quotation._id}`, { method: "DELETE" });
-      setError(null);
+      resetForm();
       fetchQuotations();
       toast.success(`Quotation ${quotation.referenceNumber} deleted.`);
       if (authUserFromContext) {
@@ -358,7 +357,6 @@ export default function Quotations() {
       );
       if (error.status === 401) {
         navigate("/login", { state: { from: "/quotations" } });
-        hidePageLoader();
         return;
       }
       setError(errorMessage);
@@ -376,9 +374,9 @@ export default function Quotations() {
         );
       }
     } finally {
-      hidePageLoader();
+      setIsLoading(false);
     }
-  };
+  }, [authUserFromContext, fetchQuotations, navigate, resetForm]);
 
   const reportButtonElement = (user?.role === "admin" || user?.role === "super-admin") && (
     <Button
@@ -424,55 +422,26 @@ export default function Quotations() {
             />
           </div>
 
-          <Button 
-            variant="primary" 
-            onClick={openCreateModal} 
-            title="Create New Quotation" 
-            style={{ whiteSpace: "nowrap" }}
-          >
+          <Button variant="primary" onClick={openCreateModal} title="Create New Quotation" style={{ whiteSpace: "nowrap" }}>
             ➕ Quotation
           </Button>
         </div>
 
-        {error && <Alert variant="danger">{error}</Alert>}
+        {isLoading && <div className="text-center"><Spinner animation="border" /> Loading ...</div>}
+        {error && !isLoading && <Alert variant="danger">{error}</Alert>}
 
         <ReusableTable
           columns={[
-            { 
-              key: "referenceNumber", 
-              header: "Reference No", 
-              sortable: true, 
-              tooltip: "Quotation Reference Number (yymmdd-hhmmss format)" 
-            },
-            { 
-              key: "client.companyName", 
-              header: "Company Name", 
-              sortable: true, 
-              renderCell: (item) => item.client?.companyName || "N/A" 
-            },
+            { key: "referenceNumber", header: "Reference No", sortable: true, tooltip: "Quotation Reference Number (yymmdd-hhmmss format)" },
+            { key: "client.companyName", header: "Company Name", sortable: true, renderCell: (item) => item.client?.companyName || "N/A" },
             ...(user?.role === "super-admin" ? [{
-                key: "user.firstname", 
-                header: "Created By", 
-                sortable: true,
-                renderCell: (item) => 
-                  `${item.user?.firstname || ""} ${item.user?.lastname || ""}`.trim() || "N/A",
+                key: "user.firstname", header: "Created By", sortable: true,
+                renderCell: (item) => `${item.user?.firstname || ""} ${item.user?.lastname || ""}`.trim() || "N/A",
             }] : []),
-            { 
-              key: "validityDate", 
-              header: "Validity Date", 
-              sortable: true, 
-              renderCell: (item) => formatDateForInputHelper(item.validityDate) 
-            },
-            { 
-              key: "status", 
-              header: "Status", 
-              sortable: true,
+            { key: "validityDate", header: "Validity Date", sortable: true, renderCell: (item) => formatDateForInputHelper(item.validityDate) },
+            { key: "status", header: "Status", sortable: true,
               renderCell: (item) => (
-                <span className={`badge bg-${
-                  item.status === "open" ? "primary" : 
-                  item.status === "closed" ? "success" : 
-                  item.status === "running" ? "info" : "warning"
-                }`}>
+                <span className={`badge bg-${item.status === "open" ? "primary" : item.status === "closed" ? "success" : item.status === "running" ? "info" : "warning"}`}>
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
               ),
@@ -487,18 +456,11 @@ export default function Quotations() {
             <ActionButtons
               item={quotation}
               onEdit={handleEdit}
-              onCreateTicket={
-                quotation.status !== "closed" && quotation.status !== "running" ? 
-                handleCreateTicket : undefined
-              }
-              onView={() => navigate(`/quotations/preview/${quotation._id}`, { 
-                state: { quotationToPreview: quotation } 
-              })}
+              onCreateTicket={quotation.status !== "closed" && quotation.status !== "running" ? handleCreateTicket : undefined}
+              onView={() => navigate(`/quotations/preview/${quotation._id}`, { state: { quotationToPreview: quotation } })}
               onDelete={user?.role === "super-admin" ? handleDeleteQuotation : undefined}
               disabled={{
-                createTicket: quotation.status === "closed" || 
-                            quotation.status === "running" || 
-                            quotation.status === "hold",
+                createTicket: quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold",
               }}
             />
           )}
@@ -510,11 +472,11 @@ export default function Quotations() {
         {filteredAndSortedQuotations.length > 0 && (
           <Pagination
             currentPage={currentPage}
-            totalItems={filteredAndSortedQuotations.length}
+            totalItems={totalQuotations}
             itemsPerPage={itemsPerPage}
             onPageChange={(page) => {
-              const totalPages = Math.ceil(filteredAndSortedQuotations.length / itemsPerPage);
-              if (page >= 1 && page <= totalPages) setCurrentPage(page);
+              const totalPages = Math.ceil(totalQuotations / itemsPerPage);
+              if (page >= 1 && page <= totalPages) { setCurrentPage(page); }
             }}
             onItemsPerPageChange={handleItemsPerPageChange}
             reportButton={reportButtonElement}
@@ -522,7 +484,6 @@ export default function Quotations() {
         )}
       </div>
       <Footer />
-      <ToastContainer />
     </div>
   );
 }

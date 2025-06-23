@@ -692,7 +692,7 @@
 /* Enhanced dropdown menu styles */
 .dropdown-menu {
   background-color: #000000 !important;
-  min-width: 220px; /* Increased width for better readability */
+  min-width: 200px /* Increased width for better readability */
 }
 
 .dropdown-menu div {
@@ -734,7 +734,7 @@
 /* Enhanced dropdown menu styles */
 .dropdown-menu {
   background-color: #000000 !important;
-  min-width: 220px; /* Increased width for better readability */
+  min-width: 190px /* Increased width for better readability */
 }
 
 .dropdown-menu div {

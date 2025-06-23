@@ -260,3 +260,17 @@
   margin-bottom: 0.5rem;
 }
 
+/* Ensure top control buttons are responsive */
+@media (max-width: 576px) {
+  .top-controls-container .d-flex {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .top-controls-container .btn,
+  .top-controls-container .form-control {
+    width: 100% !important;
+  }
+}

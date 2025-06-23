@@ -2060,198 +2060,310 @@ p {
 }
 
 
-/* Mobile-first breakpoints */
-@media (max-width: 576px) {
-  /* Small devices (landscape phones) */
-  :root {
-    --font-size-base: 14px;
-    --spacing-md: 0.75rem;
-    --spacing-lg: 1rem;
-  }
-  
-  body {
-    font-size: var(--font-size-base);
-  }
-}
 
-@media (max-width: 768px) {
-  /* Medium devices (tablets) */
-  .container {
-    padding-right: var(--spacing-sm);
-    padding-left: var(--spacing-sm);
-  }
-  
-  /* Stack page header elements vertically */
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-  }
-}
-
-/* Ensure all tables are scrollable horizontally on mobile */
-.table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
-}
-/* Enhanced responsive tables */
-@media (max-width: 768px) {
-  .table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-  }
-  
-  .table thead {
-    display: none;
-  }
-  
-  .table tr {
-    display: block;
-    margin-bottom: var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-  }
-  
-  .table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm);
-    text-align: right;
-    border-bottom: 1px solid var(--border-color);
-  }
-  
-  .table td::before {
-    content: attr(data-label);
-    font-weight: bold;
-    margin-right: var(--spacing-sm);
-    color: var(--primary-color);
-  }
-  
-  .table td:last-child {
-    border-bottom: none;
-  }
-}
-/* Mobile navigation */
+/* Navbar */
 .navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1E293B;
+  padding: 12px 20px;
+  color: white;
+  font-family: Arial, sans-serif;
+  position: relative;
+  z-index: 1000;
+}
+
+/* Left Section */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: bold;
+  margin-right: 20px;
+}
+
+.logo-img {
+  width: 60px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+/* Navigation Links */
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+  background-color: #4b0082;
+  color: white;
+  font-weight: 600;
+}
+
+/* Dropdown Wrapper */
+.dropdown-wrapper {
   position: relative;
 }
 
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: none;
+/* Dropdown Menu */
+.dropdown-menu {
   color: white;
-  font-size: 1.5rem;
+  position: absolute;
+  top: 42px;
+  left: 0;
+  background-color: #000000;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  padding: 10px 0;
+  z-index: 999;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-menu div {
+  padding: 10px 15px;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
-  .mobile-menu-btn {
-    display: block;
-  }
-  
-  .nav-links {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--dark-color);
-    flex-direction: column;
-    padding: var(--spacing-md);
-    gap: var(--spacing-sm);
-    display: none;
-    z-index: var(--z-index-dropdown);
-  }
-  
-  .nav-links.active {
-    display: flex;
-  }
-  
-  .nav-link {
-    width: 100%;
-    padding: var(--spacing-sm);
-  }
-}
-/* Mobile form controls */
-@media (max-width: 768px) {
-  .form-control, .form-select, .btn {
-    padding: var(--spacing-sm);
-  }
-  
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .btn-action-group {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .btn-action {
-    width: 44px;
-    height: 44px;
-  }
-}
-/* Responsive modals */
-@media (max-width: 768px) {
-  .modal-content {
-    width: 95%;
-    max-width: none;
-    margin: var(--spacing-sm);
-  }
-  
-  .modal-body {
-    padding: var(--spacing-md);
-  }
-  
-  .modal-footer {
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-  
-  .modal-footer .btn {
-    width: 100%;
-  }
-}
-/* Quotation cards for mobile */
-.quotation-card {
-  display: none;
-  background: white;
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  box-shadow: var(--shadow-sm);
+.dropdown-menu div:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-.quotation-card .card-row {
+/* Profile Section */
+.profile-wrapper {
+  position: relative;
+}
+
+.profile-section {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
 }
 
-.quotation-card .card-label {
+.profile-section:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.profile-icon {
+  width: 30px;
+  height: 30px;
+  background: orange;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+/* Profile Popup */
+.profile-popup {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  width: 220px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  text-align: left;
+}
+
+.profile-details {
+  margin-bottom: 15px;
+}
+
+.profile-details p {
+  font-size: 13px;
   font-weight: bold;
-  color: var(--primary-color);
+  margin: 6px 0;
+  color: #000000;
 }
 
-.quotation-card .card-actions {
+.profile-avatar-large-placeholder {
+  width: 60px;
+  height: 60px;
+  background: orange;
+  color: white;
+  border-radius: 50%;
   display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
 }
 
-@media (max-width: 768px) {
-  .table-responsive {
-    display: none;
-  }
-  
-  .quotation-card {
+/* Buttons */
+.logout-btn {
+  width: 100%;
+  padding: 8px;
+  background: red;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.logout-btn:hover {
+  background: darkred;
+}
+
+.edit-btn {
+  width: 100%;
+  padding: 8px;
+  background: #4b0082;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.edit-btn:hover {
+  background: #3a0069;
+}
+
+/* Stock Alert Notification */
+.stock-alert-notification {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.stock-alert-notification:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.icon-low-stock {
+  color: #f56c6c;
+}
+
+.icon-restock {
+  color: #ffc107;
+}
+
+.alert-count {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* Mobile Styles */
+.mobile-menu-button {
+  display: none;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 10px;
+  z-index: 1001;
+}
+
+.mobile-menu-button svg {
+  font-size: 1.5rem;
+}
+
+.mobile-profile-section {
+  display: none;
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 20px;
+}
+
+@media (max-width: 992px) {
+  .mobile-menu-button {
     display: block;
   }
+
+  .nav-links {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: #1E293B;
+    flex-direction: column;
+    padding: 80px 20px 20px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+  }
+
+  .nav-links.mobile-menu-open {
+    transform: translateX(0);
+  }
+
+  .mobile-profile-section {
+    display: block;
+  }
+
+  .profile-wrapper {
+    display: none;
+  }
+
+  body.mobile-menu-open {
+    overflow: hidden;
+  }
+}
+
+/* For the dropdown trigger when active */
+.dropdown-wrapper .nav-link.active {
+  background-color: #4b0082;
 }
 
 
 
+/* Ensure profile icon appears in mobile view */
+.mobile-profile-section .profile-icon {
+  width: 40px;
+  height: 40px;
+  background: orange;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+/* Make sure the mobile profile section has proper spacing */
+.mobile-profile-section {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 20px;
+  text-align: center;
+}

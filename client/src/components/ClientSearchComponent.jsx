@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Form, ListGroup, Spinner } from "react-bootstrap";
-import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import apiClient from "../utils/apiClient"; 
 import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
 
 const ClientSearchComponent = ({
@@ -15,36 +14,44 @@ const ClientSearchComponent = ({
   const [error, setError] = useState("");
   const [showResults, setShowResults] = useState(false);
 
-  const fetchClients = useCallback(async (term) => {
-    if (!term || term.trim().length < 2) {
+  const fetchClients = useCallback(async (termToSearch) => {
+    const trimmedTerm = termToSearch.trim();
+    if (!trimmedTerm || trimmedTerm.length < 2) {
       setResults([]);
-      setShowResults(false);
+      setShowResults(false); // Keep results hidden if term is too short
       return;
     }
     setIsLoading(true);
     setError("");
     try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("Authentication token not found.");
-      }
-      // Use apiClient for the request
-      const data = await apiClient(`/clients/search?q=${term}`);
+      // apiClient is expected to handle auth and throw if token is missing/invalid.
+      // The error will be caught by the catch block below.
+      const data = await apiClient(`/clients/search?q=${encodeURIComponent(trimmedTerm)}`);
       setResults(data);
-      setShowResults(true);
+      setShowResults(true); // Show results area now that we have data (or empty data)
+      // If data is empty, showResults is still true, allowing "No clients found" message
+      // If data has items, ListGroup will show.
     } catch (err) {
+      // handleApiError should ideally also handle auth errors from apiClient
       setError(handleApiError(err, "Failed to search clients."));
       setResults([]);
-      setShowResults(false);
+      setShowResults(false); // Hide results on error
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [handleApiError]); // Assuming handleApiError is a stable utility function
+
+  useEffect(() => {
+    const trimmedSearchTerm = searchTerm.trim();
+    const timerId = setTimeout(() => {
+      fetchClients(trimmedSearchTerm); // fetchClients will handle empty/short terms
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timerId);
+  }, [searchTerm, fetchClients]);
 
   const handleSearchChange = (e) => {
     const term = e.target.value;
     setSearchTerm(term);
-    fetchClients(term);
   };
 
   const handleSelectClient = (client) => {
@@ -61,8 +68,8 @@ const ClientSearchComponent = ({
         placeholder={placeholder || "Search client by Name, Email, GST..."}
         value={searchTerm}
         onChange={handleSearchChange}
-        onFocus={() => searchTerm && results.length > 0 && setShowResults(true)}
-        // onBlur={() => setTimeout(() => setShowResults(false), 150)} // Delay to allow click on list item
+        onFocus={() => searchTerm.trim().length >= 2 && setShowResults(true)} // Show results area if term is potentially valid
+        onBlur={() => setTimeout(() => setShowResults(false), 150)} // Delay to allow click on list item
       />
       {isLoading && <Spinner animation="border" size="sm" className="mt-2" />}
       {error && <p className="text-danger small mt-1">{error}</p>}
@@ -87,7 +94,7 @@ const ClientSearchComponent = ({
       )}
       {showResults &&
         results.length === 0 &&
-        searchTerm.length >= 2 &&
+        searchTerm.trim().length >= 2 &&
         !isLoading && <p className="small mt-1">No clients found.</p>}
     </div>
   );
