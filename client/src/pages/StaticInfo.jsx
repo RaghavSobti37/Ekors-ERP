@@ -5,6 +5,7 @@ import apiClient from '../utils/apiClient'; // Adjust path as needed
 import LoadingSpinner from '../components/LoadingSpinner'; // Adjust path as needed
 import '../css/Style.css';
 
+
 const StaticInfo = () => {
   const { user, logEventToServer } = useAuth();
   const [companyData, setCompanyData] = useState(null);

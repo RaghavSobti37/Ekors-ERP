@@ -15,12 +15,14 @@ const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init');
-const userRoutes = require('./routes/userRoutes'); 
+const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clients');
-const ticketsRouter = require('./routes/tickets'); 
+const ticketsRouter = require('./routes/tickets');
 const reportRoutes = require("./routes/reportRoutes");
 const auditLogRoutes = require('./routes/auditLogRoutes');
-const frontendLogRoute = require('./routes/frontendLogRoute.js');const backupRoutes = require('./routes/backupRoutes'); 
+const frontendLogRoute = require('./routes/frontendLogRoute.js');
+const backupRoutes = require('./routes/backupRoutes');
+const staticInfoRoutes = require('./routes/staticInfoRoutes.js')
 
 const app = express();
 connectDB();
@@ -88,6 +90,7 @@ mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
 app.use('/api/backups', backupRoutes);
+app.use('./api/company/info' , staticInfoRoutes)
 app.use('/api/uploads', express.static(serverUploadsPath));
 
 // ---------------------------
