@@ -20,6 +20,7 @@ router.get('/:id/purchases', auth, purchaseController.getItemPurchaseHistory);
 
 router.post('/:id/purchase', auth, purchaseController.addSinglePurchase); // Add purchase to specific item
 
+
 // Item routes
 router.get('/', auth, itemController.getAllItems); // GET all items (Protected)
 router.get('/:id', auth, itemController.getItemById); // GET single item (Protected)
