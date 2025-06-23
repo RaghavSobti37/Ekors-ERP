@@ -3,6 +3,7 @@ window.Buffer = Buffer;
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import Login from "./pages/Login.jsx";
+import StaticInfo from "./pages/StaticInfo.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
 import History from "./pages/History";
@@ -62,6 +63,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           {/* Removed direct routes to PDF components or generic components like Footer/Pagination */}
           <Route path="/users" element={<Users />} />
+          {/* <Route path="/staticinfopage" element={<StaticInfoPage />} /> */}
 
           {/* Route for Clients Page */}
           <Route
@@ -236,6 +238,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
                 <Items />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staticinfo"
+            element={
+              <ProtectedRoute allowedRoles={["super-admin"]}>
+                <StaticInfo />
               </ProtectedRoute>
             }
           />

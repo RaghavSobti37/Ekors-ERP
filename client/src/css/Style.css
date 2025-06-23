@@ -48,3 +48,153 @@ textarea::placeholder {
   color: #6c757d !important; /* Bootstrap's default placeholder color */
   opacity: 1; /* Firefox fix for placeholder opacity */
 }
+
+/* Static Info Page Styles */
+.static-info-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.static-info-container h1 {
+  color: #1E293B;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.static-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.static-info-table th,
+.static-info-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.static-info-table th {
+  background-color: #1E293B;
+  color: white;
+  font-weight: 600;
+}
+
+.static-info-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  transform: scale(1.1);
+}
+
+.view-btn {
+  color: #4b0082;
+}
+
+.view-btn:hover {
+  background-color: rgba(75, 0, 130, 0.1);
+}
+
+.edit-btn {
+  color: #007bff;
+}
+
+.edit-btn:hover {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.delete-btn {
+  color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.save-btn,
+.cancel-btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 5px;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.cancel-btn {
+  background-color: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .static-info-table {
+    display: block;
+    overflow-x: auto;
+  }
+  
+  .static-info-container {
+    padding: 15px;
+  }
+  
+  .static-info-table th,
+  .static-info-table td {
+    padding: 8px 10px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .static-info-container {
+    background-color: #2d2d2d;
+    color: white;
+  }
+  
+  .static-info-container h1 {
+    color: white;
+  }
+  
+  .static-info-table th,
+  .static-info-table td {
+    border-bottom-color: #444;
+  }
+  
+  .static-info-table tr:hover {
+    background-color: #3a3a3a;
+  }
+}
