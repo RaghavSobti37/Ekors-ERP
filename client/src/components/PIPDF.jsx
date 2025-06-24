@@ -1,16 +1,8 @@
-import React, { useState, useEffect } from "react";
-
+import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
-import { getCompanyInfo } from "../utils/ConfigService";
-import config from "../constants/appconfig.json"
 
-// import apiClient from "../utils/apiClient"; // No longer needed for fetching
-// import LoadingSpinner from "./LoadingSpinner"; // No longer needed for fetching
-
-// Styles
-// ... (styles remain the same)
 const styles = StyleSheet.create({
   page: {
     paddingTop: 35,
@@ -264,70 +256,30 @@ const styles = StyleSheet.create({
   },
 });
 
-const Pi = ({ pi }) => {
-  const [config, setConfig] = useState({
-    officeAddress: "",
-    gstin: "",
-    cin: "",
-    companyName: "",
-    companyAddress: "",
-    contactNumbers: "",
-    email: "",
-    bankName: "",
-    accountNumber: "",
-    ifscCode: "",
-    branch: ""
-  });
-
-  // Load config from public file
-  useEffect(() => {
-    fetch('/appconfig.json')
-      .then(response => response.json())
-      .then(data => setConfig(data))
-      .catch(error => {
-        console.error("Error loading config:", error);
-        // Fallback values if config fails to load
-        setConfig({
-          officeAddress: "A-1, Sector-59, Noida-201301",
-          gstin: "09AAICE2056P1Z5",
-          cin: "U40106UP2020PTC127954",
-          companyName: "E-KORS PRIVATE LIMITED",
-          companyAddress: "PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307",
-          contactNumbers: "9711725989 / 9897022545",
-          email: "sales@ekors.in",
-          bankName: "ICICI Bank",
-          accountNumber: "628906029990",
-          ifscCode: "ICIC0006284",
-          branch: "Sector 62, Noida"
-        });
-      });
-  }, []);
-};
-
 // Helper function to get parts of an address
 const getAddressPart = (address, part) => {
-  if (!address) return " " ;
+  if (!address) return ""; // Changed from " " to ""
   if (Array.isArray(address)) {
     switch (part) {
       case "address1":
         return address[0] || " ";
       case "address2":
-        return address[1] || " " ;
+        return address[1] || "";
       case "city":
-        return address[3] || " ";
+        return address[3] || "";
       case "state":
-        return address[2] || " ";
+        return address[2] || "";
       case "pincode":
-        return address[4] || " ";
+        return address[4] || "";
       default:
         return " ";
     }
   } else if (typeof address === "object" && address !== null) {
     switch (part) {
       case "address1":
-        return address.address1 || " ";
+        return address.address1 || "";
       case "address2":
-        return address.address2 || " " ;
+        return address.address2 || "";
       case "city":
         return address.city || " ";
       case "state":
@@ -338,7 +290,7 @@ const getAddressPart = (address, part) => {
         return " ";
     }
   }
-  return part === "address2" ? " "  : " ";
+  return part === "address2" ? "" : ""; // Changed from " " to ""
 };
 
 const toWords = (num) => {
@@ -407,7 +359,14 @@ const toWords = (num) => {
   return str.trim() === " "  ? "zero" : str.trim() + " only";
 };
 
-const PIPDF = ({ ticketData }) => {
+const PIPDF = ({ ticketData, companyInfo }) => {
+  // companyInfo is now passed as a prop
+  if (!companyInfo || !companyInfo.company) { // Still check if prop is valid
+    return <Document><Page><Text>Loading company information...</Text></Page></Document>;
+  }
+
+  const { company } = companyInfo;
+
   // This component now expects ticketData to be provided by its parent.
   // It does not handle fetching, loading states, or errors related to fetching.
   // The parent component is responsible for fetching the data and handling its loading/error states.
@@ -426,8 +385,8 @@ const PIPDF = ({ ticketData }) => {
      return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Error: Incomplete ticket data provided for PI.</Text></View></Page></Document>;
   }
 
-  const clientPhone = ticket.clientPhone || " ";
-  const clientGstNumber = ticket.clientGstNumber || " ";
+  const clientPhone = String(ticket.clientPhone ?? ''); // Ensure string
+  const clientGstNumber = String(ticket.clientGstNumber ?? ''); // Ensure string
 
   const billingAddress1 = getAddressPart(ticket.billingAddress, "address1");
   const billingAddress2 = getAddressPart(ticket.billingAddress, "address2");
@@ -442,10 +401,10 @@ const PIPDF = ({ ticketData }) => {
   const shippingPincode = getAddressPart(ticket.shippingAddress, "pincode");
 
   const fullBillingAddress = `${billingAddress1}${
-    billingAddress2 ? `, ${billingAddress2}` : " " 
+    billingAddress2 ? `, ${billingAddress2}` : ""
   }`;
   const fullShippingAddress = `${shippingAddress1}${
-    shippingAddress2 ? `, ${shippingAddress2}` : " " 
+    shippingAddress2 ? `, ${shippingAddress2}` : ""
   }`;
 
   const formatCityStatePin = (city, state, pincode) => {
@@ -473,18 +432,17 @@ const PIPDF = ({ ticketData }) => {
       ? ticket.finalRoundedAmount
       : ticket.grandTotal;
   
-  const company = getCompanyInfo();    
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <Image style={styles.logo} src="/logo.png" /> 
 
         <View style={styles.headerSection}>
-          <Text style={styles.gstinHeader}>GSTIN: {config.company.gstin}</Text>
-          <Text style={styles.companyNameHeader}>{config.company.companyName}</Text>
-          <Text style={styles.companyAddressHeader}>
-            {config.company.addresses.companyAddress}
-          </Text>
+          <Text style={styles.gstinHeader}>GSTIN: {company.gstin}</Text>
+          <Text style={styles.companyNameHeader}>{company.companyName}</Text>
+          <Text style={styles.companyAddressHeader}> {/* Ensure address is always a string */}
+            {String(company.addresses.companyAddress ?? '')}
+          </Text> {/* Ensure address is always a string */}
         </View>
 
         <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
@@ -524,10 +482,10 @@ const PIPDF = ({ ticketData }) => {
           <View style={styles.addressRow}>
             <Text style={styles.addressCellHeaderLabel}>Party Name:</Text>
             <Text style={styles.addressCellData}>
-              {ticket.client?.companyName || ticket.companyName || " "}
+              {String(ticket.client?.companyName || ticket.companyName || '')} {/* Ensure string */}
             </Text>
             <Text style={styles.addressCellDataLast}>
-              {ticket.client?.companyName || ticket.companyName || " "}
+              {String(ticket.client?.companyName || ticket.companyName || '')} {/* Ensure string */}
             </Text>
           </View>
           <View style={styles.addressRow}>
@@ -546,8 +504,8 @@ const PIPDF = ({ ticketData }) => {
           </View>
           <View style={styles.addressRow}>
             <Text style={styles.addressCellHeaderLabel}>State:</Text>
-            <Text style={styles.addressCellData}>{billingState}</Text>
-            <Text style={styles.addressCellDataLast}>{shippingState}</Text>
+            <Text style={styles.addressCellData}>{String(billingState ?? '')}</Text> {/* Ensure string */}
+            <Text style={styles.addressCellDataLast}>{String(shippingState ?? '')}</Text> {/* Ensure string */}
           </View>
           <View style={styles.addressRow}>
             <Text style={[styles.addressCellHeader, styles.bold]}>
@@ -564,7 +522,7 @@ const PIPDF = ({ ticketData }) => {
             </Text>
             {/* <Text style={styles.addressCell}>{clientPhone}</Text> */}
             <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>
-              {clientPhone}
+              {clientPhone} {/* Ensure string */}
             </Text>
           </View>
         </View>
@@ -610,7 +568,7 @@ const PIPDF = ({ ticketData }) => {
                 ))}
               </View>
               <Text style={[styles.goodsCell, styles.colHSN]}>
-                {item.hsnSacCode}
+                {String(item.hsnSacCode ?? '')} {/* Ensure string */}
               </Text>
               <Text style={[styles.goodsCell, styles.colQty]}>
                 {item.quantity}
@@ -850,16 +808,16 @@ const PIPDF = ({ ticketData }) => {
 
         <View style={styles.bankDetails}>
           <Text style={styles.bold}>Bank Details:</Text>
-          <Text>Bank: {config.company.bank.bankName}</Text>
-          <Text>Account No.: {config.company.bank.accountNumber}</Text>
-          <Text>IFSC Code: {config.company.bank.ifscCode}</Text>
-          <Text>Branch: {config.company.bank.branch}</Text>
+          <Text>Bank: {company.bank.bankName}</Text>
+          <Text>Account No.: {company.bank.accountNumber}</Text>
+          <Text>IFSC Code: {company.bank.ifscCode}</Text>
+          <Text>Branch: {company.bank.branch}</Text>
         </View>
 
         <View style={styles.footer}>
           {/* <Text>This is a computer-generated Performa Invoice.</Text> */}
-          <View style={styles.authSignatory}>
-            <Text style={styles.companyNameHeader}> For {config.company.companyName}</Text>
+          <View style={styles.authSignatory}> {/* Ensure companyName is always a string */}
+            <Text style={styles.companyNameHeader}> For {String(company.companyName ?? '')}</Text>
             <View style={{ height: 30 }} /> {/* Spacer for signature */}
             <Text>Authorized Signatory</Text>
           </View>

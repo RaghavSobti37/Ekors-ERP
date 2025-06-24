@@ -6,12 +6,14 @@ import { Spinner, Alert, Button } from 'react-bootstrap';
 import ReusablePageStructure from '../../components/ReusablePageStructure.jsx'; // Ensure this path is correct
 import QuotationPDF, { QuotationActions } from '../../components/QuotationPDF.jsx'; // Ensure this path is correct
 import apiClient from '../../utils/apiClient.js';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx'; // Keep useAuth for logging
+import { useCompanyInfo } from '../../context/CompanyInfoContext.jsx'; // Import useCompanyInfo
 import { handleApiError } from '../../utils/helpers.js';
 
 const QuotationPreviewPage = () => {
   const { id } = useParams();
   const location = useLocation();
+  const { companyInfo, isLoading: isCompanyInfoLoading, error: companyInfoError } = useCompanyInfo();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -38,12 +40,20 @@ const QuotationPreviewPage = () => {
     }
   }, [id, quotation, user]);
 
+  if (isCompanyInfoLoading) {
+    return <ReusablePageStructure showBackButton={true} title="Loading Company Info..."><div className="text-center p-5"><Spinner animation="border" /></div></ReusablePageStructure>;
+  }
+
   if (isLoading) {
     return <ReusablePageStructure showBackButton={true} title="Loading Quotation..."><div className="text-center p-5"><Spinner animation="border" /></div></ReusablePageStructure>;
   }
 
   if (error) {
     return <ReusablePageStructure showBackButton={true} title="Error"><Alert variant="danger">{error}</Alert></ReusablePageStructure>;
+  }
+  
+  if (companyInfoError) {
+    return <ReusablePageStructure showBackButton={true} title="Error"><Alert variant="danger">{companyInfoError}</Alert></ReusablePageStructure>;
   }
 
   if (!quotation) {
@@ -53,7 +63,7 @@ const QuotationPreviewPage = () => {
   return (
     <ReusablePageStructure showBackButton={true} title={`Quotation Preview - ${quotation.referenceNumber}`} footerContent={<QuotationActions quotation={quotation} />}>
       <div style={{ height: 'calc(100vh - 200px)', overflowY: 'auto' }}> {/* Adjust height as needed */}
-        <PDFViewer width="100%" height="99%"><QuotationPDF quotation={quotation} /></PDFViewer>
+        <PDFViewer width="100%" height="99%"><QuotationPDF quotation={quotation} companyInfo={companyInfo} /></PDFViewer>
       </div>
     </ReusablePageStructure>
   );

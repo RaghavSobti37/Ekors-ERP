@@ -64,12 +64,17 @@ const ReusablePageStructureComponent = ({
   // headerActions, // This can be used for additional right-side actions if needed
   footerContent,
   showBackButton = true, // Prop to control back button visibility, defaults to true
+  onBack, // New prop for custom back button behavior
 }) => {
   const navigate = useNavigate();
 
   const handleGoBack = useCallback(() => {
-    navigate(-1); // Go to the previous page in history
-  }, [navigate]);
+    if (onBack) {
+      onBack(); // Use the custom handler if provided
+    } else {
+      navigate(-1); // Default behavior: go to the previous page in history
+    }
+  }, [navigate, onBack]);
 
   React.useEffect(() => {
     const handleEsc = (event) => {
@@ -81,7 +86,7 @@ const ReusablePageStructureComponent = ({
     return () => {
       window.removeEventListener('keydown', handleEsc);
     };
-  }, [navigate]); // Add navigate to dependency array
+  }, [handleGoBack]); // Corrected dependency array
 
   return (
     <div style={pageContainerStyle}>

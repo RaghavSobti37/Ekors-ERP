@@ -206,35 +206,34 @@ function NavbarComponent({ showPurchaseModal }) {
                 onMouseEnter={handleMouseEnterManagementDropdown}
                 onMouseLeave={handleMouseLeaveManagementDropdown}
               >
-                <span className="nav-link" style={{ cursor: "default" }}> {/* Make it look like a NavLink but not clickable itself */}
+                {/* Changed from span to NavLink to match Items List dropdown behavior */}
+                <NavLink
+                  to="/users" // Default management page
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
                   <FaCogs /> Management
-                </span>
+                </NavLink>
                 {showManagementDropdown && (
                   <div className="dropdown-menu">
-                    <NavLink to="/users" className="dropdown-item-navlink"> {/* Custom class for NavLink styling */}
+                    <NavLink to="/users" className="dropdown-item"> {/* Custom class for NavLink styling */}
                        Users 
                     </NavLink>
-                    <NavLink to="/clients" className="dropdown-item-navlink">
+                    <NavLink to="/clients" className="dropdown-item">
                       Clients 
                     </NavLink>
-                    {/* <NavLink to="/suppliers" className="dropdown-item-navlink">Suppliers</NavLink> */} {/* Add when ready */}
-                    <NavLink to="/backups" className="dropdown-item-navlink">Backups</NavLink>
+                    {/* <NavLink to="/suppliers" className="dropdown-item">Suppliers</NavLink> */} {/* Add when ready */}
+                    <NavLink to="/backups" className="dropdown-item">Backups</NavLink>
+                    {/* Static Info Link - Only for super-admin */}
+                    {user && user.role === "super-admin" && (
+                      <NavLink to="/staticinfo" className="dropdown-item">
+                        Static Info
+                      </NavLink>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-            
-            {/* Static Info Link - Only for super-admin */}
-            {user && user.role === "super-admin" && (
-              <NavLink
-                to="/staticinfo"
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
-                onClick={handleStaticInfoClick}
-              >
-                <FaInfoCircle /> Static Info
-              </NavLink>
             )}
             
             {/* Stock Alert Notification Area */}

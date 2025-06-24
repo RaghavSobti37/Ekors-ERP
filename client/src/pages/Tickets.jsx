@@ -28,6 +28,7 @@ import { saveAs } from "file-saver";
 import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import { generatePIDocx } from "../utils/generatePIDocx";
 import { Button } from "react-bootstrap";
+import { useCompanyInfo } from "../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
 
 // UserSearchComponent remains as it might be used by other pages (e.g., TransferTicketPage)
 export const UserSearchComponent = ({ onUserSelect, authContext }) => {
@@ -248,7 +249,8 @@ export default function Dashboard() {
   const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "descending" });
   const [showPIPreviewModal, setShowPIPreviewModal] = useState(false);
   const [ticketForPIPreview, setTicketForPIPreview] = useState(null);
-  
+    const { companyInfo, isLoading: isCompanyInfoLoading, error: companyInfoError } = useCompanyInfo();
+
   const { user: authUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -308,8 +310,7 @@ export default function Dashboard() {
   }, [authUser, navigate, sortConfig, searchTerm, statusFilter, currentPage, itemsPerPage]);
 
   useEffect(() => {
-    if (!authLoading && !authUser) {
-      if (window.location.pathname !== "/login") { toast.info("Redirecting to login."); navigate("/login", { state: { from: "/tickets" } }); }
+    if (!authLoading && !authUser && !isCompanyInfoLoading) {      if (window.location.pathname !== "/login") { toast.info("Redirecting to login."); navigate("/login", { state: { from: "/tickets" } }); }
     } else if (authUser) {
       fetchTickets(currentPage, itemsPerPage);
     }
@@ -401,8 +402,7 @@ export default function Dashboard() {
   return (
     <div>
       <Navbar />
-      <LoadingSpinner show={isLoading || authLoading} /> {/* Show spinner during data fetch or auth loading */}
-      <div className="container mt-4">
+      <LoadingSpinner show={isLoading || authLoading || isCompanyInfoLoading} />   <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap" style={{ gap: "1rem" }}>
           <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>Tickets Overview</h2>
           <div className="filter-dropdown-group">
@@ -428,8 +428,11 @@ export default function Dashboard() {
               className="w-100" />
           </div>
         </div>
-        {!isLoading && !authLoading && error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-        
+        {!isLoading && !authLoading && (error || companyInfoError) && (
+          <Alert variant="danger" onClose={() => setError(null)} dismissible>
+            {error || companyInfoError}
+          </Alert>
+        )}        
         {!isLoading && !authLoading && !error && (
           <ReusableTable
             columns={[
@@ -506,7 +509,7 @@ export default function Dashboard() {
           />
         )}
       </div>
-      {showPIPreviewModal && ticketForPIPreview && (
+      {showPIPreviewModal && ticketForPIPreview && companyInfo && (
         <Modal show={showPIPreviewModal} onHide={() => setShowPIPreviewModal(false)} size="xl" centered>
           <Modal.Header closeButton style={{ backgroundColor: "maroon", color: "white" }}>
             <Modal.Title>PI Preview - {ticketForPIPreview.ticketNumber || ticketForPIPreview.quotationNumber}</Modal.Title>

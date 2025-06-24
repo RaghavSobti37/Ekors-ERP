@@ -7,8 +7,8 @@ const logger = require('./utils/logger');
 require('dotenv').config();
 
 const connectDB = require('./db.js');
-
 // Routes
+const companyRoutes = require('./routes/CompanyRoutes.js');
 const authRoutes = require("./routes/authRoutes");
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
@@ -22,7 +22,6 @@ const reportRoutes = require("./routes/reportRoutes");
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const frontendLogRoute = require('./routes/frontendLogRoute.js');
 const backupRoutes = require('./routes/backupRoutes');
-const staticInfoRoutes = require('./routes/staticInfoRoutes.js')
 
 const app = express();
 connectDB();
@@ -90,7 +89,7 @@ mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
 app.use('/api/backups', backupRoutes);
-app.use('./api/company/info' , staticInfoRoutes)
+app.use('/api/company', companyRoutes);
 app.use('/api/uploads', express.static(serverUploadsPath));
 
 // Optional: Add a root route for the API to confirm it's running

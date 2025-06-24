@@ -8,8 +8,6 @@ import {
   Image,
   PDFDownloadLink,
 } from "@react-pdf/renderer";
-import { getCompanyInfo } from "../utils/ConfigService";
-import config from "../constants/appconfig.json"
 import { generateQuotationDocx } from "../utils/generateQuotationDocx";
 import * as docx from "docx";
 import { saveAs } from "file-saver";
@@ -148,35 +146,6 @@ const styles = StyleSheet.create({
   },
 });
 
-const Quotation = ({ quotation }) => {
-  const [config, setConfig] = useState({
-    officeAddress: "",
-    gstin: "",
-    companyName: "",
-    companyAddress: "",
-    contactNumbers: "",
-    email: ""
-  });
-
-  // Load config from public file
-  useEffect(() => {
-    fetch('/appconfig.json')
-      .then(response => response.json())
-      .then(data => setConfig(data))
-      .catch(error => {
-        console.error("Error loading config:", error);
-        // Fallback values if config fails to load
-        setConfig({
-          officeAddress: "A-1, Sector-59, Noida-201301",
-          gstin: "09AAICE2056P1Z5",
-          companyName: "E-KORS PRIVATE LIMITED",
-          companyAddress: "PLOT NO.-02, Sector-115, NOIDA, Gautam Buddha Nagar, Uttar Pradesh, 201307",
-          contactNumbers: "9711725989 / 9897022545",
-          email: "sales@ekors.in"
-        });
-      });
-  }, []);
-};
 const QuotationActionsComponent = ({ quotation }) => {
   const handleDownloadWord = useCallback(async () => {
     try {
@@ -209,8 +178,13 @@ const QuotationActionsComponent = ({ quotation }) => {
 };
 
 // Component
-const QuotationPDF = ({ quotation }) => {
-  const company = getCompanyInfo();
+const QuotationPDF = ({ quotation, companyInfo }) => {
+  // companyInfo is now passed as a prop
+  if (!companyInfo || !companyInfo.company) { // Still check if prop is valid
+    return <Document><Page><Text>Loading company information...</Text></Page></Document>;
+  }
+
+  const { company } = companyInfo;
   return (
   <Document>
     <Page size="A4" style={styles.page}>
@@ -219,10 +193,10 @@ const QuotationPDF = ({ quotation }) => {
           {/* Centered Header with Logo */}
           <View style={styles.headerSection}>
               <View style={styles.companyInfoContainer}>
-              <Text style={styles.gstinHeader}>GSTIN: {config.company.gstin}</Text>
-              <Text style={styles.companyNameHeader}>{config.company.companyName}</Text>
-              <Text style={styles.companyAddressHeader}>
-                {config.company.addresses.companyAddress}
+              <Text style={styles.gstinHeader}>GSTIN: {String(company.gstin ?? '')}</Text> {/* Ensure string */}
+              <Text style={styles.companyNameHeader}>{String(company.companyName ?? '')}</Text> {/* Ensure string */}
+              <Text style={styles.companyAddressHeader}> {/* Ensure address is always a string */}
+                {String(company.addresses.companyAddress ?? '')}
               </Text>
             </View>
             <View style={styles.logoContainer}>
@@ -231,8 +205,7 @@ const QuotationPDF = ({ quotation }) => {
           </View>
 
           {/* CIN and Date below the main header */}
-
-          <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
+          <Text style={styles.refText}>CIN NO.: {String(company.cin ?? '')}</Text> {/* Ensure CIN is always a string */}
 
           <Text>
             Date: {new Date(quotation.date).toLocaleDateString("en-GB")}
@@ -359,10 +332,10 @@ const QuotationPDF = ({ quotation }) => {
 
           <View style={styles.footerContact}>
             <Text style={styles.companyAddressHeader}>
-              {config.company.addresses.companyAddress}
+              {company.addresses.companyAddress}
             </Text>
-            <Text>Ph. No. {config.company.contacts.contactNumbers.join(' / ')}</Text>
-            <Text>Email: {config.company.contacts.email}</Text>
+            <Text>Ph. No. {(company.contacts.contactNumbers || []).join(' / ')}</Text>
+            <Text>Email: {String(company.contacts.email ?? '')}</Text> {/* Ensure email is always a string */}
           </View>
         </View>
       </View>
