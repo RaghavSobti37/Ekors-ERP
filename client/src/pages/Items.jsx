@@ -186,7 +186,7 @@ export default function Items() {
           sortDirection: sortConfig.direction,
           status: "approved",
         };
-         if (selectedCategory !== "All") params.category = selectedCategory;
+        if (selectedCategory !== "All") params.category = selectedCategory;
         if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
         // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
 
@@ -317,7 +317,7 @@ export default function Items() {
         // Use `user` from useAuth() and ensure authLoading is checked
         fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
       }
-    }, 500);     return () => clearTimeout(timerId);
+    }, 500); return () => clearTimeout(timerId);
   }, [
     authLoading,
     user,
@@ -688,9 +688,8 @@ export default function Items() {
         let importedByUserDisplay = "System";
         if (entry.importedBy) {
           importedByUserDisplay =
-            `${entry.importedBy.firstname || ""} ${
-              entry.importedBy.lastname || ""
-            }`.trim() || entry.importedBy.email;
+            `${entry.importedBy.firstname || ""} ${entry.importedBy.lastname || ""
+              }`.trim() || entry.importedBy.email;
         }
         let oldQtyText = "";
         let newQtyText = "";
@@ -715,8 +714,8 @@ export default function Items() {
           changesSummary:
             entry.action === "updated"
               ? entry.changes
-                  ?.map((c) => `${c.field}: ${c.oldValue} -> ${c.newValue}`)
-                  .join("; ") + oldQtyText
+                ?.map((c) => `${c.field}: ${c.oldValue} -> ${c.newValue}`)
+                .join("; ") + oldQtyText
               : `Initial state set.` + newQtyText,
         });
       });
@@ -770,8 +769,7 @@ export default function Items() {
             date: new Date(log.date),
             type: log.type,
             user: log.userReference
-              ? `${log.userReference.firstname || ""} ${
-                  log.userReference.lastname || ""
+              ? `${log.userReference.firstname || ""} ${log.userReference.lastname || ""
                 }`.trim() || log.userReference.email
               : "System",
             details:
@@ -951,9 +949,9 @@ export default function Items() {
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-          "Are you absolutely sure you want to proceed?"
+        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+        "Are you absolutely sure you want to proceed?"
       )
     ) {
       event.target.value = null;
@@ -968,11 +966,9 @@ export default function Items() {
         body: formData,
       });
 
-      let successMessage = `Excel sync complete: ${
-        responseData.itemsCreated || 0
-      } created, ${responseData.itemsUpdated || 0} updated, ${
-        responseData.itemsDeleted || 0
-      } deleted.`;
+      let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
+        } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
+        } deleted.`;
 
       if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
         successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
@@ -1064,7 +1060,7 @@ export default function Items() {
     isSubmitting ||
     isProcessingExcel ||
     isExportingExcel ||
-    loading 
+    loading
 
   return (
     <div className="items-container">
@@ -1166,7 +1162,7 @@ export default function Items() {
                   totalItems={totalPendingReviewItems}
                   itemsPerPage={itemsPerPage}
                   onPageChange={(page) => setCurrentPagePending(page)}
-                  // Note: Export/Import buttons could be passed as props here if moved to Pagination component
+                // Note: Export/Import buttons could be passed as props here if moved to Pagination component
                 />
               )}
             </Card>
@@ -1174,30 +1170,29 @@ export default function Items() {
 
         <div className="mb-3">
           {/* Controls Area - Single Line */}
-          <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
-            {/* Title */}
-            <h2
-              style={{ color: "black", margin: 0 }}
-              className="me-3 text-nowrap"
-            >
-              {stockAlertFilterActive
-                ? `Stock Alerts (Qty < ${
-                    parseInt(stockAlertsPageFilterThreshold, 10) ||
-                    effectiveLowStockThreshold
-                  })`
-                : user && (user.role === "admin" || user.role === "super-admin")
-                ? "Items List (Approved)"
-                : "All Items List"}
-            </h2>
+          <div className="d-flex align-items-center justify-content-between mb-3" style={{ width: "100%", minWidth: "100%" }}>
+            {/* Left side - Title */}
+            <div style={{ flexShrink: 0, minWidth: "200px" }}>
+              <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>
+                {stockAlertFilterActive
+                  ? `Stock Alerts (Qty < ${parseInt(stockAlertsPageFilterThreshold, 10) || effectiveLowStockThreshold})`
+                  : user && (user.role === "admin" || user.role === "super-admin")
+                    ? "Items List (Approved)"
+                    : "All Items List"}
+              </h2>
+            </div>
 
-            {/* Search Bar */}
-            <div
-              className="flex-grow-1"
-              style={{ minWidth: "200px", maxWidth: "400px" }}
-            >
+            {/* Middle - Search Bar with constrained growth */}
+            <div style={{
+              flexGrow: 1,
+              flexShrink: 1,
+              minWidth: "200px",
+              maxWidth: "400px",
+              margin: "0 10px"
+            }}>
               <SearchBar
                 searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm} // Pass setSearchTerm directly
+                setSearchTerm={setSearchTerm}
                 placeholder={
                   stockAlertFilterActive
                     ? "Search alerts..."
@@ -1208,70 +1203,67 @@ export default function Items() {
               />
             </div>
 
-            {/* Spacer for Stock Alerts Page or Filters for Main Page */}
-            {stockAlertFilterActive ? (
-              <div className="d-flex align-items-center gap-2 ms-auto">
-                <label
-                  htmlFor="stockAlertThresholdInput"
-                  className="form-label mb-0 me-1 text-nowrap"
-                >
-                  Alert Qty &lt;
-                </label>
-                <input
-                  type="number"
-                  id="stockAlertThresholdInput"
-                  className="form-control form-control-sm"
-                  value={stockAlertsPageFilterThreshold}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "" || parseInt(val, 10) >= 0) {
-                      setStockAlertsPageFilterThreshold(val);
-                    } else if (parseInt(val, 10) < 0) {
-                      setStockAlertsPageFilterThreshold("0");
-                    }
-                  }}
-                  onBlur={applyStockAlertFilter}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && applyStockAlertFilter()
-                  }
-                  style={{ width: "70px" }}
-                  min="0"
-                  disabled={anyLoading}
-                />
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={applyStockAlertFilter}
-                  disabled={anyLoading}
-                >
-                  Apply
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  onClick={() =>
-                    handleUpdateGlobalLowStockThreshold(
-                      stockAlertsPageFilterThreshold
-                    )
-                  }
-                  disabled={anyLoading}
-                  title="Set as global default"
-                >
-                  Set Default
-                </Button>
-              </div>
-            ) : (
-              // Filters and Add Item Button for Main Page
-              <div className="d-flex align-items-center gap-2 ms-auto">
-                <div style={{ minWidth: "130px" }}>
+            {/* Right side - Controls with fixed width */}
+            <div style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              whiteSpace: "nowrap"
+            }}>
+              {stockAlertFilterActive ? (
+                <>
+                  <label htmlFor="stockAlertThresholdInput" className="mb-0 me-1">
+                    Alert Qty &lt;
+                  </label>
+                  <input
+                    type="number"
+                    id="stockAlertThresholdInput"
+                    className="form-control form-control-sm"
+                    value={stockAlertsPageFilterThreshold}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || parseInt(val, 10) >= 0) {
+                        setStockAlertsPageFilterThreshold(val);
+                      } else if (parseInt(val, 10) < 0) {
+                        setStockAlertsPageFilterThreshold("0");
+                      }
+                    }}
+                    onBlur={applyStockAlertFilter}
+                    onKeyPress={(e) => e.key === "Enter" && applyStockAlertFilter()}
+                    style={{ width: "70px" }}
+                    min="0"
+                    disabled={anyLoading}
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={applyStockAlertFilter}
+                    disabled={anyLoading}
+                  >
+                    Apply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => handleUpdateGlobalLowStockThreshold(stockAlertsPageFilterThreshold)}
+                    disabled={anyLoading}
+                    title="Set as global default"
+                  >
+                    Set Default
+                  </Button>
+                </>
+              ) : (
+                <>
                   <select
-                    className="form-select form-select-sm w-100"
+                    className="form-select form-select-sm"
                     value={selectedCategory}
                     onChange={(e) => {
                       setSelectedCategory(e.target.value);
                       setCurrentPage(1);
                     }}
                     disabled={anyLoading}
+                    style={{ width: "130px" }}
                   >
                     <option value="All">All Categories</option>
                     {Array.isArray(categories) &&
@@ -1281,43 +1273,31 @@ export default function Items() {
                         </option>
                       ))}
                   </select>
-                </div>
-                <div
-                  className="d-flex align-items-center gap-1"
-                  style={{ minWidth: "130px" }}
-                >
-                  <label
-                    htmlFor="quantityFilterInput"
-                    className="form-label mb-0 text-nowrap small visually-hidden"
-                  >
-                    Qty &le;
-                  </label>
                   <input
                     type="number"
-                    id="quantityFilterInput"
                     className="form-control form-control-sm"
-                    placeholder="Qty &le;"
+                    placeholder="Qty ≤"
                     value={quantityFilterInputValue}
                     onChange={(e) => setQuantityFilterInputValue(e.target.value)}
                     style={{ width: "70px" }}
                     min="0"
                     disabled={anyLoading}
                   />
-                </div>
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => setShowAddItemModal(true)}
-                  disabled={anyLoading}
-                  title="Add New Item"
-                  className="d-flex align-items-center"
-                  style={{ gap: "0.25rem" }}
-                >
-                  <PlusCircle size={16} /> Add Item
-                </Button>
-                {user &&
-    (user.role === "admin" || user.role === "super-admin") && (<></>)}              </div>
-            )}
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => setShowAddItemModal(true)}
+                    disabled={anyLoading}
+                    title="Add New Item"
+                    className="d-flex align-items-center"
+                    style={{ gap: "0.25rem" }}
+                  >
+                    <PlusCircle size={16} /> Add Item
+                  </Button>
+                  {user && (user.role === "admin" || user.role === "super-admin") && (<></>)}
+                </>
+              )}
+            </div>
           </div>
           {excelUpdateStatus.success && !stockAlertFilterActive && (
             <Alert variant="success" className="mt-2 py-1 px-2 small">
@@ -1507,13 +1487,12 @@ export default function Items() {
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Below item's restock threshold: ${
-                                            item.lowStockThreshold || "Not Set"
-                                          })`
+                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"
+                                        })`
                                       : item.quantity > 0 &&
-                                        item.quantity <=
-                                          item.lowStockThreshold &&
-                                        ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
+                                      item.quantity <=
+                                      item.lowStockThreshold &&
+                                      ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
                                   </td>
                                 </tr>
                                 <tr>
@@ -2268,10 +2247,10 @@ export default function Items() {
                 >
                   {parseFloat(formData.buyingPrice) >
                     parseFloat(formData.sellingPrice) && (
-                    <Alert variant="warning" className="p-2 small mb-0 me-2">
-                      Buying price cannot be greater than Selling price!
-                    </Alert>
-                  )}
+                      <Alert variant="warning" className="p-2 small mb-0 me-2">
+                        Buying price cannot be greater than Selling price!
+                      </Alert>
+                    )}
 
                   {isSubmitting ? (
                     <>
@@ -2669,8 +2648,8 @@ export default function Items() {
                                   suggestion.buyingPrice
                                     ? suggestion.buyingPrice.toString()
                                     : suggestion.lastPurchasePrice
-                                    ? suggestion.lastPurchasePrice.toString()
-                                    : "0"
+                                      ? suggestion.lastPurchasePrice.toString()
+                                      : "0"
                                 );
                                 handleItemChange(
                                   idx,
