@@ -582,4 +582,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Role Change History Styles */
+.role-history-list {
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  padding: 1rem;
+}
+
+.history-entry {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.history-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.history-entry-role, .history-entry-meta {
+  margin: 0;
+  text-align: left;
+}
+
+
+
   

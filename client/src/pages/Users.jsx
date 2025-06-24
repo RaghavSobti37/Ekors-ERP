@@ -390,6 +390,31 @@ const Users = () => {
                   </span>
                 </div>
               </div>
+
+              {selectedUser.roleChangeHistory &&
+                selectedUser.roleChangeHistory.length > 0 && (
+                  <>
+                    <hr />
+                    <h5 className="mt-3 mb-3 text-start w-100">
+                      Role Change History
+                    </h5>
+                    <div className="role-history-list">
+                      {selectedUser.roleChangeHistory
+                        .slice()
+                        .reverse() // Show most recent first
+                        .map((entry, index) => (
+                          <div key={index} className="history-entry">
+                            <p className="history-entry-role">
+                              Role set to <strong>{entry.newRole}</strong>
+                            </p>
+                            <p className="history-entry-meta text-muted small">
+                              by {entry.changedBy ? `${entry.changedBy.firstname} ${entry.changedBy.lastname}` : "an unknown user"} on {new Date(entry.changedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
             </div>
           </ReusableModal>
         )}

@@ -36,11 +36,9 @@ exports.createUser = asyncHandler(async (req, res) => {
         performingUser,
         { requestedRole: role }
       );
-      return res
-        .status(403)
-        .json({
-          error: "Forbidden: Only super-admins can create super-admin users.",
-        });
+      return res.status(403).json({
+        error: "Forbidden: Only super-admins can create super-admin users.",
+      });
     }
 
     const newUser = new User({
@@ -94,7 +92,9 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   }
 
   try {
-    const users = await User.find({}).select("-password -__v");
+    const users = await User.find({})
+      .select("-password -__v")
+      .populate("roleChangeHistory.changedBy", "firstname lastname email");
     logger.debug("user-getall", `Found ${users.length} users`, user);
 
     res.status(200).json({
@@ -228,12 +228,10 @@ exports.updateUser = asyncHandler(async (req, res) => {
     );
     if (err.code === 11000) {
       // Duplicate key error (e.g., email)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Email already in use by another account.",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Email already in use by another account.",
+      });
     }
     res.status(500).json({
       success: false,
@@ -269,12 +267,10 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       performingUser,
       logDetails
     );
-    return res
-      .status(500)
-      .json({
-        message:
-          "Server configuration error: Backup service unavailable. User not deleted.",
-      });
+    return res.status(500).json({
+      message:
+        "Server configuration error: Backup service unavailable. User not deleted.",
+    });
   }
 
   logger.info(
@@ -450,12 +446,10 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       // Mongoose error for invalid ID format
       return res.status(400).json({ message: "Invalid user ID format" });
     }
-    res
-      .status(500)
-      .json({
-        message:
-          "Server error during the deletion process. Please check server logs.",
-      });
+    res.status(500).json({
+      message:
+        "Server error during the deletion process. Please check server logs.",
+    });
   }
 });
 // @desc    Get single user
@@ -487,9 +481,9 @@ exports.getUser = asyncHandler(async (req, res) => {
       });
     }
 
-    const targetUser = await User.findById(targetUserId).select(
-      "-password -__v"
-    );
+    const targetUser = await User.findById(targetUserId)
+      .select("-password -__v")
+      .populate("roleChangeHistory.changedBy", "firstname lastname email");
     if (!targetUser) {
       logger.warn(
         "user-get",
@@ -604,12 +598,10 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
         .status(400)
         .json({ message: "Validation failed", errors: error.errors });
     }
-    res
-      .status(500)
-      .json({
-        message: "Server error while updating profile",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Server error while updating profile",
+      error: error.message,
+    });
   }
 });
 
@@ -714,6 +706,14 @@ exports.updateUser = asyncHandler(async (req, res) => {
           error: "Forbidden: Only super-admins can assign super-admin role.",
         });
       }
+      // Add the role change to the history
+      userToUpdate.roleChangeHistory.push({
+        oldRole: userToUpdate.role,
+        newRole: role,
+        changedBy: performingUser._id,
+        changedAt: new Date(),
+      });
+
       userToUpdate.role = role;
     }
 
@@ -764,12 +764,10 @@ exports.updateUser = asyncHandler(async (req, res) => {
     );
     if (err.code === 11000) {
       // Duplicate key error (e.g., email)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Email already in use by another account.",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Email already in use by another account.",
+      });
     }
     res.status(500).json({
       success: false,
@@ -801,12 +799,10 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       `[AUTH_FAILURE] Unauthorized status toggle attempt for User ID: ${userIdToToggle} by User: ${performingUser.email}.`,
       performingUser
     );
-    return res
-      .status(403)
-      .json({
-        success: false,
-        error: "Forbidden: Super-admin access required.",
-      });
+    return res.status(403).json({
+      success: false,
+      error: "Forbidden: Super-admin access required.",
+    });
   }
 
   if (typeof isActive !== "boolean") {
@@ -815,12 +811,10 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       `[BAD_REQUEST] Invalid 'isActive' value for User ID: ${userIdToToggle}. Received: ${isActive}`,
       performingUser
     );
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: "'isActive' field must be a boolean and is required.",
-      });
+    return res.status(400).json({
+      success: false,
+      error: "'isActive' field must be a boolean and is required.",
+    });
   }
 
   const userToUpdate = await User.findById(userIdToToggle);
@@ -845,12 +839,10 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       `[SELF_DISABLE_DENIED] Super-admin ${performingUser.email} attempted to disable themselves.`,
       performingUser
     );
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: "Super-admin cannot disable themselves.",
-      });
+    return res.status(400).json({
+      success: false,
+      error: "Super-admin cannot disable themselves.",
+    });
   }
 
   // Prevent disabling the last active super-admin
@@ -871,12 +863,10 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
         `[LAST_SUPER_ADMIN_DISABLE_DENIED] Attempt to disable the last active super-admin: ${userToUpdate.email} by ${performingUser.email}.`,
         performingUser
       );
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Cannot disable the last active super-admin.",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "Cannot disable the last active super-admin.",
+      });
     }
   }
 
