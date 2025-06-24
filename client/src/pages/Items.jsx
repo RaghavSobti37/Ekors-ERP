@@ -175,7 +175,7 @@ export default function Items() {
   };
 
   const fetchItems = useCallback(
-    async (page = currentPage, limit = itemsPerPage) => {
+    async (page, limit = itemsPerPage) => {
       try {
         setLoading(true);
         setError(null);
@@ -186,6 +186,7 @@ export default function Items() {
           sortDirection: sortConfig.direction,
           status: "approved",
         };
+         if (selectedCategory !== "All") params.category = selectedCategory;
         if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
         // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
 
@@ -207,14 +208,8 @@ export default function Items() {
           }
         }
 
-        // Fetch items with populated inventoryLog for the history modal
-        const response = await apiClient("/items", {
-          params: {
-            ...params,
-            populate:
-              "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
-          },
-        });
+        // Fetch only essential item data for the list view. Heavy population is handled by the history modal.
+        const response = await apiClient("/items", { params });
         setItems(response.data || []);
         setTotalItems(response.totalItems || 0);
         setError(null);
@@ -232,7 +227,6 @@ export default function Items() {
       }
     },
     [
-      currentPage,
       itemsPerPage,
       sortConfig,
       searchTerm,
@@ -307,15 +301,14 @@ export default function Items() {
   }, [user]); // Added user dependency
 
   useEffect(() => {
-    fetchItems();
     fetchPendingReviewItems();
     fetchCategories();
     return () => {
-      setItems([]);
       setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchPendingReviewItems, fetchCategories]);
+  }, [fetchPendingReviewItems, fetchCategories]);
+
 
   // Effect for search, category, quantity filter, and sort changes
   useEffect(() => {
@@ -324,8 +317,7 @@ export default function Items() {
         // Use `user` from useAuth() and ensure authLoading is checked
         fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
       }
-    }, 1000); // Increased debounce delay for search term to 1 second
-    return () => clearTimeout(timerId);
+    }, 500);     return () => clearTimeout(timerId);
   }, [
     authLoading,
     user,
@@ -336,7 +328,6 @@ export default function Items() {
     stockAlertsPageFilterThreshold,
     sortConfig.key,
     sortConfig.direction,
-    itemsPerPage,
     fetchItems,
   ]);
 
@@ -346,7 +337,8 @@ export default function Items() {
       // Ensure authLoading and user (from useAuth) are used
       fetchItems(currentPage, itemsPerPage);
     }
-  }, [authLoading, user, currentPage, itemsPerPage, fetchItems]); // Added itemsPerPage back as it's used in fetchItems
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, currentPage, itemsPerPage]);
 
   // This useEffect is specifically for the itemSearchTerm used in the purchase modal,
   // it should remain as is if that's its sole purpose.
@@ -1306,29 +1298,11 @@ export default function Items() {
                     className="form-control form-control-sm"
                     placeholder="Qty &le;"
                     value={quantityFilterInputValue}
-                    onChange={(e) =>
-                      setQuantityFilterInputValue(e.target.value)
-                    }
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        setCurrentPage(1); /* fetchItems(); */
-                      }
-                    }} // Removed fetchItems from here
+                    onChange={(e) => setQuantityFilterInputValue(e.target.value)}
                     style={{ width: "70px" }}
                     min="0"
                     disabled={anyLoading}
                   />
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={() => {
-                      setCurrentPage(1);
-                      fetchItems();
-                    }}
-                    disabled={anyLoading}
-                  >
-                    Filter
-                  </Button>
                 </div>
                 <Button
                   variant="success"

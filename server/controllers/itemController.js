@@ -129,39 +129,145 @@ exports.exportItemsToExcel = async (req, res) => {
     userId: user?._id,
   });
   try {
-    // Fetch all items, not just paginated, for export
-    const items = await Item.find().lean();
-
+    // Fetch all approved items, sorted by category and then by name
+    const items = await Item.find({ status: "approved" }).sort({ category: 1, name: 1 }).lean();
     if (!items || items.length === 0) {
       logger.info("excel_export", "No items found to export", {
         userId: user?._id,
       });
-      return res.status(404).json({ message: "No items found to export." });
+            return res.status(404).json({ message: "No approved items found to export." });
     }
 
-    const dataForSheet = items.map((item) => ({
-      Name: item.name,
-      Quantity: item.quantity,
-      "Selling Price": item.sellingPrice,
-      "Buying Price": item.buyingPrice,
-      Unit: item.unit,
-      Category: item.category,
-      // Subcategory: item.subcategory, // Removed
-      "HSN Code": item.hsnCode,
-      "GST Rate": item.gstRate,
-      "Max Discount Percentage": item.maxDiscountPercentage,
-      "Low Stock Threshold": item.lowStockThreshold,
-      Status: item.status, // Added status
-    }));
+    const workbook = new exceljs.Workbook();
+    const worksheet = workbook.addWorksheet("Items");
 
-    const worksheet = xlsx.utils.json_to_sheet(dataForSheet);
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, "Items");
+    // Define columns with headers and widths
+    worksheet.columns = [
+      { header: "Category", key: "category", width: 25 },
+      { header: "Name", key: "name", width: 40 },
+      { header: "Quantity", key: "quantity", width: 15 },
+      { header: "Selling Price", key: "sellingPrice", width: 18 },
+      { header: "Buying Price", key: "buyingPrice", width: 18 },
+      { header: "Unit", key: "unit", width: 10 },
+      { header: "HSN Code", key: "hsnCode", width: 15 },
+      { header: "GST Rate", key: "gstRate", width: 12 },
+      { header: "Max Discount %", key: "maxDiscountPercentage", width: 18 },
+      { header: "Low Stock Threshold", key: "lowStockThreshold", width: 20 },
+      { header: "Image", key: "image", width: 15 }, // Image column
+    ];
 
-    const excelBuffer = xlsx.write(workbook, {
-      bookType: "xlsx",
-      type: "buffer",
+    // Apply header styling
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // White text
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4472C4' } // Blue background (similar to Excel's default header blue)
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
     });
+
+    let currentRow = 2; // Start data from row 2
+    let currentCategory = null;
+    let imageMergeStartRow = -1;
+    let lastImageBase64 = null;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Add category header if it changes
+      if (item.category !== currentCategory) {
+                // Before adding new category header, finalize any pending image merge from previous category
+        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
+          worksheet.mergeCells(`K${imageMergeStartRow}:K${currentRow - 1}`);
+        }
+        // Reset image merge tracking for the new category
+        imageMergeStartRow = -1;
+        lastImageBase64 = null;
+
+        currentCategory = item.category;
+        worksheet.mergeCells(`A${currentRow}:K${currentRow}`); // Merge all columns for category header
+        worksheet.getCell(`A${currentRow}`).value = `Category: ${currentCategory || 'Other'}`;
+        worksheet.getCell(`A${currentRow}`).font = { bold: true, size: 12, color: { argb: 'FF000000' } }; // Black text
+        worksheet.getCell(`A${currentRow}`).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFD9E1F2' } // Light blue background
+        };
+        worksheet.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+        currentRow++;
+      }
+
+      // Prepare row data
+      const rowData = {
+        category: '', // Category is handled by the merged header
+        name: item.name,
+        quantity: item.quantity,
+        sellingPrice: item.sellingPrice,
+        buyingPrice: item.buyingPrice,
+        unit: item.unit,
+        hsnCode: item.hsnCode,
+        gstRate: item.gstRate,
+        maxDiscountPercentage: item.maxDiscountPercentage,
+        lowStockThreshold: item.lowStockThreshold,
+        image: '', // Image will be added separately
+      };
+
+      worksheet.addRow(rowData);
+      const addedRow = worksheet.getRow(currentRow);
+
+      // --- Image Placement and Merge Start ---
+      const hasImage = !!item.image;
+      const isNewImageSequence = (item.image !== lastImageBase64);
+
+      // If a new image sequence is starting (or no image for current item) AND an old sequence was active, finalize the old one.
+      if (imageMergeStartRow !== -1 && (isNewImageSequence || !hasImage)) {
+        if (currentRow - 1 >= imageMergeStartRow) { // Ensure there's at least one row to merge
+          worksheet.mergeCells(`K${imageMergeStartRow}:K${currentRow - 1}`);
+        }
+        imageMergeStartRow = -1; // Reset for new sequence
+        lastImageBase64 = null;   // Reset for new sequence
+      }
+
+      if (hasImage) {
+        if (imageMergeStartRow === -1) {           imageMergeStartRow = currentRow;
+          lastImageBase64 = item.image;
+          const imageId = workbook.addImage({ // Add image to workbook
+            base64: item.image, // Base64 image data
+            extension: item.image.split(';')[0].split('/')[1],           });
+          worksheet.addImage(imageId, { tl: { col: 10, row: currentRow - 1 }, ext: { width: 60, height: 60 } }); // Place image in column K
+        }
+        worksheet.getRow(currentRow).height = 65; // Always set row height if there's an image in this row
+
+      }
+
+      // Apply cell styling for data rows
+      addedRow.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        cell.border = {
+          top: { style: 'thin' }, left: { style: 'thin' },
+          bottom: { style: 'thin' }, right: { style: 'thin' }
+        };
+      });
+
+      // Center align numeric columns
+      addedRow.getCell('quantity').alignment = { vertical: 'middle', horizontal: 'center' };
+      addedRow.getCell('sellingPrice').alignment = { vertical: 'middle', horizontal: 'right' };
+      addedRow.getCell('buyingPrice').alignment = { vertical: 'middle', horizontal: 'right' };
+      addedRow.getCell('gstRate').alignment = { vertical: 'middle', horizontal: 'center' };
+      addedRow.getCell('maxDiscountPercentage').alignment = { vertical: 'middle', horizontal: 'center' };
+      addedRow.getCell('lowStockThreshold').alignment = { vertical: 'middle', horizontal: 'center' };
+
+      currentRow++;
+    }
+
+    const excelBuffer = await workbook.xlsx.writeBuffer();
+
+    // Set headers for file download
 
     res.setHeader(
       "Content-Disposition",
