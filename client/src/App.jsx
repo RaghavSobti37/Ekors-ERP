@@ -7,7 +7,6 @@ import StaticInfo from "./pages/StaticInfo.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
 import History from "./pages/History";
-import {ConfigService} from "./utils/ConfigService.js";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
