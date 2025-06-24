@@ -142,7 +142,7 @@
 .edit-btn {
   width: 100%;
   padding: 7px; /* Reduced padding */
-  background: #4b0082;
+  background: #4b0082 !important;
   color: white;
   border: none;
   cursor: pointer;
