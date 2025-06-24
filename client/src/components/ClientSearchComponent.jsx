@@ -1,7 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Form, ListGroup, Spinner } from "react-bootstrap";
-import apiClient from "../utils/apiClient"; // Utility for making API requests
-import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token
+import apiClient from "../utils/apiClient"; 
 import { handleApiError } from "../utils/helpers"; // Utility for consistent API error handling
 
 const ClientSearchComponent = ({
@@ -14,37 +13,41 @@ const ClientSearchComponent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const resultsRef = useRef(null);
 
-  const fetchClients = useCallback(async (term) => {
-    if (!term || term.trim().length < 2) {
+  const fetchClients = useCallback(async (termToSearch) => {
+    const trimmedTerm = termToSearch.trim();
+    if (!trimmedTerm || trimmedTerm.length < 2) {
       setResults([]);
-      setShowResults(false);
+      setShowResults(false); // Keep results hidden if term is too short
       return;
     }
     setIsLoading(true);
     setError("");
     try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("Authentication token not found.");
-      }
-      // Use apiClient for the request
-      const data = await apiClient(`/clients/search?q=${term}`);
+      const data = await apiClient(`/clients/search?q=${encodeURIComponent(trimmedTerm)}`);
       setResults(data);
-      setShowResults(true);
+      setShowResults(true); // Show results area now that we have data (or empty data)
     } catch (err) {
       setError(handleApiError(err, "Failed to search clients."));
       setResults([]);
-      setShowResults(false);
+      setShowResults(false); // Hide results on error
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [handleApiError]);
+
+  useEffect(() => {
+    const trimmedSearchTerm = searchTerm.trim();
+    const timerId = setTimeout(() => {
+      fetchClients(trimmedSearchTerm);
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timerId);
+  }, [searchTerm, fetchClients]);
 
   const handleSearchChange = (e) => {
     const term = e.target.value;
     setSearchTerm(term);
-    fetchClients(term);
   };
 
   const handleSelectClient = (client) => {
@@ -54,6 +57,11 @@ const ClientSearchComponent = ({
     setShowResults(false);
   };
 
+  // Handle clicks inside the results dropdown
+  const handleResultsMouseDown = (e) => {
+    e.preventDefault(); // Prevent input blur when clicking on results
+  };
+
   return (
     <div className="mb-3 position-relative">
       <Form.Control
@@ -61,15 +69,22 @@ const ClientSearchComponent = ({
         placeholder={placeholder || "Search client by Name, Email, GST..."}
         value={searchTerm}
         onChange={handleSearchChange}
-        onFocus={() => searchTerm && results.length > 0 && setShowResults(true)}
-        // onBlur={() => setTimeout(() => setShowResults(false), 150)} // Delay to allow click on list item
+        onFocus={() => searchTerm.trim().length >= 2 && setShowResults(true)}
+        onBlur={() => {
+          // Only hide results if focus isn't moving to the results list
+          if (!resultsRef.current || !resultsRef.current.contains(document.activeElement)) {
+            setTimeout(() => setShowResults(false), 200);
+          }
+        }}
       />
       {isLoading && <Spinner animation="border" size="sm" className="mt-2" />}
       {error && <p className="text-danger small mt-1">{error}</p>}
       {showResults && results.length > 0 && (
         <ListGroup
+          ref={resultsRef}
           className="position-absolute w-100"
-          style={{ zIndex: 1051 /* Higher than modal */ }}
+          style={{ zIndex: 1051 }}
+          onMouseDown={handleResultsMouseDown}
         >
           {results.map((client) => (
             <ListGroup.Item
@@ -87,7 +102,7 @@ const ClientSearchComponent = ({
       )}
       {showResults &&
         results.length === 0 &&
-        searchTerm.length >= 2 &&
+        searchTerm.trim().length >= 2 &&
         !isLoading && <p className="small mt-1">No clients found.</p>}
     </div>
   );

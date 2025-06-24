@@ -1,31 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaTimes, FaUserShield } from "react-icons/fa";
+import { useNavigate, useLocation } from "react-router-dom";
+import { FaUserShield } from "react-icons/fa"; // Removed FaTimes as it's not used directly here
+import { PlusCircle } from "react-bootstrap-icons"; // Removed BriefcaseFill, PeopleFill
 import Navbar from "../components/Navbar";
-import { Table, Button as BsButton, Alert, Form } from "react-bootstrap";
+import { Button as BsButton, Alert, Form, Nav, Card } from "react-bootstrap"; // Added Nav back
 import Pagination from "../components/Pagination";
 import Footer from "../components/Footer";
 import ReusableTable from "../components/ReusableTable";
 import SearchBar from "../components/Searchbar";
 import Unauthorized from "../components/Unauthorized";
 import ActionButtons from "../components/ActionButtons";
-import { getAuthToken } from "../utils/authUtils";
 import apiClient from "../utils/apiClient";
 import { toast } from "react-toastify";
 import { handleApiError } from "../utils/helpers";
-import { PlusCircle } from "react-bootstrap-icons";
 import ReusableModal from "../components/ReusableModal";
 import UserReportModal from "../components/UserReportModal";
+import LoadingSpinner from "../components/LoadingSpinner"; // Import LoadingSpinner
+import { useAuth } from "../context/AuthContext"; // Import useAuth
 import "../css/Users.css";
 
-//to-do add getauth token
-
 const Users = () => {
+  // const location = useLocation(); // No longer needed for activeView from state
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true); // Renamed for clarity
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -45,29 +45,35 @@ const Users = () => {
   const navigate = useNavigate();
   const [showUserReportModal, setShowUserReportModal] = useState(false);
   const [selectedUserForReport, setSelectedUserForReport] = useState(null);
+  const { user: authUser, loading: authLoading } = useAuth(); // Get authUser and authLoading state
 
-  const fetchUsers = async () => {
+  // Client Management State and functions removed
+
+  const fetchUsers = React.useCallback(async (token) => {
     try {
-      setLoading(true);
+      setPageLoading(true);
       const response = await apiClient("/users");
       setUsers(response.data);
       setError("");
       setIsUnauthorized(false);
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to fetch users");
-      setError(errorMessage);
-
+      const errorMsg = handleApiError(err, "Failed to fetch users");
+      setError(errorMsg);
       if (err.status === 403) {
         setIsUnauthorized(true);
       }
     } finally {
-      setLoading(false);
+      setPageLoading(false);
     }
-  };
+  }, []); // Dependencies like setPageLoading are stable setters from useState
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authLoading && authUser) {
+      fetchUsers(); // Pass token if your fetchUsers expects it
+    } else if (!authLoading && !authUser) {
+      navigate("/login", { state: { from: "/users" } });
+    }
+  }, [authLoading, authUser, navigate, fetchUsers]);
 
   const handleView = (user) => {
     setSelectedUser(user);
@@ -205,12 +211,15 @@ const Users = () => {
     setShowUserReportModal(true);
   };
 
+  // Client action handlers removed
+
   const filteredUsers = users.filter((user) =>
     `${user.firstname} ${user.lastname} ${user.email} ${user.role}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
 
+  // Pagination for users
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
@@ -219,107 +228,122 @@ const Users = () => {
     return <Unauthorized />;
   }
 
+  const renderUserManagement = () => (
+    <>
+      <div // This div was previously inside the Card.Body, now it's the main content
+        className="d-flex justify-content-between align-items-center mb-4"
+        style={{ width: "100%", overflow: "hidden" }}
+      >
+        <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
+          User Management
+        </h2>
+        <div
+          className="d-flex align-items-center"
+          style={{ width: "60%", minWidth: "300px" }}
+        >
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            placeholder="Search users..."
+            showButton={true}
+            onAddNew={() => handleEdit(null)}
+            buttonText="Add New User"
+            buttonIcon={<PlusCircle size={18} />}
+            style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
+            disabled={pageLoading || authLoading}
+          />
+        </div>
+      </div>
+      <ReusableTable
+        columns={[
+          {
+            key: "name",
+            header: "Name",
+            renderCell: (user) => (
+              <div className="user-avatar">
+                <span>{user.firstname?.charAt(0).toUpperCase()}</span>
+                {user.firstname} {user.lastname}
+                {user.role === "super-admin" && (
+                  <FaUserShield
+                    className="super-admin-icon"
+                    title="Super Admin"
+                  />
+                )}
+              </div>
+            ),
+          },
+          { key: "email", header: "Email" },
+          {
+            key: "role",
+            header: "Role",
+            renderCell: (user) => (
+              <span className={`role-badge ${user.role.toLowerCase()}`}>
+                {user.role}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            renderCell: (user) => (
+              <Form.Check
+                type="switch"
+                checked={user.isActive}
+                onChange={() => handleToggleActiveStatus(user)}
+                disabled={pageLoading || authLoading}
+              />
+            ),
+          },
+        ]}
+        data={currentItems}
+        keyField="_id"
+        isLoading={pageLoading || authLoading}
+        error={error && !pageLoading && !authLoading ? error : null}
+        renderActions={(user) => (
+          <ActionButtons
+            item={user}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onGenerateReport={handleOpenReportModal}
+            isLoading={pageLoading || authLoading}
+          />
+        )}
+        noDataMessage="No users found"
+      />
+      {!pageLoading && !authLoading && filteredUsers.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      )}
+    </>
+  );
+
   return (
     <>
       <Navbar />
+      <LoadingSpinner show={pageLoading || authLoading} />
       <div className="container mt-4">
-        {error && (
+        {error && ( // Keep general error display
           <Alert variant="danger" onClose={() => setError("")} dismissible>
             {error}
           </Alert>
         )}
 
-        <div
-          className="d-flex justify-content-between align-items-center mb-4"
-          style={{ width: "100%", overflow: "hidden" }}
-        >
-          <h2 className="m-0" style={{ whiteSpace: "nowrap" }}>
-            User Management
-          </h2>
-          <div
-            className="d-flex align-items-center"
-            style={{ width: "60%", minWidth: "300px" }}
-          >
-            <SearchBar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              placeholder="Search users..."
-              showButton={true}
-              onAddNew={() => handleEdit(null)}
-              buttonText="Add New User"
-              buttonIcon={<PlusCircle size={18} />}
-              style={{ width: "100%", maxWidth: "400px", marginRight: "10px" }}
-            />
-          </div>
-        </div>
-
-        <ReusableTable
-          columns={[
-            {
-              key: "name",
-              header: "Name",
-              renderCell: (user) => (
-                <div className="user-avatar">
-                  <span>{user.firstname?.charAt(0).toUpperCase()}</span>
-                  {user.firstname} {user.lastname}
-                  {user.role === "super-admin" && (
-                    <FaUserShield
-                      className="super-admin-icon"
-                      title="Super Admin"
-                    />
-                  )}
-                </div>
-              ),
-            },
-            { key: "email", header: "Email" },
-            {
-              key: "role",
-              header: "Role",
-              renderCell: (user) => (
-                <span className={`role-badge ${user.role.toLowerCase()}`}>
-                  {user.role}
-                </span>
-              ),
-            },
-            {
-              key: "status",
-              header: "Status",
-              renderCell: (user) => (
-                <Form.Check
-                  type="switch"
-                  checked={user.isActive}
-                  onChange={() => handleToggleActiveStatus(user)}
-                />
-              ),
-            },
-          ]}
-          data={currentItems}
-          keyField="_id"
-          isLoading={loading}
-          error={error}
-          renderActions={(user) => (
-            <ActionButtons
-              item={user}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onGenerateReport={handleOpenReportModal}
-            />
-          )}
-          noDataMessage="No users found"
-        />
-
-        {filteredUsers.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredUsers.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
+        {/* Removed Nav tabs and Card wrapper, directly rendering user management */}
+        {!pageLoading && !authLoading && !isUnauthorized && (
+          <>
+            {renderUserManagement()}
+          </>
         )}
 
-        {/* View Modal */}
+        {/* Modals for User Management */}
+        {/* Conditional rendering for modals no longer needs activeView check,
+            as this page only handles users. */}
         {showViewModal && selectedUser && (
           <ReusableModal
             show={showViewModal}
@@ -336,7 +360,8 @@ const Users = () => {
           >
             <div className="user-profile">
               <div className="avatar-large">
-                {selectedUser.firstname?.charAt(0).toUpperCase()}
+                <span>{selectedUser.firstname?.charAt(0).toUpperCase()}</span>
+                {selectedUser.firstname} {selectedUser.lastname}
               </div>
               <h3>
                 {selectedUser.firstname} {selectedUser.lastname}
@@ -365,11 +390,36 @@ const Users = () => {
                   </span>
                 </div>
               </div>
+
+              {selectedUser.roleChangeHistory &&
+                selectedUser.roleChangeHistory.length > 0 && (
+                  <>
+                    <hr />
+                    <h5 className="mt-3 mb-3 text-start w-100">
+                      Role Change History
+                    </h5>
+                    <div className="role-history-list">
+                      {selectedUser.roleChangeHistory
+                        .slice()
+                        .reverse() // Show most recent first
+                        .map((entry, index) => (
+                          <div key={index} className="history-entry">
+                            <p className="history-entry-role">
+                              Role set to <strong>{entry.newRole}</strong>
+                            </p>
+                            <p className="history-entry-meta text-muted small">
+                              by {entry.changedBy ? `${entry.changedBy.firstname} ${entry.changedBy.lastname}` : "an unknown user"} on {new Date(entry.changedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                )}
             </div>
           </ReusableModal>
         )}
 
-        {/* Edit Modal */}
+        {/* Edit User Modal */}
         {showEditModal && (
           <ReusableModal
             show={showEditModal}
@@ -391,7 +441,7 @@ const Users = () => {
           >
             <Form>
               <Form.Group className="mb-3">
-                <Form.Label>First Name *</Form.Label>
+                <Form.Label>First Name <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   name="firstname"
                   value={formData.firstname}
@@ -401,7 +451,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Last Name *</Form.Label>
+                <Form.Label>Last Name <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   name="lastname"
                   value={formData.lastname}
@@ -411,7 +461,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Email *</Form.Label>
+                <Form.Label>Email <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -432,7 +482,7 @@ const Users = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Role *</Form.Label>
+                <Form.Label>Role <span className="text-danger">*</span></Form.Label>
                 <Form.Select
                   name="role"
                   value={formData.role}
@@ -508,19 +558,19 @@ const Users = () => {
             </Form>
           </ReusableModal>
         )}
-      </div>
 
-      {/* User Report Modal */}
-      {showUserReportModal && selectedUserForReport && (
-        <UserReportModal
-          show={showUserReportModal}
-          onHide={() => {
-            setShowUserReportModal(false);
-            setSelectedUserForReport(null);
-          }}
-          user={selectedUserForReport}
-        />
-      )}
+        {/* User Report Modal */}
+        {showUserReportModal && selectedUserForReport && (
+          <UserReportModal
+            show={showUserReportModal}
+            onHide={() => {
+              setShowUserReportModal(false);
+              setSelectedUserForReport(null);
+            }}
+            user={selectedUserForReport}
+          />
+        )}
+      </div>
       <Footer />
     </>
   );

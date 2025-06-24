@@ -1,340 +1,830 @@
 import React from "react";
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    paddingTop: 35,
+    paddingBottom: 65,
+    paddingHorizontal: 35,
     fontFamily: "Helvetica",
-    fontSize: 11,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    fontSize: 9, // Adjusted base font size for more content
   },
-  logo: {
-    width: 80,
-    height: "auto",
-    marginBottom: 10,
-  },
-  header: {
-    fontSize: 12,
+  headerSection: {
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: 15,
   },
-  companyName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  subHeader: {
+  gstinHeader: {
     fontSize: 10,
-    textAlign: "center",
+    marginBottom: 2,
+  },
+  companyNameHeader: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
+  companyAddressHeader: {
+    fontSize: 8,
     marginBottom: 10,
   },
   invoiceTitle: {
-    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "bold",
     textDecoration: "underline",
-    marginBottom: 10,
+    textAlign: "center",
+    marginBottom: 15,
   },
-  row: {
+  metaInfoContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 6,
+    marginBottom: 10,
+    fontSize: 9,
   },
-  col: {
-    width: "48%",
+  addressTable: {
+    display: "table",
+    width: "100%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333", // Darker border
+    marginBottom: 15,
+  },
+  addressRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  addressCellHeaderLabel: {
+    // For "Details" column labels like "Party Name:"
+    width: "20%", // Adjusted width
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    fontWeight: "bold",
+    backgroundColor: "#f0f0f0", // Light grey background for labels
+  },
+  addressCellData: {
+    // For Billing and Shipping data columns
+    width: "40%", // Adjusted width
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    wordBreak: "break-all",
+  },
+  addressCellDataLast: {
+    // For the last data cell in a row (no right border)
+    width: "40%",
+    padding: 4,
+    wordBreak: "break-all",
+  },
+  addressTableHeader: {
+    // For "Details", "Billing Address", "Shipping Address"
+    width: "20%",
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    fontWeight: "bold",
+    textAlign: "center",
+    backgroundColor: "#e0e0e0", // Slightly darker grey for main headers
+  },
+  addressTableHeaderData: {
+    width: "40%",
+    borderRightStyle: "solid",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    padding: 4,
+    fontWeight: "bold",
+    textAlign: "center",
+    backgroundColor: "#e0e0e0",
+  },
+  goodsTable: {
+    display: "table",
+    width: "auto",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333",
+    marginBottom: 10,
+  },
+  goodsTableHeader: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  goodsTableRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 0.5, // Lighter border for rows
+    borderBottomColor: "#ccc",
+  },
+  goodsCell: {
+    padding: 4,
+    borderRightStyle: "solid",
+    borderRightWidth: 0.5,
+    borderRightColor: "#ccc",
+    textAlign: "center", // Center align by default
+  },
+  goodsCellDescription: {
+    textAlign: "left",
+    paddingLeft: 5,
+  },
+  colSrNo: { width: "5%" },
+  colDescription: { width: "35%" },
+  colHSN: { width: "15%" },
+  colQty: { width: "10%" },
+  colUnit: { width: "10%" },
+  colRate: { width: "10%" },
+  colAmount: { width: "15%", borderRightWidth: 0 },
+
+  summarySection: {
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  summaryContainer: {
+    width: "50%", // Adjust as needed
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 2,
+    fontSize: 9,
+  },
+  summaryLabel: {
+    fontWeight: "normal",
+  },
+  summaryValue: {
+    fontWeight: "bold",
+  },
+  grandTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 3,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    marginTop: 5,
+    fontWeight: "bold",
+    fontSize: 10,
+  },
+  amountInWords: {
+    marginTop: 8,
+    fontSize: 8,
+    textTransform: "capitalize",
+  },
+  taxBreakdownTable: {
+    display: "table",
+    width: "100%",
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#333",
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  taxBreakdownHeader: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    backgroundColor: "#f0f0f0",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  taxBreakdownRow: {
+    flexDirection: "row",
+    borderBottomStyle: "solid",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ccc",
+  },
+  taxBreakdownCell: {
+    padding: 4,
+    borderRightStyle: "solid",
+    borderRightWidth: 0.5,
+    borderRightColor: "#ccc",
+    textAlign: "right", // Default to right for amounts
+  },
+  taxColDescription: { width: "28%", textAlign: "left" },
+  taxColTaxableValue: { width: "18%" },
+  taxColCGSTRate: { width: "8%", textAlign: "center" },
+  taxColCGSTAmount: { width: "12%" },
+  taxColSGSTRate: { width: "8%", textAlign: "center" },
+  taxColSGSTAmount: { width: "12%" },
+  taxColIGSTRate: { width: "10%", textAlign: "center" },
+  taxColIGSTAmount: { width: "16%" },
+  taxColTotalTax: { width: "14%", borderRightWidth: 0 },
+
+  bankDetails: {
+    marginTop: 15,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    fontSize: 8,
+  },
+  termsConditions: {
+    marginTop: 10,
+    fontSize: 8,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 30,
+    left: 35,
+    right: 35,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    fontSize: 8,
+  },
+  authSignatory: {
+    textAlign: "right",
+  },
+  logo: {
+    position: "absolute",
+    right: 35,
+    top: 35,
+    width: 70, // Adjusted size
+    height: "auto",
   },
   bold: {
     fontWeight: "bold",
   },
-  tableHeader: {
-    flexDirection: "row",
-    borderBottom: "1px solid #000",
-    paddingBottom: 5,
-    marginTop: 15,
-    width: "100%",
-  },
-  cell: {
-    borderRight: "1px solid #000",
-    padding: 3,
-    textAlign: "center",
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottom: "1px solid #eee",
-    paddingVertical: 5,
-    width: "100%",
-  },
-  bankDetails: {
-    marginTop: 15,
-    borderTop: "1px solid #000",
-    paddingTop: 10,
-    width: "100%",
-    alignItems: "center",
-  },
-  fullWidthText: {
-    textAlign: "center",
-    width: "100%",
-    marginTop: 6,
-  },
-  termsSection: {
-    marginTop: 15,
-    paddingTop: 10,
-    width: "100%",
-  },
-  subtextItem: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Oblique", // Italic
-    color: "#555", // Greyish color for subtext
-    marginLeft: 5, // Indent subtext slightly
-    // paddingVertical: 1,
-  },
 });
 
-const toWords = (num) => {
-  if (num === 0) return "Zero";
-
-  const a = [
-    "",
-    "One",
-    "Two",
-    "Three",
-    "Four",
-    "Five",
-    "Six",
-    "Seven",
-    "Eight",
-    "Nine",
-    "Ten",
-    "Eleven",
-    "Twelve",
-    "Thirteen",
-    "Fourteen",
-    "Fifteen",
-    "Sixteen",
-    "Seventeen",
-    "Eighteen",
-    "Nineteen",
-  ];
-  const b = [
-    "",
-    "",
-    "Twenty",
-    "Thirty",
-    "Forty",
-    "Fifty",
-    "Sixty",
-    "Seventy",
-    "Eighty",
-    "Ninety",
-  ];
-  const g = ["", "Thousand", "Lakh", "Crore"];
-
-  const floatPart = Math.round((num - Math.floor(num)) * 100);
-  num = Math.floor(num);
-
-  let str = "";
-  let i = 0;
-
-  const convertChunk = (n) => {
-    let s = "";
-    if (n > 99) {
-      s += a[Math.floor(n / 100)] + " Hundred ";
-      n %= 100;
-    }
-    if (n > 19) {
-      s += b[Math.floor(n / 10)] + " " + a[n % 10];
-    } else {
-      s += a[n];
-    }
-    return s.trim();
-  };
-
-  while (num > 0) {
-    const chunk = i === 0 ? num % 1000 : num % 100;
-    if (chunk !== 0) {
-      str = convertChunk(chunk) + (g[i] ? " " + g[i] : "") + " " + str;
-    }
-    num = i === 0 ? Math.floor(num / 1000) : Math.floor(num / 100);
-    i++;
-  }
-
-  return (
-    str.trim() +
-    (floatPart > 0 ? " and " + convertChunk(floatPart) + " Paise" : "") +
-    " Only"
-  );
-};
-
+// Helper function to get parts of an address
 const getAddressPart = (address, part) => {
-  if (!address) return part === "address2" ? "" : "N/A";
+  if (!address) return ""; // Changed from " " to ""
   if (Array.isArray(address)) {
     switch (part) {
       case "address1":
-        return address[0] || "N/A";
+        return address[0] || " ";
       case "address2":
         return address[1] || "";
       case "city":
-        return address[3] || "N/A";
+        return address[3] || "";
       case "state":
-        return address[2] || "N/A";
+        return address[2] || "";
       case "pincode":
-        return address[4] || "N/A";
+        return address[4] || "";
       default:
-        return "N/A";
+        return " ";
     }
-  } else if (typeof address === "object") {
+  } else if (typeof address === "object" && address !== null) {
     switch (part) {
       case "address1":
-        return address.address1 || "N/A";
+        return address.address1 || "";
       case "address2":
         return address.address2 || "";
       case "city":
-        return address.city || "N/A";
+        return address.city || " ";
       case "state":
-        return address.state || "N/A";
+        return address.state || " ";
       case "pincode":
-        return address.pincode || "N/A";
+        return address.pincode || " ";
       default:
-        return "N/A";
+        return " ";
     }
   }
-  return part === "address2" ? "" : "N/A";
+  return part === "address2" ? "" : ""; // Changed from " " to ""
 };
 
-const PIPDF = ({ ticket }) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <Image style={styles.logo} src="/logo.png" />
-      <Text style={styles.header}>GSTIN : 09AAFCE8706R1ZV</Text>
-      <Text style={styles.companyName}>E-KORS PRIVATE LIMITED</Text>
-      <Text style={styles.subHeader}>
-        PLOT NO.-02, Sector-115, NOIDA{"\n"}Gautam Buddha Nagar, Uttar Pradesh,
-        201307
-      </Text>
-      <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
+const toWords = (num) => {
+  const a = [
+    " " ,
+    "one ",
+    "two ",
+    "three ",
+    "four ",
+    "five ",
+    "six ",
+    "seven ",
+    "eight ",
+    "nine ",
+    "ten ",
+    "eleven ",
+    "twelve ",
+    "thirteen ",
+    "fourteen ",
+    "fifteen ",
+    "sixteen ",
+    "seventeen ",
+    "eighteen ",
+    "nineteen ",
+  ];
+  const b = [
+    " " ,
+    " " ,
+    "twenty",
+    "thirty",
+    "forty",
+    "fifty",
+    "sixty",
+    "seventy",
+    "eighty",
+    "ninety",
+  ];
+  const s = num.toString();
+  if (s.length > 9) return "overflow";
+  const n = ("000000000" + s)
+    .substring(-9)
+    .match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return " " ;
+  let str = " " ;
+  str +=
+    n[1] != 0
+      ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + "crore "
+      : " " ;
+  str +=
+    n[2] != 0
+      ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + "lakh "
+      : " " ;
+  str +=
+    n[3] != 0
+      ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + "thousand "
+      : " " ;
+  str +=
+    n[4] != 0
+      ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + "hundred "
+      : " " ;
+  str +=
+    n[5] != 0
+      ? (str != " "  ? "and " : " " ) +
+        (a[Number(n[5])] || b[n[5][0]] + " " + a[n[5][1]])
+      : " " ;
+  return str.trim() === " "  ? "zero" : str.trim() + " only";
+};
 
-      <View style={[styles.row, { justifyContent: "center", gap: 40 }]}>
-        <Text>Quotation No.: {ticket.quotationNumber}</Text>
-        <Text>Date: {new Date(ticket.createdAt).toLocaleDateString()}</Text>
-      </View>
+const PIPDF = ({ ticketData, companyInfo }) => {
+  // companyInfo is now passed as a prop
+  if (!companyInfo || !companyInfo.company) { // Still check if prop is valid
+    return <Document><Page><Text>Loading company information...</Text></Page></Document>;
+  }
 
-      <View style={[styles.row, { gap: 20 }]}>
-        <View style={styles.col}>
-          <Text style={styles.bold}>Quotation to:</Text>
-          <Text>{ticket.companyName}</Text>
-          <Text>{getAddressPart(ticket.billingAddress, "address1")}</Text>
-          <Text>{getAddressPart(ticket.billingAddress, "address2")}</Text>
-          <Text>
-            {getAddressPart(ticket.billingAddress, "city")},{" "}
-            {getAddressPart(ticket.billingAddress, "state")} -{" "}
-            {getAddressPart(ticket.billingAddress, "pincode")}
-          </Text>
-          <Text>Party Mobile No: {ticket.clientPhone || "N/A"}</Text>
-          <Text>State: {getAddressPart(ticket.billingAddress, "state")}</Text>
-          <Text>GSTIN / UIN: {ticket.clientGstNumber || "N/A"}</Text>{" "}
+  const { company } = companyInfo;
+
+  // This component now expects ticketData to be provided by its parent.
+  // It does not handle fetching, loading states, or errors related to fetching.
+  // The parent component is responsible for fetching the data and handling its loading/error states.
+
+  // If ticketData is not provided, render a simple message.
+  // This indicates an issue in the component using PIPDF.
+  if (!ticketData) {
+    // You might want a more specific message or handle this in the parent
+    return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Loading PI data...</Text></View></Page></Document>;
+  }
+
+  const ticket = ticketData; // Use the provided data directly
+
+  // Basic check for essential data structure within the provided ticketData
+  if (!ticket || !ticket.goods || !ticket.billingAddress) {
+     return <Document><Page size="A4" style={styles.page}><View style={{textAlign: "center", marginTop: 50}}><Text>Error: Incomplete ticket data provided for PI.</Text></View></Page></Document>;
+  }
+
+  const clientPhone = String(ticket.clientPhone ?? ''); // Ensure string
+  const clientGstNumber = String(ticket.clientGstNumber ?? ''); // Ensure string
+
+  const billingAddress1 = getAddressPart(ticket.billingAddress, "address1");
+  const billingAddress2 = getAddressPart(ticket.billingAddress, "address2");
+  const billingCity = getAddressPart(ticket.billingAddress, "city");
+  const billingState = getAddressPart(ticket.billingAddress, "state");
+  const billingPincode = getAddressPart(ticket.billingAddress, "pincode");
+
+  const shippingAddress1 = getAddressPart(ticket.shippingAddress, "address1");
+  const shippingAddress2 = getAddressPart(ticket.shippingAddress, "address2");
+  const shippingCity = getAddressPart(ticket.shippingAddress, "city");
+  const shippingState = getAddressPart(ticket.shippingAddress, "state");
+  const shippingPincode = getAddressPart(ticket.shippingAddress, "pincode");
+
+  const fullBillingAddress = `${billingAddress1}${
+    billingAddress2 ? `, ${billingAddress2}` : ""
+  }`;
+  const fullShippingAddress = `${shippingAddress1}${
+    shippingAddress2 ? `, ${shippingAddress2}` : ""
+  }`;
+
+  const formatCityStatePin = (city, state, pincode) => {
+    let parts = [city, state].filter(Boolean); // Filter out empty strings
+    let mainPart = parts.join(", ");
+    if (pincode) {
+      return mainPart ? `${mainPart} - ${pincode}` : pincode;
+    }
+    return mainPart;
+  };
+
+  const billingCityStatePin = formatCityStatePin(
+    billingCity,
+    billingState,
+    billingPincode
+  );
+  const shippingCityStatePin = formatCityStatePin(
+    shippingCity,
+    shippingState,
+    shippingPincode
+  );
+  const displayGrandTotal =
+    ticket.finalRoundedAmount !== null &&
+    ticket.finalRoundedAmount !== undefined
+      ? ticket.finalRoundedAmount
+      : ticket.grandTotal;
+  
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <Image style={styles.logo} src="/logo.png" /> 
+
+        <View style={styles.headerSection}>
+          <Text style={styles.gstinHeader}>GSTIN: {company.gstin}</Text>
+          <Text style={styles.companyNameHeader}>{company.companyName}</Text>
+          <Text style={styles.companyAddressHeader}> {/* Ensure address is always a string */}
+            {String(company.addresses.companyAddress ?? '')}
+          </Text> {/* Ensure address is always a string */}
         </View>
-        <View style={styles.col}>
-          <Text style={styles.bold}>Shipped to:</Text>
-          <Text>{ticket.companyName}</Text>
-          <Text>{getAddressPart(ticket.shippingAddress, "address1")}</Text>
-          <Text>{getAddressPart(ticket.shippingAddress, "address2")}</Text>
+
+        <Text style={styles.invoiceTitle}>PERFORMA INVOICE</Text>
+
+        <View style={styles.metaInfoContainer}>
+          <Text>PI No.: {ticket.ticketNumber || ticket.quotationNumber}</Text>
           <Text>
-            {getAddressPart(ticket.shippingAddress, "city")},{" "}
-            {getAddressPart(ticket.shippingAddress, "state")} -{" "}
-            {getAddressPart(ticket.shippingAddress, "pincode")}
+            Date:{" "}
+            {new Date(ticket.createdAt || Date.now()).toLocaleDateString(
+              "en-GB"
+            )}
           </Text>
-          <Text>Party Mobile No: {ticket.clientPhone || "N/A"}</Text>
-          <Text>State: {getAddressPart(ticket.shippingAddress, "state")}</Text>
-          <Text>GSTIN / UIN: {ticket.clientGstNumber || "N/A"}</Text>{" "}
         </View>
-      </View>
+        {/* <View style={styles.metaInfoContainer}>
+        <Text>PI Number: {ticket.quotationNumber}</Text>
+        <Text>Validity: {ticket.validityDate ? new Date(ticket.validityDate).toLocaleDateString('en-GB') : 'N/A'}</Text>
+      </View> */}
+        <View style={styles.metaInfoContainer}>
+          <Text>
+            Dispatch Through: {ticket.dispatchThrough || "As per discussion"}
+          </Text>
+          <Text>
+            Dispatch Days: {ticket.dispatchDays || "7-10 working days"}
+          </Text>
+        </View>
 
-      <View style={styles.tableHeader}>
-        <Text style={[styles.cell, { width: "5%" }]}>S.N.</Text>
-        <Text style={[styles.cell, { width: "35%", textAlign: "left" }]}>
-          Description of Goods
-        </Text>
-        <Text style={[styles.cell, { width: "15%" }]}>HSN/SAC</Text>
-        <Text style={[styles.cell, { width: "10%" }]}>Qty.</Text>
-        <Text style={[styles.cell, { width: "8%" }]}>Unit</Text>
-        <Text style={[styles.cell, { width: "7%" }]}>GST%</Text>
-        <Text style={[styles.cell, { width: "10%" }]}>Rate</Text>
-        <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>
-          Amount
-        </Text>
-      </View>
-
-      {ticket.goods.map((item, i) => (
-        <View style={styles.tableRow} key={i}>
-          <Text style={[styles.cell, { width: "5%" }]}>{i + 1}</Text>
-          <View style={[styles.cell, { width: "35%", textAlign: "left" }]}>
-            <Text>{item.description}</Text>
-            {item.subtexts && item.subtexts.map((sub, subIndex) => (
-              <Text key={subIndex} style={styles.subtextItem}>
-                - {sub}
-              </Text>
-            ))}
+        <View style={styles.addressTable}>
+          <View style={styles.addressRow}>
+            <Text style={styles.addressTableHeader}>Details</Text>
+            <Text style={styles.addressTableHeaderData}>Billing Address</Text>
+            <Text
+              style={[styles.addressTableHeaderData, { borderRightWidth: 0 }]}
+            >
+              Shipping Address
+            </Text>
           </View>
-          <Text style={[styles.cell, { width: "15%" }]}>{item.hsnSacCode}</Text>
-          <Text style={[styles.cell, { width: "10%" }]}>{item.quantity}</Text>
-          <Text style={[styles.cell, { width: "8%" }]}>
-            {item.unit || "PCS"}
-          </Text>
-          <Text style={[styles.cell, { width: "7%" }]}>
-            {item.gstRate ? `${item.gstRate.toFixed(1)}%` : "0%"}
-          </Text>
-          <Text style={[styles.cell, { width: "10%" }]}>
-            {item.price.toFixed(2)}
-          </Text>
-          <Text style={[styles.cell, { width: "15%", borderRight: 0 }]}>
-            {item.amount.toFixed(2)}
-          </Text>
+          <View style={styles.addressRow}>
+            <Text style={styles.addressCellHeaderLabel}>Party Name:</Text>
+            <Text style={styles.addressCellData}>
+              {String(ticket.client?.companyName || ticket.companyName || '')} {/* Ensure string */}
+            </Text>
+            <Text style={styles.addressCellDataLast}>
+              {String(ticket.client?.companyName || ticket.companyName || '')} {/* Ensure string */}
+            </Text>
+          </View>
+          <View style={styles.addressRow}>
+            <Text style={styles.addressCellHeaderLabel}>Address:</Text>
+            <Text style={styles.addressCellData}>{fullBillingAddress}</Text>
+            <Text style={styles.addressCellDataLast}>
+              {fullShippingAddress}
+            </Text>
+          </View>
+          <View style={styles.addressRow}>
+            <Text style={styles.addressCellHeaderLabel}>City/State/Pin:</Text>
+            <Text style={styles.addressCellData}>{billingCityStatePin}</Text>
+            <Text style={styles.addressCellDataLast}>
+              {shippingCityStatePin}
+            </Text>
+          </View>
+          <View style={styles.addressRow}>
+            <Text style={styles.addressCellHeaderLabel}>State:</Text>
+            <Text style={styles.addressCellData}>{String(billingState ?? '')}</Text> {/* Ensure string */}
+            <Text style={styles.addressCellDataLast}>{String(shippingState ?? '')}</Text> {/* Ensure string */}
+          </View>
+          <View style={styles.addressRow}>
+            <Text style={[styles.addressCellHeader, styles.bold]}>
+              GSTIN / UIN:
+            </Text>
+            {/* <Text style={styles.addressCell}>{clientGstNumber}</Text> */}
+            <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>
+              {clientGstNumber}
+            </Text>
+          </View>
+          <View style={[styles.addressRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.addressCellHeader, styles.bold]}>
+              Contact No.:
+            </Text>
+            {/* <Text style={styles.addressCell}>{clientPhone}</Text> */}
+            <Text style={[styles.addressCell, { borderRightWidth: 0 }]}>
+              {clientPhone} {/* Ensure string */}
+            </Text>
+          </View>
         </View>
-      ))}
 
-      <Text style={styles.fullWidthText}>Add : GST @ 18.00%</Text>
-      <Text style={[styles.fullWidthText, { fontWeight: "bold" }]}>
-        Grand Total : ₹{ticket.grandTotal.toFixed(2)}
-      </Text>
-      <Text style={styles.fullWidthText}>
-        Taxable Rate Total = Sub Total Amt. + Total Tax.
-      </Text>
-      <Text style={styles.fullWidthText}>
-        Amount in Words: Rupees{" "}
-        {ticket.grandTotal ? toWords(ticket.grandTotal) : "Zero Only"}
-      </Text>
-
-      {ticket.termsAndConditions && (
-        <View style={styles.termsSection}>
-          <Text style={{ fontWeight: "bold" }}>Terms & Conditions:</Text>
-          <Text style={{ fontSize: 9 }}>{ticket.termsAndConditions}</Text>
+        <View style={styles.goodsTable}>
+          <View style={styles.goodsTableHeader}>
+            <Text style={[styles.goodsCell, styles.colSrNo]}>S.N.</Text>
+            <Text
+              style={[
+                styles.goodsCell,
+                styles.colDescription,
+                styles.goodsCellDescription,
+              ]}
+            >
+              Description of Goods
+            </Text>
+            <Text style={[styles.goodsCell, styles.colHSN]}>HSN/SAC</Text>
+            <Text style={[styles.goodsCell, styles.colQty]}>Qty</Text>
+            <Text style={[styles.goodsCell, styles.colUnit]}>Unit</Text>
+            <Text style={[styles.goodsCell, styles.colRate]}>Rate (₹)</Text>
+            <Text style={[styles.goodsCell, styles.colAmount]}>Amount (₹)</Text>
+          </View>
+          {(ticket.goods || []).map((item, i) => (
+            <View style={styles.goodsTableRow} key={item._id || i}>
+              <Text style={[styles.goodsCell, styles.colSrNo]}>
+                {item.srNo || i + 1}
+              </Text>
+              <View
+                style={[
+                  styles.goodsCell,
+                  styles.colDescription,
+                  styles.goodsCellDescription,
+                ]}
+              >
+                <Text>{item.description}</Text>
+                {(item.subtexts || []).map((sub, subIndex) => (
+                  <Text
+                    key={subIndex}
+                    style={{ fontSize: 7, fontStyle: "italic", marginLeft: 5 }}
+                  >
+                    - {sub}
+                  </Text>
+                ))}
+              </View>
+              <Text style={[styles.goodsCell, styles.colHSN]}>
+                {String(item.hsnSacCode ?? '')} {/* Ensure string */}
+              </Text>
+              <Text style={[styles.goodsCell, styles.colQty]}>
+                {item.quantity}
+              </Text>
+              <Text style={[styles.goodsCell, styles.colUnit]}>
+                {item.unit || "Nos"}
+              </Text>
+              <Text style={[styles.goodsCell, styles.colRate]}>
+                {(item.price || 0).toFixed(2)}
+              </Text>
+              <Text style={[styles.goodsCell, styles.colAmount]}>
+                {(item.amount || 0).toFixed(2)}
+              </Text>
+            </View>
+          ))}
         </View>
-      )}
 
-      <View style={styles.bankDetails}>
-        <Text style={{ fontWeight: "bold", textAlign: "center" }}>
-          Bank Details:
+        <View style={styles.summarySection}>
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal (Before Tax):</Text>
+              <Text style={styles.summaryValue}>
+                ₹{(ticket.totalAmount || 0).toFixed(2)}
+              </Text>
+            </View>
+            {/* Dynamically add CGST, SGST, IGST based on breakdown */}
+            {ticket.isBillingStateSameAsCompany ? (
+              <>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total CGST:</Text>
+                  <Text style={styles.summaryValue}>
+                    ₹{(ticket.totalCgstAmount || 0).toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total SGST:</Text>
+                  <Text style={styles.summaryValue}>
+                    ₹{(ticket.totalSgstAmount || 0).toFixed(2)}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total IGST:</Text>
+                <Text style={styles.summaryValue}>
+                  ₹{(ticket.totalIgstAmount || 0).toFixed(2)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, styles.bold]}>
+                Total Tax Amount:
+              </Text>
+              <Text style={styles.summaryValue}>
+                ₹{(ticket.finalGstAmount || 0).toFixed(2)}
+              </Text>
+            </View>
+            {ticket.roundOff !== undefined && ticket.roundOff !== 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Round Off:</Text>
+                <Text style={styles.summaryValue}>
+                  ₹{(ticket.roundOff || 0).toFixed(2)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.grandTotalRow}>
+              <Text>
+                {ticket.roundOff !== undefined && ticket.roundOff !== 0
+                  ? "Final Amount:"
+                  : "Grand Total:"}
+              </Text>
+              <Text>₹{(displayGrandTotal || 0).toFixed(2)}</Text>{" "}
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.amountInWords}>
+          Amount in Words: {toWords(Math.round(displayGrandTotal || 0))}
         </Text>
-        <Text style={{ textAlign: "center" }}>
-          Bank: ICICI Bank{"\n"}Account No.: 628906029990, IFSC CODE:
-          ICIC0006284
-        </Text>
-      </View>
 
-      <Text style={[styles.fullWidthText, { marginTop: 20 }]}>
-        for E-KORS PRIVATE LIMITED{"\n"}Authorized Signatory
-      </Text>
-    </Page>
-  </Document>
-);
+        {/* Tax Breakdown Table */}
+        <View style={styles.taxBreakdownTable}>
+          <View style={styles.taxBreakdownHeader}>
+            <Text style={[styles.taxBreakdownCell, styles.taxColDescription]}>
+              Description (GST @)
+            </Text>
+            <Text style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}>
+              Taxable Value (₹)
+            </Text>
+            {ticket.isBillingStateSameAsCompany ? (
+              <>
+                <Text style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}>
+                  CGST Rate
+                </Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}
+                >
+                  CGST Amt (₹)
+                </Text>
+                <Text style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}>
+                  SGST Rate
+                </Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}
+                >
+                  SGST Amt (₹)
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}>
+                  IGST Rate
+                </Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}
+                >
+                  IGST Amt (₹)
+                </Text>
+              </>
+            )}
+            <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>
+              Total Tax (₹)
+            </Text>
+          </View>
+          {(ticket.gstBreakdown || []).map((group, index) => (
+            <View style={styles.taxBreakdownRow} key={`tax_group_${index}`}>
+              <Text
+                style={[styles.taxBreakdownCell, styles.taxColDescription]}
+              >{`Goods @ ${group.itemGstRate.toFixed(2)}%`}</Text>
+              <Text
+                style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}
+              >
+                {(group.taxableAmount || 0).toFixed(2)}
+              </Text>
+              {ticket.isBillingStateSameAsCompany ? (
+                <>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}
+                  >{`${(group.cgstRate || 0).toFixed(2)}%`}</Text>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}
+                  >
+                    {(group.cgstAmount || 0).toFixed(2)}
+                  </Text>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}
+                  >{`${(group.sgstRate || 0).toFixed(2)}%`}</Text>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}
+                  >
+                    {(group.sgstAmount || 0).toFixed(2)}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}
+                  >{`${(group.igstRate || 0).toFixed(2)}%`}</Text>
+                  <Text
+                    style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}
+                  >
+                    {(group.igstAmount || 0).toFixed(2)}
+                  </Text>
+                </>
+              )}
+              <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>
+                {(
+                  (group.cgstAmount || 0) +
+                  (group.sgstAmount || 0) +
+                  (group.igstAmount || 0)
+                ).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+          {/* Total Row for Tax Breakdown */}
+          <View
+            style={[
+              styles.taxBreakdownRow,
+              styles.bold,
+              { backgroundColor: "#f0f0f0" },
+            ]}
+          >
+            <Text style={[styles.taxBreakdownCell, styles.taxColDescription]}>
+              Total
+            </Text>
+            <Text style={[styles.taxBreakdownCell, styles.taxColTaxableValue]}>
+              {(ticket.totalAmount || 0).toFixed(2)}
+            </Text>
+            {ticket.isBillingStateSameAsCompany ? (
+              <>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColCGSTRate]}
+                ></Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColCGSTAmount]}
+                >
+                  {(ticket.totalCgstAmount || 0).toFixed(2)}
+                </Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColSGSTRate]}
+                ></Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColSGSTAmount]}
+                >
+                  {(ticket.totalSgstAmount || 0).toFixed(2)}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColIGSTRate]}
+                ></Text>
+                <Text
+                  style={[styles.taxBreakdownCell, styles.taxColIGSTAmount]}
+                >
+                  {(ticket.totalIgstAmount || 0).toFixed(2)}
+                </Text>
+              </>
+            )}
+            <Text style={[styles.taxBreakdownCell, styles.taxColTotalTax]}>
+              {(ticket.finalGstAmount || 0).toFixed(2)}
+            </Text>
+          </View>
+        </View>
 
+        <View style={styles.termsConditions}>
+          <Text style={styles.bold}>Terms & Conditions:</Text>
+          {(
+            ticket.termsAndConditions ||
+            "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction."
+          )
+            .split("\n")
+            .map((term, i) => (
+              <Text key={i}>- {term}</Text>
+            ))}
+        </View>
+
+        <View style={styles.bankDetails}>
+          <Text style={styles.bold}>Bank Details:</Text>
+          <Text>Bank: {company.bank.bankName}</Text>
+          <Text>Account No.: {company.bank.accountNumber}</Text>
+          <Text>IFSC Code: {company.bank.ifscCode}</Text>
+          <Text>Branch: {company.bank.branch}</Text>
+        </View>
+
+        <View style={styles.footer}>
+          {/* <Text>This is a computer-generated Performa Invoice.</Text> */}
+          <View style={styles.authSignatory}> {/* Ensure companyName is always a string */}
+            <Text style={styles.companyNameHeader}> For {String(company.companyName ?? '')}</Text>
+            <View style={{ height: 30 }} /> {/* Spacer for signature */}
+            <Text>Authorized Signatory</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+};
+// Memoize the component for performance if ticketData doesn't change frequently
 export default PIPDF;

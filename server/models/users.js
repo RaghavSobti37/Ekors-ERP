@@ -1,122 +1,165 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const logger = require('../utils/logger'); // Assuming logger is in utils
+const logger = require("../utils/logger"); // Assuming logger is in utils
 
-const userSchema = new mongoose.Schema({
+const roleChangeHistorySchema = new mongoose.Schema(
+  {
+    oldRole: { type: String, required: true },
+    newRole: { type: String, required: true },
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    changedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const userSchema = new mongoose.Schema(
+  {
     firstname: {
-        type: String,
-        required: [true, "First name is required"],
-        trim: true,
-        minlength: [2, "First name must be at least 2 characters"]
+      type: String,
+      required: [true, "First name is required"],
+      trim: true,
+      minlength: [2, "First name must be at least 2 characters"],
     },
     lastname: {
-        type: String,
-        required: [true, "Last name is required"],
-        trim: true,
-        minlength: [2, "Last name must be at least 2 characters"]
+      type: String,
+      required: [true, "Last name is required"],
+      trim: true,
+      minlength: [2, "Last name must be at least 2 characters"],
     },
     email: {
-        type: String,
-        required: [true, "Email is required"],
-        unique: true,  // This automatically creates an index
-        trim: true,
-        lowercase: true,
-        validate: {
-            validator: function(v) {
-                return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v);
-            },
-            message: props => `${props.value} is not a valid email address!`
-        }
+      type: String,
+      required: [true, "Email is required"],
+      unique: true, // This automatically creates an index
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator: function (v) {
+          return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid email address!`,
+      },
     },
     phone: {
-        type: String,
-        trim: true,
-        validate: {
-            validator: function(v) {
-                return /^[0-9]{10,15}$/.test(v);
-            },
-            message: props => `${props.value} is not a valid phone number!`
-        }
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          return /^[0-9]{10,15}$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid phone number!`,
+      },
     },
     password: {
-        type: String,
-        required: [true, "Password is required"],
-        minlength: [5, "Password must be at least 5 characters"],
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [5, "Password must be at least 5 characters"],
     },
     role: {
-        type: String,
-        enum: ["user", "admin", "super-admin"],
-        default: "user"
+      type: String,
+      enum: ["user", "admin", "super-admin"],
+      default: "user",
     },
+    roleChangeHistory: [roleChangeHistorySchema],
+
     isActive: {
-        type: Boolean,
-        default: true
+      type: Boolean,
+      default: true,
     },
-    avatarUrl: { // Field to store the path to the avatar
-        type: String,
-        trim: true
+    avatarUrl: {
+      // Field to store the path to the avatar
+      type: String,
+      trim: true,
     },
     lastLogin: {
-        type: Date
-    }
-}, {
+      type: Date,
+    },
+  },
+  {
     timestamps: true,
     toJSON: {
-        transform: function(doc, ret) {
-            delete ret.password;
-            delete ret.__v;
-            return ret;
-        },
-        virtuals: true
+      transform: function (doc, ret) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      },
+      virtuals: true,
     },
     toObject: {
-        virtuals: true
-    }
-});
+      virtuals: true,
+    },
+  }
+);
 
 // Virtual for full name
-userSchema.virtual('fullName').get(function() {
-    return `${this.firstname} ${this.lastname}`;
+userSchema.virtual("fullName").get(function () {
+  return `${this.firstname} ${this.lastname}`;
 });
 
 // Hash password before saving
-userSchema.pre("save", async function(next) {
-    logger.debug('user-model-presave', `Running pre-save hook for user: ${this.email}`);
-    
-    if (!this.isModified("password")) {
-        logger.debug('user-model-presave', `Password not modified for ${this.email}, skipping hash`);
-        return next();
-    }
-    
-    try {
-        logger.debug('user-model-presave', `Hashing password for user: ${this.email}`);
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (err) {
-        logger.error('user-model-presave', `Password hashing failed for ${this.email}`, err);
-        next(err);
-    }
+userSchema.pre("save", async function (next) {
+  logger.debug(
+    "user-model-presave",
+    `Running pre-save hook for user: ${this.email}`
+  );
+
+  if (!this.isModified("password")) {
+    logger.debug(
+      "user-model-presave",
+      `Password not modified for ${this.email}, skipping hash`
+    );
+    return next();
+  }
+
+  try {
+    logger.debug(
+      "user-model-presave",
+      `Hashing password for user: ${this.email}`
+    );
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    logger.error(
+      "user-model-presave",
+      `Password hashing failed for ${this.email}`,
+      err
+    );
+    next(err);
+  }
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function(candidatePassword) {
-    logger.debug('user-model-comparePassword', `Comparing passwords for user: ${this.email}`);
-    try {
-        const isMatch = await bcrypt.compare(candidatePassword, this.password);
-        logger.debug('user-model-comparePassword', `Password comparison result for ${this.email}: ${isMatch}`);
-        return isMatch;
-    } catch (err) {
-        logger.error('user-model-comparePassword', `Password comparison failed for ${this.email}`, err);
-        throw err;
-    }
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  logger.debug(
+    "user-model-comparePassword",
+    `Comparing passwords for user: ${this.email}`
+  );
+  try {
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+    logger.debug(
+      "user-model-comparePassword",
+      `Password comparison result for ${this.email}: ${isMatch}`
+    );
+    return isMatch;
+  } catch (err) {
+    logger.error(
+      "user-model-comparePassword",
+      `Password comparison failed for ${this.email}`,
+      err
+    );
+    throw err;
+  }
 };
 
 // Method to get safe user object (without sensitive data)
-userSchema.methods.getSafeUser = function() {
-    const userObject = this.toObject();
-    delete userObject.password;
-    return userObject;
+userSchema.methods.getSafeUser = function () {
+  const userObject = this.toObject();
+  delete userObject.password;
+  return userObject;
 };
 
 const User = mongoose.model("User", userSchema);

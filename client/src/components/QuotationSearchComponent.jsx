@@ -1,70 +1,138 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Form, ListGroup, Spinner, Alert } from 'react-bootstrap';
-import apiClient from '../utils/apiClient';
-import { debounce } from 'lodash';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import ReactDOM from "react-dom";
+import apiClient from "../utils/apiClient";
+import { handleApiError } from "../utils/helpers";
+import "../css/ItemSearchComponent.css"; // Reuse styling if applicable
 
-const QuotationSearchComponent = ({ onQuotationSelect, placeholder }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+const QuotationSearchComponent = ({
+  onQuotationSelect,
+  placeholder = "Search by Ref No or Client...",
+  className = "",
+  disabled = false,
+  onDropdownToggle, // Optional: for parent to know if dropdown is open
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
-  const fetchQuotations = useCallback(
-    debounce(async (term) => {
-      if (!term || term.length < 2) {
-        setResults([]);
-        setError(null);
-        return;
-      }
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await apiClient(`/quotations?search=${encodeURIComponent(term)}`);
-        setResults(response || []);
-      } catch (err) {
-        setError('Failed to search quotations. ' + (err.data?.message || err.message || ''));
-        console.error("QuotationSearchComponent: ", err);
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300),
-    []
-  );
+  const inputRef = useRef(null);
+  const Z_INDEX_DROPDOWN = 1060; // Ensure it's above other elements
 
   useEffect(() => {
-    fetchQuotations(searchTerm);
-  }, [searchTerm, fetchQuotations]);
+    if (onDropdownToggle) {
+      onDropdownToggle(showDropdown);
+    }
+  }, [showDropdown, onDropdownToggle]);
 
-  const handleSelect = (quotation) => {
-    onQuotationSelect(quotation);
-    setSearchTerm('');
-    setResults([]);
+  const searchQuotations = useCallback(async (termToSearch) => {
+    const trimmedTerm = termToSearch.trim();
+    if (!trimmedTerm || trimmedTerm.length < 2) { // Min 2 chars to search
+      setSearchResults([]);
+      setShowDropdown(false);
+      setError(null);
+      return;
+    }
+    setLoading(true);
     setError(null);
+    try {
+      const response = await apiClient(
+        `/quotations?search=${encodeURIComponent(trimmedTerm)}&limit=10&sortKey=referenceNumber&sortDirection=desc`
+      );
+      setSearchResults(response.data || []);
+      setShowDropdown(true);
+      updateDropdownPosition();
+    } catch (err) {
+      setError(handleApiError(err, "Failed to search quotations."));
+      setSearchResults([]);
+      setShowDropdown(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // handleApiError should be stable if defined outside or memoized
+
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      searchQuotations(searchTerm);
+    }, 300); // Debounce
+    return () => clearTimeout(timerId);
+  }, [searchTerm, searchQuotations]);
+
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY, // Account for page scroll
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showDropdown) updateDropdownPosition();
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+    };
+  }, [showDropdown, updateDropdownPosition]);
+
+  const handleQuotationClick = (quotation) => {
+    onQuotationSelect(quotation);
+    setSearchTerm("");
+    setSearchResults([]);
+    setShowDropdown(false);
   };
 
   return (
-    <div className="mb-3">
-      <Form.Control
-        type="text"
-        placeholder={placeholder || "Search by Quotation No. or Client..."}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-2"
-      />
-      {isLoading && <div className="text-center"><Spinner animation="border" size="sm" /></div>}
-      {error && <Alert variant="danger" className="py-1 px-2 small">{error}</Alert>}
-      {!isLoading && results.length > 0 && (
-        <ListGroup style={{ maxHeight: '200px', overflowY: 'auto' }}>
-          {results.map((quotation) => (
-            <ListGroup.Item key={quotation._id} action onClick={() => handleSelect(quotation)}>
-              {quotation.referenceNumber} - {quotation.client?.companyName || 'N/A'} (Status: {quotation.status})
-            </ListGroup.Item>
+    <div className={`item-search-component ${className}`}>
+      {error && <div className="search-error text-danger small mb-1">{error}</div>}
+      <div className="search-input-container">
+        <input
+          ref={inputRef}
+          type="text"
+          className="form-control"
+          placeholder={placeholder}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onFocus={() => {
+            updateDropdownPosition();
+            if (searchTerm.trim().length > 0 || searchResults.length > 0) setShowDropdown(true);
+          }}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Delay to allow click on dropdown
+          disabled={disabled || loading}
+        />
+        {loading && <div className="search-loading spinner-border spinner-border-sm text-primary" role="status"><span className="visually-hidden">Loading...</span></div>}
+      </div>
+
+      {showDropdown && searchResults.length > 0 && ReactDOM.createPortal(
+        <div
+          className="search-suggestions-dropdown"
+          style={{ position: "absolute", top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px`, width: `${dropdownPosition.width}px`, zIndex: Z_INDEX_DROPDOWN }}
+        >
+          {searchResults.map((q) => (
+            <div key={q._id} className="search-suggestion-item" onClick={() => handleQuotationClick(q)} onMouseDown={(e) => e.preventDefault()}>
+              <strong>{q.referenceNumber}</strong> - {q.client?.companyName || "N/A"}
+              <br />
+              <small>Date: {new Date(q.date).toLocaleDateString()}, Status: {q.status}</small>
+            </div>
           ))}
-        </ListGroup>
+        </div>,
+        document.body
       )}
-      {!isLoading && searchTerm && results.length === 0 && !error && (
-        <p className="text-muted small mt-1">No quotations found matching "{searchTerm}".</p>
+
+      {showDropdown && searchTerm && searchResults.length === 0 && !loading && ReactDOM.createPortal(
+        <div
+          className="search-no-results"
+          style={{ position: "absolute", top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px`, width: `${dropdownPosition.width}px`, zIndex: Z_INDEX_DROPDOWN }}
+        >
+          No quotations found
+        </div>,
+        document.body
       )}
     </div>
   );

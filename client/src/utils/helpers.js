@@ -147,3 +147,48 @@ export const debounce = (func, wait) => {
     timeout = setTimeout(later, wait);
   };
 };
+
+/**
+ * Formats a date string or Date object into a more readable date and time string.
+ * e.g., "DD/MM/YYYY, HH:MM AM/PM"
+ * @param {string | Date} dateString - The date string or Date object to format.
+ * @returns {string} The formatted date-time string or 'N/A' if invalid.
+ */
+export const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    return date.toLocaleString('en-GB', { // en-GB for DD/MM/YYYY format, adjust as needed
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true,
+    });
+  } catch (error) {
+    // Log error if needed, e.g., frontendLogger.error('dateFormatting', 'Error in formatDateTime', null, { dateString, error });
+    return 'Invalid Date';
+  }
+};
+
+
+/**
+ * Converts a Date object to a "YYYY-MM-DD" string.
+ * @param {Date} date - The Date object to format.
+ * @returns {string} The date formatted as "YYYY-MM-DD".
+ */
+export const dateToYYYYMMDD = (date) => {
+  if (!(date instanceof Date) || isNaN(date)) {
+    // Fallback or error for unexpected input
+    console.warn("dateToYYYYMMDD expects a valid Date object. Falling back to today's date.");
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // JavaScript months are 0-indexed.
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+

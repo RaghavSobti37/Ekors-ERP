@@ -1,0 +1,53 @@
+.static-info-page-container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.company-info-tree {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.info-node-container {
+    padding-left: 25px;
+    border-left: 1px dashed #ccc;
+}
+
+.nested-object-node {
+    margin-bottom: 10px;
+}
+
+.leaf-node {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease-in-out;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.leaf-node:hover {
+    background-color: #f5f5f5;
+}
+
+.node-key {
+    font-weight: 600;
+    color: #333;
+    margin-right: 10px;
+}
+
+.node-value {
+    color: #555;
+    word-break: break-all;
+}
+
+.node-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 15px;
+}

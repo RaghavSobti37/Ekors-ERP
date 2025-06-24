@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Document,
   Page,
@@ -6,7 +6,12 @@ import {
   View,
   StyleSheet,
   Image,
+  PDFDownloadLink,
 } from "@react-pdf/renderer";
+import { generateQuotationDocx } from "../utils/generateQuotationDocx";
+import * as docx from "docx";
+import { saveAs } from "file-saver";
+import ActionButtons from "./ActionButtons"; // Import ActionButtons
 
 // Styles
 const styles = StyleSheet.create({
@@ -26,19 +31,7 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     width: "100%",
   },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 5,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  logoContainer: {
-    width: 100,
-    alignItems: "flex-end",
-  },
+
   logo: {
     width: 80,
     height: 60,
@@ -55,6 +48,12 @@ const styles = StyleSheet.create({
     textDecoration: "underline",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  subjectLine: {
+    marginVertical: 10,
+    fontSize: 11, // Or your preferred size for normal text
+    textAlign: "left",
+    // fontWeight: "normal", // Default
   },
   section: {
     marginBottom: 10,
@@ -115,33 +114,134 @@ const styles = StyleSheet.create({
     marginLeft: 10, // Indent subtext
     // paddingVertical: 1, // Small padding
   },
+  headerSection: {
+    flexDirection: "row", // Items in a row
+    justifyContent: "space-between", // Pushes company info to left, logo to right
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  gstinHeader: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  companyNameHeader: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
+  companyAddressHeader: {
+    // Added this style definition as it was used but not defined
+    fontSize: 8,
+    marginBottom: 5, // Adjusted margin
+  },
+  companyInfoContainer: {
+    flex: 1, // Takes up available space
+    flexDirection: "column",
+    alignItems: "center", // Centers the text block horizontally
+    textAlign: "center", // Centers the text lines
+  },
+  logoContainer: {
+    // marginLeft: 10, // Optional: if you want some space between text and logo
+  },
 });
 
+const QuotationActionsComponent = ({ quotation }) => {
+  const handleDownloadWord = useCallback(async () => {
+    try {
+      const doc = await generateQuotationDocx(quotation); // Await the async function
+      const blob = await docx.Packer.toBlob(doc);
+      saveAs(blob, `quotation_${quotation.referenceNumber}.docx`);
+    } catch (error) {
+      console.error("Error generating Word document:", error);
+      // Consider using a more integrated notification system if available, e.g., toast
+      alert("Failed to generate Word document. Please try again.");
+    }
+  }, [quotation]);
+
+  const pdfButtonProps = useMemo(
+    () => ({
+      document: <QuotationPDF quotation={quotation} />,
+      fileName: `quotation_${quotation.referenceNumber}.pdf`,
+    }),
+    [quotation]
+  );
+
+  return (
+    <ActionButtons
+      item={quotation} // Pass the quotation item
+      pdfProps={pdfButtonProps}
+      onDownloadWord={handleDownloadWord}
+      // Add other actions like onEdit, onView if needed for quotations list
+    />
+  );
+};
+
 // Component
-const QuotationPDF = ({ quotation }) => (
+const QuotationPDF = ({ quotation, companyInfo }) => {
+  // companyInfo is now passed as a prop
+  if (!companyInfo || !companyInfo.company) { // Still check if prop is valid
+    return <Document><Page><Text>Loading company information...</Text></Page></Document>;
+  }
+
+  const { company } = companyInfo;
+  return (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.document}>
         <View style={styles.pageContent}>
-          <Text style={styles.refText}>CIN NO.: U40106UP2020PTC127954</Text>
-
-          <View style={styles.headerContainer}>
-            <View style={styles.headerTextContainer}>
-              {/* <Text>Ref: {quotation.referenceNumber}</Text> */}
-              <Text>Date: {new Date(quotation.date).toLocaleDateString()}</Text>
+          {/* Centered Header with Logo */}
+          <View style={styles.headerSection}>
+              <View style={styles.companyInfoContainer}>
+              <Text style={styles.gstinHeader}>GSTIN: {String(company.gstin ?? '')}</Text> {/* Ensure string */}
+              <Text style={styles.companyNameHeader}>{String(company.companyName ?? '')}</Text> {/* Ensure string */}
+              <Text style={styles.companyAddressHeader}> {/* Ensure address is always a string */}
+                {String(company.addresses.companyAddress ?? '')}
+              </Text>
             </View>
             <View style={styles.logoContainer}>
               <Image style={styles.logo} src="/logo.png" />
             </View>
           </View>
 
+          {/* CIN and Date below the main header */}
+          <Text style={styles.refText}>CIN NO.: {String(company.cin ?? '')}</Text> {/* Ensure CIN is always a string */}
+
+          <Text>
+            Date: {new Date(quotation.date).toLocaleDateString("en-GB")}
+          </Text>
+
+
           <View style={styles.section}>
             <Text>To,</Text>
             <Text>{quotation.client.companyName}</Text>
-            <Text>Site: {quotation.client.siteLocation}</Text>
+            <Text>{quotation.client.clientName || "N/A"}</Text>
+            {quotation.billingAddress && (
+              <>
+                <Text>
+                  {quotation.billingAddress.address1 || ""}
+                  {quotation.billingAddress.address2
+                    ? `, ${quotation.billingAddress.address2}`
+                    : ""}
+                </Text>
+                <Text>
+                  {[
+                    quotation.billingAddress.city,
+                    quotation.billingAddress.state,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") +
+                    (quotation.billingAddress.pincode
+                      ? ` - ${quotation.billingAddress.pincode}`
+                      : "")}
+                </Text>
+              </>
+            )}
+            {/* <Text>GSTIN: {quotation.client.gstNumber || "N/A"}</Text>
+            <Text>Phone: {quotation.client.phone || "N/A"}</Text> */}
           </View>
 
-          <Text style={styles.heading}>
+          <Text style={styles.subjectLine}>
             Sub: Quotation for Earthing Material and Installation
           </Text>
 
@@ -171,13 +271,14 @@ const QuotationPDF = ({ quotation }) => (
             {quotation.goods.map((item, index) => (
               <View style={styles.tableRow} key={index}>
                 <Text style={[styles.tableCol, styles.col1]}>{index + 1}</Text>
-                 <View style={[styles.tableCol, styles.col2]}>
+                <View style={[styles.tableCol, styles.col2]}>
                   <Text>{item.description}</Text>
-                  {item.subtexts && item.subtexts.map((sub, subIndex) => (
-                    <Text key={subIndex} style={styles.subtextItem}>
-                      - {sub}
-                    </Text>
-                  ))}
+                  {item.subtexts &&
+                    item.subtexts.map((sub, subIndex) => (
+                      <Text key={subIndex} style={styles.subtextItem}>
+                        - {sub}
+                      </Text>
+                    ))}
                 </View>
                 <Text style={[styles.tableCol, styles.col3]}>{item.unit}</Text>
                 <Text style={[styles.tableCol, styles.col4]}>
@@ -213,7 +314,10 @@ const QuotationPDF = ({ quotation }) => (
             </Text>
             <Text>
               - Validity: This quotation is valid till{" "}
-              {new Date(quotation.validityDate).toLocaleDateString()}
+                        {new Date(quotation.validityDate).toLocaleDateString(
+                "en-GB"
+              )}
+
             </Text>
             <Text>
               - Order: Order to be placed in the name of "E-KORS PVT LTD"
@@ -227,14 +331,19 @@ const QuotationPDF = ({ quotation }) => (
           </View>
 
           <View style={styles.footerContact}>
-            <Text>Com Add: Pole No. 02, Sector 115 Noida - 201307</Text>
-            <Text>Ph. No. 9711725989 / 9897022545</Text>
-            <Text>Email: sales@ekors.in</Text>
+            <Text style={styles.companyAddressHeader}>
+              {company.addresses.companyAddress}
+            </Text>
+            <Text>Ph. No. {(company.contacts.contactNumbers || []).join(' / ')}</Text>
+            <Text>Email: {String(company.contacts.email ?? '')}</Text> {/* Ensure email is always a string */}
           </View>
         </View>
       </View>
     </Page>
   </Document>
-);
+  );
+};
 
 export default QuotationPDF;
+
+export const QuotationActions = React.memo(QuotationActionsComponent);

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import apiClient from "../utils/apiClient"; // Import apiClient
-import Navbar from "../components/Navbar.jsx"; // Navigation bar component
-import Pagination from "../components/Pagination"; // Component for table pagination
-import Footer from "../components/Footer";
+import "../css/Style.css";
+import Navbar from "../components/Navbar.jsx";
+import Pagination from "../components/Pagination.jsx"; // Added .jsx
 import { saveAs } from "file-saver"; // For downloading files
-// import { getAuthToken } from "../utils/authUtils"; // Utility for retrieving auth token - Not directly used here
+import { useAuth } from "../context/AuthContext.jsx";
+
 import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
-import SearchBar from "../components/Searchbar.jsx"; // Import the new SearchBar
-// import * as XLSX from "xlsx"; // Library for Excel file operations - Not directly used here
-// ActionButtons is not directly used in the main table here, but could be if edit functionality was present
+import SearchBar from "../components/Searchbar.jsx";
+import ActionButtons from "../components/ActionButtons.jsx";
+
+import Footer from "../components/Footer";
 import {
   Eye, // View
   Trash, // Delete
@@ -17,17 +19,24 @@ import {
   FileEarmarkArrowUp, // For Excel Upload
   PlusCircle, // For Add Item button icon
   ClockHistory, // For Item History
+  CheckCircleFill,
+  ShieldFillCheck,
+  PencilSquare,
 } from "react-bootstrap-icons";
-import ReusableModal from "../components/ReusableModal.jsx";
-import { Spinner } from "react-bootstrap"; // Added for loading indicators on new category/subcategory save
-import "../css/Style.css"; // General styles
-
-const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 3;
+import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
+import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
+import "../css/Style.css";
+const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
   "globalLowStockThresholdSetting";
 
 export default function Items() {
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pendingReviewItems, setPendingReviewItems] = useState([]);
+  const [totalPendingReviewItems, setTotalPendingReviewItems] = useState(0);
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,7 +45,7 @@ export default function Items() {
     key: "name",
     direction: "asc",
   });
-  const [itemHistory, setItemHistory] = useState([]);
+  // const [itemHistory, setItemHistory] = useState([]); // Replaced by individual history states
   const [itemHistoryLoading, setItemHistoryLoading] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
@@ -48,20 +57,21 @@ export default function Items() {
     hsnCode: "",
     unit: "Nos",
     category: "",
-    subcategory: "General",
+    // subcategory: "General", // Removed
     maxDiscountPercentage: "",
     lowStockThreshold: "5", // Added for consistency with item schema
+    image: "",
   });
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false); // Renamed from showModal for clarity
   const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
-  const [purchaseHistory, setPurchaseHistory] = useState({});
-  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item
+  const [purchaseHistory, setPurchaseHistory] = useState({}); // This is for the expanded row, not the modal
+  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item for expanded row
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [currentItemIndex, setCurrentItemIndex] = useState(-1);
+  // const [currentItemIndex, setCurrentItemIndex] = useState(-1); // currentItemIndex seems unused for purchase modal item search, review if needed
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("All");
+  // const [selectedSubcategory, setSelectedSubcategory] = useState("All");
   const [purchaseData, setPurchaseData] = useState({
     companyName: "",
     gstNumber: "",
@@ -69,10 +79,6 @@ export default function Items() {
     stateName: "",
     invoiceNumber: "",
     date: new Date().toISOString().split("T")[0],
-    quantity: "",
-    price: "",
-    gstRate: "0",
-    description: "",
     items: [],
   });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -83,34 +89,53 @@ export default function Items() {
   const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
-    error: null,
+    error: null, // For Excel specific errors
     success: null,
     details: [],
   });
-  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false); // Corrected from showViewItemModal
+
+  const [showItemHistoryModal, setShowItemHistoryModal] = useState(false);
   // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [isAddingNewSubcategory, setIsAddingNewSubcategory] = useState(false);
-  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+  // const [isAddingNewSubcategory, setIsAddingNewSubcategory] = useState(false); // Removed
+  // const [newSubcategoryName, setNewSubcategoryName] = useState(""); // Removed
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
-  const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false);
+  // const [isSubmittingSubcategory, setIsSubmittingSubcategory] = useState(false); // Removed
 
+  // New states for separated history data in modal
+  const [excelHistoryData, setExcelHistoryData] = useState([]); // This state seems unused, consider removing if not needed for display
+  const [purchaseHistoryData, setPurchaseHistoryData] = useState([]);
+  const [ticketUsageData, setTicketUsageData] = useState([]);
+  const [inventoryAdjustmentsLogData, setInventoryAdjustmentsLogData] =
+    useState([]);
+  const [itemEditsLogData, setItemEditsLogData] = useState([]);
   const location = useLocation();
+  const [currentPagePending, setCurrentPagePending] = useState(1); // Pagination for pending items
+
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
     [location.search]
   );
-  const stockAlertFilterActive = queryParams.get("filter") === "stock_alerts";
+  const stockAlertFilterActive = useMemo(
+    () => queryParams.get("filter") === "stock_alerts",
+    [queryParams]
+  );
+
   const lowStockWarningQueryThreshold = parseInt(
     queryParams.get("lowThreshold"),
     10
   );
-  const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // null means 'All'
+  // const [quantityFilterThreshold, setQuantityFilterThreshold] = useState(null); // Replaced by quantityFilterInputValue
 
   const [effectiveLowStockThreshold, setEffectiveLowStockThreshold] = useState(
     DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
   );
+
+  // State for the quantity filter input on the main items page
+  const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
+  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] =
+    useState("");
 
   useEffect(() => {
     const storedThreshold = localStorage.getItem(
@@ -121,51 +146,134 @@ export default function Items() {
         ? parseInt(storedThreshold, 10)
         : DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
     );
-  }, []); // Runs once on mount to get the threshold
+  }, []);
+
+  useEffect(() => {
+    if (stockAlertFilterActive) {
+      // Initialize with URL param if present, else global default
+      const initialThreshold = Number.isFinite(lowStockWarningQueryThreshold)
+        ? lowStockWarningQueryThreshold
+        : effectiveLowStockThreshold;
+      setStockAlertsPageFilterThreshold(initialThreshold.toString());
+      setSearchTerm("");
+    } else {
+      setStockAlertsPageFilterThreshold(""); // Clear when not on stock alerts page
+    }
+  }, [
+    stockAlertFilterActive,
+    effectiveLowStockThreshold,
+    lowStockWarningQueryThreshold,
+  ]);
 
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to the first page
+    setCurrentPage(1);
   };
-
-  // const handleGlobalThresholdChange = (e) => { // This function seems unused, can be removed if not needed
-  //   const newThreshold =
-  //     parseInt(e.target.value, 10) || DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE;
-  //   setEffectiveLowStockThreshold(newThreshold);
-  //   localStorage.setItem(
-  //     LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
-  //     newThreshold.toString()
-  //   );
-  // };
 
   const showSuccess = (message) => {
     showToast(message, true);
   };
 
-  // useEffect(() => {}, [items, categories]); // This useEffect is empty, can be removed
+  const fetchItems = useCallback(
+    async (page, limit = itemsPerPage) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = {
+          page,
+          limit,
+          sortKey: sortConfig.key,
+          sortDirection: sortConfig.direction,
+          status: "approved",
+        };
+        if (selectedCategory !== "All") params.category = selectedCategory;
+        if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
+        // if (selectedSubcategory !== "All") params.subcategory = selectedSubcategory; // Removed
 
-  const fetchItems = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await apiClient("/items"); // Use apiClient
-      setItems(response);
-      setError(null);
-      showSuccess("Items Fetched Successfully");
-    } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to load items. Please try again."
-      );
-      setError(errorMessage);
-    } finally {
-      setLoading(false); // Ensure loading is set to false in finally
-    }
-  }, []);
+        if (stockAlertFilterActive) {
+          params.filter = "stock_alerts";
+          const thresholdToUse = parseInt(stockAlertsPageFilterThreshold, 10);
+          params.lowThreshold =
+            Number.isFinite(thresholdToUse) && thresholdToUse >= 0
+              ? thresholdToUse
+              : effectiveLowStockThreshold;
+        } else {
+          // Apply quantity filter for main page if a value is set
+          const qtyFilterVal = parseInt(quantityFilterInputValue, 10);
+          if (
+            Number.isFinite(qtyFilterVal) &&
+            quantityFilterInputValue.trim() !== ""
+          ) {
+            params.quantityThreshold = qtyFilterVal;
+          }
+        }
+
+        // Fetch only essential item data for the list view. Heavy population is handled by the history modal.
+        const response = await apiClient("/items", { params });
+        setItems(response.data || []);
+        setTotalItems(response.totalItems || 0);
+        setError(null);
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to load items. Please try again.",
+          user
+        );
+        setError(errorMessage);
+        setItems([]);
+        setTotalItems(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      itemsPerPage,
+      sortConfig,
+      searchTerm,
+      selectedCategory,
+      quantityFilterInputValue,
+      stockAlertFilterActive,
+      lowStockWarningQueryThreshold,
+      effectiveLowStockThreshold,
+      user,
+      stockAlertsPageFilterThreshold,
+    ]
+  );
+
+  const fetchPendingReviewItems = useCallback(
+    async (page = currentPagePending, limit = itemsPerPage) => {
+      if (!user || (user.role !== "admin" && user.role !== "super-admin")) {
+        setPendingReviewItems([]);
+        setTotalPendingReviewItems(0);
+        return;
+      }
+      try {
+        setLoading(true);
+        const params = {
+          page,
+          limit,
+          status: "pending_review",
+          sortKey: "createdAt",
+          sortDirection: "desc",
+          populate: "createdBy",
+        };
+        const response = await apiClient("/items", { params });
+        setPendingReviewItems(response.data || []);
+        setTotalPendingReviewItems(response.totalItems || 0);
+      } catch (err) {
+        handleApiError(err, "Failed to load pending review items.", user);
+        setPendingReviewItems([]);
+        setTotalPendingReviewItems(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, itemsPerPage, currentPagePending]
+  );
 
   const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true); // Should be setLoading(true) at the start
+      setLoading(true);
       setError(null);
       const categoriesData = await apiClient("/items/categories", {
         timeout: 5000,
@@ -181,44 +289,63 @@ export default function Items() {
         );
       }
     } catch (err) {
-      // const errorDetails = { // This variable seems unused
-      //   message: err.message,
-      //   status: err.response?.status,
-      //   data: err.response?.data,
-      //   config: err.config,
-      // };
-
-      let errorMessage = handleApiError(err, "Failed to load categories.");
-      if (err.response) {
-        errorMessage += ` (${err.response.status})`;
-        if (err.response.data?.message) {
-          errorMessage += `: ${err.response.data.message}`;
-        }
-      } else if (err.request) {
-        errorMessage += ": No response from server";
-      } else {
-        errorMessage += `: ${err.message}`;
-      }
-
+      const errorMessage = handleApiError(
+        err,
+        "Failed to load categories.",
+        user
+      );
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]); // Added user dependency
 
   useEffect(() => {
-    fetchItems();
+    fetchPendingReviewItems();
     fetchCategories();
-
     return () => {
-      setItems([]);
+      setPendingReviewItems([]);
       setCategories([]);
     };
-  }, [fetchItems, fetchCategories]);
+  }, [fetchPendingReviewItems, fetchCategories]);
 
+
+  // Effect for search, category, quantity filter, and sort changes
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      if (!authLoading && user) {
+        // Use `user` from useAuth() and ensure authLoading is checked
+        fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
+      }
+    }, 500); return () => clearTimeout(timerId);
+  }, [
+    authLoading,
+    user,
+    searchTerm,
+    selectedCategory,
+    quantityFilterInputValue,
+    stockAlertFilterActive,
+    stockAlertsPageFilterThreshold,
+    sortConfig.key,
+    sortConfig.direction,
+    fetchItems,
+  ]);
+
+  // Effect for pagination changes (when filters/search/sort are stable)
+  useEffect(() => {
+    if (!authLoading && user) {
+      // Ensure authLoading and user (from useAuth) are used
+      fetchItems(currentPage, itemsPerPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, currentPage, itemsPerPage]);
+
+  // This useEffect is specifically for the itemSearchTerm used in the purchase modal,
+  // it should remain as is if that's its sole purpose.
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
       if (Array.isArray(items) && items.length > 0) {
+        // Should this be a different list of items for the modal?
         const filtered = items.filter(
           (item) =>
             item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
@@ -232,40 +359,37 @@ export default function Items() {
     } else {
       setFilteredItemsList([]);
     }
-  }, [itemSearchTerm, items]);
+  }, [itemSearchTerm, items]); // `items` dependency here might be problematic if it's the main page's items list.
 
-  const fetchPurchaseHistory = useCallback(async (itemId) => {
-    try {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
-      setError(null);
+  const fetchPurchaseHistoryForExpandedRow = useCallback(
+    async (itemId) => {
+      // Renamed for clarity
+      try {
+        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
+        setError(null);
 
-      const response = await apiClient(`/items/${itemId}/purchases`, {
-        timeout: 5000,
-      });
+        const response = await apiClient(`/items/${itemId}/purchases`, {
+          timeout: 5000,
+        });
 
-      setPurchaseHistory((prev) => ({
-        ...prev,
-        [itemId]: response || [],
-      }));
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load history.");
-      // setError(errorMessage); // Already set by handleApiError
-      console.error("Fetch purchase history error:", err);
-      // setError(errorMessage); // Duplicate setError
-      setPurchaseHistory((prev) => ({
-        ...prev,
-        [itemId]: [],
-      }));
-    } finally {
-      setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
-    }
-  }, []);
-
-  // const handleSearchChange = (e) => { // This function seems unused, SearchBar component handles its own state
-  //   setSearchTerm(e.target.value.toLowerCase());
-  //   setCurrentPage(1);
-  // };
+        setPurchaseHistory((prev) => ({
+          ...prev,
+          [itemId]: response || [],
+        }));
+        setError(null);
+      } catch (err) {
+        handleApiError(err, "Failed to load history.", user);
+        console.error("Fetch purchase history error:", err);
+        setPurchaseHistory((prev) => ({
+          ...prev,
+          [itemId]: [],
+        }));
+      } finally {
+        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
+      }
+    },
+    [user]
+  );
 
   const requestSort = (key) => {
     let direction = "asc";
@@ -273,102 +397,8 @@ export default function Items() {
       direction = "desc";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
-
-  const itemsToDisplay = useMemo(() => {
-    if (!Array.isArray(items)) {
-      return [];
-    }
-
-    let processedItems = [...items];
-
-    const currentLowThreshold =
-      stockAlertFilterActive && Number.isFinite(lowStockWarningQueryThreshold)
-        ? lowStockWarningQueryThreshold
-        : effectiveLowStockThreshold;
-
-    if (stockAlertFilterActive) {
-      processedItems = processedItems.filter(
-        (item) => item.needsRestock || item.quantity < currentLowThreshold
-      );
-    } else {
-      processedItems = processedItems.filter((item) => {
-        const matchesCategory =
-          selectedCategory === "All" || item.category === selectedCategory;
-        const matchesSubcategory =
-          selectedSubcategory === "All" ||
-          item.subcategory === selectedSubcategory;
-        const matchesSearch =
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.hsnCode &&
-            item.hsnCode.toLowerCase().includes(searchTerm.toLowerCase()));
-        return matchesCategory && matchesSubcategory && matchesSearch;
-      });
-
-      if (
-        quantityFilterThreshold !== null &&
-        Number.isFinite(quantityFilterThreshold)
-      ) {
-        processedItems = processedItems.filter(
-          (item) => item.quantity <= quantityFilterThreshold
-        );
-      }
-    }
-
-    processedItems.sort((a, b) => {
-      if (stockAlertFilterActive) {
-        if (a.quantity < b.quantity) return -1;
-        if (a.quantity > b.quantity) return 1;
-      } else {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-      }
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    });
-    return processedItems;
-  }, [
-    items,
-    stockAlertFilterActive,
-    lowStockWarningQueryThreshold,
-    effectiveLowStockThreshold,
-    selectedCategory,
-    selectedSubcategory,
-    searchTerm,
-    quantityFilterThreshold,
-    sortConfig,
-  ]);
-
-  const currentItems = useMemo(() => {
-    const indexOfLast = currentPage * itemsPerPage;
-    const indexOfFirst = indexOfLast - itemsPerPage;
-    return itemsToDisplay.slice(indexOfFirst, indexOfLast);
-  }, [itemsToDisplay, currentPage, itemsPerPage]);
-
-  // const addExistingItemToPurchase = (item) => { // This function seems unused
-  //   setPurchaseData({
-  //     ...purchaseData,
-  //     items: [
-  //       ...(purchaseData.items || []),
-  //       {
-  //         itemId: item._id,
-  //         description: item.name,
-  //         quantity: "1",
-  //         price: item.buyingPrice
-  //           ? item.buyingPrice.toString()
-  //           : item.lastPurchasePrice
-  //           ? item.lastPurchasePrice.toString()
-  //           : "0",
-  //         gstRate: item.gstRate.toString(),
-  //       },
-  //     ],
-  //   });
-  //   setItemSearchTerm("");
-  //   setShowItemSearch(false);
-  // };
 
   const handleEditItem = (item) => {
     setEditingItem(item);
@@ -381,9 +411,9 @@ export default function Items() {
       hsnCode: item.hsnCode || "",
       unit: item.unit || "Nos",
       category: item.category || "",
-      subcategory: item.subcategory || "General",
       lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
+      image: item.image || "", // Load existing image
     });
     setShowEditItemModal(true);
   };
@@ -393,20 +423,28 @@ export default function Items() {
       setError("Item name is required for editing.");
       return;
     }
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    if (buyingPrice > sellingPrice) {
+      setError("Buying price cannot be greater than selling price.");
+      return;
+    }
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { ...formData };
-      updatedItemPayload.quantity =
-        parseFloat(updatedItemPayload.quantity) || 0;
-      updatedItemPayload.sellingPrice =
-        parseFloat(updatedItemPayload.sellingPrice) || 0;
-      updatedItemPayload.buyingPrice =
-        parseFloat(updatedItemPayload.buyingPrice) || 0;
-      updatedItemPayload.gstRate = parseFloat(updatedItemPayload.gstRate) || 0;
-      updatedItemPayload.lowStockThreshold =
-        parseFloat(updatedItemPayload.lowStockThreshold) || 0;
+      const updatedItemPayload = { ...formData }; // formData has string values from form
+
+      // Ensure numeric fields that should be numbers are parsed
+      updatedItemPayload.quantity = parseFloat(formData.quantity) || 0;
+      updatedItemPayload.sellingPrice = sellingPrice;
+      updatedItemPayload.buyingPrice = buyingPrice;
+      updatedItemPayload.gstRate = parseFloat(formData.gstRate) || 0;
       updatedItemPayload.maxDiscountPercentage =
-        parseFloat(updatedItemPayload.maxDiscountPercentage) || 0;
+        parseFloat(formData.maxDiscountPercentage) || 0;
+      // lowStockThreshold will be sent as a string from formData, backend will parse robustly
+
+      if (formData.image !== undefined) {
+        updatedItemPayload.image = formData.image;
+      }
 
       await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
@@ -417,11 +455,32 @@ export default function Items() {
       setEditingItem(null);
       showSuccess("Item updated successfully!");
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to update item.");
+      const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+
+  const handleApproveItem = async (itemId) => {
+    if (!window.confirm("Are you sure you want to approve this item?")) return;
+    setIsSubmitting(true);
+    try {
+      await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
+      showSuccess("Item approved successfully!");
+      await fetchItems();
+      await fetchPendingReviewItems();
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to approve item.", user);
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReviewAndEditItem = (item) => {
+    handleEditItem(item);
   };
 
   const handleItemChange = (index, field, value) => {
@@ -512,9 +571,6 @@ export default function Items() {
       stateName: "",
       invoiceNumber: "",
       date: new Date().toISOString().split("T")[0],
-      quantity: "",
-      price: "",
-      gstRate: "0",
       items: [],
     });
     setItemSearchTerm("");
@@ -526,24 +582,30 @@ export default function Items() {
       setError("Item name is required");
       return;
     }
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    if (buyingPrice > sellingPrice) {
+      setError("Buying price cannot be greater than selling price.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        sellingPrice: parseFloat(formData.sellingPrice) || 0,
-        buyingPrice: parseFloat(formData.buyingPrice) || 0,
+        sellingPrice: sellingPrice,
+        buyingPrice: buyingPrice,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         unit: formData.unit,
         category: formData.category,
-        subcategory: formData.subcategory,
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
+        image: formData.image || "",
       };
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
-      setShowAddItemModal(false); // Use renamed state
+      setShowAddItemModal(false);
       setFormData({
         name: "",
         quantity: "",
@@ -553,7 +615,6 @@ export default function Items() {
         hsnCode: "",
         unit: "Nos",
         category: "",
-        subcategory: "General",
         maxDiscountPercentage: "",
         lowStockThreshold: "5",
       });
@@ -562,12 +623,26 @@ export default function Items() {
     } catch (err) {
       const errorMessage = handleApiError(
         err,
-        "Failed to add item. Please try again."
+        "Failed to add item. Please try again.",
+        user
       );
       setError(errorMessage);
       console.error("Error adding item:", err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      setIsSubmitting(true);
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, image: reader.result }));
+        setIsSubmitting(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -577,68 +652,160 @@ export default function Items() {
 
   const toggleExpandedRow = async (id) => {
     if (expandedRow !== id) {
-      await fetchPurchaseHistory(id);
+      await fetchPurchaseHistoryForExpandedRow(id); // Use renamed function
     }
     setExpandedRow(expandedRow === id ? null : id);
   };
 
   const handleShowItemHistoryModal = async (item) => {
-    setEditingItem(item);
-    setShowItemHistoryModal(true);
     setItemHistoryLoading(true);
     setError(null);
-    let combinedHistory = [];
+    setShowItemHistoryModal(true);
+    setEditingItem(item);
 
-    if (item.excelImportHistory && item.excelImportHistory.length > 0) {
-      item.excelImportHistory.forEach((entry) => {
-        let quantityChange = 0;
-        let details = `File: ${entry.fileName || "N/A"}. `;
+    setExcelHistoryData([]);
+    setPurchaseHistoryData([]);
+    setTicketUsageData([]);
+    setInventoryAdjustmentsLogData([]);
+    setItemEditsLogData([]);
+
+    let tempExcelHistory = [];
+    let tempPurchaseHistory = [];
+    let tempTicketUsage = [];
+    let tempInventoryAdjustments = [];
+    let tempItemEdits = [];
+
+    try {
+      const fetchedItem = await apiClient(`/items/${item._id}`, {
+        params: {
+          populate:
+            "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
+        },
+      });
+      setEditingItem(fetchedItem);
+
+      fetchedItem.excelImportHistory?.forEach((entry) => {
+        let importedByUserDisplay = "System";
+        if (entry.importedBy) {
+          importedByUserDisplay =
+            `${entry.importedBy.firstname || ""} ${entry.importedBy.lastname || ""
+              }`.trim() || entry.importedBy.email;
+        }
         let oldQtyText = "";
         let newQtyText = "";
         if (entry.action === "created") {
           const createdQty = entry.snapshot?.quantity;
-          quantityChange = parseFloat(createdQty) || 0;
-          newQtyText = ` (New Qty: ${quantityChange})`;
-          details += `Item created.`;
+          newQtyText = ` (Initial Qty: ${parseFloat(createdQty) || 0})`;
         } else if (entry.action === "updated") {
           const qtyChangeInfo = entry.changes?.find(
             (c) => c.field === "quantity"
           );
           if (qtyChangeInfo) {
-            const oldQty = parseFloat(qtyChangeInfo.oldValue);
-            const newQty = parseFloat(qtyChangeInfo.newValue);
-            quantityChange = newQty - oldQty;
-            oldQtyText = ` (Old: ${oldQty} -> New: ${newQty})`;
+            const oldQty = parseFloat(qtyChangeInfo.oldValue) || 0;
+            const newQty = parseFloat(qtyChangeInfo.newValue) || 0;
+            oldQtyText = ` (Qty: ${oldQty} -> ${newQty})`;
           }
-          details += `Item fields updated.`;
         }
-        combinedHistory.push({
+        tempExcelHistory.push({
           date: new Date(entry.importedAt),
-          type: `Excel Import (${entry.action})`,
-          user: entry.importedBy?.firstname || "System",
-          details: details.trim() + oldQtyText + newQtyText,
-          quantityChange: quantityChange,
+          action: entry.action,
+          user: importedByUserDisplay,
+          fileName: entry.fileName || "N/A",
+          changesSummary:
+            entry.action === "updated"
+              ? entry.changes
+                ?.map((c) => `${c.field}: ${c.oldValue} -> ${c.newValue}`)
+                .join("; ") + oldQtyText
+              : `Initial state set.` + newQtyText,
         });
       });
-    }
+      setExcelHistoryData(
+        tempExcelHistory.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
 
-    const existingPurchaseHistory = purchaseHistory[item._id];
-    if (existingPurchaseHistory && existingPurchaseHistory.length > 0) {
-      existingPurchaseHistory.forEach((purchase) => {
-        combinedHistory.push({
+      const itemPurchases = await apiClient(
+        `/items/${fetchedItem._id}/purchases`
+      );
+      if (Array.isArray(itemPurchases) && itemPurchases.length > 0) {
+        tempPurchaseHistory = itemPurchases.map((purchase) => ({
+          _id: purchase._id,
           date: new Date(purchase.date),
-          type: "Purchase Entry",
-          user: purchase.createdByName || "System",
-          details: `Purchased from ${purchase.companyName} (Inv: ${
-            purchase.invoiceNumber
-          }). Price: ₹${purchase.price?.toFixed(2)}/unit.`,
-          quantityChange: parseFloat(purchase.quantity) || 0,
+          companyName: purchase.companyName,
+          invoiceNumber: purchase.invoiceNumber,
+          createdByName: purchase.createdByName || "System",
+          quantity: parseFloat(purchase.quantity) || 0,
+          price: parseFloat(purchase.price) || 0,
+          gstRate: parseFloat(purchase.gstRate) || 0,
+          amount: purchase.amount,
+        }));
+      }
+      setPurchaseHistoryData(
+        tempPurchaseHistory.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
+
+      const ticketUsageRaw = await apiClient(
+        `/items/${fetchedItem._id}/ticket-usage`
+      );
+      if (Array.isArray(ticketUsageRaw) && ticketUsageRaw.length > 0) {
+        tempTicketUsage = ticketUsageRaw.map((usage) => ({
+          date: new Date(usage.date),
+          type: usage.type || "Ticket Interaction",
+          user: usage.user || "System",
+          details: usage.details || `Item used in Ticket ${usage.ticketNumber}`,
+          quantityChange: parseFloat(usage.quantityChange) || 0,
+          ticketNumber: usage.ticketNumber,
+        }));
+      }
+      setTicketUsageData(
+        tempTicketUsage.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
+
+      if (
+        Array.isArray(fetchedItem.inventoryLog) &&
+        fetchedItem.inventoryLog.length > 0
+      ) {
+        fetchedItem.inventoryLog.forEach((log) => {
+          const commonLogData = {
+            date: new Date(log.date),
+            type: log.type,
+            user: log.userReference
+              ? `${log.userReference.firstname || ""} ${log.userReference.lastname || ""
+                }`.trim() || log.userReference.email
+              : "System",
+            details:
+              log.ticketReference && log.ticketReference.ticketNumber
+                ? `${log.details || log.type}`
+                : log.details || log.type,
+            quantityChange: parseFloat(log.quantityChange) || 0,
+            ticketNumber: log.ticketReference?.ticketNumber,
+          };
+
+          if (log.type === "Item Details Updated") {
+            tempItemEdits.push(commonLogData);
+          } else if (
+            !log.type.toLowerCase().includes("excel import") &&
+            !log.type.toLowerCase().includes("purchase entry") &&
+            !log.type.toLowerCase().includes("ticket deduction (initial)")
+          ) {
+            tempInventoryAdjustments.push(commonLogData);
+          }
         });
-      });
+      }
+      setInventoryAdjustmentsLogData(
+        tempInventoryAdjustments.sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        )
+      );
+      setItemEditsLogData(
+        tempItemEdits.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
+    } catch (err) {
+      console.error("Error fetching full item details for history modal:", err);
+      handleApiError(err, "Failed to load item history.", user);
+      setError("Failed to load item history.");
+    } finally {
+      setItemHistoryLoading(false);
     }
-    combinedHistory.sort((a, b) => b.date - a.date);
-    setItemHistory(combinedHistory);
-    setItemHistoryLoading(false);
   };
 
   const handleDelete = async (id) => {
@@ -647,9 +814,14 @@ export default function Items() {
         setIsSubmitting(true);
         await apiClient(`/items/${id}`, { method: "DELETE" });
         await fetchItems();
+        await fetchPendingReviewItems();
         showSuccess("Item Deleted Successfully");
       } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to delete item.");
+        const errorMessage = handleApiError(
+          err,
+          "Failed to delete item.",
+          user
+        );
         setError(errorMessage);
         console.error("Error deleting item:", err);
       } finally {
@@ -666,7 +838,7 @@ export default function Items() {
         setError(
           "Please fill all required fields and ensure each item has a description, quantity, and price"
         );
-        setIsSubmitting(false); // Reset submitting state
+        setIsSubmitting(false);
         return false;
       }
       const purchaseDataToSend = {
@@ -742,11 +914,15 @@ export default function Items() {
       return;
     }
     try {
-      const response = await apiClient("/items/export-excel", {
+      const blob = await apiClient("items/export-excel", {
         method: "GET",
-        rawResponse: true,
+        responseType: "blob",
       });
-      const blob = await response.blob();
+
+      if (!blob) {
+        throw new Error("Failed to export Excel: No data received.");
+      }
+
       saveAs(blob, "items_export.xlsx");
       setExcelUpdateStatus({
         error: null,
@@ -756,17 +932,10 @@ export default function Items() {
       showSuccess("Items exported to Excel successfully!");
     } catch (err) {
       console.error("Error exporting to Excel:", err);
-      const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to export items. ${
-        err.status ? `Status: ${err.status}.` : ""
-      } ${specificMessage || "Please try again."}`;
-      setExcelUpdateStatus({
-        error: displayMessage,
-        success: null,
-        details: [],
-      });
-      setError(displayMessage);
-      showToast(displayMessage, false);
+      const message =
+        err.data?.message || err.message || "Failed to export items to Excel.";
+      setExcelUpdateStatus({ error: message, success: null, details: [] });
+      setError(message);
     } finally {
       setIsExportingExcel(false);
     }
@@ -780,63 +949,56 @@ export default function Items() {
     if (
       !window.confirm(
         "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-          "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-          "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-          "Are you absolutely sure you want to proceed?"
+        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
+        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
+        "Are you absolutely sure you want to proceed?"
       )
     ) {
-      event.target.value = null; // Reset file input if user cancels
+      event.target.value = null;
       return;
     }
     setIsProcessingExcel(true);
     const formData = new FormData();
     formData.append("excelFile", file);
     try {
-      const responseData = await apiClient("/items/import-uploaded-excel", {
+      const responseData = await apiClient("items/import-uploaded-excel", {
         method: "POST",
         body: formData,
-        isFormData: true,
       });
-      const response = responseData;
-      let successMessage = `Excel sync complete: ${
-        response.itemsCreated || 0
-      } created, ${response.itemsUpdated || 0} updated, ${
-        response.itemsDeleted || 0
-      } deleted.`;
-      if (response.parsingErrors && response.parsingErrors.length > 0) {
-        successMessage += ` Encountered ${response.parsingErrors.length} parsing issues. Check console for details.`;
-        console.warn("Excel Parsing Issues:", response.parsingErrors);
+
+      let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
+        } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
+        } deleted.`;
+
+      if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
+        successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
+        console.warn("Excel Parsing Issues:", responseData.parsingErrors);
       }
       if (
-        response.databaseProcessingErrors &&
-        response.databaseProcessingErrors.length > 0
+        responseData.databaseProcessingErrors &&
+        responseData.databaseProcessingErrors.length > 0
       ) {
-        successMessage += ` Encountered ${response.databaseProcessingErrors.length} database processing errors. Check console for details.`;
+        successMessage += ` Encountered ${responseData.databaseProcessingErrors.length} database processing errors. Check console for details.`;
         console.warn(
           "Database Processing Errors:",
-          response.databaseProcessingErrors
+          responseData.databaseProcessingErrors
         );
       }
       setExcelUpdateStatus({
         error: null,
         success: successMessage,
-        details: response.databaseProcessingDetails || [],
+        details: responseData.databaseProcessingDetails || [],
       });
       showSuccess(successMessage);
       fetchItems();
     } catch (err) {
       console.error("Error updating from Excel:", err);
-      const specificMessage = err.data?.message || err.message;
-      const displayMessage = `Failed to update from Excel. ${
-        err.status ? `Status: ${err.status}.` : ""
-      } ${specificMessage || "Please check the file and try again."}`;
-      setExcelUpdateStatus({
-        error: displayMessage,
-        success: null,
-        details: [],
-      });
-      setError(displayMessage);
-      showToast(displayMessage, false);
+      const message =
+        err.data?.message ||
+        err.message ||
+        "Failed to update items from Excel.";
+      setExcelUpdateStatus({ error: message, success: null, details: [] });
+      setError(message);
     } finally {
       setIsProcessingExcel(false);
       event.target.value = null;
@@ -858,7 +1020,6 @@ export default function Items() {
       setFormData((prevFormData) => ({
         ...prevFormData,
         category: newCategoryName.trim(),
-        subcategory: "General",
       }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -867,217 +1028,282 @@ export default function Items() {
         true
       );
     } catch (err) {
-      handleApiError(err, "Failed to add new category.");
+      handleApiError(err, "Failed to add new category.", user);
     } finally {
       setIsSubmittingCategory(false);
     }
   };
 
-  const handleAddNewSubcategory = async () => {
-    if (!newSubcategoryName.trim()) {
-      showToast("Subcategory name cannot be empty.", false);
-      return;
-    }
-    if (!formData.category) {
-      showToast("Please select a category first.", false);
-      return;
-    }
-    setIsSubmittingSubcategory(true);
-    try {
-      await apiClient(`/items/categories/subcategory`, {
-        method: "POST",
-        body: {
-          categoryName: formData.category,
-          subcategoryName: newSubcategoryName.trim(),
-        },
-      });
-      await fetchCategories();
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        subcategory: newSubcategoryName.trim(),
-      }));
-      setIsAddingNewSubcategory(false);
-      setNewSubcategoryName("");
+  const handleUpdateGlobalLowStockThreshold = (newThresholdValue) => {
+    const newNumThreshold = parseInt(newThresholdValue, 10);
+    if (Number.isFinite(newNumThreshold) && newNumThreshold >= 0) {
+      setEffectiveLowStockThreshold(newNumThreshold);
+      localStorage.setItem(
+        LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE,
+        newNumThreshold.toString()
+      );
       showToast(
-        `Subcategory "${newSubcategoryName.trim()}" added to "${
-          formData.category
-        }".`,
+        `Global low stock threshold updated to ${newNumThreshold}.`,
         true
       );
-    } catch (err) {
-      handleApiError(err, "Failed to add new subcategory.");
-    } finally {
-      setIsSubmittingSubcategory(false);
+    } else {
+      showToast("Invalid threshold value.", false);
     }
   };
 
-  const anyLoading = isSubmitting || isProcessingExcel || isExportingExcel;
+  const applyStockAlertFilter = () => {
+    setCurrentPage(1);
+    fetchItems();
+  };
+
+  const anyLoading =
+    isSubmitting ||
+    isProcessingExcel ||
+    isExportingExcel ||
+    loading
 
   return (
     <div className="items-container">
       <Navbar showPurchaseModal={openPurchaseModal} />
       <div className="container mt-4">
-        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && !showItemHistoryModal && ( // Only show page-level error if no modal is active
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
+        {error &&
+          !showAddItemModal &&
+          !showEditItemModal &&
+          !showPurchaseModal &&
+          !showItemHistoryModal && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
         {excelUpdateStatus.error && (
           <div className="alert alert-danger" role="alert">
             Excel Update Error: {excelUpdateStatus.error}
           </div>
         )}
-        {excelUpdateStatus.success && (
-          <div className="alert alert-success" role="alert">
-            {excelUpdateStatus.success}
-          </div>
-        )}
 
-        <div className="top-controls-container">
-          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-            <h2 style={{ color: "black", margin: 0 }} className="me-auto">
-              {stockAlertFilterActive ? `Stock Alerts` : "All Items List"}
-            </h2>
-            <div className="d-flex align-items-center gap-2">
+        {user &&
+          (user.role === "admin" || user.role === "super-admin") &&
+          totalPendingReviewItems > 0 && (
+            <Card className="mb-4 border-warning">
+              <Card.Header className="bg-warning text-dark">
+                <ShieldFillCheck size={20} className="me-2" /> Items Pending
+                Review ({pendingReviewItems.length})
+              </Card.Header>
+              <Card.Body>
+                <div className="table-responsive">
+                  <table className="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Created By</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingReviewItems.map((item) => (
+                        <tr key={item._id}>
+                          <td>{item.name}</td>
+                          <td>{item.category}</td>
+                          <td>
+                            {item.createdBy?.firstname || "N/A"}{" "}
+                            {item.createdBy?.lastname || ""}
+                          </td>
+                          <td>
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => handleApproveItem(item._id)}
+                              disabled={isSubmitting}
+                              title="Approve Item"
+                            >
+                              <CheckCircleFill /> Approve
+                            </Button>
+                            <Button
+                              variant="info"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => handleReviewAndEditItem(item)}
+                              disabled={isSubmitting}
+                              title="Review and Edit Item"
+                            >
+                              <PencilSquare /> Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDelete(item._id)}
+                              disabled={isSubmitting}
+                              title="Delete Item"
+                            >
+                              <Trash /> Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card.Body>
+              <Card.Footer className="text-muted small">
+                These items were created by users and require your approval
+                before being widely available or used in reports. Approving an
+                item will make it part of the main item list. Editing an item
+                will also automatically approve it.
+              </Card.Footer>
+              {totalPendingReviewItems > itemsPerPage && (
+                <Pagination
+                  currentPage={currentPagePending}
+                  totalItems={totalPendingReviewItems}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={(page) => setCurrentPagePending(page)}
+                // Note: Export/Import buttons could be passed as props here if moved to Pagination component
+                />
+              )}
+            </Card>
+          )}
+
+        <div className="mb-3">
+          {/* Controls Area - Single Line */}
+          <div className="d-flex align-items-center justify-content-between mb-3" style={{ width: "100%", minWidth: "100%" }}>
+            {/* Left side - Title */}
+            <div style={{ flexShrink: 0, minWidth: "200px" }}>
+              <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>
+                {stockAlertFilterActive
+                  ? `Stock Alerts (Qty < ${parseInt(stockAlertsPageFilterThreshold, 10) || effectiveLowStockThreshold})`
+                  : user && (user.role === "admin" || user.role === "super-admin")
+                    ? "Items List (Approved)"
+                    : "All Items List"}
+              </h2>
+            </div>
+
+            {/* Middle - Search Bar with constrained growth */}
+            <div style={{
+              flexGrow: 1,
+              flexShrink: 1,
+              minWidth: "200px",
+              maxWidth: "400px",
+              margin: "0 10px"
+            }}>
               <SearchBar
                 searchTerm={searchTerm}
-                setSearchTerm={(value) => {
-                  setSearchTerm(value.toLowerCase());
-                  setCurrentPage(1);
-                }}
-                placeholder="Search items or HSN codes..."
-                showButton={false}
-                className="flex-grow-1"
-                disabled={anyLoading || stockAlertFilterActive}
-              />
-              <button
-                onClick={handleExportToExcel}
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Export to Excel"
-              >
-                Export Excel
-                {isExportingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowDown />
-                )}
-              </button>
-              <button
-                onClick={() =>
-                  document.getElementById("excel-upload-input")?.click()
-                }
-                className="btn btn-info"
-                disabled={anyLoading}
-                title="Upload & Update from Excel"
-              >
-                Upload Excel
-                {isProcessingExcel ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <FileEarmarkArrowUp />
-                )}
-              </button>
-              <button
-                onClick={() => setShowAddItemModal(true)} // Changed from setShowModal
-                className="btn btn-success d-flex align-items-center"
-                disabled={anyLoading}
-                title="Add New Item"
-                style={{ gap: "0.35rem" }}
-              >
-                {isSubmitting ? (
-                  "Processing..."
-                ) : (
-                  <>
-                    <PlusCircle size={18} />
-                    Add New Item
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="d-flex align-items-stretch flex-wrap gap-2 mb-3 w-100">
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setSelectedSubcategory("All");
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-              >
-                <option value="All">All Categories</option>
-                {Array.isArray(categories) &&
-                  categories.map((cat) => (
-                    <option key={cat.category} value={cat.category}>
-                      {cat.category}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                value={selectedSubcategory}
-                onChange={(e) => {
-                  setSelectedSubcategory(e.target.value);
-                  setCurrentPage(1);
-                }}
-                disabled={
-                  selectedCategory === "All" ||
-                  anyLoading ||
+                setSearchTerm={setSearchTerm}
+                placeholder={
                   stockAlertFilterActive
+                    ? "Search alerts..."
+                    : "Search items/HSN..."
                 }
-              >
-                <option value="All">All Subcategories</option>
-                {selectedCategory !== "All" &&
-                  Array.isArray(categories) &&
-                  categories
-                    .find((c) => c.category === selectedCategory)
-                    ?.subcategories.map((subcat) => (
-                      <option key={subcat} value={subcat}>
-                        {subcat}
-                      </option>
-                    ))}
-              </select>
+                showButton={false}
+                disabled={anyLoading}
+              />
             </div>
-            <div className="flex-fill" style={{ minWidth: "150px" }}>
-              <select
-                className="form-select w-100"
-                value={
-                  quantityFilterThreshold === null
-                    ? "All"
-                    : quantityFilterThreshold
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setQuantityFilterThreshold(
-                    value === "All" ? null : parseInt(value, 10)
-                  );
-                  setCurrentPage(1);
-                }}
-                disabled={anyLoading || stockAlertFilterActive}
-                title="Filter by quantity"
-              >
-                <option value="All">All Quantities</option>
-                <option value="0">0 (Out of Stock)</option>
-                <option value="1">1 and below</option>
-                <option value="3">3 and below</option>
-                <option value="5">5 and below</option>
-                <option value="10">10 and below</option>
-                <option value="20">20 and below</option>
-              </select>
+
+            {/* Right side - Controls with fixed width */}
+            <div style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              whiteSpace: "nowrap"
+            }}>
+              {stockAlertFilterActive ? (
+                <>
+                  <label htmlFor="stockAlertThresholdInput" className="mb-0 me-1">
+                    Alert Qty &lt;
+                  </label>
+                  <input
+                    type="number"
+                    id="stockAlertThresholdInput"
+                    className="form-control form-control-sm"
+                    value={stockAlertsPageFilterThreshold}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || parseInt(val, 10) >= 0) {
+                        setStockAlertsPageFilterThreshold(val);
+                      } else if (parseInt(val, 10) < 0) {
+                        setStockAlertsPageFilterThreshold("0");
+                      }
+                    }}
+                    onBlur={applyStockAlertFilter}
+                    onKeyPress={(e) => e.key === "Enter" && applyStockAlertFilter()}
+                    style={{ width: "70px" }}
+                    min="0"
+                    disabled={anyLoading}
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={applyStockAlertFilter}
+                    disabled={anyLoading}
+                  >
+                    Apply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => handleUpdateGlobalLowStockThreshold(stockAlertsPageFilterThreshold)}
+                    disabled={anyLoading}
+                    title="Set as global default"
+                  >
+                    Set Default
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedCategory}
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={anyLoading}
+                    style={{ width: "130px" }}
+                  >
+                    <option value="All">All Categories</option>
+                    {Array.isArray(categories) &&
+                      categories.map((cat) => (
+                        <option key={cat.category} value={cat.category}>
+                          {cat.category}
+                        </option>
+                      ))}
+                  </select>
+                  <input
+                    type="number"
+                    className="form-control form-control-sm"
+                    placeholder="Qty ≤"
+                    value={quantityFilterInputValue}
+                    onChange={(e) => setQuantityFilterInputValue(e.target.value)}
+                    style={{ width: "70px" }}
+                    min="0"
+                    disabled={anyLoading}
+                  />
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => setShowAddItemModal(true)}
+                    disabled={anyLoading}
+                    title="Add New Item"
+                    className="d-flex align-items-center"
+                    style={{ gap: "0.25rem" }}
+                  >
+                    <PlusCircle size={16} /> Add Item
+                  </Button>
+                  {user && (user.role === "admin" || user.role === "super-admin") && (<></>)}
+                </>
+              )}
             </div>
           </div>
+          {excelUpdateStatus.success && !stockAlertFilterActive && (
+            <Alert variant="success" className="mt-2 py-1 px-2 small">
+              {excelUpdateStatus.success}
+            </Alert>
+          )}
         </div>
 
         <input
@@ -1087,6 +1313,7 @@ export default function Items() {
           accept=".xlsx, .xls"
           onChange={handleFileSelectedForUploadAndProcess}
           disabled={anyLoading}
+
         />
 
         <div className="table-responsive">
@@ -1122,52 +1349,40 @@ export default function Items() {
                     cursor: anyLoading ? "not-allowed" : "pointer",
                   }}
                 >
-                  Max Disc. %
+                  Disc. %
                   {sortConfig.key === "maxDiscountPercentage" &&
                     (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
+                <th>Image</th>
+
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {currentItems.length > 0 ? (
-                currentItems.map((item) => (
+              {items.length > 0 ? (
+                items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
                       <td>{item.name}</td>
                       <td>
                         <>
                           {item.quantity}{" "}
-                          {item.quantity <= 0 || item.needsRestock ? (
+                          {item.quantity <= 0 ? (
                             <span
                               className="badge bg-danger ms-2"
-                              title={
-                                item.quantity <= 0
-                                  ? "Out of stock! Needs immediate restock."
-                                  : `Below item specific threshold (${
-                                      item.lowStockThreshold || "Not Set"
-                                    }). Needs restock.`
-                              }
+                              title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}
                             >
                               ⚠️ Restock
                             </span>
-                          ) : (
-                            item.quantity <
-                              (stockAlertFilterActive
-                                ? lowStockWarningQueryThreshold
-                                : effectiveLowStockThreshold) && (
-                              <span
-                                className="badge bg-warning text-dark ms-2"
-                                title={`Below page display threshold (< ${
-                                  stockAlertFilterActive
-                                    ? lowStockWarningQueryThreshold
-                                    : effectiveLowStockThreshold
-                                }`}
-                              >
-                                🔥 Low Stock
-                              </span>
-                            )
-                          )}
+                          ) : item.quantity > 0 &&
+                            item.quantity <= item.lowStockThreshold ? (
+                            <span
+                              className="badge bg-warning text-dark ms-2"
+                              title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
+                            >
+                              🔥 Low Stock
+                            </span>
+                          ) : null}
                         </>
                       </td>
                       <td>{`₹${parseFloat(item.sellingPrice).toFixed(2)}`}</td>
@@ -1181,46 +1396,62 @@ export default function Items() {
                           ? `${item.maxDiscountPercentage}%`
                           : "-"}
                       </td>
-                      <td>
-                        <div className="d-flex gap-1">
-                          <button
-                            onClick={() => toggleExpandedRow(item._id)}
-                            className="btn btn-info btn-sm"
-                            disabled={anyLoading}
-                            title="View Details"
+                      <td className="text-center">
+                        {item.image ? (
+                          <a
+                            href={item.image}
+                            target="_blank"
+                            rel="noopener noreferrer"
                           >
-                            <Eye size={16} />
-                          </button>
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              style={{
+                                width: "50px",
+                                height: "50px",
+                                objectFit: "cover",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <span className="text-muted small">No Image</span>
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="d-flex gap-1 justify-content-center">
+                          <ActionButtons
+                            item={item}
+                            onView={(currentItem) =>
+                              toggleExpandedRow(currentItem._id)
+                            }
+                            onEdit={handleEditItem}
+                            onDelete={(currentItem) =>
+                              handleDelete(currentItem._id)
+                            }
+                            isLoading={anyLoading}
+                            size="sm"
+                          />
                           <button
                             onClick={() => handleShowItemHistoryModal(item)}
                             className="btn btn-secondary btn-sm"
                             disabled={anyLoading}
                             title="View Item History"
                           >
-                            <ClockHistory size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger btn-sm"
-                            disabled={anyLoading}
-                            title="Delete Item"
-                          >
-                            <Trash size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleEditItem(item)}
-                            className="btn btn-warning btn-sm"
-                            disabled={anyLoading}
-                            title="Edit Item"
-                          >
-                            <i className="bi bi-pencil-square"></i>
+                            <ClockHistory />
                           </button>
                         </div>
                       </td>
                     </tr>
                     {expandedRow === item._id && (
                       <tr>
-                        <td colSpan="8" className="expanded-row">
+                        <td
+                          colSpan="9
+                        "
+                          className="expanded-row"
+                        >
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
@@ -1235,60 +1466,76 @@ export default function Items() {
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td><strong>Name</strong></td>
+                                  <td>
+                                    <strong>Name</strong>
+                                  </td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Category</strong></td>
+                                  <td>
+                                    <strong>Category</strong>
+                                  </td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
+                                <tr></tr>
                                 <tr>
-                                  <td><strong>Subcategory</strong></td>
-                                  <td>{item.subcategory || "-"}</td>
-                                </tr>
-                                <tr>
-                                  <td><strong>Quantity</strong></td>
+                                  <td>
+                                    <strong>Quantity</strong>
+                                  </td>
                                   <td>
                                     {item.quantity}
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Item specific restock threshold: ${
-                                            item.lowStockThreshold || "Not Set"
-                                          })`
-                                      : item.quantity <
-                                          (stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold) &&
-                                        ` (Page display low stock threshold: < ${
-                                          stockAlertFilterActive
-                                            ? lowStockWarningQueryThreshold
-                                            : effectiveLowStockThreshold
-                                        })`}
+                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"
+                                        })`
+                                      : item.quantity > 0 &&
+                                      item.quantity <=
+                                      item.lowStockThreshold &&
+                                      ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Selling Price</strong></td>
-                                  <td>₹{parseFloat(item.sellingPrice).toFixed(2)}</td>
+                                  <td>
+                                    <strong>Selling Price</strong>
+                                  </td>
+                                  <td>
+                                    ₹{parseFloat(item.sellingPrice).toFixed(2)}
+                                  </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Buying Price</strong></td>
-                                  <td>₹{parseFloat(item.buyingPrice || 0).toFixed(2)}</td>
+                                  <td>
+                                    <strong>Buying Price</strong>
+                                  </td>
+                                  <td>
+                                    ₹
+                                    {parseFloat(item.buyingPrice || 0).toFixed(
+                                      2
+                                    )}
+                                  </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Unit</strong></td>
+                                  <td>
+                                    <strong>Unit</strong>
+                                  </td>
                                   <td>{item.unit || "Nos"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>GST Rate</strong></td>
+                                  <td>
+                                    <strong>GST Rate</strong>
+                                  </td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>HSN Code</strong></td>
+                                  <td>
+                                    <strong>HSN Code</strong>
+                                  </td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Max Discount</strong></td>
+                                  <td>
+                                    <strong>Max Discount</strong>
+                                  </td>
                                   <td>
                                     {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
@@ -1298,10 +1545,13 @@ export default function Items() {
                               </tbody>
                             </table>
                             <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
-                              <h6>Purchase History</h6>
+                              <h6>Purchase History (Expanded Row)</h6>
                             </div>
                             {purchaseHistoryLoading[item._id] ? (
-                               <div className="text-center"><Spinner animation="border" size="sm" /> Loading history...</div>
+                              <div className="text-center">
+                                <Spinner animation="border" size="sm" /> Loading
+                                history...
+                              </div>
                             ) : purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
                                 <thead className="table-secondary">
@@ -1318,9 +1568,15 @@ export default function Items() {
                                   {purchaseHistory[item._id].map(
                                     (purchase, idx) => (
                                       <tr key={purchase._id || idx}>
-                                        <td>{new Date(purchase.date).toLocaleDateString()}</td>
+                                        <td>
+                                          {new Date(
+                                            purchase.date
+                                          ).toLocaleDateString()}
+                                        </td>
                                         <td>{purchase.companyName}</td>
-                                        <td>{purchase.createdByName || "N/A"}</td>
+                                        <td>
+                                          {purchase.createdByName || "N/A"}
+                                        </td>
                                         <td>{purchase.invoiceNumber}</td>
                                         <td>{purchase.quantity}</td>
                                         <td>₹{purchase.price.toFixed(2)}</td>
@@ -1331,9 +1587,9 @@ export default function Items() {
                               </table>
                             ) : (
                               <div className="alert alert-info">
-                                {error && expandedRow === item._id // Show error only for the current expanded row
+                                {error && expandedRow === item._id
                                   ? `Error loading history: ${error}`
-                                  : "No purchase history found"}
+                                  : "No purchase history found for this item."}
                               </div>
                             )}
                           </div>
@@ -1351,18 +1607,29 @@ export default function Items() {
               )}
             </tbody>
           </table>
-          {itemsToDisplay.length > 0 && (
+          {totalItems > 0 && (
             <Pagination
               currentPage={currentPage}
-              totalItems={itemsToDisplay.length}
+              totalItems={totalItems}
               itemsPerPage={itemsPerPage}
               onPageChange={(page) => {
-                const totalPages = Math.ceil(
-                  itemsToDisplay.length / itemsPerPage
-                );
-                if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                if (page >= 1 && page <= totalPages) {
+                  setCurrentPage(page);
+                }
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
+              // Pass export/import handlers
+              onExportExcel={
+                !stockAlertFilterActive ? handleExportToExcel : undefined
+              }
+              onImportExcel={
+                !stockAlertFilterActive
+                  ? () => document.getElementById("excel-upload-input")?.click()
+                  : undefined
+              }
+              isExporting={isExportingExcel}
+              isImporting={isProcessingExcel}
             />
           )}
         </div>
@@ -1372,25 +1639,41 @@ export default function Items() {
             show={showAddItemModal}
             onHide={() => {
               setShowAddItemModal(false);
-              setFormData({ // Reset form on hide
-                name: "", quantity: "", sellingPrice: "", buyingPrice: "",
-                gstRate: "0", hsnCode: "", unit: "Nos", category: "",
-                subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
+              setFormData({
+                name: "",
+                quantity: "0",
+                sellingPrice: "",
+                buyingPrice: "",
+                image: "",
+                gstRate: "0",
+                hsnCode: "",
+                unit: "Nos",
+                category: "",
+                maxDiscountPercentage: "",
+                lowStockThreshold: "5",
               });
-              setError(null); // Clear modal-specific errors
+              setError(null);
             }}
             title="Add New Item"
             footerContent={
               <>
                 <button
                   type="button"
-                  className="btn btn-secondary" // Changed from "close" to "btn btn-secondary"
+                  className="btn btn-secondary"
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
-                      name: "", quantity: "", sellingPrice: "", buyingPrice: "",
-                      gstRate: "0", hsnCode: "", unit: "Nos", category: "",
-                      subcategory: "General", maxDiscountPercentage: "", lowStockThreshold: "5",
+                      name: "",
+                      quantity: "0",
+                      sellingPrice: "",
+                      buyingPrice: "",
+                      gstRate: "0",
+                      hsnCode: "",
+                      unit: "Nos",
+                      category: "",
+                      maxDiscountPercentage: "",
+                      lowStockThreshold: "5",
+                      image: "",
                     });
                     setError(null);
                   }}
@@ -1406,25 +1689,36 @@ export default function Items() {
                     !formData.sellingPrice ||
                     !formData.category ||
                     isSubmitting ||
-                    isAddingNewCategory || isAddingNewSubcategory
+                    isAddingNewCategory
                   }
                 >
                   {isSubmitting ? (
                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Adding...
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Adding...
                     </>
-                  ) : "Add New Item"}
+                  ) : (
+                    "Add New Item"
+                  )}
                 </button>
               </>
             }
             isLoading={isSubmitting}
           >
             <>
-              {error && <div className="alert alert-danger">{error}</div>} {/* Show error inside modal */}
+              {error && <div className="alert alert-danger">{error}</div>}
               <div className="row">
                 <div className="col-md-6">
                   <div className="form-group">
-                    <label>Name*</label>
+                    <label>
+                      Name <span className="text-danger">*</span>
+                    </label>
                     <input
                       className="form-control mb-2"
                       placeholder="Name"
@@ -1444,13 +1738,20 @@ export default function Items() {
                       placeholder="Quantity"
                       name="quantity"
                       value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || parseInt(val, 10) >= 0) {
+                          setFormData({ ...formData, quantity: val });
+                        } else if (parseInt(val, 10) < 0) {
+                          setFormData({ ...formData, quantity: "0" });
+                        }
+                      }}
                     />
                   </div>
                   <div className="form-group">
-                    <label>Selling Price*</label>
+                    <label>
+                      Selling Price <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -1541,9 +1842,7 @@ export default function Items() {
                             className="form-control"
                             placeholder="Enter new category name"
                             value={newCategoryName}
-                            onChange={(e) =>
-                              setNewCategoryName(e.target.value)
-                            }
+                            onChange={(e) => setNewCategoryName(e.target.value)}
                             disabled={isSubmittingCategory}
                           />
                           <button
@@ -1588,17 +1887,13 @@ export default function Items() {
                               setFormData({
                                 ...formData,
                                 category: e.target.value,
-                                subcategory: "General",
                               })
                             }
                           >
                             <option value="">Select Category</option>
                             {Array.isArray(categories) &&
                               categories.map((cat) => (
-                                <option
-                                  key={cat.category}
-                                  value={cat.category}
-                                >
+                                <option key={cat.category} value={cat.category}>
                                   {cat.category}
                                 </option>
                               ))}
@@ -1608,102 +1903,6 @@ export default function Items() {
                             type="button"
                             onClick={() => setIsAddingNewCategory(true)}
                             title="Add new category"
-                          >
-                            <PlusCircle size={18} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <div className="input-group mb-2">
-                      {isAddingNewSubcategory ? (
-                        <>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter new subcategory name"
-                            value={newSubcategoryName}
-                            onChange={(e) =>
-                              setNewSubcategoryName(e.target.value)
-                            }
-                            disabled={
-                              isSubmittingSubcategory || !formData.category
-                            }
-                          />
-                          <button
-                            className="btn btn-success"
-                            type="button"
-                            onClick={handleAddNewSubcategory}
-                            disabled={
-                              isSubmittingSubcategory ||
-                              !newSubcategoryName.trim() ||
-                              !formData.category
-                            }
-                          >
-                            {isSubmittingSubcategory ? (
-                              <Spinner
-                                as="span"
-                                animation="border"
-                                size="sm"
-                                role="status"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              "Save"
-                            )}
-                          </button>
-                          <button
-                            className="btn btn-secondary"
-                            type="button"
-                            onClick={() => {
-                              setIsAddingNewSubcategory(false);
-                              setNewSubcategoryName("");
-                            }}
-                            disabled={isSubmittingSubcategory}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <select
-                            className="form-control"
-                            name="subcategory"
-                            value={formData.subcategory}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                subcategory: e.target.value,
-                              })
-                            }
-                            disabled={
-                              !formData.category || isAddingNewCategory
-                            }
-                          >
-                            <option value="General">General</option>
-                            {formData.category &&
-                              !isAddingNewCategory &&
-                              Array.isArray(categories) &&
-                              categories
-                                .find((c) => c.category === formData.category)
-                                ?.subcategories.map((subcat) => (
-                                  <option key={subcat} value={subcat}>
-                                    {subcat}
-                                  </option>
-                                ))}
-                          </select>
-                          <button
-                            className="btn btn-outline-primary"
-                            type="button"
-                            onClick={() => setIsAddingNewSubcategory(true)}
-                            title="Add new subcategory"
-                            disabled={
-                              !formData.category ||
-                              isAddingNewCategory ||
-                              isAddingNewSubcategory
-                            }
                           >
                             <PlusCircle size={18} />
                           </button>
@@ -1752,6 +1951,39 @@ export default function Items() {
                       min="0"
                     />
                   </div>
+                  <div className="form-group">
+                    <label>Image</label>
+                    <input
+                      type="file"
+                      className="form-control mb-2"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                    {formData.image && (
+                      <div className="mt-2 text-center">
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-danger ms-2"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, image: "" }))
+                          }
+                          title="Remove Image"
+                        >
+                          X
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -1764,8 +1996,12 @@ export default function Items() {
             onHide={() => {
               setShowItemHistoryModal(false);
               setEditingItem(null);
-              setItemHistory([]);
-              setError(null); // Clear error on close
+              setExcelHistoryData([]);
+              setPurchaseHistoryData([]);
+              setTicketUsageData([]);
+              setInventoryAdjustmentsLogData([]);
+              setItemEditsLogData([]);
+              setError(null);
             }}
             title={`Item History: ${editingItem.name}`}
             footerContent={
@@ -1773,7 +2009,11 @@ export default function Items() {
                 onClick={() => {
                   setShowItemHistoryModal(false);
                   setEditingItem(null);
-                  setItemHistory([]);
+                  setExcelHistoryData([]);
+                  setPurchaseHistoryData([]);
+                  setTicketUsageData([]);
+                  setInventoryAdjustmentsLogData([]);
+                  setItemEditsLogData([]);
                   setError(null);
                 }}
                 className="btn btn-secondary"
@@ -1781,6 +2021,7 @@ export default function Items() {
                 Close
               </button>
             }
+            size="xl"
           >
             <>
               {itemHistoryLoading ? (
@@ -1791,35 +2032,182 @@ export default function Items() {
                 </div>
               ) : error ? (
                 <div className="alert alert-danger">{error}</div>
-              ) : itemHistory.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-sm table-striped table-bordered">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>User/Source</th>
-                        <th>Details</th>
-                        <th>Qty Change</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itemHistory.map((entry, index) => (
-                        <tr key={index}>
-                          <td>{new Date(entry.date).toLocaleString()}</td>
-                          <td>{entry.type}</td>
-                          <td>{entry.user}</td>
-                          <td>{entry.details}</td>
-                          <td className={entry.quantityChange >= 0 ? 'text-success' : 'text-danger'}>
-                            {entry.quantityChange > 0 ? `+${entry.quantityChange}` : entry.quantityChange}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               ) : (
-                <div className="alert alert-info">No history found for this item.</div>
+                <>
+                  {inventoryAdjustmentsLogData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Inventory Adjustments & Ticket Interactions</h5>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Type</th>
+                              <th>User/Source</th>
+                              <th>Details</th>
+                              <th>Qty Change</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {inventoryAdjustmentsLogData.map((entry, index) => (
+                              <tr key={`general-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.type}</td>
+                                <td>{entry.user}</td>
+                                <td>
+                                  {entry.details}
+                                  {entry.ticketNumber
+                                    ? ` (Ticket: ${entry.ticketNumber})`
+                                    : ""}
+                                </td>
+                                <td
+                                  className={
+                                    entry.quantityChange >= 0
+                                      ? "text-success fw-bold"
+                                      : "text-danger fw-bold"
+                                  }
+                                >
+                                  {entry.quantityChange > 0
+                                    ? `+${entry.quantityChange}`
+                                    : entry.quantityChange}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {itemEditsLogData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Item Detail Edits </h5>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>User/Source</th>
+                              <th>Details of Changes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {itemEditsLogData.map((entry, index) => (
+                              <tr key={`edit-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.user}</td>
+                                <td style={{ whiteSpace: "pre-wrap" }}>
+                                  {entry.details}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {purchaseHistoryData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Purchase History</h5>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Supplier</th>
+                              <th>Inv. No</th>
+                              <th>Qty</th>
+                              <th>Price/Unit</th>
+                              <th>GST</th>
+                              <th>Total</th>
+                              <th>Added By</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {purchaseHistoryData.map((entry, index) => (
+                              <tr key={`purchase-${index}`}>
+                                <td>
+                                  {new Date(entry.date).toLocaleDateString()}
+                                </td>
+                                <td>{entry.companyName}</td>
+                                <td>{entry.invoiceNumber}</td>
+                                <td className="text-success fw-bold">
+                                  +{entry.quantity}
+                                </td>
+                                <td>₹{entry.price.toFixed(2)}</td>
+                                <td>{entry.gstRate}%</td>
+                                <td>
+                                  ₹
+                                  {entry.amount?.toFixed(2) ||
+                                    (
+                                      entry.price *
+                                      entry.quantity *
+                                      (1 + entry.gstRate / 100)
+                                    ).toFixed(2)}
+                                </td>
+                                <td>{entry.createdByName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {excelHistoryData.length > 0 && (
+                    <div className="mb-4">
+                      <h5>Excel Import History</h5>
+                      <div
+                        className="table-responsive"
+                        style={{ maxHeight: "300px", overflowY: "auto" }}
+                      >
+                        <table className="table table-sm table-striped table-bordered">
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th>Date</th>
+                              <th>Action</th>
+                              <th>User</th>
+                              <th>File Name</th>
+                              <th>Changes/Summary</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {excelHistoryData.map((entry, index) => (
+                              <tr key={`excel-${index}`}>
+                                <td>{new Date(entry.date).toLocaleString()}</td>
+                                <td>{entry.action}</td>
+                                <td>{entry.user}</td>
+                                <td>{entry.fileName}</td>
+                                <td>{entry.changesSummary}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {inventoryAdjustmentsLogData.length === 0 &&
+                    itemEditsLogData.length === 0 &&
+                    purchaseHistoryData.length === 0 &&
+                    ticketUsageData.length === 0 &&
+                    excelHistoryData.length === 0 &&
+                    !itemHistoryLoading && (
+                      <div className="alert alert-info">
+                        No history found for this item.
+                      </div>
+                    )}
+                </>
               )}
             </>
           </ReusableModal>
@@ -1857,11 +2245,27 @@ export default function Items() {
                     isSubmitting
                   }
                 >
+                  {parseFloat(formData.buyingPrice) >
+                    parseFloat(formData.sellingPrice) && (
+                      <Alert variant="warning" className="p-2 small mb-0 me-2">
+                        Buying price cannot be greater than Selling price!
+                      </Alert>
+                    )}
+
                   {isSubmitting ? (
                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Updating...
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Updating...
                     </>
-                  ) : "Update Item"}
+                  ) : (
+                    "Update Item"
+                  )}
                 </button>
               </>
             }
@@ -1890,9 +2294,14 @@ export default function Items() {
                       className="form-control mb-2"
                       name="quantity"
                       value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || parseInt(val, 10) >= 0) {
+                          setFormData({ ...formData, quantity: val });
+                        } else if (parseInt(val, 10) < 0) {
+                          setFormData({ ...formData, quantity: "0" });
+                        }
+                      }}
                     />
                   </div>
                   <div className="form-group">
@@ -1980,7 +2389,7 @@ export default function Items() {
                       name="category"
                       value={formData.category}
                       onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value, subcategory: "General" }) // Reset subcategory
+                        setFormData({ ...formData, category: e.target.value })
                       }
                     >
                       <option value="">Select Category</option>
@@ -1990,32 +2399,6 @@ export default function Items() {
                             {cat.category}
                           </option>
                         ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Subcategory</label>
-                    <select
-                      className="form-control mb-2"
-                      name="subcategory"
-                      value={formData.subcategory}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          subcategory: e.target.value,
-                        })
-                      }
-                      disabled={!formData.category}
-                    >
-                      <option value="General">General</option>
-                      {formData.category &&
-                        Array.isArray(categories) &&
-                        categories
-                          .find((c) => c.category === formData.category)
-                          ?.subcategories.map((subcat) => (
-                            <option key={subcat} value={subcat}>
-                              {subcat}
-                            </option>
-                          ))}
                     </select>
                   </div>
                   <div className="form-group">
@@ -2052,6 +2435,39 @@ export default function Items() {
                       min="0"
                     />
                   </div>
+                  <div className="form-group">
+                    <label>Image</label>
+                    <input
+                      type="file"
+                      className="form-control mb-2"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                    {formData.image && (
+                      <div className="mt-2 text-center">
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-danger ms-2"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, image: "" }))
+                          }
+                          title="Remove Image"
+                        >
+                          X
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </>
@@ -2061,7 +2477,11 @@ export default function Items() {
         {showPurchaseModal && (
           <ReusableModal
             show={showPurchaseModal}
-            onHide={() => { setShowPurchaseModal(false); resetPurchaseForm(); setError(null); }}
+            onHide={() => {
+              setShowPurchaseModal(false);
+              resetPurchaseForm();
+              setError(null);
+            }}
             title="Purchase Tracking"
             footerContent={
               <>
@@ -2082,10 +2502,19 @@ export default function Items() {
                   disabled={!isPurchaseDataValid() || isSubmitting}
                 >
                   {isSubmitting ? (
-                     <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Submitting...
+                    <>
+                      <Spinner
+                        as="span"
+                        animation="border"
+                        size="sm"
+                        role="status"
+                        aria-hidden="true"
+                      />{" "}
+                      Submitting...
                     </>
-                  ) : "Submit Purchase"}
+                  ) : (
+                    "Submit Purchase"
+                  )}
                 </button>
               </>
             }
@@ -2189,37 +2618,59 @@ export default function Items() {
                     <input
                       className="form-control mb-2"
                       placeholder="Search item by name or HSN..."
-                      value={idx === currentItemIndex ? itemSearchTerm : ""}
+                      value={itemSearchTerm} // Use a single itemSearchTerm for the active input
                       onChange={(e) => {
                         setItemSearchTerm(e.target.value);
-                        setCurrentItemIndex(idx);
+                        // setCurrentItemIndex(idx); // This state seems unused, removing direct use
                         setShowItemSearch(true);
                       }}
-                      onFocus={() => setCurrentItemIndex(idx)}
+                      onFocus={() => {
+                        /* setCurrentItemIndex(idx); */ setShowItemSearch(true);
+                      }}
                       disabled={isSubmitting}
                     />
                     {filteredItemsList.length > 0 &&
-                      currentItemIndex === idx &&
-                      showItemSearch && (
+                      showItemSearch && ( // Simpler condition for showing dropdown
                         <div className="suggestions-dropdown">
                           {filteredItemsList.map((suggestion, i) => (
                             <div
                               key={i}
                               className="suggestion-item"
                               onClick={() => {
-                                handleItemChange(idx, "description", suggestion.name);
-                                handleItemChange(idx, "price", suggestion.buyingPrice ? suggestion.buyingPrice.toString() : (suggestion.lastPurchasePrice ? suggestion.lastPurchasePrice.toString() : "0"));
-                                handleItemChange(idx, "gstRate", suggestion.gstRate.toString());
-                                setItemSearchTerm("");
+                                handleItemChange(
+                                  idx,
+                                  "description",
+                                  suggestion.name
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "price",
+                                  suggestion.buyingPrice
+                                    ? suggestion.buyingPrice.toString()
+                                    : suggestion.lastPurchasePrice
+                                      ? suggestion.lastPurchasePrice.toString()
+                                      : "0"
+                                );
+                                handleItemChange(
+                                  idx,
+                                  "gstRate",
+                                  suggestion.gstRate.toString()
+                                );
+                                setItemSearchTerm(""); // Clear search term after selection
                                 setShowItemSearch(false);
                               }}
                             >
                               <strong>{suggestion.name}</strong>
                               <span className="text-muted">
-                                {" "}- SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP: ₹{(suggestion.buyingPrice || 0).toFixed(2)}
+                                {" "}
+                                - SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP:
+                                ₹{(suggestion.buyingPrice || 0).toFixed(2)}
                               </span>
                               <br />
-                              <small>HSN: {suggestion.hsnCode || "N/A"}, GST: {suggestion.gstRate || 0}%</small>
+                              <small>
+                                HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
+                                {suggestion.gstRate || 0}%
+                              </small>
                             </div>
                           ))}
                         </div>
@@ -2229,7 +2680,9 @@ export default function Items() {
                     <div className="selected-item-details mb-2 p-2 bg-light border rounded">
                       <strong>{item.description}</strong>
                       {item.price && (
-                        <small className="d-block">Price: ₹{item.price}, GST: {item.gstRate || 0}%</small>
+                        <small className="d-block">
+                          Price: ₹{item.price}, GST: {item.gstRate || 0}%
+                        </small>
                       )}
                     </div>
                   )}
@@ -2242,7 +2695,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Description"
                           value={item.description || ""}
-                          onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "description", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2256,7 +2711,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Price"
                           value={item.price || ""}
-                          onChange={(e) => handleItemChange(idx, "price", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "price", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2269,7 +2726,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="Quantity"
                           value={item.quantity || ""}
-                          onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "quantity", e.target.value)
+                          }
                           required
                         />
                       </div>
@@ -2283,7 +2742,9 @@ export default function Items() {
                           className="form-control mb-2"
                           placeholder="GST Rate"
                           value={item.gstRate || "0"}
-                          onChange={(e) => handleItemChange(idx, "gstRate", e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(idx, "gstRate", e.target.value)
+                          }
                         />
                       </div>
                     </div>
@@ -2307,7 +2768,9 @@ export default function Items() {
                   Add Another Item
                 </button>
                 <div className="total-amount">
-                  <strong>Total Amount: ₹{calculateTotalAmount().toFixed(2)}</strong>
+                  <strong>
+                    Total Amount: ₹{calculateTotalAmount().toFixed(2)}
+                  </strong>
                 </div>
               </div>
             </>

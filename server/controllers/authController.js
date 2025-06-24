@@ -37,7 +37,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "2d" }
+      { expiresIn: "1d" }
     );
 
     res.json({

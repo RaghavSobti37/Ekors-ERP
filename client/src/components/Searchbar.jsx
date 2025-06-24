@@ -3,7 +3,7 @@ import { Form, Button } from "react-bootstrap";
 import { Search as SearchIconBs } from 'react-bootstrap-icons';
 import '../css/Searchbar.css';
 
-const SearchBar = ({
+const SearchBarComponent = ({
  searchTerm,
  setSearchTerm,
  onSearch, // Callback for when search term changes or search is explicitly triggered
@@ -58,4 +58,4 @@ const SearchBar = ({
  );
 };
 
-export default SearchBar;
+export default React.memo(SearchBarComponent);

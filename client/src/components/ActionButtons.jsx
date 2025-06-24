@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button } from 'react-bootstrap';
+import React from "react";
+import { Button } from "react-bootstrap";
 import {
   Eye, // View
   PencilSquare, // Edit
@@ -7,8 +7,11 @@ import {
   PlusSquare, // Create Ticket
   ArrowLeftRight, // Transfer
   BarChart, // Generate Report
+  CloudDownload, // For PDF Download
+  FileEarmarkWord, // For Word Download
   FileEarmarkExcel, // For Generic Excel Report
-} from 'react-bootstrap-icons';
+} from "react-bootstrap-icons";
+import { PDFDownloadLink } from "@react-pdf/renderer";
 
 /**
  * Reusable component for rendering a set of common action buttons.
@@ -22,7 +25,9 @@ import {
  * @param {function} [props.onCreateTicket] - Handler for the Create Ticket action (Quotations).
  * @param {function} [props.onTransfer] - Handler for the Transfer action (Tickets).
  * @param {function} [props.onGenerateReport] - Handler for the Generate Report action (Users).
- * @param {function} [props.onGenerateExcelReport] - Handler for the generic Excel report action.
+ * @param {object} [props.pdfProps] - Object containing `document` (React PDF component) and `fileName` for PDFDownloadLink. If provided, PDF button is shown.
+ * @param {function} [props.onDownloadWord] - Handler for Word download. If provided, Word button is shown.
+ * @param {function} [props.onGenerateExcelReport] - Handler for the generic Excel report action. If provided, Excel button is shown.
  * @param {boolean} [props.isLoading=false] - If true, all buttons are disabled.
  * @param {object|boolean} [props.disabled={}] - Allows specific buttons to be disabled. Can be a boolean to disable all, or an object like `{ edit: true, delete: false }`. Keys match action types ('view', 'edit', 'delete', etc.).
  * @param {string} [props.size='sm'] - Bootstrap button size ('sm', 'lg'). Defaults to 'sm'.
@@ -35,17 +40,19 @@ const ActionButtons = ({
   onCreateTicket,
   onTransfer,
   onGenerateReport,
+  pdfProps,
+  onDownloadWord,
   onGenerateExcelReport,
   isLoading = false,
   disabled = {},
-  size = 'sm',
+  createTicketDisabled = false, 
+  size = "sm",
 }) => {
-
   // Determine if a specific action is disabled
   const isActionDisabled = (actionType) => {
     if (isLoading) return true; // Disable all if general loading is true
-    if (typeof disabled === 'boolean') return disabled; // Apply general boolean disabled prop
-    if (typeof disabled === 'object' && disabled !== null) {
+    if (typeof disabled === "boolean") return disabled; // Apply general boolean disabled prop
+    if (typeof disabled === "object" && disabled !== null) {
       return !!disabled[actionType]; // Check specific action key
     }
     return false; // Default to not disabled
@@ -58,7 +65,7 @@ const ActionButtons = ({
           variant="info"
           size={size}
           onClick={() => onView(item)}
-          disabled={isActionDisabled('view')}
+          disabled={isActionDisabled("view")}
           title="View"
         >
           <Eye />
@@ -69,7 +76,7 @@ const ActionButtons = ({
           variant="warning"
           size={size}
           onClick={() => onEdit(item)}
-          disabled={isActionDisabled('edit')}
+          disabled={isActionDisabled("edit")}
           title="Edit"
         >
           <PencilSquare />
@@ -80,7 +87,7 @@ const ActionButtons = ({
           variant="danger"
           size={size}
           onClick={() => onDelete(item)}
-          disabled={isActionDisabled('delete')}
+          disabled={isActionDisabled("delete")}
           title="Delete"
         >
           <Trash />
@@ -91,7 +98,7 @@ const ActionButtons = ({
           variant="success"
           size={size}
           onClick={() => onCreateTicket(item)}
-          disabled={isActionDisabled('createTicket')}
+          disabled={isLoading || createTicketDisabled}
           title="Create Ticket"
         >
           <PlusSquare />
@@ -99,24 +106,54 @@ const ActionButtons = ({
       )}
       {onTransfer && (
         <Button
-          variant="warning"
+          variant="info"
           size={size}
           onClick={() => onTransfer(item)}
-          disabled={isActionDisabled('transfer')}
+          disabled={isActionDisabled("transfer")}
           title="Transfer Ticket"
         >
           <ArrowLeftRight />
         </Button>
       )}
-       {onGenerateReport && (
+      {onGenerateReport && (
         <Button
           variant="secondary"
           size={size}
           onClick={() => onGenerateReport(item)}
-          disabled={isActionDisabled('generateReport')}
+          disabled={isActionDisabled("generateReport")}
           title="Generate Report"
         >
           <BarChart />
+        </Button>
+      )}
+      {pdfProps && pdfProps.document && pdfProps.fileName && (
+        <PDFDownloadLink
+          document={pdfProps.document}
+          fileName={pdfProps.fileName}
+        >
+          {({ loading: pdfLoading }) => (
+            <Button
+              variant="primary"
+              size={size}
+              disabled={
+                isLoading || pdfLoading || isActionDisabled("downloadPdf")
+              }
+              title="Download PDF"
+            >
+              <CloudDownload /> {pdfLoading ? "..." : "PDF"}
+            </Button>
+          )}
+        </PDFDownloadLink>
+      )}
+      {onDownloadWord && (
+        <Button
+          variant="success"
+          size={size}
+          onClick={() => onDownloadWord(item)}
+          disabled={isLoading || isActionDisabled("downloadWord")}
+          title="Download Word"
+        >
+          <FileEarmarkWord /> Word
         </Button>
       )}
       {onGenerateExcelReport && (
@@ -124,10 +161,10 @@ const ActionButtons = ({
           variant="outline-success" // Or another appropriate variant
           size={size}
           onClick={() => onGenerateExcelReport(item)} // item might not be needed if it's a general report
-          disabled={isActionDisabled('generateExcelReport')}
+          disabled={isActionDisabled("generateExcelReport")}
           title="Generate Excel Report"
         >
-          <FileEarmarkExcel />
+          <FileEarmarkExcel /> EXCEL
         </Button>
       )}
     </div>

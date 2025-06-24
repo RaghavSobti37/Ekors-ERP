@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import apiClient from "../utils/apiClient"; // Adjust path if apiClient.js is elsewhere
+import LoadingSpinner from "../components/LoadingSpinner"; // Import the LoadingSpinner
 
 const AuthContext = createContext();
 
@@ -24,7 +25,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem("erp-user"); // Token is invalid or expired
         setUser(null);
       }
-    } else {
     }
     setIsLoading(false);
   }, []);
@@ -33,104 +33,85 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-  const logEventToServer = async (logData) => {
+  const logEventToServer = useCallback(async (logData) => {
     const payload = { level: "info", ...logData };
     try {
       // apiClient handles token and base URL
-      const responseData = await apiClient("/audit/log", {
+      await apiClient("/audit/log", {
         method: "POST",
         body: payload,
       });
-      // console.log("[DEBUG Client AuthContext] logEventToServer: Success.", responseData); // Optional: log success
     } catch (error) {
-      console.error(
-        "[DEBUG Client AuthContext] logEventToServer: Failed.",
-        error.message,
-        error.data || error
-      );
+      // Consider using a more robust client-side logger if this fails often
+      // For now, failing silently or logging to a dedicated client logger is okay
     }
-  };
+  }, []);
 
-  const login = async (credentials) => {
-    try {
-      const authResponseData = await apiClient("/auth/login", {
-        method: "POST",
-        body: credentials,
-      });
-      if (authResponseData.token && authResponseData.user) {
-        localStorage.setItem("erp-user", authResponseData.token);
-        setUser(authResponseData.user);
-
-        const { firstname, lastname, id, email } = authResponseData.user;
-        logEventToServer({
-          type: "userActivity",
-          message: "User logged in",
-          user: { firstname, lastname, id, email },
-          details: { event: "USER_LOGIN", userId: id, userEmail: email },
+  const login = useCallback(
+    async (credentials) => {
+      try {
+        const authResponseData = await apiClient("/auth/login", {
+          method: "POST",
+          body: credentials,
         });
-        return authResponseData.user; // Return user for immediate use if needed
-      } else {
-        console.error(
-          "[DEBUG Client AuthContext] login: Failed. Token or user data missing in server response.",
-          authResponseData
-        );
-        throw new Error("Login failed: Invalid server response structure.");
-      }
-    } catch (error) {
-      console.error(
-        "[DEBUG Client AuthContext] login: Failed.",
-        error.message,
-        error.data || error
-      );
-      localStorage.removeItem("erp-user"); // Ensure no partial state
-      setUser(null);
-      throw error; // Re-throw for the calling component to handle UI updates (e.g., show error message)
-    }
-  };
+        if (authResponseData.token && authResponseData.user) {
+          localStorage.setItem("erp-user", authResponseData.token);
+          setUser(authResponseData.user);
 
-  const logout = async () => {
+          const { firstname, lastname, id, email } = authResponseData.user;
+          logEventToServer({
+            type: "userActivity",
+            message: "User logged in",
+            user: { firstname, lastname, id, email },
+            details: { event: "USER_LOGIN", userId: id, userEmail: email },
+          });
+          return authResponseData.user; // Return user for immediate use if needed
+        } else {
+          throw new Error("Login failed: Invalid server response structure.");
+        }
+      } catch (error) {
+        localStorage.removeItem("erp-user"); // Ensure no partial state
+        setUser(null);
+        throw error; // Re-throw for the calling component to handle UI updates (e.g., show error message)
+      }
+    },
+    [logEventToServer]
+  ); // logEventToServer is memoized
+
+  const logout = useCallback(async () => {
     const currentUserForLog = { ...user }; // Capture user details before nullifying state
-    console.log(
-      "[DEBUG Client AuthContext] logout: Initiating logout for user:",
-      currentUserForLog ? currentUserForLog.email : "No user in state"
-    );
 
     if (user && user.firstname && user.lastname) {
       const { firstname, lastname, id, email } = currentUserForLog;
-      await logEventToServer({
+      logEventToServer({
+        // No need to await if it's fire-and-forget
         type: "userActivity",
         message: "User logged out",
         user: { firstname, lastname, id, email },
         details: { event: "USER_LOGOUT", userId: id, userEmail: email },
       });
     } else {
-      console.warn(
-        "[DEBUG Client AuthContext] logout: User data incomplete or user not found, attempting anonymous server log for logout event."
-      );
-      await logEventToServer({
+      logEventToServer({
+        // No need to await
         type: "userActivity",
         message: "User logged out (anonymous or incomplete data)",
         user: null,
         details: { event: "USER_LOGOUT_ANONYMOUS" },
       });
     }
-
     localStorage.removeItem("erp-user");
     setUser(null);
-    console.log(
-      "[DEBUG Client AuthContext] logout: Removed 'erp-user' from localStorage."
-    );
-    console.log("[DEBUG Client AuthContext] logout: User state set to null.");
     // Optionally: redirect to login page
     // window.location.href = '/login'; // Or use React Router's navigate
-  };
+  }, [user, logEventToServer]); // user and logEventToServer are dependencies
 
-  const updateUserContext = (userData) => {
+  const updateUserContext = useCallback((userData) => {
     setUser(userData);
-  };
+  }, []);
 
   if (isLoading) {
-    return <div>Loading authentication...</div>; // Or your custom loading component
+    // Use LoadingSpinner for initial authentication check
+    return <LoadingSpinner show={true} />;
   }
 
   return (
@@ -141,6 +122,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isLoading,
+        logEventToServer, // Expose if needed by other parts of the app
         fetchCurrentUser,
       }}
     >

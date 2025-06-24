@@ -12,15 +12,17 @@ const fullScreenModalStyle = {
   maxWidth: "none",
   margin: 0,
   padding: 0,
-  overflow: "auto",
+  overflow: "hidden", // Changed to hidden to contain everything
   backgroundColor: "white",
   border: "1px solid #dee2e6",
   borderRadius: "0.3rem",
   boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
   zIndex: 1050,
+  display: "flex",          // Added
+  flexDirection: "column",  // Added
 };
 
-const ReusableModal = ({
+const ReusableModalComponent = ({
   show,
   onHide,
   title,
@@ -38,16 +40,17 @@ const ReusableModal = ({
       size={size}
     >
       <div style={fullScreenModalStyle}>
+        {/* Header remains fixed at top */}
         <Modal.Header
           closeButton
           onHide={onHide}
           style={{
-            backgroundColor: "maroon", // 1. grey
+            backgroundColor: "maroon",
             padding: "1rem",
             flexShrink: 0,
-            display: "flex", // For centering title
-            justifyContent: "center", // For centering title
-            alignItems: "center", // For centering title
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
           <Modal.Title
@@ -56,40 +59,38 @@ const ReusableModal = ({
             {title}
           </Modal.Title>
         </Modal.Header>
+
+        {/* Scrollable content area */}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            flexGrow: 1,
-            overflow: "hidden",
+            flex: 1,
+            overflowY: "auto",
+            padding: "20px",
           }}
         >
-          <div
-            style={{
-              flexGrow: 1,
-              overflowY: "auto",
-              padding: "20px",
-            }}
-          >
-            {children}
-          </div>
-          <Modal.Footer
-            style={{
-              borderTop: "1px solid #dee2e6",
-              padding: "15px",
-              flexShrink: 0,
-            }}
-          >
-            {footerContent || (
-              <Button variant="secondary" onClick={onHide} disabled={isLoading}>
-                Close
-              </Button>
-            )}
-          </Modal.Footer>
+          {children}
         </div>
+
+        {/* Sticky footer */}
+        <Modal.Footer
+          style={{
+            borderTop: "1px solid #dee2e6",
+            padding: "15px",
+            flexShrink: 0,
+            backgroundColor: "white", // Ensure background covers content
+            position: "sticky",
+            bottom: 0,
+          }}
+        >
+          {footerContent || (
+            <Button variant="secondary" onClick={onHide} disabled={isLoading}>
+              Close
+            </Button>
+          )}
+        </Modal.Footer>
       </div>
     </Modal>
   );
 };
 
-export default ReusableModal;
+export default React.memo(ReusableModalComponent);

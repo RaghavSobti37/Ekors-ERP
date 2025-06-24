@@ -7,27 +7,28 @@ const logger = require('./utils/logger');
 require('dotenv').config();
 
 const connectDB = require('./db.js');
-
 // Routes
+const companyRoutes = require('./routes/CompanyRoutes.js');
 const authRoutes = require("./routes/authRoutes");
 const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
 const initRouter = require('./routes/init');
-const userRoutes = require('./routes/userRoutes'); 
+const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clients');
-const ticketsRouter = require('./routes/tickets'); 
+const ticketsRouter = require('./routes/tickets');
 const reportRoutes = require("./routes/reportRoutes");
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const frontendLogRoute = require('./routes/frontendLogRoute.js');
+const backupRoutes = require('./routes/backupRoutes');
 
 const app = express();
 connectDB();
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware - Increase payload size limit for JSON and URL-encoded bodies
+app.use(express.json({ limit: '10mb' })); // Allows up to 10MB JSON payloads
+app.use(express.urlencoded({ limit: '10mb', extended: true })); // Allows up to 10MB URL-encoded payloads
 app.use(morgan('dev'));
 
 // Define allowed origins for CORS
@@ -87,19 +88,9 @@ mountRoute('/api/reports', reportRoutes);
 mountRoute('/api/audit', auditLogRoutes);
 mountRoute('/api/init', initRouter);
 mountRoute('/api', frontendLogRoute);
+app.use('/api/backups', backupRoutes);
+app.use('/api/company', companyRoutes);
 app.use('/api/uploads', express.static(serverUploadsPath));
-console.log(`[ROUTE MOUNTED] /api/uploads (static) -> ${serverUploadsPath}`);
-
-// ---------------------------
-// Static Serving for Frontend (React) - This section is NOT needed when frontend is on Vercel.
-// Vercel handles serving your frontend.
-// app.use(express.static(path.join(__dirname, '../client/dist')));
-// console.log('[STATIC] Serving React frontend from ../client/dist');
-
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-// });
-// console.log('[CATCH-ALL] React Router fallback enabled for ../client/dist/index.html');
 
 // Optional: Add a root route for the API to confirm it's running
 app.get('/', (req, res) => res.json({ message: 'Ekors ERP API is live and running!' }));
