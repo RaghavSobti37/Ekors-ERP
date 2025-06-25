@@ -14,7 +14,7 @@ async function parseExcelBufferForUpdate(fileBuffer) {
             throw new Error("No worksheet found in the Excel file.");
         }
 
-        const validUnits = ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG'];
+
         let currentCategory = 'Other'; // Default category
 
         // Collect all images first to map them by row
@@ -35,15 +35,17 @@ async function parseExcelBufferForUpdate(fileBuffer) {
             if (rowNumber === 1) return; // Skip the header row explicitly
 
             const category = row.getCell('A').value; // Category from column A
-            const name = row.getCell('B').value;       // Name from column B
-            const quantity = row.getCell('C').value;   // Quantity from column C
-            const sellingPrice = row.getCell('D').value; // Selling Price from column D
-            const buyingPrice = row.getCell('E').value;  // Buying Price from column E
-            const unit = row.getCell('F').value;        // Unit from column F
-            const hsnCode = row.getCell('G').value;     // HSN Code from column G
-            const gstRate = row.getCell('H').value;      // GST Rate from column H
-            const maxDiscountPercentage = row.getCell('I').value; // Max Discount % from column I
-            const lowStockThreshold = row.getCell('J').value; // Low Stock Threshold from column J
+            const name = row.getCell('B').value; // Name from column B
+            const quantity = row.getCell('C').value; // Quantity from column C
+            const baseUnit = row.getCell('D').value; // Base Unit from column D
+            const sellingPriceBaseUnit = row.getCell('E').value; // Selling Price (per Base Unit) from column E
+            const buyingPriceBaseUnit = row.getCell('F').value; // Buying Price (per Base Unit) from column F
+            const meterConversionFactor = row.getCell('G').value; // Meter Conversion Factor from column G
+            // Columns H and I (Selling Price per Meter, Buying Price per Meter) are derived, not directly imported for item master
+            const hsnCode = row.getCell('J').value; // HSN Code from column J
+            const gstRate = row.getCell('K').value; // GST Rate from column K
+            const maxDiscountPercentage = row.getCell('L').value; // Max Discount % from column L
+            const lowStockThreshold = row.getCell('M').value; // Low Stock Threshold from column M
 
             // Check if this row is a category header (merged cells in column A)
             const firstCell = row.getCell('A');
@@ -65,9 +67,15 @@ async function parseExcelBufferForUpdate(fileBuffer) {
             const item = {
                 name: String(name).trim(),
                 quantity: parseFloat(quantity) || 0,
-                sellingPrice: parseFloat(sellingPrice) || 0,
-                buyingPrice: parseFloat(buyingPrice) || 0,
-                unit: String(unit || 'Nos').trim(),
+                             pricing: {
+                    baseUnit: String(baseUnit || 'Nos').trim(),
+                    sellingPrice: parseFloat(sellingPriceBaseUnit) || 0,
+                    buyingPrice: parseFloat(buyingPriceBaseUnit) || 0,
+                },
+                units: [
+                    { name: String(baseUnit || 'Nos').trim(), isBaseUnit: true, conversionFactor: 1 }
+                ],
+
                 category: currentCategory,  // Use currentCategory for items
                 hsnCode: String(hsnCode || '').trim(),
                 gstRate: parseFloat(gstRate) || 0,
@@ -76,21 +84,26 @@ async function parseExcelBufferForUpdate(fileBuffer) {
                 image: imageMap.get(rowNumber) || '', // Retrieve image from the map
             };
 
-            // Further validations
-            if (isNaN(item.sellingPrice)) {
-                parsingErrors.push({
-                    row: rowNumber,
-                    message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${sellingPrice}.`,
+            
+            // Add Meter unit if conversion factor is provided and valid
+            if (meterConversionFactor !== null && meterConversionFactor !== undefined && parseFloat(meterConversionFactor) > 0) {
+                item.units.push({
+                    name: "Mtr",
+                    isBaseUnit: false,
+                    conversionFactor: parseFloat(meterConversionFactor)
                 });
-                return;
             }
 
-            if (!validUnits.includes(item.unit)) {
+
+
+            // Further validations
+            if (isNaN(item.pricing.sellingPrice)) {
+
                 parsingErrors.push({
                     row: rowNumber,
-                    message: `Warning: Invalid unit "${item.unit}" for item "${item.name}" in row ${rowNumber}. Defaulting to "Nos".`,
+                    message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${sellingPriceBaseUnit}.`,
                 });
-                item.unit = 'Nos';
+                return;
             }
 
             // Add the processed item to the list

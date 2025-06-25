@@ -1,6 +1,5 @@
-// src/utils/helpers.js
 import { toast } from 'react-toastify';
-import frontendLogger from './frontendLogger'; // Assuming frontendLogger.js is in the same utils directory
+import frontendLogger from './frontendLogger';
 
 /**
  * Displays a toast notification.
@@ -38,28 +37,29 @@ export const showToast = (message, isSuccess = true, options = {}) => {
 export const handleApiError = (error, defaultMessage = 'An unexpected error occurred.', userForLogging = null, logType = 'apiError') => {
   let errorMessage = defaultMessage;
 
-  if (error.response) {
+  // Ensure error is an object to prevent "Cannot read properties of null" errors
+  const safeError = error || {};
+
+  if (safeError.response) {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
-    if (error.response.data) {
-      if (typeof error.response.data === 'string' && error.response.data.length < 250) { // Avoid overly long strings
-        errorMessage = error.response.data;
-      } else if (error.response.data.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response.data.error) {
-        errorMessage = error.response.data.error;
+    if (safeError.response.data) {
+      if (typeof safeError.response.data === 'string' && safeError.response.data.length < 250) { // Avoid overly long strings
+        errorMessage = safeError.response.data;
+      } else if (safeError.response.data.message) {
+        errorMessage = safeError.response.data.message;
+      } else if (safeError.response.data.error) {
+        errorMessage = safeError.response.data.error;
       }
-      // You can add more specific checks here if your backend has consistent error structures
-      // e.g., if (error.response.data.errors && Array.isArray(error.response.data.errors)) { ... }
-    } else if (error.response.statusText) {
-      errorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
+    } else if (safeError.response.statusText) {
+      errorMessage = `Error ${safeError.response.status}: ${safeError.response.statusText}`;
     }
-  } else if (error.request) {
+  } else if (safeError.request) {
     // The request was made but no response was received
     errorMessage = 'No response from server. Please check your network connection.';
-  } else if (error.message) {
+  } else if (safeError.message) {
     // Something happened in setting up the request that triggered an Error
-    errorMessage = error.message;
+    errorMessage = safeError.message;
   }
 
   // Log the error
@@ -68,13 +68,18 @@ export const handleApiError = (error, defaultMessage = 'An unexpected error occu
     `API Error: ${errorMessage}`,
     userForLogging,
     {
-      originalErrorMessage: error.message,
-      status: error.response?.status,
-      responseData: error.response?.data,
-      requestConfig: error.config, // If using Axios, this contains request details
-      stack: error.stack,
+      // Use the safeError object for all property access to guarantee safety.
+      // Explicitly set to null if undefined to provide consistent input to the logger.
+      originalErrorMessage: safeError.message || 'Error object was null or had no message.',
+      status: safeError.response?.status || null,
+      responseData: safeError.response?.data || null,
+      requestConfig: safeError.config || null, // If using Axios, this contains request details.
+      stack: safeError.stack || null,
     }
   );
+
+  // Display the error message to the user in a toast
+  showToast(errorMessage, false);
 
   return errorMessage;
 };
@@ -190,5 +195,3 @@ export const dateToYYYYMMDD = (date) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
-
-

@@ -8,6 +8,7 @@ import ItemSearchComponent from "../../components/ItemSearch.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput } from "../../utils/helpers";
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Import the new utility
 import frontendLogger from "../../utils/frontendLogger.js";
 import axios from "axios"; // For pincode API
 
@@ -86,6 +87,7 @@ const EditTicketPage = () => {
             maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
             gstRate: parseFloat(g.gstRate || 0),
             subtexts: g.subtexts || [],
+            originalItem: g.originalItem || g, // Ensure originalItem is preserved
         })),
       });
       setOriginalStatus(data.status);
@@ -217,13 +219,20 @@ const EditTicketPage = () => {
 
   const handleAddItemToTicket = useCallback((item) => {
     setTicketData(prev => {
+      // Determine the default unit to use (e.g., the base unit)
+      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+      const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
+
       const newGoodsItem = {
         srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
-        quantity: 1, unit: item.unit || "Nos", price: Number(item.sellingPrice) || 0,
-        amount: (Number(item.sellingPrice) || 0) * 1, originalPrice: Number(item.sellingPrice) || 0,
+        quantity: 1, unit: defaultUnit, // Set default unit
+        price: pricePerSelectedUnit, // Price per selected unit
+        amount: pricePerSelectedUnit, // Amount for 1 quantity
+        originalPrice: parseFloat(item.pricing.sellingPrice) || 0, // Store base selling price
         maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: [],
+        originalItem: item, // Store the full item object for unit conversion
       };
       const newGoods = [...prev.goods, newGoodsItem];
       const totalQuantity = newGoods.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
@@ -610,10 +619,19 @@ const EditTicketPage = () => {
                   </td>
                   <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
-                  <td>
-                    <Form.Select value={item.unit || "Nos"} onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}>
-                        <option value="Nos">Nos</option><option value="Mtr">Mtr</option><option value="Pcs">Pcs</option><option value="Set">Set</option><option value="KG">KG</option><option value="Ltr">Ltr</option>
-                    </Form.Select>
+                  <td style={{ minWidth: "100px" }}>
+                    {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
+                      <Form.Select
+                        value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                        onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
+                      >
+                        {item.originalItem.units.map((unitOption) => (
+                          <option key={unitOption.name} value={unitOption.name}>{unitOption.name}</option>
+                        ))}
+                      </Form.Select>
+                    ) : (
+                      <Form.Control type="text" value={item.unit || "Nos"} readOnly />
+                    )}
                   </td>
                   <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>
                   <td><Form.Control required type="number" value={item.price} onChange={(e) => handleTicketGoodsChange(index, "price", e.target.value)} placeholder="Price" min="0" step="0.01" /></td>

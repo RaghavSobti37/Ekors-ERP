@@ -100,6 +100,30 @@ const purchaseSchema = new mongoose.Schema(
   }
 );
 
+const unitSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  isBaseUnit: {
+    type: Boolean,
+    default: false,
+  },
+  conversionFactor: { // How many of the base unit are in this unit. e.g., if base is 'kg' and this unit is 'Mtr', factor is 'weight per meter'.
+    type: Number,
+    required: true,
+    default: 1,
+  },
+}, { _id: false });
+
+const pricingSchema = new mongoose.Schema({
+  baseUnit: { type: String, required: true },
+  sellingPrice: { type: Number, required: true, min: 0 }, // Price per baseUnit
+  buyingPrice: { type: Number, default: 0, min: 0 }, // Price per baseUnit
+}, { _id: false });
+
+
 // Instead of embedding purchase history, reference purchase documents
 const itemSchema = new mongoose.Schema(
   {
@@ -113,28 +137,12 @@ const itemSchema = new mongoose.Schema(
       type: String, // Will store the Base64 data URL
       default: "",
     },
+    pricing: pricingSchema,
+    units: [unitSchema],
 
     quantity: {
       type: Number,
       default: 0,
-    },
-    sellingPrice: {
-      // Renamed from price
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    buyingPrice: {
-      // New field for buying price
-      type: Number,
-      default: 0, // Default to 0, can be updated
-      min: 0,
-    },
-    unit: {
-      type: String,
-      required: true,
-      enum: ["Nos", "Mtr", "PKT", "Pair", "Set", "Bottle", "KG"],
-      default: "Nos",
     },
     category: {
       type: String,
@@ -230,7 +238,6 @@ const itemSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "Ticket",
         },
-        _id: false,
       },
     ],
   },

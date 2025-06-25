@@ -1,4 +1,4 @@
-import { Buffer } from 'buffer';
+import { Buffer } from "buffer";
 window.Buffer = Buffer;
 
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -7,7 +7,6 @@ import StaticInfo from "./pages/StaticInfo.jsx";
 import Tickets from "./pages/Tickets.jsx";
 import Quotations from "./pages/Quotations.jsx";
 import History from "./pages/History";
-import {ConfigService} from "./utils/ConfigService.js";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
 import Items from "./pages/Items.jsx";
@@ -17,7 +16,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Unauthorized from "./components/Unauthorized.jsx";
 import { ToastContainer } from "react-toastify"; // For react-toastify notifications
-import "react-toastify/dist/ReactToastify.css"; // Import CSS for react-toastify
+import "react-toastify/dist/ReactToastify.css";
 
 // Import new page components
 import QuotationFormPage from "./minipages/quotations/QuotationFormPage.jsx";
@@ -38,6 +37,7 @@ import ViewClientPage from "./minipages/clients/ViewClientPage";
 import EditClientPage from "./minipages/clients/EditClientPage";
 import ClientsPage from "./pages/ClientsPage.jsx"; // ClientsPage is now used for the /clients route
 import BackupsPage from "./pages/BackupsPage.jsx"; // Import the new BackupsPage
+import ItemHistoryPage from "./pages/ItemHistorypage.jsx";
 
 function App() {
   return (
@@ -61,10 +61,15 @@ function App() {
           <Route path="/" element={<Navigate replace to="/login" />} />{" "}
           {/* Redirect root to login */}
           <Route path="/login" element={<Login />} />
-          {/* Removed direct routes to PDF components or generic components like Footer/Pagination */}
-          <Route path="/users" element={<Users />} />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <Users />
+              </ProtectedRoute>
+            }
+          />
           {/* <Route path="/staticinfopage" element={<StaticInfoPage />} /> */}
-
           {/* Route for Clients Page */}
           <Route
             path="/clients"
@@ -77,21 +82,28 @@ function App() {
           <Route
             path="/backups"
             element={
-              <ProtectedRoute allowedRoles={["super-admin"]}> {/* Strictly super-admin */}
+              <ProtectedRoute allowedRoles={["super-admin"]}>
+                {" "}
+                {/* Strictly super-admin */}
                 <BackupsPage />
               </ProtectedRoute>
             }
           />
-
           {/* Protected Routes */}
           <Route
             path="/clients/view/:id"
-            element={<ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}><ViewClientPage /></ProtectedRoute>} // Allow user/admin to view their own
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
+                <ViewClientPage />
+              </ProtectedRoute>
+            } 
           />
           <Route
             path="/clients/edit/:id"
             element={
-              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}> {/* Allow user/admin owners to edit */}
+              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
+                {" "}
+                {/* Allow user/admin owners to edit */}
                 <EditClientPage />
               </ProtectedRoute>
             }
@@ -192,7 +204,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/logtime/:date" element={<LogTimePage />} />
+          <Route
+            path="/logtime/:date"
+            element={
+              <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
+                <LogTimePage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/challan"
             element={
@@ -234,7 +253,15 @@ function App() {
             }
           />
           <Route
-            path="/itemslist"
+          //   path="/itemslist"
+          //   element={
+          //     <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+          //       <Items />
+          //     </ProtectedRoute>
+          //   }
+          // />
+          // <Route
+            path="/items"
             element={
               <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
                 <Items />
@@ -265,6 +292,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/items/history/:itemId"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <ItemHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          
           <Route
             path="/tickets/pi-preview"
             element={

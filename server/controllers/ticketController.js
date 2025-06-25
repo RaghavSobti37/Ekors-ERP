@@ -354,6 +354,9 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
   }
 
+    // Instantiate the ticket object here to get its _id for logging purposes before saving.
+  const ticket = new Ticket(finalTicketData);
+
   try {
     session.startTransaction(); // Start transaction before DB operations
 
@@ -376,31 +379,45 @@ exports.createTicket = asyncHandler(async (req, res) => {
         }).session(session);
 
         if (itemToUpdate) {
-          const quantityToDecrement = Number(good.quantity);
-          itemToUpdate.quantity -= quantityToDecrement;
+          let quantityToDecrementInBaseUnit = 0;
+          const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
+          const baseUnitName = itemToUpdate.pricing.baseUnit;
+
+          if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+            quantityToDecrementInBaseUnit = Number(good.quantity);
+          } else {
+            const transactionalUnitInfo = itemToUpdate.units.find(
+              (u) => u.name.toLowerCase() === transactionalUnitName.toLowerCase()
+            );
+            if (transactionalUnitInfo) {
+              const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+              quantityToDecrementInBaseUnit = Number(good.quantity) * conversionFactor;
+            } else {
+              logger.warn(
+                "inventory",
+                `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}". Assuming quantity is in base unit.`,
+                user
+              );
+              quantityToDecrementInBaseUnit = Number(good.quantity);
+            }
+          }
+
+          itemToUpdate.quantity -= quantityToDecrementInBaseUnit;
 
           // Add to inventoryLog for ticket creation deduction
           const historyEntry = {
             type: "Ticket Deduction (Creation)",
             date: new Date(),
-            quantityChange: -quantityToDecrement,
-            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Action by: ${user.firstname || user.email}.`,
-            // ticketReference will be set after ticket is saved if needed, or use ticketNumber if available
+            quantityChange: -quantityToDecrementInBaseUnit,
+            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Transaction: ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+             ticketReference: ticket._id,
             userReference: user.id,
           };
           itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
           itemToUpdate.inventoryLog.push(historyEntry);
 
-
-          if (itemToUpdate.quantity < 0) { // Check against 0, not lowStockThreshold for negative warning
-            logger.warn(
-              "inventory",
-              `Stock for item ${itemToUpdate.name} went negative: ${itemToUpdate.quantity}`,
-              user
-            );
-          }
           // Update needsRestock based on lowStockThreshold
-          if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+          if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
             itemToUpdate.needsRestock = true;
             itemToUpdate.restockAmount = Math.max(
               0,
@@ -413,7 +430,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
           await itemToUpdate.save({ session });
           logger.info(
             "inventory",
-            `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrement}, new qty: ${itemToUpdate.quantity}`,
+            `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrementInBaseUnit.toFixed(2)} ${baseUnitName} (from ${good.quantity} ${transactionalUnitName}), new qty: ${itemToUpdate.quantity.toFixed(2)}`,
             user
           );
         } else {
@@ -429,7 +446,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
     }
 
     // --- Ticket Creation ---
-    const ticket = new Ticket(finalTicketData);
     await ticket.save({ session });
 
     logger.info(
@@ -816,21 +832,37 @@ exports.updateTicket = async (req, res) => {
         try {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
-            const quantityToRollback = Number(good.quantity);
-            itemToUpdate.quantity += quantityToRollback;
+            let quantityToRollbackInBaseUnit = 0;
+            const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
+            const baseUnitName = itemToUpdate.pricing.baseUnit;
+
+            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+              quantityToRollbackInBaseUnit = Number(good.quantity);
+            } else {
+              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+              if (transactionalUnitInfo) {
+                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
+              } else {
+                logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Hold rollback. Assuming base unit.`, user);
+                quantityToRollbackInBaseUnit = Number(good.quantity);
+              }
+            }
+
+            itemToUpdate.quantity += quantityToRollbackInBaseUnit;
 
             const historyEntry = {
               type: "Temporary Rollback (Ticket Hold)",
               date: new Date(),
-              quantityChange: quantityToRollback,
-              details: `Ticket ${originalTicket.ticketNumber} put on hold. Action by: ${user.firstname || user.email}.`,
+           quantityChange: quantityToRollbackInBaseUnit,
+              details: `Ticket ${originalTicket.ticketNumber} put on hold. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
             itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
             itemToUpdate.inventoryLog.push(historyEntry);
-
-            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+            if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
               itemToUpdate.needsRestock = true;
               itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
             } else {
@@ -838,7 +870,8 @@ exports.updateTicket = async (req, res) => {
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save({ session });
-            logger.info("inventory", `Rolled back ${quantityToRollback} for ${itemToUpdate.name} (Ticket ${ticketId} to Hold). New Qty: ${itemToUpdate.quantity}`, user);
+            logger.info("inventory", `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} to Hold). New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
+
           } else {
             logger.warn("inventory", `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for Hold rollback (Ticket ${ticketId}).`, user);
           }
@@ -856,21 +889,36 @@ exports.updateTicket = async (req, res) => {
         try {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
-            const quantityToDeduct = Number(good.quantity);
-            itemToUpdate.quantity -= quantityToDeduct;
+            let quantityToDeductInBaseUnit = 0;
+            const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
+            const baseUnitName = itemToUpdate.pricing.baseUnit;
+
+            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+              quantityToDeductInBaseUnit = Number(good.quantity);
+            } else {
+              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+              if (transactionalUnitInfo) {
+                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                quantityToDeductInBaseUnit = Number(good.quantity) * conversionFactor;
+              } else {
+                logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during From-Hold re-deduction. Assuming base unit.`, user);
+                quantityToDeductInBaseUnit = Number(good.quantity);
+              }
+            }
+
+            itemToUpdate.quantity -= quantityToDeductInBaseUnit;
 
             const historyEntry = {
               type: "Re-deducted (Ticket Off Hold)",
               date: new Date(),
-              quantityChange: -quantityToDeduct,
-              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Action by: ${user.firstname || user.email}.`,
+              quantityChange: -quantityToDeductInBaseUnit,
+              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Deducted ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
             itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
             itemToUpdate.inventoryLog.push(historyEntry);
-
-            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+            if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
               itemToUpdate.needsRestock = true;
               itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
             } else {
@@ -878,7 +926,7 @@ exports.updateTicket = async (req, res) => {
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save({ session });
-            logger.info("inventory", `Re-deducted ${quantityToDeduct} for ${itemToUpdate.name} (Ticket ${ticketId} from Hold). New Qty: ${itemToUpdate.quantity}`, user);
+            logger.info("inventory", `Re-deducted ${quantityToDeductInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} from Hold). New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
           } else {
             logger.warn("inventory", `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for re-deduction (Ticket ${ticketId} from Hold).`, user);
           }
@@ -890,43 +938,83 @@ exports.updateTicket = async (req, res) => {
     // Scenario 3: General update (not a Hold status transition OR status remains the same but goods might have changed)
     // This also covers if status changes but neither old nor new is "Hold"
     else if (newStatus !== "Hold" && oldStatus !== "Hold") {
-      const itemChanges = new Map();
-      const originalGoods = originalTicket.goods || [];
-      const newGoodsList = ticketDataForUpdate.goods || []; // Goods from the update payload
+      // Create a map to track net changes for each item.
+      // Key: 'description-hsnSacCode', Value: { oldBaseQty: 0, newBaseQty: 0 }
+      const itemBaseQtyChanges = new Map();
 
-      // Add back quantities from original goods
-      originalGoods.forEach((good) => {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
-        itemChanges.set(key, (itemChanges.get(key) || 0) + Number(good.quantity));
-      });
-      // Subtract quantities from new/updated goods
-      newGoodsList.forEach((good) => {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
-        itemChanges.set(key, (itemChanges.get(key) || 0) - Number(good.quantity));
-      });
+      // Helper function to get base quantity, with caching to reduce DB calls
+      const getBaseQuantity = async (good, itemCache) => {
+        const itemKey = `${good.description}-${good.hsnSacCode || ""}`;
+        let itemDetails = itemCache.get(itemKey);
+        if (!itemDetails) {
+          itemDetails = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).lean();
+          if (itemDetails) itemCache.set(itemKey, itemDetails);
+        }
 
-      for (const [key, netChange] of itemChanges) {
-        if (netChange === 0) continue; // No change for this item
+        if (!itemDetails) {
+          logger.warn("inventory", `Item "${good.description}" not found for quantity calculation.`, user);
+          return 0;
+        }
+
+        const transactionalUnitName = good.unit || itemDetails.pricing.baseUnit;
+        const baseUnitName = itemDetails.pricing.baseUnit;
+
+        if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+          return Number(good.quantity);
+        }
+
+        const unitInfo = itemDetails.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+        if (unitInfo) {
+          return Number(good.quantity) * Number(unitInfo.conversionFactor);
+        }
+
+        logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemDetails.name}". Assuming base unit.`, user);
+        return Number(good.quantity);
+      };
+
+      const itemCache = new Map(); // Cache item details
+
+      // Populate old quantities in base units
+      for (const good of originalTicket.goods || []) {
+        const key = `${good.description}-${good.hsnSacCode || ""}`;
+        const oldBaseQty = await getBaseQuantity(good, itemCache);
+        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+        itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
+      }
+
+      // Populate new quantities in base units
+      for (const good of ticketDataForUpdate.goods || []) {
+        const key = `${good.description}-${good.hsnSacCode || ""}`;
+        const newBaseQty = await getBaseQuantity(good, itemCache);
+        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+        itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
+      }
+
+      // Apply net changes to the database
+      for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
+        const netChangeInBaseUnit = newBaseQty - oldBaseQty;
+        if (netChangeInBaseUnit === 0) continue;
         const [description, hsnSacCode] = key.split("-");
         try {
           const itemToUpdate = await Item.findOne({ name: description, ...(hsnSacCode && { hsnCode: hsnSacCode }) }).session(session);
           if (itemToUpdate) {
-            // netChange is positive if items were removed/decreased in ticket (add back to stock)
-            // netChange is negative if items were added/increased in ticket (deduct from stock)
-            itemToUpdate.quantity += netChange; 
+            // We subtract the net change from the current inventory.
+            // If more items were added (netChange > 0), we deduct.
+            // If items were removed (netChange < 0), we add back (subtracting a negative).
+
+            itemToUpdate.quantity -= netChangeInBaseUnit;
 
             const historyEntry = {
               type: "Inventory Adjustment (Ticket Update)",
               date: new Date(),
-              quantityChange: netChange, // This will be negative for deductions, positive for additions back
-              details: `Ticket ${originalTicket.ticketNumber} updated. Net item quantity change. Action by: ${user.firstname || user.email}.`,
+              quantityChange: -netChangeInBaseUnit, // A positive netChange (more items used) results in a negative quantityChange (deduction).
+              details: `Ticket ${originalTicket.ticketNumber} updated. Base quantity changed from ${oldBaseQty.toFixed(2)} to ${newBaseQty.toFixed(2)}. Net stock change: ${(-netChangeInBaseUnit).toFixed(2)}. Action by: ${user.firstname || user.email}.`,
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
             itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
             itemToUpdate.inventoryLog.push(historyEntry);
-
-            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+            if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
               itemToUpdate.needsRestock = true;
               itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
             } else {
@@ -934,9 +1022,9 @@ exports.updateTicket = async (req, res) => {
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save({ session });
-            logger.info("inventory", `Adjusted stock for ${itemToUpdate.name} (Ticket ${ticketId} general update). Net Change: ${netChange}, New Qty: ${itemToUpdate.quantity}`, user);
-          } else if (netChange < 0) { // Item was in newGoodsList (to be deducted) but not found in DB
-            logger.warn("inventory", `Item "${description}" (HSN: ${hsnSacCode || "N/A"}) not found for stock deduction (Ticket ${ticketId} general update).`, user);
+                        logger.info("inventory", `Adjusted stock for ${itemToUpdate.name} (Ticket ${ticketId} general update). Inventory Change: ${(-netChangeInBaseUnit).toFixed(2)}, New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
+          } else if (netChangeInBaseUnit > 0) { // Item was added to ticket but not found in DB
+           logger.warn("inventory", `Item "${description}" (HSN: ${hsnSacCode || "N/A"}) not found for stock deduction (Ticket ${ticketId} general update).`, user);
           }
         } catch (invError) {
           logger.error("inventory", `Error adjusting stock for item "${description}" (Ticket ${ticketId} general update): ${invError.message}`, user, { error: invError });
@@ -1185,14 +1273,30 @@ exports.deleteTicket = async (req, res) => {
             try {
                 const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
                 if (itemToUpdate) {
-                    const quantityToRollback = Number(good.quantity);
-                    itemToUpdate.quantity += quantityToRollback;
+                    let quantityToRollbackInBaseUnit = 0;
+                    const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
+                    const baseUnitName = itemToUpdate.pricing.baseUnit;
+
+                    if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+                      quantityToRollbackInBaseUnit = Number(good.quantity);
+                    } else {
+                      const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+                      if (transactionalUnitInfo) {
+                        const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                        quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
+                      } else {
+                        logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Ticket Deletion rollback. Assuming base unit.`, user);
+                        quantityToRollbackInBaseUnit = Number(good.quantity);
+                      }
+                    }
+
+                    itemToUpdate.quantity += quantityToRollbackInBaseUnit;
 
                     const historyEntry = {
                         type: "Rollback (Ticket Deletion)",
                         date: new Date(),
-                        quantityChange: quantityToRollback,
-                        details: `Ticket ${ticketToBackup.ticketNumber} deleted. Action by: ${user.firstname || user.email}.`,
+                        quantityChange: quantityToRollbackInBaseUnit,
+                        details: `Ticket ${ticketToBackup.ticketNumber} deleted. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
                         ticketReference: ticketToBackup._id,
                         userReference: user.id,
                     };
@@ -1207,7 +1311,8 @@ exports.deleteTicket = async (req, res) => {
                         itemToUpdate.restockAmount = 0;
                     }
                     await itemToUpdate.save({ session });
-                    logger.info("inventory", `Rolled back ${quantityToRollback} for ${itemToUpdate.name} (Ticket ${ticketId} deletion). New Qty: ${itemToUpdate.quantity}`, user);
+                    logger.info("inventory", `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} deletion). New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
+
                 } else {
                     logger.warn("inventory", `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`, user);
                 }
