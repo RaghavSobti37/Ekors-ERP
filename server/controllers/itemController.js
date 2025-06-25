@@ -2,8 +2,6 @@ const { Item, Purchase } = require("../models/itemlist");
 const UniversalBackup = require("../models/universalBackup"); // Changed from ItemBackup
 const mongoose = require("mongoose");
 const logger = require("../utils/logger");
-const { parseExcelBufferForUpdate } = require("../utils/excelImporter");
-const path = "path"; // This was 'path' in your provided code, assuming it's a placeholder or an unused import.
 const multer = require("multer");
 const xlsx = require("xlsx");
 const Ticket = require("../models/opentickets"); // Make sure this path is correct
@@ -208,6 +206,9 @@ exports.exportItemsToExcel = async (req, res) => {
 
       // Add category header if it changes
       if (item.category !== currentCategory) {
+                const imageColIndex = worksheet.columns.findIndex(col = col.key === 'image');
+        const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
+
         // Before adding new category header, finalize any pending image merge from previous category
         if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) { // This logic needs to be updated for the new image column index
           worksheet.mergeCells(`${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${imageMergeStartRow}:${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${currentRow - 1}`);
