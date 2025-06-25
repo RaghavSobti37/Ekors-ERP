@@ -152,7 +152,7 @@
 }
 
 .edit-btn:hover {
-  background: #3a0069;
+  background: #3a0069 !important;
 }
 
 /* Dropdown Menu */
