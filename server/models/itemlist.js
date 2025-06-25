@@ -22,7 +22,6 @@ const purchaseItemSchema = new mongoose.Schema(
       min: 0,
     },
     sellingPriceAtPurchase: {
-      // Optional: if you want to record what the item's selling price was at time of this purchase
       type: Number,
       required: false,
       min: 0,

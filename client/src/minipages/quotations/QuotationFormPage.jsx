@@ -6,27 +6,18 @@ import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import ClientSearchComponent from "../../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../../components/ItemSearch.jsx";
-import frontendLogger from "../../utils/frontendLogger.js";
+
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
+
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
+  generateNextQuotationNumber, // This was the incorrect import
   formatDateForInput,
-} from "../../utils/helpers.js";
-import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
-
-const generateQuotationNumber = () => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
-};
-
+} from "../../utils/helpers.js"; // Keep for formatting
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Keep for frontend display calculations
+import frontendLogger from "../../utils/frontendLogger.js";
 const initialNewItemFormData = {
   name: "",
   pricing: {
@@ -949,7 +940,7 @@ const QuotationFormPage = () => {
         return;
       }
       for (let i = 0; i < quotationData.goods.length; i++) {
-        const item = quotationData.goods[i];
+        const item = quotationData.goods[i]; // This is the item from the quotation's goods array
         if (
           !item.description ||
           !(parseFloat(item.quantity) > 0) ||
@@ -962,7 +953,7 @@ const QuotationFormPage = () => {
           return;
         }
         if (item.maxDiscountPercentage > 0) {
-          const selectedUnitInfo = item.originalItem?.units.find(u => u.name === item.unit);
+          const selectedUnitInfo = item.originalItem?.units?.find(u => u.name === item.unit); // Added optional chaining for .units
           const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
           const originalBasePrice = parseFloat(item.originalItem?.pricing?.sellingPrice || item.originalPrice);
           const minAllowedPrice = (originalBasePrice * (1 - (item.maxDiscountPercentage || 0) / 100)) * conversionFactor;
@@ -995,7 +986,7 @@ const QuotationFormPage = () => {
             : 0,
           gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
           subtexts: item.subtexts || [],
-          originalItem: item.originalItem, // Send the full original item
+          // originalItem: item.originalItem, 
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),

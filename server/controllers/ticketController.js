@@ -337,22 +337,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     }));
   }
 
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-
-  if (!finalTicketData.ticketNumber) {
-    finalTicketData.ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-    logger.warn(
-      "ticket-create ",
-      `Generated fallback ticket number: ${finalTicketData.ticketNumber}`,
-      user
-    );
-  }
+  
 
     // Instantiate the ticket object here to get its _id for logging purposes before saving.
   const ticket = new Ticket(finalTicketData);
@@ -1509,35 +1494,7 @@ exports.adminDeleteTicket = async (req, res) => {
   return exports.deleteTicket(req, res);
 };
 
-exports.generateTicketNumber = async (req, res) => {
-  try {
-    const user = req.user || null;
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    const ticketNumber = `T-${year}${month}${day}-${hours}${minutes}${seconds}`;
-    res.status(200).json({ nextTicketNumber: ticketNumber });
-    logger.debug(
-      "ticket",
-      `Generated example ticket number: ${ticketNumber}`,
-      user
-    );
-  } catch (error) {
-    logger.error(
-      "ticket",
-      `Failed to generate ticket number example`,
-      error,
-      req.user
-    );
-    res
-      .status(500)
-      .json({ message: "Failed to generate ticket number example" });
-  }
-};
+
 
 exports.checkExistingTicket = async (req, res) => {
   try {

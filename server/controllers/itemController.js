@@ -127,7 +127,9 @@ const upload = multer({
 });
 exports.uploadMiddleware = upload.single("excelFile");
 
-const MAX_CUSTOM_UNITS_TO_EXPORT = 3; 
+// --- EXCEL EXPORT LOGIC START ---
+
+const MAX_CUSTOM_UNITS_TO_EXPORT = 3;
 exports.exportItemsToExcel = async (req, res) => {
   const user = req.user || null;
   logger.info("excel_export", "API: Starting Excel export process", {
@@ -159,8 +161,7 @@ exports.exportItemsToExcel = async (req, res) => {
       { header: "GST Rate", key: "gstRate", width: 12 },
       { header: "Max Discount %", key: "maxDiscountPercentage", width: 18 },
       { header: "Low Stock Threshold", key: "lowStockThreshold", width: 20 },
-    
-            { header: "Base Unit", key: "baseUnit", width: 15 },
+      { header: "Base Unit", key: "baseUnit", width: 15 },
       {
         header: "Selling Price (per Base Unit)",
         key: "sellingPriceBaseUnit",
@@ -206,20 +207,19 @@ exports.exportItemsToExcel = async (req, res) => {
 
       // Add category header if it changes
       if (item.category !== currentCategory) {
-                const imageColIndex = worksheet.columns.findIndex(col = col.key === 'image');
+        const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
         const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
-
         // Before adding new category header, finalize any pending image merge from previous category
-        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) { // This logic needs to be updated for the new image column index
-          worksheet.mergeCells(`${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${imageMergeStartRow}:${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${currentRow - 1}`);
-
+        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
+          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
         }
         // Reset image merge tracking for the new category
         imageMergeStartRow = -1;
         lastImageBase64 = null;
 
         currentCategory = item.category;
-        worksheet.mergeCells(`A${currentRow}:K${currentRow}`); // Merge all columns for category header
+        const lastColumnLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
+        worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`); // Merge all columns for category header
         worksheet.getCell(`A${currentRow}`).value = `Category: ${
           currentCategory || "Other"
         }`;
@@ -248,15 +248,13 @@ exports.exportItemsToExcel = async (req, res) => {
         baseUnit: item.pricing?.baseUnit || "N/A",
         sellingPriceBaseUnit: item.pricing?.sellingPrice || 0,
         buyingPriceBaseUnit: item.pricing?.buyingPrice || 0,
-        // Calculate meter-specific values if 'Mtr' unit exists
-
         hsnCode: item.hsnCode,
         gstRate: item.gstRate,
         maxDiscountPercentage: item.maxDiscountPercentage,
         lowStockThreshold: item.lowStockThreshold,
         image: "", // Image will be added separately
       };
-            // Populate custom unit columns
+      // Populate custom unit columns
       const nonBaseUnits = item.units?.filter(u => !u.isBaseUnit) || [];
       for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
         if (nonBaseUnits[j]) {
@@ -275,20 +273,18 @@ exports.exportItemsToExcel = async (req, res) => {
       // --- Image Placement and Merge Start ---
       const hasImage = !!item.image;
       const isNewImageSequence = item.image !== lastImageBase64;
+      const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
+      const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
 
       // If a new image sequence is starting (or no image for current item) AND an old sequence was active, finalize the old one.
       if (imageMergeStartRow !== -1 && (isNewImageSequence || !hasImage)) {
         if (currentRow - 1 >= imageMergeStartRow) {
-          // The image column is now the last one. Get its letter.
-          const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
           worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
-
         }
         imageMergeStartRow = -1; // Reset for new sequence
         lastImageBase64 = null; // Reset for new sequence
       }
-      // Get the 0-indexed column number for the image column
-      const imageColIndex = worksheet.columns.length - 1;
+
       if (hasImage) {
         if (imageMergeStartRow === -1) {
           imageMergeStartRow = currentRow;
@@ -298,10 +294,10 @@ exports.exportItemsToExcel = async (req, res) => {
             base64: item.image, // Base64 image data
             extension: item.image.split(";")[0].split("/")[1],
           });
-          worksheet.addImage(imageId, { // col: 10 was 'K'
+          worksheet.addImage(imageId, {
             tl: { col: imageColIndex, row: currentRow - 1 },
             ext: { width: 60, height: 60 },
-          }); // Place image in column K
+          });
         }
         worksheet.getRow(currentRow).height = 65; // Always set row height if there's an image in this row
       }
@@ -354,10 +350,16 @@ exports.exportItemsToExcel = async (req, res) => {
       currentRow++;
     }
 
+    // Finalize any pending image merge for the last category
+    if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
+      const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
+      const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
+      worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
+    }
+
     const excelBuffer = await workbook.xlsx.writeBuffer();
 
     // Set headers for file download
-
     res.setHeader(
       "Content-Disposition",
       'attachment; filename="items_export.xlsx"'
@@ -384,6 +386,115 @@ exports.exportItemsToExcel = async (req, res) => {
     });
   }
 };
+
+// --- EXCEL EXPORT LOGIC END ---
+
+
+// --- EXCEL IMPORT LOGIC START ---
+
+async function parseExcelBufferForUpdate(fileBuffer) {
+  const itemsToUpsert = [];
+  const parsingErrors = [];
+
+  try {
+    const workbook = new exceljs.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+    const worksheet = workbook.getWorksheet(1); // Assuming data is in the first sheet
+
+    if (!worksheet) {
+      throw new Error("No worksheet found in the Excel file.");
+    }
+
+    let currentCategory = 'Other'; // Default category
+
+    // Collect all images first to map them by row
+    const imageMap = new Map();
+    worksheet.getImages().forEach(image => {
+      const row = image.range.tl.row + 1; // 1-based row number
+      const imageId = image.imageId;
+      const excelImage = workbook.getImage(imageId);
+      if (excelImage) {
+        const base64Image = `data:image/${excelImage.extension || "png"};base64,${excelImage.buffer.toString("base64")}`;
+        imageMap.set(row, base64Image);
+      }
+    });
+
+    // Iterate over rows, skipping the header row and empty rows
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip the header row explicitly
+
+      // Check if this row is a category header (merged cells in column A)
+      const firstCell = row.getCell('A');
+      if (firstCell.isMerged) {
+        const categoryCellValue = firstCell.value;
+        if (typeof categoryCellValue === 'string' && categoryCellValue.startsWith('Category:')) {
+          currentCategory = categoryCellValue.replace('Category: ', '').trim();
+          return; // This is a category header row, skip processing as an item
+        }
+      }
+
+      const name = row.getCell('B').value;
+
+      // If the name is missing, consider it an empty row and skip
+      if (!name) {
+        if (row.values.length > 1) { // Avoid logging for completely blank rows
+          parsingErrors.push({ row: rowNumber, message: `Skipped: Item name is missing in row ${rowNumber}.` });
+        }
+        return;
+      }
+
+      const item = {
+        name: String(name).trim(),
+        quantity: parseFloat(row.getCell('C').value) || 0,
+        hsnCode: String(row.getCell('D').value || '').trim(),
+        gstRate: parseFloat(row.getCell('E').value) || 0,
+        maxDiscountPercentage: parseFloat(row.getCell('F').value) || 0,
+        lowStockThreshold: parseInt(row.getCell('G').value, 10) || 5,
+        baseUnit: String(row.getCell('H').value || 'Nos').trim(),
+        sellingPriceBaseUnit: parseFloat(row.getCell('I').value) || 0,
+        buyingPriceBaseUnit: parseFloat(row.getCell('J').value) || 0,
+        category: currentCategory,
+        image: imageMap.get(rowNumber) || '',
+      };
+
+      // Read custom units dynamically. Custom Unit 1 Name starts at column K (11).
+      for (let i = 0; i < MAX_CUSTOM_UNITS_TO_EXPORT; i++) {
+        const unitNameColIndex = 11 + (i * 2); // K, M, O
+        const conversionFactorColIndex = 12 + (i * 2); // L, N, P
+
+        const unitName = row.getCell(unitNameColIndex).value;
+        const conversionFactor = row.getCell(conversionFactorColIndex).value;
+
+        if (unitName && (conversionFactor !== null && conversionFactor !== undefined)) {
+          item[`customUnit${i + 1}Name`] = String(unitName).trim();
+          item[`customUnit${i + 1}ConversionFactor`] = parseFloat(conversionFactor);
+        }
+      }
+
+      // Further validations
+      if (isNaN(item.sellingPriceBaseUnit)) {
+        parsingErrors.push({
+          row: rowNumber,
+          message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${row.getCell('I').value}.`,
+        });
+        return;
+      }
+
+      itemsToUpsert.push(item);
+    });
+
+    return { itemsToUpsert, parsingErrors };
+
+  } catch (error) {
+    logger.error('excel_importer', `Error parsing Excel buffer: ${error.message}`, error);
+    return {
+      itemsToUpsert: [],
+      parsingErrors: [{ row: 'general', message: `Fatal error during Excel parsing: ${error.message}` }],
+    };
+  }
+}
+
+// --- EXCEL IMPORT LOGIC END ---
 
 exports.importItemsFromUploadedExcel = async (req, res) => {
   const user = req.user || null;
@@ -556,7 +667,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         },
       ];
       // Add custom units from Excel data
-      for (let i = 1; i <= MAX_CUSTOM_UNITS_TO_EXPORT; i++) { // Use MAX_CUSTOM_UNITS_TO_EXPORT from export
+      for (let i = 1; i <= MAX_CUSTOM_UNITS_TO_EXPORT; i++) {
         const unitNameKey = `customUnit${i}Name`;
         const conversionFactorKey = `customUnit${i}ConversionFactor`;
         if (excelItemData[unitNameKey] && excelItemData[conversionFactorKey]) {
@@ -581,9 +692,8 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         }
       });
       // Merge with existing units if updating and new units are not fully specified
-      // This logic can be complex if you want to preserve other custom units not in Excel
-      // For simplicity, this example overwrites or adds 'Mtr' if present in Excel.
-      // A more advanced approach might merge units based on name.
+      // This ensures that any units not explicitly in the Excel (e.g., if MAX_CUSTOM_UNITS_TO_EXPORT is less than total units)
+      // are preserved from the existing item, unless they conflict with an Excel-provided unit.
       if (existingItem && existingItem.units) {
        existingItem.units.forEach(u => {
           const lowerCaseName = u.name.toLowerCase();
@@ -595,7 +705,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         );
       }
 
-            // Ensure base unit is correctly marked and conversion factor is 1
+      // Ensure base unit is correctly marked and conversion factor is 1
       // And ensure only one base unit exists
       let hasBaseUnit = false;
       finalUnits.forEach(u => {
@@ -624,13 +734,12 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         return a.name.localeCompare(b.name);
       });
 
-
       const payload = {
         name: excelItemData.name,
         quantity: quantityForPayload,
         pricing: pricingPayload,
-                units: finalUnits, 
-                    category: excelItemData.category || "Other",
+        units: finalUnits,
+        category: excelItemData.category || "Other",
         // subcategory: excelItemData.subcategory || "General", // Removed
         gstRate: excelItemData.gstRate || 0,
         hsnCode: excelItemData.hsnCode || "",
@@ -676,7 +785,6 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         const currentHistory = existingItem.excelImportHistory || [];
         const changes = [];
         let itemActuallyModified = false;
-         // Helper for deep comparison of objects (e.g., pricing)
         const compareObjects = (obj1, obj2) => {
           if (obj1 === obj2) return true;
           if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
@@ -691,7 +799,6 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
           return true;
         };
 
-        // Helper for deep comparison of units arrays
         const compareUnits = (arr1, arr2) => {
           if (arr1.length !== arr2.length) return false;
           // Sort arrays by name for consistent comparison
@@ -707,7 +814,6 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         };
 
         // Check for changes in simple fields
-
         Object.keys(payload).forEach((key) => {
           if (key === 'pricing' || key === 'units') return; // Handle these separately
           if (String(existingItem[key]) !== String(payload[key])) {              changes.push({
@@ -738,7 +844,6 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
           });
           itemActuallyModified = true;
         }
-
 
         if (itemActuallyModified) {
           currentHistory.push({
@@ -1690,8 +1795,8 @@ exports.updateItem = async (req, res) => {
     }
 
     // Prepare inventory log entries
-    const inventoryLogEntries = [];
-    const changedFieldsDetails = [];
+    const inventoryLogEntries = []; // Initialize, will be populated by other changes if needed
+    const changedFieldsDetails = []; // For general item details update log
 
     // Check for quantity change specifically for "Manual Quantity Adjustment"
     if (existingItem.quantity !== quantity) {
@@ -2136,90 +2241,123 @@ exports.getRestockSummary = async (req, res) => {
   }
 };
 
-// exports.getItemTicketUsageHistory = async (req, res) => {
-//   const user = req.user || null;
-//   const { id: itemId } = req.params;
+exports.clearItemLogs = async (req, res) => {
+  const { itemId } = req.params;
+  const user = req.user;
 
-//   if (!mongoose.Types.ObjectId.isValid(itemId)) {
-//     logger.warn("item_ticket_usage", `Invalid item ID format: ${itemId}`, user);
-//     return res.status(400).json({ message: "Invalid item ID format" });
-//   }
+  // This is a destructive action, so we restrict it to super-admin
+  if (user.role !== 'super-admin') {
+    logger.warn("item-log-clear", `Unauthorized attempt to clear logs for item ${itemId} by user ${user.email}.`, user);
+    return res.status(403).json({ message: "Forbidden: You do not have permission to perform this action." });
+  }
 
-//   try {
-//     const item = await Item.findById(itemId).lean();
-//     if (!item) {
-//       logger.warn("item_ticket_usage", `Item not found: ${itemId}`, user);
-//       return res.status(404).json({ message: "Item not found" });
-//     }
+  try {
+    const item = await Item.findById(itemId);
+    if (!item) {
+      logger.warn("item-log-clear", `Item not found for log clearing: ${itemId}`, user);
+      return res.status(404).json({ message: "Item not found." });
+    }
 
-//     logger.debug(
-//       "item_ticket_usage",
-//       `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`,
-//       user
-//     );
+    // Clear the log arrays
+    item.inventoryLog = [];
+    item.excelImportHistory = [];
 
-//     const queryConditions = {
-//       "goods.description": item.name,
-//       ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }),
-//     };
+    await item.save();
 
-//     const ticketsContainingItem = await Ticket.find(queryConditions)
-//       .populate("createdBy", "firstname lastname")
-//       .populate("currentAssignee", "firstname lastname email")
-//       .select(
-//         "ticketNumber goods createdAt createdBy currentAssignee statusHistory"
-//       )
-//       .sort({ createdAt: -1 })
-//       .lean();
+    logger.info("item-log-clear", `All inventory and excel logs for item ${itemId} (${item.name}) cleared by ${user.email}.`, user);
+    res.status(200).json({ message: "All item logs have been cleared successfully." });
 
-//     const ticketUsageHistory = [];
+  } catch (error) {
+    logger.error("item-log-clear", `Error clearing logs for item ${itemId}`, error, user);
+    res.status(500).json({ message: "Server error while clearing item logs." });
+  }
+};
 
-//     for (const ticket of ticketsContainingItem) {
-//       const relevantGood = ticket.goods.find(
-//         (g) =>
-//           g.description === item.name &&
-//           (item.hsnCode ? g.hsnSacCode === item.hsnCode : true)
-//       );
 
-//       if (relevantGood && relevantGood.quantity > 0) {
-//         ticketUsageHistory.push({
-//           date: ticket.createdAt,
-//           type: "Ticket Deduction (Initial)",
-//           user: ticket.createdBy
-//             ? `${ticket.createdBy.firstname || ""} ${
-//                 ticket.createdBy.lastname || ""
-//               }`.trim()
-//             : "System",
-//           details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${
-//             ticket.ticketNumber
-//           } (Created/Items Added). Assigned to: ${
-//             ticket.currentAssignee
-//               ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}`
-//               : "N/A"
-//           }`,
-//           quantityChange: -parseFloat(relevantGood.quantity) || 0,
-//           ticketId: ticket._id,
-//           ticketNumber: ticket.ticketNumber,
-//         });
-//       }
-//     }
+exports.getItemTicketUsageHistory = async (req, res) => {
+  const user = req.user || null;
+  const { id: itemId } = req.params;
 
-//     logger.info(
-//       "item_ticket_usage",
-//       `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`,
-//       user
-//     );
-//     res.json(ticketUsageHistory);
-//   } catch (error) {
-//     logger.error(
-//       "item_ticket_usage",
-//       `Error fetching ticket usage history for item ID: ${itemId}`,
-//       error,
-//       user
-//     );
-//     res.status(500).json({
-//       message: "Server error while fetching item ticket usage history",
-//       error: process.env.NODE_ENV === "development" ? error.message : undefined,
-//     });
-//   }
-// };
+  if (!mongoose.Types.ObjectId.isValid(itemId)) {
+    logger.warn("item_ticket_usage", `Invalid item ID format: ${itemId}`, user);
+    return res.status(400).json({ message: "Invalid item ID format" });
+  }
+
+  try {
+    const item = await Item.findById(itemId).lean();
+    if (!item) {
+      logger.warn("item_ticket_usage", `Item not found: ${itemId}`, user);
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    logger.debug(
+      "item_ticket_usage",
+      `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`,
+      user
+    );
+
+    const queryConditions = {
+      "goods.description": item.name,
+      ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }),
+    };
+
+    const ticketsContainingItem = await Ticket.find(queryConditions)
+      .populate("createdBy", "firstname lastname")
+      .populate("currentAssignee", "firstname lastname email")
+      .select(
+        "ticketNumber goods createdAt createdBy currentAssignee statusHistory"
+      )
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const ticketUsageHistory = [];
+
+    for (const ticket of ticketsContainingItem) {
+      const relevantGood = ticket.goods.find(
+        (g) =>
+          g.description === item.name &&
+          (item.hsnCode ? g.hsnSacCode === item.hsnCode : true)
+      );
+
+      if (relevantGood && relevantGood.quantity > 0) {
+        ticketUsageHistory.push({
+          date: ticket.createdAt,
+          type: "Ticket Deduction (Initial)",
+          user: ticket.createdBy
+            ? `${ticket.createdBy.firstname || ""} ${
+                ticket.createdBy.lastname || ""
+              }`.trim()
+            : "System",
+          details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${
+            ticket.ticketNumber
+          } (Created/Items Added). Assigned to: ${
+            ticket.currentAssignee
+              ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}`
+              : "N/A"
+          }`,
+          quantityChange: -parseFloat(relevantGood.quantity) || 0,
+          ticketId: ticket._id,
+          ticketNumber: ticket.ticketNumber,
+        });
+      }
+    }
+
+    logger.info(
+      "item_ticket_usage",
+      `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`,
+      user
+    );
+    res.json(ticketUsageHistory);
+  } catch (error) {
+    logger.error(
+      "item_ticket_usage",
+      `Error fetching ticket usage history for item ID: ${itemId}`,
+      error,
+      user
+    );
+    res.status(500).json({
+      message: "Server error while fetching item ticket usage history",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

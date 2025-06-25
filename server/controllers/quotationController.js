@@ -5,8 +5,98 @@ const Ticket = require("../models/opentickets");
 const logger = require("../utils/logger");
 const mongoose = require("mongoose");
 
+// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
+// In a real application, this should ideally be loaded from a global configuration or a dedicated company settings model.
+const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
+
 // --- Helper Functions ---
-const generateNextQuotationNumber = async (userId) => {
+// Extracted function for calculating quotation totals and GST
+const calculateQuotationTotals = (goods, billingAddress) => {
+  let totalQuantity = 0;
+  let totalAmount = 0; // Pre-GST total
+  let gstAmount = 0; // Total GST amount
+
+  // Ensure goods is an array and each item has necessary numeric properties
+  const processedGoods = (goods || []).map((g) => ({
+    ...g,
+    quantity: Number(g.quantity || 0),
+    price: Number(g.price || 0),
+    gstRate: parseFloat(g.gstRate || 0),
+  }));
+
+  // Calculate item-level amount and overall totalQuantity and totalAmount
+  processedGoods.forEach((item) => {
+    item.amount = item.quantity * item.price; // Calculate amount for each item
+    totalQuantity += item.quantity;
+    totalAmount += item.amount;
+  });
+
+  // Calculate GST breakdown
+  const billingState = (billingAddress?.state || "").toUpperCase().trim();
+  const isBillingStateSameAsCompany =
+    billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+
+  const gstGroups = {};
+  processedGoods.forEach((item) => {
+    const itemGstRate = item.gstRate;
+    if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+      if (!gstGroups[itemGstRate])
+        gstGroups[itemGstRate] = { taxableAmount: 0 };
+      gstGroups[itemGstRate].taxableAmount += item.amount;
+    }
+  });
+
+  const gstBreakdown = [];
+  let runningTotalCgst = 0;
+  let runningTotalSgst = 0;
+  let runningTotalIgst = 0;
+
+  for (const rateKey in gstGroups) {
+    const group = gstGroups[rateKey];
+    const itemGstRate = parseFloat(rateKey);
+
+    const taxableAmount = group.taxableAmount;
+    let cgstAmount = 0,
+      sgstAmount = 0,
+      igstAmount = 0;
+    let cgstRate = 0,
+      sgstRate = 0,
+      igstRate = 0;
+
+    if (itemGstRate > 0) {
+      if (isBillingStateSameAsCompany) {
+        cgstRate = itemGstRate / 2;
+        sgstRate = itemGstRate / 2;
+        cgstAmount = (taxableAmount * cgstRate) / 100;
+        sgstAmount = (taxableAmount * sgstRate) / 100;
+        runningTotalCgst += cgstAmount;
+        runningTotalSgst += sgstAmount;
+      } else {
+        igstRate = itemGstRate;
+        igstAmount = (taxableAmount * igstRate) / 100;
+        runningTotalIgst += igstAmount;
+      }
+    }
+    gstBreakdown.push({
+      itemGstRate,
+      taxableAmount,
+      cgstRate,
+      cgstAmount,
+      sgstRate,
+      sgstAmount,
+      igstRate,
+      igstAmount,
+    });
+  }
+
+  gstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+  const grandTotal = totalAmount + gstAmount;
+
+  return { processedGoods, totalQuantity, totalAmount, gstAmount, grandTotal };
+};
+
+// This function should be the ONLY source for generating new quotation numbers.
+const generateNextQuotationNumber = async () => {
   const now = new Date();
   const year = now.getFullYear().toString().slice(-2);
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -30,7 +120,13 @@ exports.handleQuotationUpsert = async (req, res) => {
     const {
       client: clientInput,
       billingAddress,
-      ...quotationDetails
+      goods: rawGoods, // Get raw goods from frontend
+      // Remove calculated fields from req.body, backend will re-calculate
+      totalQuantity: _,
+      totalAmount: __,
+      gstAmount: ___,
+      grandTotal: ____,
+      ...quotationDetails // Remaining quotation fields
     } = req.body;
     const quotationPayload = { ...quotationDetails, billingAddress };
 
@@ -173,26 +269,41 @@ exports.handleQuotationUpsert = async (req, res) => {
         .json({ message: "Failed to process client information." });
     }
 
-    const processedBillingAddress =
+
+      const processedBillingAddress = // Declare and assign processedBillingAddress BEFORE it's used
       typeof billingAddress === "object" && billingAddress !== null
         ? billingAddress
         : { address1: "", address2: "", city: "", state: "", pincode: "" };
 
+
+    // --- Recalculate Totals and GST on Backend ---
+    if (!Array.isArray(rawGoods) || rawGoods.length === 0) {
+      await session.abortTransaction();
+      return res
+        .status(400)
+        .json({ message: "Quotation must contain at least one item." });
+    }
+    const {
+      processedGoods,
+      totalQuantity,
+      totalAmount,
+      gstAmount,
+      grandTotal,
+    } = calculateQuotationTotals(rawGoods, processedBillingAddress);
+
     const data = {
-      ...quotationPayload,
-      user: user._id,
-      date: new Date(quotationPayload.date),
-      validityDate: new Date(quotationPayload.validityDate),
-      client: processedClient._id,
-      billingAddress: processedBillingAddress,
-      // Ensure goods are processed correctly
-      goods: (quotationPayload.goods || []).map((g) => ({
-        ...g,
-        quantity: Number(g.quantity || 0),
-        price: Number(g.price || 0),
-        amount: Number(g.amount || 0),
-        gstRate: parseFloat(g.gstRate || 0),
-      })),
+      // Construct the final data object for saving
+      ...quotationPayload, // Includes referenceNumber, date, validityDate, status, etc.
+      user: user._id, // Set user from authenticated user
+      date: new Date(quotationPayload.date), // Ensure date is a Date object
+      validityDate: new Date(quotationPayload.validityDate), // Ensure validityDate is a Date object
+      client: processedClient._id, // Use processed client ID
+      billingAddress: processedBillingAddress, // Use processed billing address
+      goods: processedGoods, // Use goods with calculated amounts
+      totalQuantity, // Calculated on backend
+      totalAmount, // Calculated on backend
+      gstAmount, // Calculated on backend
+      grandTotal, // Calculated on backend
     };
 
     let quotation;
@@ -685,9 +796,34 @@ exports.deleteQuotation = async (req, res) => {
   }
 };
 
+// New endpoint to get next quotation number and default values for frontend
+exports.getQuotationDefaults = async (req, res) => {
+  try {
+    const nextRefNum = await generateNextQuotationNumber();
+    const defaultValidityDate = new Date();
+    defaultValidityDate.setDate(defaultValidityDate.getDate() + 2); // 2 days from now
+
+    res.json({
+      nextQuotationNumber: nextRefNum,
+      defaultValidityDate: defaultValidityDate.toISOString().split("T")[0], // YYYY-MM-DD format
+      defaultDispatchDays: "7-10 working days", // Example default
+      defaultTermsAndConditions:
+        "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
+    });
+  } catch (error) {
+    logger.error(
+      "quotation",
+      `Failed to fetch quotation defaults`,
+      error,
+      req.user
+    );
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getNextQuotationNumber = async (req, res) => {
   try {
-    const newRefNum = await generateNextQuotationNumber(req.user._id); // Pass userId if needed for user-specific sequences
+    const newRefNum = await generateNextQuotationNumber();
     res.json({ nextQuotationNumber: newRefNum });
   } catch (error) {
     logger.error(

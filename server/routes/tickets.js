@@ -61,13 +61,7 @@ router.delete(
   ticketController.adminDeleteTicket
 );
 
-router.post("/", auth, ticketController.createTicket);
 
-router.get(
-  "/check/:quotationNumber",
-  auth,
-  ticketController.checkExistingTicket
-);
 
 // CRITICAL: This route MUST come BEFORE any general '/:id' route
 router.get(
@@ -453,6 +447,14 @@ router.delete(
 router.get("/", auth, ticketController.getAllTickets);
 
 // ... (rest of your routes, e.g., /from-index/*)
+router.post("/", auth, ticketController.createTicket);
+
+router.get(
+  "/check/:quotationNumber",
+  auth,
+  ticketController.checkExistingTicket
+);
+
 router.get("/from-index/all", ticketController.getAllTickets_IndexLogic);
 router.post("/from-index/create", ticketController.createTicket_IndexLogic);
 // router.post(

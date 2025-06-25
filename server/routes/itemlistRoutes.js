@@ -22,6 +22,7 @@ router.post(
 router.get("/restock-summary", auth, itemController.getRestockSummary); // Added route for restock summary
 
 router.get("/:id/purchases", auth, purchaseController.getItemPurchaseHistory);
+router.delete("/:itemId/clear-logs", auth, itemController.clearItemLogs); 
 
 router.post("/:id/purchase", auth, purchaseController.addSinglePurchase); // Add purchase to specific item
 

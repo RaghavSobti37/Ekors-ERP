@@ -3,12 +3,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Badge, Card, ProgressBar } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import ItemSearchComponent from "../../components/ItemSearch.jsx";
+import ReusablePageStructure from "../../components/ReusablePageStructure.jsx"; // Ensure this path is correct
+import ItemSearchComponent from "../../components/ItemSearch.jsx"; // Ensure this path is correct
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
-import { handleApiError, formatDateForInput } from "../../utils/helpers";
-import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Import the new utility
+import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 import frontendLogger from "../../utils/frontendLogger.js";
 import axios from "axios"; // For pincode API
 
@@ -24,7 +24,8 @@ const EditTicketPage = () => {
 
   const initialTicketData = {
     companyName: "", quotationNumber: "",
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
+    ticketNumber: generateNextTicketNumber(), // Generate on frontend
+    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Initial empty object
     shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
     shippingSameAsBilling: false,
     goods: [], totalQuantity: 0, totalAmount: 0,
@@ -181,13 +182,25 @@ const EditTicketPage = () => {
     const finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
     const currentTotalAmount = ticketData.totalAmount || 0;
     const grandTotal = currentTotalAmount + finalGstAmount;
-    setTicketData(prev => ({
-        ...prev, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst,
-        totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst,
-        finalGstAmount, grandTotal, isBillingStateSameAsCompany,
-    }));
-  }, [ticketData.goods, ticketData.billingAddress?.state, ticketData.totalAmount]);
 
+    // Calculate roundOff and finalRoundedAmount
+    const decimalPart = grandTotal - Math.floor(grandTotal);
+    let newRoundOffAmount;
+    let newFinalRoundedAmount;
+
+    if (decimalPart === 0) {
+      newRoundOffAmount = 0;
+      newFinalRoundedAmount = grandTotal;
+    } else if (decimalPart < 0.50) {
+      newFinalRoundedAmount = Math.floor(grandTotal);
+      newRoundOffAmount = -decimalPart;
+    } else {
+      newFinalRoundedAmount = Math.ceil(grandTotal);
+      newRoundOffAmount = 1 - decimalPart;
+    }
+
+    setTicketData(prev => ({ ...prev, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst, totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst, finalGstAmount, grandTotal, isBillingStateSameAsCompany, roundOff: newRoundOffAmount, finalRoundedAmount: newFinalRoundedAmount }));
+  }, [ticketData.goods, ticketData.billingAddress?.state, ticketData.totalAmount]);
   useEffect(() => {
     calculateTaxes();
   }, [calculateTaxes]);
@@ -312,31 +325,6 @@ const EditTicketPage = () => {
     }
   }, [initialTicketData, setTicketData, setIsFetchingAddress]);
 
-  const handleStatusChange = useCallback((status) => {
-    setTicketData(prev => ({ ...prev, status }));
-    if (status !== originalStatus) {
-        setStatusChangeComment(""); // setStatusChangeComment is stable
-    }
-  }, [originalStatus, setTicketData, setStatusChangeComment]);
-
-  const handleRoundOff = useCallback(() => {
-    const currentGrandTotal = ticketData.grandTotal || 0;
-    const decimalPart = currentGrandTotal - Math.floor(currentGrandTotal);
-    let newRoundedTotal;
-    let newRoundOffAmount;
-
-    if (decimalPart < 0.50) {
-      newRoundedTotal = Math.floor(currentGrandTotal);
-      newRoundOffAmount = -decimalPart;
-    } else {
-      newRoundedTotal = Math.ceil(currentGrandTotal);
-      newRoundOffAmount = 1 - decimalPart;
-    }
-    setRoundedGrandTotal(newRoundedTotal);
-    setRoundOffAmount(newRoundOffAmount);
-    toast.info(`Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`);
-  }, [ticketData.grandTotal, setRoundedGrandTotal, setRoundOffAmount]);
-
   const handleUpdateTicket = useCallback(async () => {
     setFormValidated(true);
     // Basic form validation (can be expanded)
@@ -371,8 +359,9 @@ const EditTicketPage = () => {
           originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
-         roundOff: roundOffAmount,
-        finalRoundedAmount: roundedGrandTotal !== null ? roundedGrandTotal : ticketData.grandTotal + roundOffAmount,
+        termsAndConditions: ticketData.termsAndConditions, // Ensure terms and conditions are sent
+        roundOff: ticketData.roundOff, // Use the value from ticketData state
+        finalRoundedAmount: ticketData.finalRoundedAmount, // Use the value from ticketData state
       };
       // Remove fields that shouldn't be sent or are managed by backend
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
@@ -383,7 +372,7 @@ const EditTicketPage = () => {
         toast.success(`Ticket ${ticketData.ticketNumber} updated!`);
         frontendLogger.info("ticketActivity", `Ticket ${ticketData.ticketNumber} updated`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_SUCCESS" });
         navigate("/tickets");
-      }
+      } // Removed setFormValidated from here
     } catch (error) {
       const errorMsg = handleApiError(error, "Failed to update ticket", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
@@ -391,7 +380,7 @@ const EditTicketPage = () => {
     } finally { setIsLoading(false); } // Removed setFormValidated from here
   }, [ticketData, originalStatus, statusChangeComment, ticketIdFromParams, navigate, authUser, roundOffAmount, roundedGrandTotal, setFormValidated, setIsLoading, setError, setStatusChangeComment]);
 
-  const handleQuotationNumberClick = useCallback(async () => {
+  const handleQuotationNumberClick = useCallback(async () => { // Removed setFormValidated from here
     if (!ticketData.quotationNumber) {
       toast.info("No quotation number associated with this ticket.");
       return;
@@ -428,6 +417,13 @@ const EditTicketPage = () => {
       default: return "dark";
     }
   };
+
+  const handleStatusChange = useCallback((status) => {
+    setTicketData(prev => ({ ...prev, status }));
+    if (status !== originalStatus) {
+        setStatusChangeComment(""); // setStatusChangeComment is stable
+    }
+  }, [originalStatus, setTicketData, setStatusChangeComment]);
 
   if (authLoading || (isLoading && !ticketData._id && ticketIdFromParams)) { // Check if loading initial data for an existing ticket
     return <ReusablePageStructure title="Loading Ticket..."><Spinner animation="border" /></ReusablePageStructure>;
@@ -691,11 +687,7 @@ const EditTicketPage = () => {
                 </Row>
             </Card.Body>
         </Card>
-
         <Form.Group className="mb-3">
-             {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
-                <BsButton variant="outline-primary" size="sm" onClick={handleRoundOff} className="mt-2 mb-3 float-end">Round Off Total</BsButton>
-            )}
             <div style={{clear: "both"}}></div>
             {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
                 <i className="bi bi-card-checklist me-1"></i>Other Details

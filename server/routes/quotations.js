@@ -11,6 +11,7 @@ router.post("/", auth, quotationController.handleQuotationUpsert); // Create
 router.get("/:id", auth, quotationController.getQuotationById);
 router.put("/:id", auth, quotationController.handleQuotationUpsert); // Update
 router.delete("/:id", auth, quotationController.deleteQuotation);
+router.get("/defaults", auth, quotationController.getQuotationDefaults);
 
 // Utility Routes
 router.get("/next-number", auth, quotationController.getNextQuotationNumber);
