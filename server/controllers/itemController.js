@@ -173,12 +173,13 @@ exports.exportItemsToExcel = async (req, res) => {
         key: "buyingPriceBaseUnit",
         width: 25,
       },
+           { header: "Image", key: "image", width: 15 },
       // Add generic custom unit columns
       ...Array.from({ length: MAX_CUSTOM_UNITS_TO_EXPORT }).flatMap((_, i) => [
         { header: `Custom Unit ${i + 1} Name`, key: `customUnit${i + 1}Name`, width: 20 },
         { header: `Custom Unit ${i + 1} Conversion Factor`, key: `customUnit${i + 1}ConversionFactor`, width: 25 },
       ]),
-      { header: "Image", key: "image", width: 15 },
+ 
     ];
 
     // Apply header styling
@@ -208,18 +209,21 @@ exports.exportItemsToExcel = async (req, res) => {
 
       // Add category header if it changes
       if (item.category !== currentCategory) {
-        // Before adding new category header, finalize any pending image merge from previous category
-        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) { // This logic needs to be updated for the new image column index
-          worksheet.mergeCells(`${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${imageMergeStartRow}:${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${currentRow - 1}`);
+                const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
+        const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
 
+        // Before adding new category header, finalize any pending image merge from previous category
+ if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
+          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
         }
         // Reset image merge tracking for the new category
         imageMergeStartRow = -1;
         lastImageBase64 = null;
 
         currentCategory = item.category;
-        worksheet.mergeCells(`A${currentRow}:K${currentRow}`); // Merge all columns for category header
-        worksheet.getCell(`A${currentRow}`).value = `Category: ${
+  const lastColumnLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
+        worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`); // Merge all columns for category header       
+         worksheet.getCell(`A${currentRow}`).value = `Category: ${
           currentCategory || "Other"
         }`;
         worksheet.getCell(`A${currentRow}`).font = {
@@ -274,20 +278,19 @@ exports.exportItemsToExcel = async (req, res) => {
       // --- Image Placement and Merge Start ---
       const hasImage = !!item.image;
       const isNewImageSequence = item.image !== lastImageBase64;
+            const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
+      const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
 
       // If a new image sequence is starting (or no image for current item) AND an old sequence was active, finalize the old one.
       if (imageMergeStartRow !== -1 && (isNewImageSequence || !hasImage)) {
         if (currentRow - 1 >= imageMergeStartRow) {
-          // The image column is now the last one. Get its letter.
-          const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
           worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
 
         }
         imageMergeStartRow = -1; // Reset for new sequence
         lastImageBase64 = null; // Reset for new sequence
       }
-      // Get the 0-indexed column number for the image column
-      const imageColIndex = worksheet.columns.length - 1;
+      // Get the 0-indexed column number for the image column (already done above)
       if (hasImage) {
         if (imageMergeStartRow === -1) {
           imageMergeStartRow = currentRow;

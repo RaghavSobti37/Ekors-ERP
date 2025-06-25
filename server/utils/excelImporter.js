@@ -1,5 +1,8 @@
 const exceljs = require('exceljs');
 const logger = require('./logger'); // Assuming you have a logger utility
+// The number of custom units to look for during import.
+// This should be kept in sync with MAX_CUSTOM_UNITS_TO_EXPORT in the item controller.
+const MAX_CUSTOM_UNITS_TO_IMPORT = 3;
 
 async function parseExcelBufferForUpdate(fileBuffer) {
     const itemsToUpsert = [];
@@ -11,7 +14,8 @@ async function parseExcelBufferForUpdate(fileBuffer) {
         const worksheet = workbook.getWorksheet(1); // Assuming data is in the first sheet
 
         if (!worksheet) {
-            throw new Error("No worksheet found in the Excel file.");
+            parsingErrors.push({ row: 'general', message: "No worksheet found in the Excel file." });
+            return { itemsToUpsert, parsingErrors };
         }
 
 
@@ -20,9 +24,7 @@ async function parseExcelBufferForUpdate(fileBuffer) {
         // Collect all images first to map them by row
         const imageMap = new Map();
         worksheet.getImages().forEach(image => {
-            const { tl } = image.range; // tl: top-left cell
-            const row = tl.row + 1;  // 1-based row number
-            const imageId = image.imageId;
+            const row = image.range.tl.row + 1;  // 1-based row number            const imageId = image.imageId;
             const excelImage = workbook.getImage(imageId);
             if (excelImage) {
                 const base64Image = `data:image/${excelImage.extension || "png"};base64,${excelImage.buffer.toString("base64")}`;
@@ -31,21 +33,9 @@ async function parseExcelBufferForUpdate(fileBuffer) {
         });
 
         // Iterate over rows, skipping the header row
-        worksheet.eachRow({ skipHeader: true }, (row, rowNumber) => {
+          worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
             if (rowNumber === 1) return; // Skip the header row explicitly
 
-            const category = row.getCell('A').value; // Category from column A
-            const name = row.getCell('B').value; // Name from column B
-            const quantity = row.getCell('C').value; // Quantity from column C
-            const baseUnit = row.getCell('D').value; // Base Unit from column D
-            const sellingPriceBaseUnit = row.getCell('E').value; // Selling Price (per Base Unit) from column E
-            const buyingPriceBaseUnit = row.getCell('F').value; // Buying Price (per Base Unit) from column F
-            const meterConversionFactor = row.getCell('G').value; // Meter Conversion Factor from column G
-            // Columns H and I (Selling Price per Meter, Buying Price per Meter) are derived, not directly imported for item master
-            const hsnCode = row.getCell('J').value; // HSN Code from column J
-            const gstRate = row.getCell('K').value; // GST Rate from column K
-            const maxDiscountPercentage = row.getCell('L').value; // Max Discount % from column L
-            const lowStockThreshold = row.getCell('M').value; // Low Stock Threshold from column M
 
             // Check if this row is a category header (merged cells in column A)
             const firstCell = row.getCell('A');
@@ -57,6 +47,8 @@ async function parseExcelBufferForUpdate(fileBuffer) {
                 }
             }
 
+        const name = row.getCell('B').value;
+
             // If the name is missing, consider it an empty row and skip
             if (!name) {
                 parsingErrors.push({ row: rowNumber, message: `Skipped: Item name is missing in row ${rowNumber}.` });
@@ -66,42 +58,44 @@ async function parseExcelBufferForUpdate(fileBuffer) {
             // Basic validation and type coercion, handling potential null or undefined values
             const item = {
                 name: String(name).trim(),
-                quantity: parseFloat(quantity) || 0,
-                             pricing: {
-                    baseUnit: String(baseUnit || 'Nos').trim(),
-                    sellingPrice: parseFloat(sellingPriceBaseUnit) || 0,
-                    buyingPrice: parseFloat(buyingPriceBaseUnit) || 0,
-                },
-                units: [
-                    { name: String(baseUnit || 'Nos').trim(), isBaseUnit: true, conversionFactor: 1 }
-                ],
 
-                category: currentCategory,  // Use currentCategory for items
-                hsnCode: String(hsnCode || '').trim(),
-                gstRate: parseFloat(gstRate) || 0,
-                maxDiscountPercentage: parseFloat(maxDiscountPercentage) || 0,
-                lowStockThreshold: parseInt(lowStockThreshold, 10) || 5,
-                image: imageMap.get(rowNumber) || '', // Retrieve image from the map
+                quantity: parseFloat(row.getCell('C').value) || 0,
+                hsnCode: String(row.getCell('D').value || '').trim(),
+                gstRate: parseFloat(row.getCell('E').value) || 0,
+                maxDiscountPercentage: parseFloat(row.getCell('F').value) || 0,
+                lowStockThreshold: parseInt(row.getCell('G').value, 10) || 5,
+                baseUnit: String(row.getCell('H').value || 'Nos').trim(),
+                sellingPriceBaseUnit: parseFloat(row.getCell('I').value) || 0,
+                buyingPriceBaseUnit: parseFloat(row.getCell('J').value) || 0,
+                category: currentCategory,
+                image: imageMap.get(rowNumber) || '',
+
             };
 
             
-            // Add Meter unit if conversion factor is provided and valid
-            if (meterConversionFactor !== null && meterConversionFactor !== undefined && parseFloat(meterConversionFactor) > 0) {
-                item.units.push({
-                    name: "Mtr",
-                    isBaseUnit: false,
-                    conversionFactor: parseFloat(meterConversionFactor)
-                });
+            // Read custom units dynamically. Column L is 12.
+            for (let i = 0; i < MAX_CUSTOM_UNITS_TO_IMPORT; i++) {
+                const unitNameCol = 12 + (i * 2);
+                const conversionFactorCol = 13 + (i * 2);
+
+                const unitName = row.getCell(unitNameCol).value;
+                const conversionFactor = row.getCell(conversionFactorCol).value;
+
+                if (unitName && (conversionFactor !== null && conversionFactor !== undefined)) {
+                    item[`customUnit${i + 1}Name`] = String(unitName).trim();
+                    item[`customUnit${i + 1}ConversionFactor`] = parseFloat(conversionFactor);
+                }
             }
 
 
 
             // Further validations
-            if (isNaN(item.pricing.sellingPrice)) {
+              if (isNaN(item.sellingPriceBaseUnit)) {
+
 
                 parsingErrors.push({
                     row: rowNumber,
-                    message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${sellingPriceBaseUnit}.`,
+ message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${row.getCell('I').value}.`,
                 });
                 return;
             }
@@ -116,7 +110,7 @@ async function parseExcelBufferForUpdate(fileBuffer) {
         logger.error('excel_importer', `Error parsing Excel buffer: ${error.message}`, error);
         return {
             itemsToUpsert: [],
-            parsingErrors: [{ row: 'general', message: `Fatal error parsing Excel: ${error.message}` }],
+            parsingErrors: [{ row: 'general', message: `Fatal error during Excel parsing: ${error.message}` }],
         };
     }
 }
