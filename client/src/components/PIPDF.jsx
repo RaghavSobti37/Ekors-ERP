@@ -147,18 +147,25 @@ const styles = StyleSheet.create({
   colAmount: { width: "15%", borderRightWidth: 0 },
 
   summarySection: {
-    marginTop: 10,
+    marginTop: 5,
     flexDirection: "row",
     justifyContent: "flex-end",
   },
   summaryContainer: {
-    width: "50%",
+    marginLeft: 'auto',
+    width: "100%",
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 2,
     fontSize: 9,
+  },
+  summaryBox: {
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 5,
+    marginTop: 10,
   },
   summaryLabel: {
     fontWeight: "normal",
@@ -235,9 +242,11 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: "absolute",
-    bottom: 30,
-    left: 35,
-    right: 35,
+    // bottom: 30,
+    // left: 35,
+    bottom: 0,
+    right: 0,
+    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -245,6 +254,7 @@ const styles = StyleSheet.create({
   },
   authSignatory: {
     textAlign: "right",
+    alignItems: 'flex-end',
   },
   logo: {
     position: "absolute",
@@ -582,6 +592,7 @@ const PIPDF = ({ ticketData, companyInfo }) => {
           </View>
 
           <View style={styles.summarySection}>
+          <View style={styles.summaryBox}>
             <View style={styles.summaryContainer}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal (Before Tax):</Text>
@@ -638,6 +649,7 @@ const PIPDF = ({ ticketData, companyInfo }) => {
               </View>
             </View>
           </View>
+        </View>
 
           <Text style={styles.amountInWords}>
             Amount in Words: {toWords(Math.round(displayGrandTotal || 0))}
@@ -809,12 +821,14 @@ const PIPDF = ({ ticketData, companyInfo }) => {
           </View>
 
           <View style={styles.footer}>
-            <View style={styles.authSignatory}>
-              <Text style={styles.companyNameHeader}> For {String(company.companyName ?? '')}</Text>
-              <View style={{ height: 30 }} />
+          <View style={styles.authSignatory}>
+            <Text style={styles.companyNameHeader}>For {String(company.companyName ?? '')}</Text>
+            <View style={styles.signatoryContainer}>
+              <View style={{ height: 20 }} /> {/* Reduced space from 30 to 20 */}
               <Text>Authorized Signatory</Text>
             </View>
           </View>
+        </View>
         </View>
       </Page>
     </Document>
