@@ -8,6 +8,8 @@ const multer = require("multer");
 const xlsx = require("xlsx");
 const Ticket = require("../models/opentickets"); // Make sure this path is correct
 const exceljs = require("exceljs");
+const asyncHandler = require("express-async-handler");
+
 
 // Get all items - Updated for server-side pagination, sorting, and filtering
 exports.getAllItems = async (req, res) => {
@@ -51,10 +53,10 @@ exports.getAllItems = async (req, res) => {
       quantityThreshold !== "null"
     ) {
       query.quantity = { $lte: parseInt(quantityThreshold, 10) };
-    } else if (quantityThreshold === "0") { // Explicitly handle "0" if sent as string
+    } else if (quantityThreshold === "0") {
+      // Explicitly handle "0" if sent as string
       query.quantity = { $lte: 0 };
     }
-
 
     if (status && status !== "undefined") query.status = status;
 
@@ -69,7 +71,11 @@ exports.getAllItems = async (req, res) => {
         query.quantity = { $lt: thresholdValue };
       } else {
         // Potentially log a warning if lowThreshold is not a valid number
-        logger.warn("item", `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`, user);
+        logger.warn(
+          "item",
+          `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`,
+          user
+        );
       }
     }
 
@@ -123,6 +129,7 @@ const upload = multer({
 });
 exports.uploadMiddleware = upload.single("excelFile");
 
+const MAX_CUSTOM_UNITS_TO_EXPORT = 3; 
 exports.exportItemsToExcel = async (req, res) => {
   const user = req.user || null;
   logger.info("excel_export", "API: Starting Excel export process", {
@@ -130,12 +137,16 @@ exports.exportItemsToExcel = async (req, res) => {
   });
   try {
     // Fetch all approved items, sorted by category and then by name
-    const items = await Item.find({ status: "approved" }).sort({ category: 1, name: 1 }).lean();
+    const items = await Item.find({ status: "approved" })
+      .sort({ category: 1, name: 1 })
+      .lean();
     if (!items || items.length === 0) {
       logger.info("excel_export", "No items found to export", {
         userId: user?._id,
       });
-            return res.status(404).json({ message: "No approved items found to export." });
+      return res
+        .status(404)
+        .json({ message: "No approved items found to export." });
     }
 
     const workbook = new exceljs.Workbook();
@@ -146,28 +157,44 @@ exports.exportItemsToExcel = async (req, res) => {
       { header: "Category", key: "category", width: 25 },
       { header: "Name", key: "name", width: 40 },
       { header: "Quantity", key: "quantity", width: 15 },
-      { header: "Selling Price", key: "sellingPrice", width: 18 },
-      { header: "Buying Price", key: "buyingPrice", width: 18 },
-      { header: "Unit", key: "unit", width: 10 },
       { header: "HSN Code", key: "hsnCode", width: 15 },
       { header: "GST Rate", key: "gstRate", width: 12 },
       { header: "Max Discount %", key: "maxDiscountPercentage", width: 18 },
       { header: "Low Stock Threshold", key: "lowStockThreshold", width: 20 },
-      { header: "Image", key: "image", width: 15 }, // Image column
+    
+            { header: "Base Unit", key: "baseUnit", width: 15 },
+      {
+        header: "Selling Price (per Base Unit)",
+        key: "sellingPriceBaseUnit",
+        width: 25,
+      },
+      {
+        header: "Buying Price (per Base Unit)",
+        key: "buyingPriceBaseUnit",
+        width: 25,
+      },
+      // Add generic custom unit columns
+      ...Array.from({ length: MAX_CUSTOM_UNITS_TO_EXPORT }).flatMap((_, i) => [
+        { header: `Custom Unit ${i + 1} Name`, key: `customUnit${i + 1}Name`, width: 20 },
+        { header: `Custom Unit ${i + 1} Conversion Factor`, key: `customUnit${i + 1}ConversionFactor`, width: 25 },
+      ]),
+      { header: "Image", key: "image", width: 15 },
     ];
 
     // Apply header styling
     worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // White text
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // White text
       cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' } // Blue background (similar to Excel's default header blue)
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF4472C4" }, // Blue background (similar to Excel's default header blue)
       };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
       cell.border = {
-        top: { style: 'thin' }, left: { style: 'thin' },
-        bottom: { style: 'thin' }, right: { style: 'thin' }
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     });
 
@@ -181,9 +208,10 @@ exports.exportItemsToExcel = async (req, res) => {
 
       // Add category header if it changes
       if (item.category !== currentCategory) {
-                // Before adding new category header, finalize any pending image merge from previous category
-        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
-          worksheet.mergeCells(`K${imageMergeStartRow}:K${currentRow - 1}`);
+        // Before adding new category header, finalize any pending image merge from previous category
+        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) { // This logic needs to be updated for the new image column index
+          worksheet.mergeCells(`${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${imageMergeStartRow}:${String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.findIndex(col => col.key === 'image'))}${currentRow - 1}`);
+
         }
         // Reset image merge tracking for the new category
         imageMergeStartRow = -1;
@@ -191,76 +219,136 @@ exports.exportItemsToExcel = async (req, res) => {
 
         currentCategory = item.category;
         worksheet.mergeCells(`A${currentRow}:K${currentRow}`); // Merge all columns for category header
-        worksheet.getCell(`A${currentRow}`).value = `Category: ${currentCategory || 'Other'}`;
-        worksheet.getCell(`A${currentRow}`).font = { bold: true, size: 12, color: { argb: 'FF000000' } }; // Black text
+        worksheet.getCell(`A${currentRow}`).value = `Category: ${
+          currentCategory || "Other"
+        }`;
+        worksheet.getCell(`A${currentRow}`).font = {
+          bold: true,
+          size: 12,
+          color: { argb: "FF000000" },
+        }; // Black text
         worksheet.getCell(`A${currentRow}`).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFD9E1F2' } // Light blue background
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFD9E1F2" }, // Light blue background
         };
-        worksheet.getCell(`A${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+        worksheet.getCell(`A${currentRow}`).alignment = {
+          vertical: "middle",
+          horizontal: "left",
+        };
         currentRow++;
       }
 
       // Prepare row data
       const rowData = {
-        category: '', // Category is handled by the merged header
+        category: "", // Category is handled by the merged header
         name: item.name,
         quantity: item.quantity,
-        sellingPrice: item.sellingPrice,
-        buyingPrice: item.buyingPrice,
-        unit: item.unit,
+        baseUnit: item.pricing?.baseUnit || "N/A",
+        sellingPriceBaseUnit: item.pricing?.sellingPrice || 0,
+        buyingPriceBaseUnit: item.pricing?.buyingPrice || 0,
+        // Calculate meter-specific values if 'Mtr' unit exists
+
         hsnCode: item.hsnCode,
         gstRate: item.gstRate,
         maxDiscountPercentage: item.maxDiscountPercentage,
         lowStockThreshold: item.lowStockThreshold,
-        image: '', // Image will be added separately
+        image: "", // Image will be added separately
       };
+            // Populate custom unit columns
+      const nonBaseUnits = item.units?.filter(u => !u.isBaseUnit) || [];
+      for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
+        if (nonBaseUnits[j]) {
+          rowData[`customUnit${j + 1}Name`] = nonBaseUnits[j].name;
+          rowData[`customUnit${j + 1}ConversionFactor`] = nonBaseUnits[j].conversionFactor;
+        } else {
+          // Ensure empty cells if no more custom units
+          rowData[`customUnit${j + 1}Name`] = "";
+          rowData[`customUnit${j + 1}ConversionFactor`] = "";
+        }
+      }
 
       worksheet.addRow(rowData);
       const addedRow = worksheet.getRow(currentRow);
 
       // --- Image Placement and Merge Start ---
       const hasImage = !!item.image;
-      const isNewImageSequence = (item.image !== lastImageBase64);
+      const isNewImageSequence = item.image !== lastImageBase64;
 
       // If a new image sequence is starting (or no image for current item) AND an old sequence was active, finalize the old one.
       if (imageMergeStartRow !== -1 && (isNewImageSequence || !hasImage)) {
-        if (currentRow - 1 >= imageMergeStartRow) { // Ensure there's at least one row to merge
-          worksheet.mergeCells(`K${imageMergeStartRow}:K${currentRow - 1}`);
+        if (currentRow - 1 >= imageMergeStartRow) {
+          // The image column is now the last one. Get its letter.
+          const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
+          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
+
         }
         imageMergeStartRow = -1; // Reset for new sequence
-        lastImageBase64 = null;   // Reset for new sequence
+        lastImageBase64 = null; // Reset for new sequence
       }
-
+      // Get the 0-indexed column number for the image column
+      const imageColIndex = worksheet.columns.length - 1;
       if (hasImage) {
-        if (imageMergeStartRow === -1) {           imageMergeStartRow = currentRow;
+        if (imageMergeStartRow === -1) {
+          imageMergeStartRow = currentRow;
           lastImageBase64 = item.image;
-          const imageId = workbook.addImage({ // Add image to workbook
+          const imageId = workbook.addImage({
+            // Add image to workbook
             base64: item.image, // Base64 image data
-            extension: item.image.split(';')[0].split('/')[1],           });
-          worksheet.addImage(imageId, { tl: { col: 10, row: currentRow - 1 }, ext: { width: 60, height: 60 } }); // Place image in column K
+            extension: item.image.split(";")[0].split("/")[1],
+          });
+          worksheet.addImage(imageId, { // col: 10 was 'K'
+            tl: { col: imageColIndex, row: currentRow - 1 },
+            ext: { width: 60, height: 60 },
+          }); // Place image in column K
         }
         worksheet.getRow(currentRow).height = 65; // Always set row height if there's an image in this row
-
       }
 
       // Apply cell styling for data rows
       addedRow.eachCell((cell) => {
-        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
         cell.border = {
-          top: { style: 'thin' }, left: { style: 'thin' },
-          bottom: { style: 'thin' }, right: { style: 'thin' }
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
         };
       });
 
       // Center align numeric columns
-      addedRow.getCell('quantity').alignment = { vertical: 'middle', horizontal: 'center' };
-      addedRow.getCell('sellingPrice').alignment = { vertical: 'middle', horizontal: 'right' };
-      addedRow.getCell('buyingPrice').alignment = { vertical: 'middle', horizontal: 'right' };
+      addedRow.getCell("quantity").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
       addedRow.getCell('gstRate').alignment = { vertical: 'middle', horizontal: 'center' };
       addedRow.getCell('maxDiscountPercentage').alignment = { vertical: 'middle', horizontal: 'center' };
       addedRow.getCell('lowStockThreshold').alignment = { vertical: 'middle', horizontal: 'center' };
+
+      addedRow.getCell("sellingPriceBaseUnit").alignment = {
+        vertical: "middle",
+        horizontal: "right",
+      };
+      addedRow.getCell("buyingPriceBaseUnit").alignment = {
+        vertical: "middle",
+        horizontal: "right",
+      };
+      // Custom unit conversion factors should also be centered
+      for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
+        addedRow.getCell(`customUnit${j + 1}ConversionFactor`).alignment = { vertical: 'middle', horizontal: 'center' };
+      }
+      addedRow.getCell("gstRate").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      addedRow.getCell("maxDiscountPercentage").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      addedRow.getCell("lowStockThreshold").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
 
       currentRow++;
     }
@@ -289,12 +377,10 @@ exports.exportItemsToExcel = async (req, res) => {
       stack: error.stack,
       userId: user?._id,
     });
-    res
-      .status(500)
-      .json({
-        message: "Server error during Excel export.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during Excel export.",
+      error: error.message,
+    });
   }
 };
 
@@ -396,12 +482,10 @@ exports.importItemsFromUploadedExcel = async (req, res) => {
       "API: Unhandled error during Excel import from upload",
       { error: error.message, stack: error.stack, userId: user?._id }
     );
-    res
-      .status(500)
-      .json({
-        message: "Server error during Excel processing.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during Excel processing.",
+      error: error.message,
+    });
   }
 };
 
@@ -455,13 +539,97 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
           ? existingItem.quantity
           : 0;
 
+      // Construct pricing object
+      const pricingPayload = {
+        baseUnit: excelItemData.baseUnit || "Nos",
+        sellingPrice: parseFloat(excelItemData.sellingPriceBaseUnit) || 0,
+        buyingPrice: parseFloat(excelItemData.buyingPriceBaseUnit) || 0,
+      };
+
+      // Construct units array
+      const unitsPayload = [
+        {
+          name: pricingPayload.baseUnit,
+          isBaseUnit: true,
+          conversionFactor: 1,
+        },
+      ];
+      // Add custom units from Excel data
+      for (let i = 1; i <= MAX_CUSTOM_UNITS_TO_EXPORT; i++) { // Use MAX_CUSTOM_UNITS_TO_EXPORT from export
+        const unitNameKey = `customUnit${i}Name`;
+        const conversionFactorKey = `customUnit${i}ConversionFactor`;
+        if (excelItemData[unitNameKey] && excelItemData[conversionFactorKey]) {
+          unitsPayload.push({
+            name: excelItemData[unitNameKey],
+            isBaseUnit: false,
+            conversionFactor: parseFloat(excelItemData[conversionFactorKey]),
+          });
+        }
+      }
+
+      // Merge with existing units, prioritizing Excel data
+      const finalUnits = [];
+      const seenUnitNames = new Set();
+
+      // Add units from Excel payload, ensuring uniqueness
+      unitsPayload.forEach(u => {
+        const lowerCaseName = u.name.toLowerCase();
+        if (!seenUnitNames.has(lowerCaseName)) {
+          finalUnits.push(u);
+          seenUnitNames.add(lowerCaseName);
+        }
+      });
+      // Merge with existing units if updating and new units are not fully specified
+      // This logic can be complex if you want to preserve other custom units not in Excel
+      // For simplicity, this example overwrites or adds 'Mtr' if present in Excel.
+      // A more advanced approach might merge units based on name.
+      if (existingItem && existingItem.units) {
+       existingItem.units.forEach(u => {
+          const lowerCaseName = u.name.toLowerCase();
+          if (!seenUnitNames.has(lowerCaseName)) {
+            finalUnits.push(u);
+            seenUnitNames.add(lowerCaseName);
+          }
+        }
+        );
+      }
+
+            // Ensure base unit is correctly marked and conversion factor is 1
+      // And ensure only one base unit exists
+      let hasBaseUnit = false;
+      finalUnits.forEach(u => {
+        if (u.name.toLowerCase() === pricingPayload.baseUnit.toLowerCase()) {
+          u.isBaseUnit = true;
+          u.conversionFactor = 1;
+          hasBaseUnit = true;
+        } else {
+          u.isBaseUnit = false; // Ensure other units are not marked as base
+        }
+      });
+
+      // If for some reason the base unit from pricingPayload wasn't in finalUnits (e.g., typo in Excel custom unit name)
+      if (!hasBaseUnit) {
+        finalUnits.unshift({
+          name: pricingPayload.baseUnit,
+          isBaseUnit: true,
+          conversionFactor: 1,
+        });
+      }
+
+      // Sort units to ensure base unit is always first, then by name for consistency
+      finalUnits.sort((a, b) => {
+        if (a.isBaseUnit) return -1;
+        if (b.isBaseUnit) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+
       const payload = {
         name: excelItemData.name,
         quantity: quantityForPayload,
-        sellingPrice: excelItemData.sellingPrice || excelItemData.price || 0,
-        buyingPrice: excelItemData.buyingPrice || 0,
-        unit: excelItemData.unit || "Nos",
-        category: excelItemData.category || "Other",
+        pricing: pricingPayload,
+                units: finalUnits, 
+                    category: excelItemData.category || "Other",
         // subcategory: excelItemData.subcategory || "General", // Removed
         gstRate: excelItemData.gstRate || 0,
         hsnCode: excelItemData.hsnCode || "",
@@ -507,20 +675,69 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         const currentHistory = existingItem.excelImportHistory || [];
         const changes = [];
         let itemActuallyModified = false;
+         // Helper for deep comparison of objects (e.g., pricing)
+        const compareObjects = (obj1, obj2) => {
+          if (obj1 === obj2) return true;
+          if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
+          const keys1 = Object.keys(obj1);
+          const keys2 = Object.keys(obj2);
+          if (keys1.length !== keys2.length) return false;
+          for (const key of keys1) {
+            if (!keys2.includes(key) || !compareObjects(obj1[key], obj2[key])) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        // Helper for deep comparison of units arrays
+        const compareUnits = (arr1, arr2) => {
+          if (arr1.length !== arr2.length) return false;
+          // Sort arrays by name for consistent comparison
+          const sortedArr1 = [...arr1].sort((a, b) => a.name.localeCompare(b.name));
+          const sortedArr2 = [...arr2].sort((a, b) => a.name.localeCompare(b.name));
+
+          for (let i = 0; i < sortedArr1.length; i++) {
+            if (!compareObjects(sortedArr1[i], sortedArr2[i])) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        // Check for changes in simple fields
 
         Object.keys(payload).forEach((key) => {
-          if (payload.hasOwnProperty(key)) {
-            // Special handling for arrays or objects if needed, for now direct comparison
-            if (String(existingItem[key]) !== String(payload[key])) {
-              changes.push({
+          if (key === 'pricing' || key === 'units') return; // Handle these separately
+          if (String(existingItem[key]) !== String(payload[key])) {              changes.push({
                 field: key,
                 oldValue: existingItem[key],
                 newValue: payload[key],
               });
               itemActuallyModified = true;
             }
-          }
         });
+
+        // Check for changes in pricing object
+        if (!compareObjects(existingItem.pricing, payload.pricing)) {
+          changes.push({
+            field: 'pricing',
+            oldValue: existingItem.pricing,
+            newValue: payload.pricing,
+          });
+          itemActuallyModified = true;
+        }
+
+        // Check for changes in units array
+        if (!compareUnits(existingItem.units, payload.units)) {
+          changes.push({
+            field: 'units',
+            oldValue: existingItem.units,
+            newValue: payload.units,
+          });
+          itemActuallyModified = true;
+        }
+
 
         if (itemActuallyModified) {
           currentHistory.push({
@@ -989,12 +1206,10 @@ exports.importItemsFromExcelViaAPI = async (req, res) => {
       "API: Unhandled error during Excel import process",
       { error: error.message, stack: error.stack, userId: user?._id }
     );
-    res
-      .status(500)
-      .json({
-        message: "Server error during Excel processing.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Server error during Excel processing.",
+      error: error.message,
+    });
   }
 };
 
@@ -1087,12 +1302,10 @@ exports.createCategory = async (req, res) => {
       user,
       logDetails
     );
-    res
-      .status(201)
-      .json({
-        message: `Category "${trimmedCategoryName}" is available. It will be formally created when an item is saved with it.`,
-        category: trimmedCategoryName,
-      });
+    res.status(201).json({
+      message: `Category "${trimmedCategoryName}" is available. It will be formally created when an item is saved with it.`,
+      category: trimmedCategoryName,
+    });
   } catch (error) {
     logger.error(
       "item",
@@ -1262,10 +1475,15 @@ exports.createItem = async (req, res) => {
       : 5;
     const sellingPrice = parseFloat(req.body.sellingPrice) || 0;
     const buyingPrice = parseFloat(req.body.buyingPrice) || 0;
-        const image = req.body.image || "";
+    const image = req.body.image || "";
 
     if (buyingPrice > sellingPrice) {
-      logger.warn("item", "Create item attempt with buying price > selling price.", user, req.body);
+      logger.warn(
+        "item",
+        "Create item attempt with buying price > selling price.",
+        user,
+        req.body
+      );
       return res.status(400).json({
         message: "Buying price cannot be greater than selling price.",
       });
@@ -1274,18 +1492,17 @@ exports.createItem = async (req, res) => {
     const newItemData = {
       name: req.body.name,
       quantity: quantity,
-      sellingPrice: sellingPrice,
-      buyingPrice: buyingPrice,
+      pricing: req.body.pricing, // Expecting { baseUnit, sellingPrice, buyingPrice }
+      units: req.body.units,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
-      unit: req.body.unit || "Nos",
       category: req.body.category || "Other",
       // subcategory: req.body.subcategory || "General", // Removed
       maxDiscountPercentage: req.body.maxDiscountPercentage
         ? parseFloat(req.body.maxDiscountPercentage)
         : 0,
       lowStockThreshold: lowStockThreshold,
-      createdBy: user._id,    
+      createdBy: user._id,
       image: image,
       needsRestock: quantity < lowStockThreshold,
     };
@@ -1319,16 +1536,13 @@ exports.createItem = async (req, res) => {
     });
     if (error.code === 11000) {
       // Duplicate key error
-      return res
-        .status(400)
-        .json({
-          message:
-            "An item with this name already exists. Please use a unique name.",
-                      errorType: "DuplicateKeyError",
-
-        });
+      return res.status(400).json({
+        message:
+          "An item with this name already exists. Please use a unique name.",
+        errorType: "DuplicateKeyError",
+      });
     }
-   if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({
         message: `Validation failed: ${error.message}`,
         errors: error.errors,
@@ -1340,7 +1554,8 @@ exports.createItem = async (req, res) => {
     res.status(500).json({
       message: "Server error during item creation.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
-      errorType: "InternalServerError",    });
+      errorType: "InternalServerError",
+    });
   }
 };
 
@@ -1367,32 +1582,53 @@ exports.updateItem = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    const quantity = req.body.quantity !== undefined
-      ? parseFloat(req.body.quantity) || 0
-      : existingItem.quantity;
+    const quantity =
+      req.body.quantity !== undefined
+        ? parseFloat(req.body.quantity) || 0
+        : existingItem.quantity;
 
     // Robust handling for lowStockThreshold
     let resolvedLowStockThreshold;
-    if (req.body.lowStockThreshold === undefined || req.body.lowStockThreshold === null || String(req.body.lowStockThreshold).trim() === '') {
-        resolvedLowStockThreshold = existingItem.lowStockThreshold !== undefined ? existingItem.lowStockThreshold : 5;
+    if (
+      req.body.lowStockThreshold === undefined ||
+      req.body.lowStockThreshold === null ||
+      String(req.body.lowStockThreshold).trim() === ""
+    ) {
+      resolvedLowStockThreshold =
+        existingItem.lowStockThreshold !== undefined
+          ? existingItem.lowStockThreshold
+          : 5;
     } else {
-        const parsed = parseInt(String(req.body.lowStockThreshold), 10); // Ensure it's a string before parseInt
-        if (Number.isFinite(parsed) && parsed >= 0) {
-            resolvedLowStockThreshold = parsed;
-        } else {
-            logger.warn(`item`, `Invalid lowStockThreshold value "${req.body.lowStockThreshold}" for item ${itemId}. Using existing or default.`, user);
-            resolvedLowStockThreshold = existingItem.lowStockThreshold !== undefined ? existingItem.lowStockThreshold : 5;
-        }
+      const parsed = parseInt(String(req.body.lowStockThreshold), 10); // Ensure it's a string before parseInt
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        resolvedLowStockThreshold = parsed;
+      } else {
+        logger.warn(
+          `item`,
+          `Invalid lowStockThreshold value "${req.body.lowStockThreshold}" for item ${itemId}. Using existing or default.`,
+          user
+        );
+        resolvedLowStockThreshold =
+          existingItem.lowStockThreshold !== undefined
+            ? existingItem.lowStockThreshold
+            : 5;
+      }
     }
-    const lowStockThreshold = req.body.lowStockThreshold
-      ? parseInt(req.body.lowStockThreshold, 10)
-      : existingItem.lowStockThreshold || 5;
-    
-    const sellingPrice = req.body.sellingPrice !== undefined ? parseFloat(req.body.sellingPrice) : existingItem.sellingPrice;
-    const buyingPrice = req.body.buyingPrice !== undefined ? parseFloat(req.body.buyingPrice) : existingItem.buyingPrice;
+    const sellingPrice =       req.body.sellingPrice !== undefined
+        ? parseFloat(req.body.sellingPrice)
+        : existingItem.sellingPrice;
+    const buyingPrice =
+      req.body.buyingPrice !== undefined
+        ? parseFloat(req.body.buyingPrice)
+        : existingItem.buyingPrice;
 
     if (buyingPrice > sellingPrice) {
-      logger.warn("item", `Update item attempt for ${itemId} with buying price > selling price.`, user, req.body);
+      logger.warn(
+        "item",
+        `Update item attempt for ${itemId} with buying price > selling price.`,
+        user,
+        req.body
+      );
       return res.status(400).json({
         message: "Buying price cannot be greater than selling price.",
       });
@@ -1401,19 +1637,18 @@ exports.updateItem = async (req, res) => {
     const updatePayload = {
       name: req.body.name,
       quantity: quantity,
-      sellingPrice: sellingPrice,
-      buyingPrice: buyingPrice,
+      pricing: req.body.pricing, // Expecting { baseUnit, sellingPrice, buyingPrice }
+      units: req.body.units,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
-      unit: req.body.unit || "Nos",
       category: req.body.category || "Other",
       // subcategory: req.body.subcategory || "General", // Removed
       maxDiscountPercentage: req.body.maxDiscountPercentage
         ? parseFloat(req.body.maxDiscountPercentage)
         : 0,
-     lowStockThreshold: resolvedLowStockThreshold, // Use the resolved value
+      lowStockThreshold: resolvedLowStockThreshold, // Use the resolved value
       needsRestock: quantity < resolvedLowStockThreshold,
-           ...(req.body.image !== undefined && { image: req.body.image }), 
+      ...(req.body.image !== undefined && { image: req.body.image }),
     };
 
     // Handle status update logic
@@ -1505,7 +1740,7 @@ exports.updateItem = async (req, res) => {
       inventoryLogEntries.push({
         type: "Item Details Updated",
         date: new Date(),
-        quantityChange: 0, 
+        quantityChange: 0,
         details: `${changedFieldsDetails.join(", ")}.`,
         userReference: user._id,
       });
@@ -1515,7 +1750,7 @@ exports.updateItem = async (req, res) => {
       itemId,
       {
         $set: updatePayload,
-        $push: { inventoryLog: { $each: inventoryLogEntries } }, 
+        $push: { inventoryLog: { $each: inventoryLogEntries } },
       },
       { new: true, runValidators: true }
     );
@@ -1547,12 +1782,10 @@ exports.updateItem = async (req, res) => {
       { requestBody: req.body, userId: req.user?._id }
     );
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "An item with this name already exists. Please use a unique name.",
-        });
+      return res.status(400).json({
+        message:
+          "An item with this name already exists. Please use a unique name.",
+      });
     }
     res.status(400).json({
       message: error.message.includes("validation")
@@ -1595,7 +1828,7 @@ exports.approveItem = async (req, res) => {
         user,
         { itemId }
       );
-      return res.status(200).json(itemToApprove); 
+      return res.status(200).json(itemToApprove);
     }
 
     itemToApprove.status = "approved";
@@ -1625,7 +1858,7 @@ exports.approveItem = async (req, res) => {
 exports.deleteItem = async (req, res) => {
   const itemId = req.params.id;
   const userId = req.user ? req.user._id : null;
-  const user = req.user || null; 
+  const user = req.user || null;
   const session = await mongoose.startSession();
   const logDetails = {
     userId,
@@ -1672,7 +1905,7 @@ exports.deleteItem = async (req, res) => {
     const backupData = {
       originalId: itemToBackup._id,
       originalModel: "Item",
-      data: itemToBackup.toObject(), 
+      data: itemToBackup.toObject(),
       deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: itemToBackup.createdAt,
@@ -1716,11 +1949,9 @@ exports.deleteItem = async (req, res) => {
         user,
         logDetails
       );
-      return res
-        .status(500)
-        .json({
-          message: "Failed to delete item after backup. Operation rolled back.",
-        });
+      return res.status(500).json({
+        message: "Failed to delete item after backup. Operation rolled back.",
+      });
     }
     logger.info(
       "delete",
@@ -1776,12 +2007,10 @@ exports.deleteItem = async (req, res) => {
       user,
       logDetails
     );
-    res
-      .status(500)
-      .json({
-        message:
-          "Server error during the deletion process. Please check server logs.",
-      });
+    res.status(500).json({
+      message:
+        "Server error during the deletion process. Please check server logs.",
+    });
   } finally {
     if (session && session.endSession) {
       session.endSession();
@@ -1906,90 +2135,90 @@ exports.getRestockSummary = async (req, res) => {
   }
 };
 
-exports.getItemTicketUsageHistory = async (req, res) => {
-  const user = req.user || null;
-  const { id: itemId } = req.params;
+// exports.getItemTicketUsageHistory = async (req, res) => {
+//   const user = req.user || null;
+//   const { id: itemId } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(itemId)) {
-    logger.warn("item_ticket_usage", `Invalid item ID format: ${itemId}`, user);
-    return res.status(400).json({ message: "Invalid item ID format" });
-  }
+//   if (!mongoose.Types.ObjectId.isValid(itemId)) {
+//     logger.warn("item_ticket_usage", `Invalid item ID format: ${itemId}`, user);
+//     return res.status(400).json({ message: "Invalid item ID format" });
+//   }
 
-  try {
-    const item = await Item.findById(itemId).lean();
-    if (!item) {
-      logger.warn("item_ticket_usage", `Item not found: ${itemId}`, user);
-      return res.status(404).json({ message: "Item not found" });
-    }
+//   try {
+//     const item = await Item.findById(itemId).lean();
+//     if (!item) {
+//       logger.warn("item_ticket_usage", `Item not found: ${itemId}`, user);
+//       return res.status(404).json({ message: "Item not found" });
+//     }
 
-    logger.debug(
-      "item_ticket_usage",
-      `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`,
-      user
-    );
+//     logger.debug(
+//       "item_ticket_usage",
+//       `Fetching ticket usage history for item: ${item.name} (ID: ${itemId})`,
+//       user
+//     );
 
-    const queryConditions = {
-      "goods.description": item.name,
-      ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }), 
-    };
+//     const queryConditions = {
+//       "goods.description": item.name,
+//       ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }),
+//     };
 
-    const ticketsContainingItem = await Ticket.find(queryConditions)
-      .populate("createdBy", "firstname lastname")
-      .populate("currentAssignee", "firstname lastname email") 
-      .select(
-        "ticketNumber goods createdAt createdBy currentAssignee statusHistory"
-      ) 
-      .sort({ createdAt: -1 })
-      .lean();
+//     const ticketsContainingItem = await Ticket.find(queryConditions)
+//       .populate("createdBy", "firstname lastname")
+//       .populate("currentAssignee", "firstname lastname email")
+//       .select(
+//         "ticketNumber goods createdAt createdBy currentAssignee statusHistory"
+//       )
+//       .sort({ createdAt: -1 })
+//       .lean();
 
-    const ticketUsageHistory = [];
+//     const ticketUsageHistory = [];
 
-    for (const ticket of ticketsContainingItem) {
-      const relevantGood = ticket.goods.find(
-        (g) =>
-          g.description === item.name &&
-          (item.hsnCode ? g.hsnSacCode === item.hsnCode : true)
-      );
+//     for (const ticket of ticketsContainingItem) {
+//       const relevantGood = ticket.goods.find(
+//         (g) =>
+//           g.description === item.name &&
+//           (item.hsnCode ? g.hsnSacCode === item.hsnCode : true)
+//       );
 
-      if (relevantGood && relevantGood.quantity > 0) {
-        ticketUsageHistory.push({
-          date: ticket.createdAt, 
-          type: "Ticket Deduction (Initial)",
-          user: ticket.createdBy
-            ? `${ticket.createdBy.firstname || ""} ${
-                ticket.createdBy.lastname || ""
-              }`.trim()
-            : "System",
-          details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${
-            ticket.ticketNumber
-          } (Created/Items Added). Assigned to: ${
-            ticket.currentAssignee
-              ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}`
-              : "N/A"
-          }`,
-          quantityChange: -parseFloat(relevantGood.quantity) || 0,
-          ticketId: ticket._id,
-          ticketNumber: ticket.ticketNumber,
-        });
-      }
-    }
+//       if (relevantGood && relevantGood.quantity > 0) {
+//         ticketUsageHistory.push({
+//           date: ticket.createdAt,
+//           type: "Ticket Deduction (Initial)",
+//           user: ticket.createdBy
+//             ? `${ticket.createdBy.firstname || ""} ${
+//                 ticket.createdBy.lastname || ""
+//               }`.trim()
+//             : "System",
+//           details: `Used ${relevantGood.quantity} unit(s) in Ticket: ${
+//             ticket.ticketNumber
+//           } (Created/Items Added). Assigned to: ${
+//             ticket.currentAssignee
+//               ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}`
+//               : "N/A"
+//           }`,
+//           quantityChange: -parseFloat(relevantGood.quantity) || 0,
+//           ticketId: ticket._id,
+//           ticketNumber: ticket.ticketNumber,
+//         });
+//       }
+//     }
 
-    logger.info(
-      "item_ticket_usage",
-      `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`,
-      user
-    );
-    res.json(ticketUsageHistory);
-  } catch (error) {
-    logger.error(
-      "item_ticket_usage",
-      `Error fetching ticket usage history for item ID: ${itemId}`,
-      error,
-      user
-    );
-    res.status(500).json({
-      message: "Server error while fetching item ticket usage history",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
-  }
-};
+//     logger.info(
+//       "item_ticket_usage",
+//       `Successfully fetched ${ticketUsageHistory.length} ticket usage entries for item: ${item.name}`,
+//       user
+//     );
+//     res.json(ticketUsageHistory);
+//   } catch (error) {
+//     logger.error(
+//       "item_ticket_usage",
+//       `Error fetching ticket usage history for item ID: ${itemId}`,
+//       error,
+//       user
+//     );
+//     res.status(500).json({
+//       message: "Server error while fetching item ticket usage history",
+//       error: process.env.NODE_ENV === "development" ? error.message : undefined,
+//     });
+//   }
+// };

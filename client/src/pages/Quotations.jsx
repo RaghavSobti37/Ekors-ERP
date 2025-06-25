@@ -253,7 +253,12 @@ export default function Quotations() {
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        unit: item.unit || "Nos", originalPrice: Number(item.originalPrice || item.price),
+        // The 'unit' is now the name of the selected unit, e.g., "Mtr"
+        unit: item.unit, 
+        // The price in the goods list should be the price *per selected unit*
+        // The original item object with all its units and pricing info should also be stored
+        // to allow for changing the unit later in the form.
+        originalItem: item.originalItem || item, // Store the full item object
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],

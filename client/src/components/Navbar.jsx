@@ -67,7 +67,7 @@ function NavbarComponent({ showPurchaseModal }) {
   };
 
   const handleViewAllItems = () => {
-    navigate("/itemslist");
+    navigate("/items");
   };
 
   const handleSignOut = () => {
@@ -111,7 +111,7 @@ function NavbarComponent({ showPurchaseModal }) {
   const handleStockAlertClick = () => {
     const currentThreshold =
       parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
-    navigate(`/itemslist?filter=stock_alerts`); 
+    navigate(`/items?filter=stock_alerts`); 
   };
 
   const handleStaticInfoClick = () => {
@@ -168,7 +168,7 @@ function NavbarComponent({ showPurchaseModal }) {
                 onMouseLeave={handleMouseLeaveDropdown}
               >
                 <NavLink
-                  to="/itemslist"
+                  to="/items"
                   className={({ isActive }) =>
                     isActive ? "nav-link active" : "nav-link"
                   }

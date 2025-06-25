@@ -1,19 +1,20 @@
-// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/pages/QuotationFormPage.jsx
+// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationFormPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Form, Button, Alert, Spinner, Table, Row, Col } from "react-bootstrap"; // Removed InputGroup as it's not directly used by this page, maybe by sub-components
+import { Form, Button, Alert, Spinner, Table, Row, Col } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import ReusablePageStructure from "../../components/ReusablePageStructure.jsx"; // Ensure this path is correct
+import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import ClientSearchComponent from "../../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../../components/ItemSearch.jsx";
 import frontendLogger from "../../utils/frontendLogger.js";
-import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx"; // Ensure this path is correct
+import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
-  formatDateForInput, // Renamed for direct use
+  formatDateForInput,
 } from "../../utils/helpers.js";
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 
 const generateQuotationNumber = () => {
   const now = new Date();
@@ -28,20 +29,22 @@ const generateQuotationNumber = () => {
 
 const initialNewItemFormData = {
   name: "",
-  sellingPrice: "",
-  unit: "Nos",
+  pricing: {
+    baseUnit: "Nos",
+    sellingPrice: "",
+    buyingPrice: "",
+  },
+  units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
   category: "",
-  subcategory: "General",
   hsnCode: "",
   gstRate: "0",
-  quantity: 1,
-  maxDiscountPercentage: "0",
+  quantity: 1, // This is for the item master, not the quotation line
   lowStockThreshold: "5",
 };
+
 const GoodsTable = ({
   goods,
   handleGoodsChange,
-  isEditing, // This will always be true in the form context
   onAddItem,
   onDeleteItem,
   onAddSubtext,
@@ -69,7 +72,7 @@ const GoodsTable = ({
             <th>
               Qty <span className="text-danger">*</span>
             </th>
-            <th>
+            <th style={{ minWidth: "100px" }}>
               Unit <span className="text-danger">*</span>
             </th>
             <th>
@@ -155,21 +158,25 @@ const GoodsTable = ({
                 />
               </td>
               <td>
-                <Form.Control
-                  as="select"
-                  value={item.unit || "Nos"}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "unit", e.target.value)
-                  }
-                >
-                  <option value="Nos">Nos</option>
-                  <option value="Mtr">Mtr</option>
-                  <option value="PKT">PKT</option>
-                  <option value="Pair">Pair</option>
-                  <option value="Set">Set</option>
-                  <option value="Bottle">Bottle</option>
-                  <option value="KG">KG</option>
-                </Form.Control>
+                {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
+                  <Form.Control
+                    as="select"
+                    value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
+                  >
+                    {item.originalItem.units.map((unitOption) => (
+                      <option key={unitOption.name} value={unitOption.name}>
+                        {unitOption.name}
+                      </option>
+                    ))}
+                  </Form.Control>
+                ) : (
+                  <Form.Control
+                    type="text" value={item.unit || "Nos"} readOnly
+                  />
+                )}
               </td>
               <td>
                 <Form.Control
@@ -247,96 +254,34 @@ const GoodsTable = ({
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-2">
-                    <Form.Label>
-                      Item Name <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter item name"
-                      value={newItemFormData.name}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      required
-                    />
+                    <Form.Label>Item Name <span className="text-danger">*</span></Form.Label>
+                    <Form.Control type="text" placeholder="Enter item name" value={newItemFormData.name} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, name: e.target.value, }))} required />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-2">
-                    <Form.Label>
-                      Selling Price <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter selling price"
-                      value={newItemFormData.sellingPrice}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          sellingPrice: e.target.value,
-                        }))
-                      }
-                      required
-                    />
+                    <Form.Label>Selling Price (per Base Unit) <span className="text-danger">*</span></Form.Label>
+                    <Form.Control type="number" placeholder="Enter selling price" value={newItemFormData.pricing.sellingPrice} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, sellingPrice: e.target.value } }))} required />
                   </Form.Group>
                 </Col>
               </Row>
               <Row>
                 <Col md={4}>
                   <Form.Group className="mb-2">
-                    <Form.Label>Unit</Form.Label>
-                    <Form.Select
-                      value={newItemFormData.unit}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          unit: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="Nos">Nos</option>
-                      <option value="Mtr">Mtr</option>
-                      <option value="PKT">PKT</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Set">Set</option>
-                      <option value="Bottle">Bottle</option>
-                      <option value="KG">KG</option>
-                    </Form.Select>
+                    <Form.Label>Base Unit</Form.Label>
+                    <Form.Control type="text" placeholder="e.g., Nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>HSN/SAC Code</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="HSN/SAC"
-                      value={newItemFormData.hsnCode}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          hsnCode: e.target.value,
-                        }))
-                      }
-                    />
+                    <Form.Control type="text" placeholder="HSN/SAC" value={newItemFormData.hsnCode} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, hsnCode: e.target.value, }))} />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>GST Rate (%)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="GST Rate"
-                      value={newItemFormData.gstRate}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          gstRate: e.target.value,
-                        }))
-                      }
-                    />
+                    <Form.Control type="number" placeholder="GST Rate" value={newItemFormData.gstRate} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, gstRate: e.target.value, }))} />
                   </Form.Group>
                 </Col>
               </Row>
@@ -344,59 +289,31 @@ const GoodsTable = ({
                 <Col md={6}>
                   <Form.Group className="mb-2">
                     <Form.Label>Category</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Item Category"
-                      value={newItemFormData.category}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          category: e.target.value,
-                          subcategory: "General",
-                        }))
-                      }
-                    />
-                    {/* Basic category input, can be enhanced with dropdown from existing categories later */}
+                    <Form.Control type="text" placeholder="Item Category" value={newItemFormData.category} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, category: e.target.value, }))} />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-2">
-                    <Form.Label>Subcategory</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Item Subcategory"
-                      value={newItemFormData.subcategory}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          subcategory: e.target.value,
-                        }))
-                      }
-                    />
+                    <Form.Label>Low Stock Threshold</Form.Label>
+                    <Form.Control type="number" placeholder="Default: 5" value={newItemFormData.lowStockThreshold} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, lowStockThreshold: e.target.value, }))} />
                   </Form.Group>
                 </Col>
               </Row>
-              {/* Add more fields like maxDiscountPercentage, lowStockThreshold if needed for creation here */}
               <Button
                 variant="success"
                 size="sm"
                 className="mt-2"
-                onClick={handleSaveAndAddNewItemToQuotation}
+                onClick={() => handleSaveAndAddNewItemToQuotation(newItemFormData)}
                 disabled={
                   isSavingNewItem ||
                   !newItemFormData.name ||
-                  !newItemFormData.sellingPrice
+                  !newItemFormData.pricing.sellingPrice ||
+                  !newItemFormData.pricing.baseUnit
                 }
               >
                 {isSavingNewItem ? (
                   <>
-                    <Spinner
-                      as="span"
-                      animation="border"
-                      size="sm"
-                      role="status"
-                      aria-hidden="true"
-                    />{" "}
+                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />{" "}
                     Saving Item...
                   </>
                 ) : (
@@ -412,10 +329,10 @@ const GoodsTable = ({
 };
 
 const QuotationFormPage = () => {
-  const { id: quotationIdFromParams } = useParams(); // For editing
+  const { id: quotationIdFromParams } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading: authLoading, logEventToServer } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const recalculateTotals = useCallback((goodsList) => {
     const totalQuantity = goodsList.reduce(
@@ -435,13 +352,13 @@ const QuotationFormPage = () => {
     return { totalQuantity, totalAmount, gstAmount, grandTotal };
   }, []);
 
-  const initialQuotationData = {
+  const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
     referenceNumber: generateQuotationNumber(),
     validityDate: formatDateForInput(
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
-    orderIssuedBy: user?.id || "",
+    orderIssuedBy: userId || "",
     billingAddress: {
       address1: "",
       address2: "",
@@ -463,10 +380,10 @@ const QuotationFormPage = () => {
       email: "",
       phone: "",
     },
-  };
+  }), []);
 
   const [quotationData, setQuotationData] = useState(
-    location.state?.quotationDataForForm || initialQuotationData
+    location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
   );
   const [isEditing, setIsEditing] = useState(
     !!quotationIdFromParams || !!location.state?.isEditing
@@ -486,15 +403,13 @@ const QuotationFormPage = () => {
   const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] =
     useState(false);
 
-  // State for new item creation within the form
-  const [itemCreationMode, setItemCreationMode] = useState("search"); // 'search' or 'new'
+  const [itemCreationMode, setItemCreationMode] = useState("search");
   const [newItemFormData, setNewItemFormData] = useState(
     initialNewItemFormData
   );
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
   const quotationFormId = "quotation-form-page";
 
-  // Fetch quotation data if editing and not passed via state
   useEffect(() => {
     if (
       isEditing &&
@@ -535,6 +450,7 @@ const QuotationFormPage = () => {
                 : 0,
               gstRate: parseFloat(item.gstRate || 0),
               subtexts: item.subtexts || [],
+              originalItem: item.originalItem || item,
             })),
             totalQuantity: Number(fetchedQuotation.totalQuantity),
             totalAmount: Number(fetchedQuotation.totalAmount),
@@ -542,7 +458,7 @@ const QuotationFormPage = () => {
             grandTotal: Number(fetchedQuotation.grandTotal),
             billingAddress:
               fetchedQuotation.billingAddress ||
-              initialQuotationData.billingAddress,
+              getInitialQuotationData(user?.id).billingAddress,
             status: fetchedQuotation.status || "open",
             client: {
               companyName: fetchedQuotation.client?.companyName || "",
@@ -574,14 +490,16 @@ const QuotationFormPage = () => {
       );
     }
     if (!isEditing && !location.state?.quotationDataForForm) {
-      // Ensure orderIssuedBy is set for new forms
       setQuotationData((prev) => ({ ...prev, orderIssuedBy: user?.id || "" }));
     }
-  }, [quotationIdFromParams, isEditing, location.state, navigate, user]);
+  }, [quotationIdFromParams, isEditing, location.state, navigate, user, getInitialQuotationData]);
 
   const handleAddItem = useCallback(
     (item) => {
       setQuotationData((prevQuotationData) => {
+        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+        const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
+
         const newGoods = [
           ...prevQuotationData.goods,
           {
@@ -589,26 +507,27 @@ const QuotationFormPage = () => {
             description: item.name,
             hsnSacCode: item.hsnCode || "",
             quantity: 1,
-            unit: item.unit || "Nos",
-            price: parseFloat(item.sellingPrice) || 0,
-            amount: parseFloat(item.sellingPrice) || 0,
-            originalPrice: parseFloat(item.sellingPrice) || 0,
+            unit: defaultUnit,
+            price: pricePerSelectedUnit,
+            amount: pricePerSelectedUnit,
+            originalPrice: parseFloat(item.pricing.sellingPrice) || 0,
             maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
+            originalItem: item,
           },
         ];
         const totals = recalculateTotals(newGoods);
         return { ...prevQuotationData, goods: newGoods, ...totals };
       });
-      setError(null); // setError is stable
+      setError(null);
     },
-    [recalculateTotals, setError]
+    [recalculateTotals]
   );
 
-  const handleSaveAndAddNewItemToQuotation = useCallback(async () => {
-    if (!newItemFormData.name || !newItemFormData.sellingPrice) {
-      toast.error("New item name and selling price are required.");
+  const handleSaveAndAddNewItemToQuotation = useCallback(async (newItemData) => {
+    if (!newItemData.name || !newItemData.pricing.sellingPrice || !newItemData.pricing.baseUnit) {
+      toast.error("New item name, selling price, and base unit are required.");
       return;
     }
     setIsSavingNewItem(true);
@@ -617,14 +536,12 @@ const QuotationFormPage = () => {
     try {
       const savedItem = await apiClient("/items", {
         method: "POST",
-        body: newItemFormData,
+        body: newItemData,
       });
       toast.success(`Item "${savedItem.name}" created and added to quotation.`);
-
       handleAddItem(savedItem);
-
-      setNewItemFormData(initialNewItemFormData); // Reset new item form
-      setItemCreationMode("search"); // Switch back to search mode
+      setNewItemFormData(initialNewItemFormData);
+      setItemCreationMode("search");
     } catch (err) {
       const errorMessage = handleApiError(
         err,
@@ -637,79 +554,67 @@ const QuotationFormPage = () => {
     } finally {
       setIsSavingNewItem(false);
     }
-  }, [
-    newItemFormData,
-    handleAddItem,
-    setNewItemFormData,
-    setItemCreationMode,
-    setIsSavingNewItem,
-    setError,
-    user,
-  ]);
+  }, [handleAddItem, user]);
 
   const handleGoodsChange = useCallback(
     (index, field, value, subtextIndex = null) => {
       setQuotationData((prevData) => {
         const updatedGoods = [...prevData.goods];
+        let itemToUpdate = { ...updatedGoods[index] };
         let priceValidationError = null;
 
         if (field === "subtexts" && subtextIndex !== null) {
-          if (!updatedGoods[index].subtexts) updatedGoods[index].subtexts = [];
-          updatedGoods[index].subtexts[subtextIndex] = value;
+          if (!itemToUpdate.subtexts) itemToUpdate.subtexts = [];
+          itemToUpdate.subtexts[subtextIndex] = value;
         } else if (field === "gstRate") {
-          updatedGoods[index][field] = value === "" ? null : parseFloat(value);
+          itemToUpdate[field] = value === "" ? null : parseFloat(value);
         } else {
-          if (["quantity", "price", "amount"].includes(field))
-            value = Number(value);
-          updatedGoods[index][field] = value;
+          itemToUpdate[field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
         }
 
-        if (field === "quantity" || field === "price") {
-          updatedGoods[index].amount =
-            (updatedGoods[index].quantity || 0) *
-            (updatedGoods[index].price || 0);
+        if (field === "quantity" || field === "unit") {
+          const currentQuantity = Number(itemToUpdate.quantity) || 0;
+          const selectedUnit = itemToUpdate.unit;
+          const originalItem = itemToUpdate.originalItem;
+
+          if (originalItem && selectedUnit) {
+            const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(originalItem, 1, selectedUnit);
+            itemToUpdate.price = pricePerSelectedUnit;
+            itemToUpdate.amount = pricePerSelectedUnit * currentQuantity;
+          } else {
+            itemToUpdate.amount = (currentQuantity || 0) * (itemToUpdate.price || 0);
+          }
+        } else if (field === "price") {
+          itemToUpdate.amount = (Number(itemToUpdate.quantity) || 0) * (Number(itemToUpdate.price) || 0);
         }
 
         if (field === "price") {
-          const currentItem = updatedGoods[index];
+          const currentItem = itemToUpdate;
           const newPrice = parseFloat(value);
-          const originalPrice = parseFloat(currentItem.originalPrice);
+          const originalPrice = parseFloat(currentItem.originalItem?.pricing?.sellingPrice);
           const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
+
           if (!isNaN(newPrice) && !isNaN(originalPrice)) {
+            const selectedUnitInfo = currentItem.originalItem?.units.find(u => u.name === currentItem.unit);
+            const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
+            const minAllowedPricePerSelectedUnit = (originalPrice * (1 - maxDiscountPerc / 100)) * conversionFactor;
+
             if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
-              const minAllowedPrice =
-                originalPrice * (1 - maxDiscountPerc / 100);
-              if (newPrice < minAllowedPrice)
-                priceValidationError = `Discount for ${
-                  currentItem.description
-                } exceeds ${maxDiscountPerc}%. Min price ₹${minAllowedPrice.toFixed(
-                  2
-                )}.`;
-            } else {
-              if (newPrice < originalPrice)
-                priceValidationError = `Price for ${
-                  currentItem.description
-                } (₹${newPrice.toFixed(
-                  2
-                )}) < original (₹${originalPrice.toFixed(
-                  2
-                )}) with no discount.`;
+              if (newPrice < minAllowedPricePerSelectedUnit)
+                priceValidationError = `Discount for ${currentItem.description} exceeds ${maxDiscountPerc}%. Min price for ${currentItem.unit} is ₹${minAllowedPricePerSelectedUnit.toFixed(2)}.`;
             }
           } else if (String(value).trim() !== "" && isNaN(newPrice)) {
             priceValidationError = `Invalid price for ${currentItem.description}.`;
           }
         }
-        updatedGoods.forEach((item) => {
-          if (!item.unit) item.unit = "Nos";
-        });
+
+        updatedGoods[index] = itemToUpdate;
         const totals = recalculateTotals(updatedGoods);
 
         if (priceValidationError) {
           setError(priceValidationError);
           toast.warn(priceValidationError);
-        }
-        // Check if the current error is related to the item being edited, and clear it if the validation now passes.
-        else if (
+        } else if (
           error &&
           (error.includes(`Discount for ${updatedGoods[index].description}`) ||
             error.includes(`Price for ${updatedGoods[index].description}`))
@@ -719,8 +624,8 @@ const QuotationFormPage = () => {
         return { ...prevData, goods: updatedGoods, ...totals };
       });
     },
-    [recalculateTotals, setError, error]
-  ); // Added error to dep array for the clearing logic
+    [recalculateTotals, error]
+  );
 
   const handleDeleteItem = useCallback(
     (indexToDelete) => {
@@ -759,7 +664,6 @@ const QuotationFormPage = () => {
       setIsFetchingBillingAddress(true);
       setError(null);
       try {
-        // Using a publicly available API for pincode lookup. Consider rate limits or alternatives for production.
         const response = await fetch(
           `https://api.postalpincode.in/pincode/${pincode}`
         );
@@ -795,7 +699,7 @@ const QuotationFormPage = () => {
         setIsFetchingBillingAddress(false);
       }
     },
-    [setQuotationData, setIsFetchingBillingAddress, setError]
+    []
   );
 
   const handleInputChange = useCallback(
@@ -817,7 +721,7 @@ const QuotationFormPage = () => {
           const addressField = name.split(".")[1];
           newBillingAddress = { ...newBillingAddress, [addressField]: value };
           if (addressField === "pincode" && value.length === 6) {
-            fetchBillingAddressFromPincode(value); // Call directly
+            fetchBillingAddressFromPincode(value);
           }
         } else {
           otherChanges = { [name]: value };
@@ -849,7 +753,7 @@ const QuotationFormPage = () => {
       setSelectedClientIdForForm(client._id);
       setError(null);
     },
-    [setSelectedClientIdForForm, setError]
+    []
   );
 
   const handleSaveClientDetails = useCallback(async () => {
@@ -944,13 +848,7 @@ const QuotationFormPage = () => {
     } finally {
       setIsSavingClient(false);
     }
-  }, [
-    quotationData.client,
-    user,
-    setError,
-    setIsSavingClient,
-    setSelectedClientIdForForm,
-  ]);
+  }, [quotationData.client, user]);
 
   const handleReplicationSelect = useCallback(
     async (selectedQuotationStub) => {
@@ -981,6 +879,7 @@ const QuotationFormPage = () => {
           srNo: index + 1,
           gstRate: parseFloat(item.gstRate || 0),
           subtexts: item.subtexts || [],
+          originalItem: item.originalItem || item,
         }));
         const totals = recalculateTotals(replicatedGoods);
         setQuotationData((prevData) => ({
@@ -1000,9 +899,9 @@ const QuotationFormPage = () => {
           ...totals,
           referenceNumber: generateQuotationNumber(),
           date: formatDateForInput(new Date()),
-        })); // New ref number and date
+        }));
         setSelectedClientIdForForm(fullQuotation.client._id);
-        setIsReplicating(false); // Turn off replication mode after selection
+        setIsReplicating(false);
         toast.info("Quotation data replicated. Review and save as new.");
       } catch (err) {
         const errorMessage = handleApiError(
@@ -1015,14 +914,7 @@ const QuotationFormPage = () => {
         setIsLoadingReplicationDetails(false);
       }
     },
-    [
-      recalculateTotals,
-      user,
-      setError,
-      setIsLoadingReplicationDetails,
-      setSelectedClientIdForForm,
-      setIsReplicating,
-    ]
+    [recalculateTotals, user, getInitialQuotationData]
   );
 
   const handleSubmit = useCallback(
@@ -1070,16 +962,13 @@ const QuotationFormPage = () => {
           return;
         }
         if (item.maxDiscountPercentage > 0) {
-          const minAllowedPrice =
-            item.originalPrice * (1 - (item.maxDiscountPercentage || 0) / 100);
+          const selectedUnitInfo = item.originalItem?.units.find(u => u.name === item.unit);
+          const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
+          const originalBasePrice = parseFloat(item.originalItem?.pricing?.sellingPrice || item.originalPrice);
+          const minAllowedPrice = (originalBasePrice * (1 - (item.maxDiscountPercentage || 0) / 100)) * conversionFactor;
+
           if (parseFloat(item.price) < minAllowedPrice) {
-            const priceErrorMsg = `Warning: Price for ${
-              item.description
-            } (₹${parseFloat(item.price).toFixed(
-              2
-            )}) is below minimum (₹${minAllowedPrice.toFixed(
-              2
-            )}) due to discount limit of ${item.maxDiscountPercentage}%.`;
+            const priceErrorMsg = `Warning: Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below minimum (₹${minAllowedPrice.toFixed(2)}) due to discount limit of ${item.maxDiscountPercentage}%.`;
             setError(priceErrorMsg);
             toast.warn(priceErrorMsg);
           }
@@ -1100,12 +989,13 @@ const QuotationFormPage = () => {
           unit: item.unit || "Nos",
           price: Number(item.price),
           amount: Number(item.amount),
-          originalPrice: Number(item.originalPrice),
+          originalPrice: Number(item.originalItem?.pricing?.sellingPrice || item.originalPrice),
           maxDiscountPercentage: item.maxDiscountPercentage
             ? Number(item.maxDiscountPercentage)
             : 0,
           gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
           subtexts: item.subtexts || [],
+          originalItem: item.originalItem, // Send the full original item
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
@@ -1121,12 +1011,6 @@ const QuotationFormPage = () => {
             ? `/quotations/${quotationIdFromParams}`
             : "/quotations";
         const method = isEditing && quotationIdFromParams ? "put" : "post";
-        console.log("QuotationFormPage: Submitting API call", {
-          url,
-          method,
-          isEditing,
-          quotationIdFromParams,
-        }); // Add logging
         const responseData = await apiClient(url, {
           method,
           body: submissionData,
@@ -1151,7 +1035,7 @@ const QuotationFormPage = () => {
                   : "CREATE_QUOTATION_SUCCESS",
               }
             );
-          navigate("/quotations"); // Navigate back to the list
+          navigate("/quotations");
         }
       } catch (error) {
         const errorMessage = handleApiError(
@@ -1190,16 +1074,7 @@ const QuotationFormPage = () => {
         setIsLoading(false);
       }
     },
-    [
-      quotationData,
-      isEditing,
-      quotationIdFromParams,
-      user,
-      navigate,
-      setError,
-      setFormValidated,
-      setIsLoading,
-    ]
+    [quotationData, isEditing, quotationIdFromParams, user, navigate]
   );
 
   const pageTitle = isEditing
@@ -1235,7 +1110,6 @@ const QuotationFormPage = () => {
     authLoading ||
     (isEditing && isLoading && !quotationData.referenceNumber)
   ) {
-    // Show loading if auth is loading OR if editing and main data not yet loaded
     return (
       <div className="text-center p-5">
         <Spinner animation="border" /> Loading form...
@@ -1274,7 +1148,7 @@ const QuotationFormPage = () => {
             {
               isReplicating && !isLoadingReplicationDetails && (
                 <div style={{ minHeight: "200px" }}></div>
-              ) /* Spacer for quotation search results */
+              )
             }
             {isLoadingReplicationDetails && (
               <div className="text-center my-3">
@@ -1456,8 +1330,6 @@ const QuotationFormPage = () => {
             />
           </Form.Group>
           <div className="col-md-6 d-flex gap-2 justify-content-start justify-content-md-end align-items-center mb-3 flex-wrap">
-            {" "}
-            {/* Added flex-wrap for smaller screens */}
             <Button
               variant="outline-secondary"
               size="sm"
@@ -1465,7 +1337,7 @@ const QuotationFormPage = () => {
                 setSelectedClientIdForForm(null);
                 setQuotationData((prev) => ({
                   ...prev,
-                  client: { ...initialQuotationData.client, _id: null },
+                  client: { ...getInitialQuotationData().client, _id: null },
                 }));
               }}
               disabled={isLoadingReplicationDetails || !selectedClientIdForForm}
@@ -1597,7 +1469,6 @@ const QuotationFormPage = () => {
         <GoodsTable
           goods={quotationData.goods}
           handleGoodsChange={handleGoodsChange}
-          isEditing={true} // This context is always editing goods for the form
           onAddItem={handleAddItem}
           onDeleteItem={handleDeleteItem}
           onAddSubtext={handleAddSubtext}
@@ -1656,34 +1527,4 @@ const QuotationFormPage = () => {
   );
 };
 
-// Helper function defined outside the component for stability if used in useCallback dependencies
-const getInitialQuotationData = (userId) => ({
-  date: formatDateForInput(new Date()),
-  referenceNumber: generateQuotationNumber(),
-  validityDate: formatDateForInput(
-    new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-  ), // 2 days validity
-  orderIssuedBy: userId || "",
-  billingAddress: {
-    address1: "",
-    address2: "",
-    city: "",
-    state: "",
-    pincode: "",
-  },
-  goods: [],
-  totalQuantity: 0,
-  totalAmount: 0,
-  gstAmount: 0,
-  grandTotal: 0,
-  status: "open",
-  client: {
-    _id: null,
-    companyName: "",
-    clientName: "",
-    gstNumber: "",
-    email: "",
-    phone: "",
-  },
-});
 export default QuotationFormPage;
