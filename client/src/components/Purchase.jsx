@@ -9,7 +9,7 @@ const PurchaseTracking = () => {
     address: '',
     state: '',
     invoiceNumber: '',
-    date: '',
+    date: new Date().toISOString().split('T')[0], // Default to today's date
     items: [{ name: '', description: '', price: '', quantity: '' }],
   };
   const [purchaseData, setPurchaseData] = useState(initialPurchaseData);
@@ -61,9 +61,6 @@ const PurchaseTracking = () => {
       <h4 className="mt-4">Items Purchased</h4>
       {purchaseData.items.map((item, index) => (
         <div key={index} className="row my-2">
-          <div className="col">
-            <input className="form-control" placeholder="Item Name" value={item.name} onChange={(e) => handleItemChange(index, 'name', e.target.value)} />
-          </div>
           <div className="col">
             <input className="form-control" placeholder="Description" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
           </div>

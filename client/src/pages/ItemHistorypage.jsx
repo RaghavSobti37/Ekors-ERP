@@ -104,6 +104,7 @@ const ItemHistoryPage = () => {
         apiClient(`/items/${itemId}`, {
           params: {
             populate:
+              // Ensure inventoryLog.ticketReference is populated with 'ticketNumber'
               "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
           },
         }),
@@ -111,6 +112,7 @@ const ItemHistoryPage = () => {
       ]);
 
       setItem(itemData);
+      console.log("Frontend received itemData.inventoryLog:", itemData.inventoryLog);
 
       const allInventoryLogs = [];
       const allTicketLogs = [];
@@ -119,8 +121,11 @@ const ItemHistoryPage = () => {
       if (Array.isArray(itemData.inventoryLog)) {
         itemData.inventoryLog.forEach((log) => {
           const transformed = transformLogEntry(log);
-          // Separate ticket-related logs
-          if (transformed.ticketNumber) {
+          // Separate ticket-related logs.
+          // This is now more robust: it checks for a populated ticket number OR
+          // if the log type string contains "ticket", ensuring categorization
+          // even if population fails for any reason.
+          if (transformed.ticketNumber || (transformed.type && transformed.type.toLowerCase().includes('ticket'))) {
             allTicketLogs.push(transformed);
           }
           // Separate edit logs

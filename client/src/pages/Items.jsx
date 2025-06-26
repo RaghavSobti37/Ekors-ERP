@@ -1,44 +1,40 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom"; // Import useNavigate
-import apiClient from "../utils/apiClient"; // Import apiClient
+import { useLocation, useNavigate } from "react-router-dom";
+import apiClient from "../utils/apiClient";
 import "../css/Style.css";
 import Navbar from "../components/Navbar.jsx";
-import Pagination from "../components/Pagination.jsx"; // Added .jsx
-import { saveAs } from "file-saver"; // For downloading files
+import Pagination from "../components/Pagination.jsx";
+import { saveAs } from "file-saver";
 import { useAuth } from "../context/AuthContext.jsx";
-
-import { showToast, handleApiError } from "../utils/helpers"; // Utility functions for toast and error handling
+import { showToast, handleApiError } from "../utils/helpers";
 import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons.jsx";
-
 import Footer from "../components/Footer";
 import {
-  Eye, // View
-  Trash, // Delete
-  FileEarmarkArrowDown, // For Excel Export
-  FileEarmarkArrowUp, // For Excel Upload
-  PlusCircle, // For Add Item button icon
-  ClockHistory, // For Item History
+  Eye,
+  Trash,
+  FileEarmarkArrowDown,
+  FileEarmarkArrowUp,
+  PlusCircle,
+  ClockHistory,
   CheckCircleFill,
   ShieldFillCheck,
   PencilSquare,
 } from "react-bootstrap-icons";
-import ReusableModal from "../components/ReusableModal.jsx"; // Added Alert, Card, Badge
+import ReusableModal from "../components/ReusableModal.jsx";
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
-import "../css/Style.css";
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE = "globalLowStockThresholdSetting";
 
 export default function Items() {
   const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   const [items, setItems] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [pendingReviewItems, setPendingReviewItems] = useState([]);
   const [totalPendingReviewItems, setTotalPendingReviewItems] = useState(0);
-
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,25 +47,24 @@ export default function Items() {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
-    quantity: "0", // in base units
-    pricing: {
-      baseUnit: "Nos",
-      sellingPrice: "",
-      buyingPrice: "",
-    },
+    quantity: "0",
+    baseUnit: "Nos", // Directly on formData
+    sellingPrice: "", // Directly on formData
+    buyingPrice: "", // Directly on formData
     units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
     gstRate: "0",
     hsnCode: "",
     category: "",
     maxDiscountPercentage: "",
-    lowStockThreshold: "5", // Added for consistency with item schema
+    lowStockThreshold: "5",
     image: "",
   });
+
   const [showEditItemModal, setShowEditItemModal] = useState(false);
-  const [showAddItemModal, setShowAddItemModal] = useState(false); // Renamed from showModal for clarity
-  const [expandedRow, setExpandedRow] = useState(null); // Keep for view details
-  const [purchaseHistory, setPurchaseHistory] = useState({}); // This is for the expanded row, not the modal
-  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({}); // Track loading state per item for expanded row
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [purchaseHistory, setPurchaseHistory] = useState({});
+  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -83,31 +78,34 @@ export default function Items() {
     date: new Date().toISOString().split("T")[0],
     items: [],
   });
+
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [itemSearchTerm, setItemSearchTerm] = useState("");
   const [filteredItemsList, setFilteredItemsList] = useState([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // General submission state (add item, add purchase)
-  const [isProcessingExcel, setIsProcessingExcel] = useState(false); // For upload/export
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingExcel, setIsProcessingExcel] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
-    error: null, // For Excel specific errors
+    error: null,
     success: null,
     details: [],
   });
 
-  // State for adding new category/subcategory inline
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
   const location = useLocation();
-  const [currentPagePending, setCurrentPagePending] = useState(1); // Pagination for pending items
+  const [currentPagePending, setCurrentPagePending] = useState(1);
+  const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
+  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] = useState("");
 
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
     [location.search]
   );
+
   const stockAlertFilterActive = useMemo(
     () => queryParams.get("filter") === "stock_alerts",
     [queryParams]
@@ -122,11 +120,6 @@ export default function Items() {
     DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE
   );
 
-  // State for the quantity filter input on the main items page
-  const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
-  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] =
-    useState("");
-
   useEffect(() => {
     const storedThreshold = localStorage.getItem(
       LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE
@@ -140,29 +133,19 @@ export default function Items() {
 
   useEffect(() => {
     if (stockAlertFilterActive) {
-      // Initialize with URL param if present, else global default
       const initialThreshold = Number.isFinite(lowStockWarningQueryThreshold)
         ? lowStockWarningQueryThreshold
         : effectiveLowStockThreshold;
       setStockAlertsPageFilterThreshold(initialThreshold.toString());
       setSearchTerm("");
     } else {
-      setStockAlertsPageFilterThreshold(""); // Clear when not on stock alerts page
+      setStockAlertsPageFilterThreshold("");
     }
   }, [
     stockAlertFilterActive,
     effectiveLowStockThreshold,
     lowStockWarningQueryThreshold,
   ]);
-
-  const handleItemsPerPageChange = (newItemsPerPage) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  };
-
-  const showSuccess = (message) => {
-    showToast(message, true);
-  };
 
   const fetchItems = useCallback(
     async (page, limit = itemsPerPage) => {
@@ -176,6 +159,7 @@ export default function Items() {
           sortDirection: sortConfig.direction,
           status: "approved",
         };
+        
         if (selectedCategory !== "All") params.category = selectedCategory;
         if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
 
@@ -187,7 +171,6 @@ export default function Items() {
               ? thresholdToUse
               : effectiveLowStockThreshold;
         } else {
-          // Apply quantity filter for main page if a value is set
           const qtyFilterVal = parseInt(quantityFilterInputValue, 10);
           if (
             Number.isFinite(qtyFilterVal) &&
@@ -285,7 +268,7 @@ export default function Items() {
     } finally {
       setLoading(false);
     }
-  }, [user]); // Added user dependency
+  }, [user]);
 
   useEffect(() => {
     fetchPendingReviewItems();
@@ -296,15 +279,13 @@ export default function Items() {
     };
   }, [fetchPendingReviewItems, fetchCategories]);
 
-
-  // Effect for search, category, quantity filter, and sort changes
   useEffect(() => {
     const timerId = setTimeout(() => {
       if (!authLoading && user) {
-        // Use `user` from useAuth() and ensure authLoading is checked
-        fetchItems(1, itemsPerPage); // Reset to page 1 on any filter/search/sort change
+        fetchItems(1, itemsPerPage);
       }
-    }, 500); return () => clearTimeout(timerId);
+    }, 500);
+    return () => clearTimeout(timerId);
   }, [
     authLoading,
     user,
@@ -318,21 +299,15 @@ export default function Items() {
     fetchItems,
   ]);
 
-  // Effect for pagination changes (when filters/search/sort are stable)
   useEffect(() => {
     if (!authLoading && user) {
-      // Ensure authLoading and user (from useAuth) are used
       fetchItems(currentPage, itemsPerPage);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, currentPage, itemsPerPage]);
 
-  // This useEffect is specifically for the itemSearchTerm used in the purchase modal,
-  // it should remain as is if that's its sole purpose.
   useEffect(() => {
     if (itemSearchTerm.trim() !== "") {
       if (Array.isArray(items) && items.length > 0) {
-        // Should this be a different list of items for the modal?
         const filtered = items.filter(
           (item) =>
             item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
@@ -346,11 +321,10 @@ export default function Items() {
     } else {
       setFilteredItemsList([]);
     }
-  }, [itemSearchTerm, items]); // `items` dependency here might be problematic if it's the main page's items list.
+  }, [itemSearchTerm, items]);
 
   const fetchPurchaseHistoryForExpandedRow = useCallback(
     async (itemId) => {
-      // Renamed for clarity
       try {
         setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
         setError(null);
@@ -378,6 +352,27 @@ export default function Items() {
     [user]
   );
 
+  const handleExportToExcel = async () => {
+    try {
+      setIsExportingExcel(true);
+      const response = await apiClient("/items/export-excel", {
+        responseType: "blob", // Important for file downloads
+      });
+      saveAs(response, "items_export.xlsx");
+      showToast("Items exported successfully!", true);
+    } catch (err) {
+      const errorMessage = handleApiError(
+        err,
+        "Failed to export items to Excel.",
+        user
+      );
+      setError(errorMessage);
+      showToast(errorMessage, false);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   const requestSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -391,19 +386,17 @@ export default function Items() {
     setEditingItem(item);
     setFormData({
       name: item.name,
-      quantity: item.quantity?.toFixed(2) || "0.00", // This is quantity in base unit
-      pricing: {
-        baseUnit: item.pricing?.baseUnit || 'Nos',
-        sellingPrice: item.pricing?.sellingPrice?.toString() || '0',
-        buyingPrice: item.pricing?.buyingPrice?.toString() || '0',
-      },
+      quantity: item.quantity?.toFixed(2) || "0.00",
+      baseUnit: item.baseUnit || 'Nos', // Direct
+      sellingPrice: item.sellingPrice?.toString() || '0', // Direct
+      buyingPrice: item.buyingPrice?.toString() || '0', // Direct
       units: item.units?.length > 0 ? item.units : [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       category: item.category || "",
       lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
-      image: item.image || "", // Load existing image
+      image: item.image || "",
     });
     setShowEditItemModal(true);
   };
@@ -413,41 +406,41 @@ export default function Items() {
       setError("Item name is required.");
       return;
     }
-    const sellingPrice = parseFloat(formData.pricing.sellingPrice) || 0;
-    const buyingPrice = parseFloat(formData.pricing.buyingPrice) || 0;
-    if (buyingPrice > sellingPrice) {
+    
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    
+    if (buyingPrice > sellingPrice && sellingPrice !== 0) { // Allow buyingPrice > sellingPrice if sellingPrice is 0 (e.g., for internal tracking)
       setError("Buying price cannot be greater than selling price.");
       return;
     }
-    if (!formData.pricing.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
+    
+    if (!formData.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
       setError("A base unit must be selected.");
       return;
     }
+
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { ...formData }; // formData has string values from form
-
-      // Ensure numeric fields that should be numbers are parsed
-      updatedItemPayload.quantity = parseFloat(formData.quantity) || 0;
-      updatedItemPayload.pricing.sellingPrice = sellingPrice;
-      updatedItemPayload.pricing.buyingPrice = buyingPrice;
-      updatedItemPayload.gstRate = parseFloat(formData.gstRate) || 0;
-      updatedItemPayload.maxDiscountPercentage =
-        parseFloat(formData.maxDiscountPercentage) || 0;
-      // lowStockThreshold will be sent as a string from formData, backend will parse robustly
-
-      if (formData.image !== undefined) {
-        updatedItemPayload.image = formData.image;
-      }
+      const updatedItemPayload = { 
+        ...formData,
+        quantity: parseFloat(formData.quantity) || 0,
+        sellingPrice: sellingPrice,
+        buyingPrice: buyingPrice,
+        gstRate: parseFloat(formData.gstRate) || 0,
+        maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
+        lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
+      };
 
       await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
         body: updatedItemPayload,
       });
+      
       await fetchItems();
       setShowEditItemModal(false);
       setEditingItem(null);
-      showSuccess("Item updated successfully!");
+      showToast("Item updated successfully!", true);
     } catch (err) {
       const errorMessage = handleApiError(err, "Failed to update item.", user);
       setError(errorMessage);
@@ -456,145 +449,33 @@ export default function Items() {
     }
   };
 
-  const handleApproveItem = async (itemId) => {
-    if (!window.confirm("Are you sure you want to approve this item?")) return;
-    setIsSubmitting(true);
-    try {
-      await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
-      showSuccess("Item approved successfully!");
-      await fetchItems();
-      await fetchPendingReviewItems();
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to approve item.", user);
-      setError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReviewAndEditItem = (item) => {
-    handleEditItem(item);
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const updatedItems = [...(purchaseData.items || [])];
-    if (!updatedItems[index]) {
-      updatedItems[index] = {
-        description: "",
-        quantity: "1",
-        price: "",
-        gstRate: "0",
-      };
-    }
-    updatedItems[index][field] = value;
-    setPurchaseData({
-      ...purchaseData,
-      items: updatedItems,
-    });
-  };
-
-  const openPurchaseModal = () => {
-    setPurchaseData({
-      companyName: "",
-      gstNumber: "",
-      address: "",
-      stateName: "",
-      invoiceNumber: "",
-      date: new Date().toISOString().split("T")[0],
-      items: [
-        {
-          description: "",
-          quantity: "1",
-          price: "",
-          gstRate: "0",
-        },
-      ],
-    });
-    setShowPurchaseModal(true);
-  };
-
-  const removeItem = (index) => {
-    const updatedItems = [...purchaseData.items];
-    updatedItems.splice(index, 1);
-    setPurchaseData({
-      ...purchaseData,
-      items: updatedItems,
-    });
-  };
-
-  const calculateItemAmount = (item) => {
-    const quantity = parseFloat(item.quantity) || 0;
-    const price = parseFloat(item.price) || 0;
-    const gstRate = parseFloat(item.gstRate) || 0;
-    return quantity * price * (1 + gstRate / 100);
-  };
-
-  const calculateTotalAmount = () => {
-    if (!purchaseData.items || purchaseData.items.length === 0) return 0;
-    return purchaseData.items.reduce(
-      (sum, item) => sum + calculateItemAmount(item),
-      0
-    );
-  };
-
-  const isPurchaseDataValid = useCallback(() => {
-    if (
-      !purchaseData.companyName ||
-      !purchaseData.invoiceNumber ||
-      !purchaseData.date
-    ) {
-      return false;
-    }
-    if (!purchaseData.items || purchaseData.items.length === 0) {
-      return false;
-    }
-    return purchaseData.items.every(
-      (item) =>
-        item.description &&
-        parseFloat(item.quantity) > 0 &&
-        parseFloat(item.price) >= 0
-    );
-  }, [purchaseData]);
-
-  const resetPurchaseForm = () => {
-    setPurchaseData({
-      companyName: "",
-      gstNumber: "",
-      address: "",
-      stateName: "",
-      invoiceNumber: "",
-      date: new Date().toISOString().split("T")[0],
-      items: [],
-    });
-    setItemSearchTerm("");
-    setShowItemSearch(false);
-  };
-
   const handleAddItem = async () => {
     if (!formData.name) {
       setError("Item name is required");
       return;
     }
-    const sellingPrice = parseFloat(formData.pricing.sellingPrice) || 0;
-    const buyingPrice = parseFloat(formData.pricing.buyingPrice) || 0;
-    if (buyingPrice > sellingPrice) {
+    
+    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
+    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
+    
+    if (buyingPrice > sellingPrice && sellingPrice !== 0) { // Allow buyingPrice > sellingPrice if sellingPrice is 0
       setError("Buying price cannot be greater than selling price.");
       return;
     }
-    if (!formData.pricing.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
+    
+    if (!formData.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
       setError("A base unit must be selected.");
       return;
     }
+
     try {
       setIsSubmitting(true);
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        pricing: {
-          ...formData.pricing,
-          sellingPrice: sellingPrice,
-          buyingPrice: buyingPrice,
-        },
+        baseUnit: formData.baseUnit,
+        sellingPrice: sellingPrice,
+        buyingPrice: buyingPrice,
         units: formData.units,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
@@ -603,22 +484,26 @@ export default function Items() {
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
         image: formData.image || "",
       };
+      
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
       setShowAddItemModal(false);
       setFormData({
-        name: "", // Reset to empty string for new item
-        quantity: "0.00", // Reset to 0.00 for new item
-        pricing: { baseUnit: 'Nos', sellingPrice: '', buyingPrice: '' },
+        name: "",
+        quantity: "0.00",
+        baseUnit: "Nos",
+        sellingPrice: "",
+        buyingPrice: "",
         units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
         gstRate: "0",
         hsnCode: "",
         category: "",
         maxDiscountPercentage: "",
         lowStockThreshold: "5",
+        image: "",
       });
       setError(null);
-      showSuccess("Item added successfully!");
+      showToast("Item added successfully!", true);
     } catch (err) {
       const errorMessage = handleApiError(
         err,
@@ -629,6 +514,40 @@ export default function Items() {
       console.error("Error adding item:", err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleApproveItem = async (itemId) => {
+    if (!window.confirm("Are you sure you want to approve this item?")) return;
+    setIsSubmitting(true);
+    try {
+      await apiClient(`/items/${itemId}/approve`, { method: "PATCH" });
+      showToast("Item approved successfully!", true);
+      await fetchItems();
+      await fetchPendingReviewItems();
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to approve item.", user);
+      setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this item?")) {
+      try {
+        setIsSubmitting(true);
+        await apiClient(`/items/${id}`, { method: "DELETE" });
+        await fetchItems();
+        await fetchPendingReviewItems();
+        showToast("Item Deleted Successfully", true);
+      } catch (err) {
+        const errorMessage = handleApiError(err, "Failed to delete item.", user);
+        setError(errorMessage);
+        console.error("Error deleting item:", err);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -645,246 +564,20 @@ export default function Items() {
     }
   };
 
-  const handlePurchaseChange = (e) => {
-    setPurchaseData({ ...purchaseData, [e.target.name]: e.target.value });
-  };
-
   const toggleExpandedRow = async (id) => {
     if (expandedRow !== id) {
-      await fetchPurchaseHistoryForExpandedRow(id); // Use renamed function
+      await fetchPurchaseHistoryForExpandedRow(id);
     }
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // Navigate to the new Item History Page
   const handleShowItemHistoryPage = (item) => {
     navigate(`/items/history/${item._id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this item?")) {
-      try {
-        setIsSubmitting(true);
-        await apiClient(`/items/${id}`, { method: "DELETE" });
-        await fetchItems();
-        await fetchPendingReviewItems();
-        showSuccess("Item Deleted Successfully");
-      } catch (err) {
-        const errorMessage = handleApiError(
-          err,
-          "Failed to delete item.",
-          user
-        );
-        setError(errorMessage);
-        console.error("Error deleting item:", err);
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  };
-
-  const addPurchaseEntry = async () => {
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      if (!isPurchaseDataValid()) {
-        setError(
-          "Please fill all required fields and ensure each item has a description, quantity, and price"
-        );
-        setIsSubmitting(false);
-        return false;
-      }
-      const purchaseDataToSend = {
-        companyName: purchaseData.companyName,
-        gstNumber: purchaseData.gstNumber,
-        address: purchaseData.address,
-        stateName: purchaseData.stateName,
-        invoiceNumber: purchaseData.invoiceNumber,
-        date: purchaseData.date,
-        items: purchaseData.items.map((item) => ({
-          itemId: item.itemId || null,
-          description: item.description,
-          quantity: parseFloat(item.quantity),
-          price: parseFloat(item.price),
-          gstRate: parseFloat(item.gstRate || 0),
-        })),
-      };
-      await apiClient(`/items/purchase`, {
-        method: "POST",
-        body: purchaseDataToSend,
-      });
-      await fetchItems();
-      setShowPurchaseModal(false);
-      resetPurchaseForm();
-      showSuccess("Purchase added successfully!");
-      return true;
-    } catch (err) {
-      console.error("Error adding purchase entry:", err);
-      let detailedErrorMessage = "Failed to add purchase entry.";
-      if (err.response && err.response.data) {
-        detailedErrorMessage += ` ${err.response.data.message || ""}`;
-        if (err.response.data.errors) {
-          const validationErrors = Object.values(err.response.data.errors)
-            .map((e) => e.message)
-            .join("; ");
-          detailedErrorMessage += ` Details: ${validationErrors}`;
-        }
-      } else if (err.message) {
-        detailedErrorMessage += ` ${err.message}`;
-      }
-      setError(detailedErrorMessage);
-      return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const addNewPurchaseItem = () => {
-    setPurchaseData((prevData) => ({
-      ...prevData,
-      items: [
-        ...(prevData.items || []),
-        {
-          itemId: null,
-          description: "",
-          quantity: "1",
-          price: "",
-          gstRate: "0",
-        },
-      ],
-    }));
-  };
-
-  const handleExportToExcel = async () => {
-    setIsExportingExcel(true);
-    setExcelUpdateStatus({ error: null, success: null, details: [] });
-    if (
-      !window.confirm(
-        "This will download an Excel file of the current item list. Continue?"
-      )
-    ) {
-      setIsExportingExcel(false);
-      return;
-    }
-    try {
-      const blob = await apiClient("items/export-excel", {
-        method: "GET",
-        responseType: "blob",
-      });
-
-      if (!blob) {
-        throw new Error("Failed to export Excel: No data received.");
-      }
-
-      saveAs(blob, "items_export.xlsx");
-      setExcelUpdateStatus({
-        error: null,
-        success: "Items exported to Excel successfully!",
-        details: [],
-      });
-      showSuccess("Items exported to Excel successfully!");
-    } catch (err) {
-      console.error("Error exporting to Excel:", err);
-      const message =
-        err.data?.message || err.message || "Failed to export items to Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
-    } finally {
-      setIsExportingExcel(false);
-    }
-  };
-
-  const handleFileSelectedForUploadAndProcess = async (event) => {
-    const file = event.target.files[0];
-    setExcelUpdateStatus({ error: null, success: null, details: [] });
-    if (!file) return;
-
-    if (
-      !window.confirm(
-        "WARNING: This will synchronize the database with the selected Excel file.\n\n" +
-        "- Items in Excel will be CREATED or UPDATED in the database.\n" +
-        "- Items in the database BUT NOT IN THIS EXCEL FILE will be DELETED.\n\n" +
-        "Are you absolutely sure you want to proceed?"
-      )
-    ) {
-      event.target.value = null;
-      return;
-    }
-    setIsProcessingExcel(true);
-    const formData = new FormData();
-    formData.append("excelFile", file);
-    try {
-      const responseData = await apiClient("items/import-uploaded-excel", {
-        method: "POST",
-        body: formData,
-      });
-
-      let successMessage = `Excel sync complete: ${responseData.itemsCreated || 0
-        } created, ${responseData.itemsUpdated || 0} updated, ${responseData.itemsDeleted || 0
-        } deleted.`;
-
-      if (responseData.parsingErrors && responseData.parsingErrors.length > 0) {
-        successMessage += ` Encountered ${responseData.parsingErrors.length} parsing issues. Check console for details.`;
-        console.warn("Excel Parsing Issues:", responseData.parsingErrors);
-      }
-      if (
-        responseData.databaseProcessingErrors &&
-        responseData.databaseProcessingErrors.length > 0
-      ) {
-        successMessage += ` Encountered ${responseData.databaseProcessingErrors.length} database processing errors. Check console for details.`;
-        console.warn(
-          "Database Processing Errors:",
-          responseData.databaseProcessingErrors
-        );
-      }
-      setExcelUpdateStatus({
-        error: null,
-        success: successMessage,
-        details: responseData.databaseProcessingDetails || [],
-      });
-      showSuccess(successMessage);
-      fetchItems();
-    } catch (err) {
-      console.error("Error updating from Excel:", err);
-      const message =
-        err.data?.message ||
-        err.message ||
-        "Failed to update items from Excel.";
-      setExcelUpdateStatus({ error: message, success: null, details: [] });
-      setError(message);
-    } finally {
-      setIsProcessingExcel(false);
-      event.target.value = null;
-    }
-  };
-
-  const handleAddNewCategory = async () => {
-    if (!newCategoryName.trim()) {
-      showToast("Category name cannot be empty.", false);
-      return;
-    }
-    setIsSubmittingCategory(true);
-    try {
-      await apiClient("/items/categories", {
-        method: "POST",
-        body: { categoryName: newCategoryName.trim() },
-      });
-      await fetchCategories();
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        category: newCategoryName.trim(),
-      }));
-      setIsAddingNewCategory(false);
-      setNewCategoryName("");
-      showToast(
-        `Category "${newCategoryName.trim()}" added successfully.`,
-        true
-      );
-    } catch (err) {
-      handleApiError(err, "Failed to add new category.", user);
-    } finally {
-      setIsSubmittingCategory(false);
-    }
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
   };
 
   const handleUpdateGlobalLowStockThreshold = (newThresholdValue) => {
@@ -913,28 +606,26 @@ export default function Items() {
     isSubmitting ||
     isProcessingExcel ||
     isExportingExcel ||
-    loading
+    loading;
 
   return (
     <div className="items-container">
-      <Navbar showPurchaseModal={openPurchaseModal} />
+      <Navbar showPurchaseModal={() => setShowPurchaseModal(true)} />
       <div className="container mt-4">
-        {error &&
-          !showAddItemModal &&
-          !showEditItemModal &&
-          !showPurchaseModal && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
+        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        
         {excelUpdateStatus.error && (
           <div className="alert alert-danger" role="alert">
             Excel Update Error: {excelUpdateStatus.error}
           </div>
         )}
 
-        {user &&
-          (user.role === "admin" || user.role === "super-admin") &&
+        {/* Pending Review Items Section */}
+        {user && (user.role === "admin" || user.role === "super-admin") &&
           totalPendingReviewItems > 0 && (
             <Card className="mb-4 border-warning">
               <Card.Header className="bg-warning text-dark">
@@ -980,7 +671,7 @@ export default function Items() {
                               variant="info"
                               size="sm"
                               className="me-1"
-                              onClick={() => handleReviewAndEditItem(item)}
+                              onClick={() => handleEditItem(item)}
                               disabled={isSubmitting}
                               title="Review and Edit Item"
                             >
@@ -1019,10 +710,9 @@ export default function Items() {
             </Card>
           )}
 
+        {/* Main Items Table Section */}
         <div className="mb-3">
-          {/* Controls Area - Single Line */}
           <div className="d-flex align-items-center justify-content-between mb-3" style={{ width: "100%", minWidth: "100%" }}>
-            {/* Left side - Title */}
             <div style={{ flexShrink: 0, minWidth: "200px" }}>
               <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>
                 {stockAlertFilterActive
@@ -1033,7 +723,6 @@ export default function Items() {
               </h2>
             </div>
 
-            {/* Middle - Search Bar with constrained growth */}
             <div style={{
               flexGrow: 1,
               flexShrink: 1,
@@ -1054,7 +743,6 @@ export default function Items() {
               />
             </div>
 
-            {/* Right side - Controls with fixed width */}
             <div style={{
               flexShrink: 0,
               display: "flex",
@@ -1145,11 +833,11 @@ export default function Items() {
                   >
                     <PlusCircle size={16} /> Add Item
                   </Button>
-                  {user && (user.role === "admin" || user.role === "super-admin") && (<></>)}
                 </>
               )}
             </div>
           </div>
+          
           {excelUpdateStatus.success && !stockAlertFilterActive && (
             <Alert variant="success" className="mt-2 py-1 px-2 small">
               {excelUpdateStatus.success}
@@ -1157,16 +845,39 @@ export default function Items() {
           )}
         </div>
 
+        {/* Excel Upload Input (hidden) */}
         <input
           type="file"
           id="excel-upload-input"
           style={{ display: "none" }}
           accept=".xlsx, .xls"
-          onChange={handleFileSelectedForUploadAndProcess}
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              setIsProcessingExcel(true);
+              const formData = new FormData();
+              formData.append("excelFile", file);
+              apiClient("items/import-uploaded-excel", {
+                method: "POST",
+                body: formData,
+              })
+                .then((response) => {
+                  showToast("Items imported successfully!", true);
+                  fetchItems();
+                })
+                .catch((err) => {
+                  handleApiError(err, "Failed to import items.", user);
+                })
+                .finally(() => {
+                  setIsProcessingExcel(false);
+                  e.target.value = null;
+                });
+            }
+          }}
           disabled={anyLoading}
-
         />
 
+        {/* Main Items Table */}
         <div className="table-responsive">
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
@@ -1176,7 +887,7 @@ export default function Items() {
                   "quantity",
                   "sellingPrice",
                   "buyingPrice",
-                  "unit",
+                  "baseUnit",
                   "gstRate",
                 ].map((key) => (
                   <th
@@ -1205,7 +916,6 @@ export default function Items() {
                     (sortConfig.direction === "asc" ? " ↑" : " ↓")}
                 </th>
                 <th>Image</th>
-
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1214,30 +924,29 @@ export default function Items() {
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
-                      <td>{item.name}</td> {/* Item Name */}
+                      <td>{item.name}</td>
                       <td>
-                        <> {parseFloat(item.quantity || 0).toFixed(2)} {item.pricing?.baseUnit || ''}{" "}
-                          {item.quantity <= 0 ? (
-                            <span
-                              className="badge bg-danger ms-2"
-                              title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}
-                            >
-                              ⚠️ Restock
-                            </span>
-                          ) : item.quantity > 0 &&
-                            item.quantity <= item.lowStockThreshold ? (
-                            <span
-                              className="badge bg-warning text-dark ms-2"
-                              title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
-                            >
-                              🔥 Low Stock
-                            </span>
-                          ) : null}
-                        </>
+                        {parseFloat(item.quantity || 0).toFixed(2)} {item.baseUnit || ''}{" "}
+                        {item.quantity <= 0 ? (
+                          <span
+                            className="badge bg-danger ms-2"
+                            title={`Out of Stock (Qty: ${item.quantity}). Needs immediate restock.`}
+                          >
+                            ⚠️ Restock
+                          </span>
+                        ) : item.quantity > 0 &&
+                          item.quantity <= item.lowStockThreshold ? (
+                          <span
+                            className="badge bg-warning text-dark ms-2"
+                            title={`Low Stock (Qty: ${item.quantity}). Item's threshold: ${item.lowStockThreshold}.`}
+                          >
+                            🔥 Low Stock
+                          </span>
+                        ) : null}
                       </td>
-                      <td>{`₹${parseFloat(item.pricing?.sellingPrice || 0).toFixed(2)}`}</td> {/* Selling Price */}
-                      <td>{`₹${parseFloat(item.pricing?.buyingPrice || 0).toFixed(2)}`}</td> {/* Buying Price */}
-                      <td>{item.pricing?.baseUnit || "N/A"}</td>
+                      <td>{`₹${parseFloat(item.sellingPrice || 0).toFixed(2)}`}</td>
+                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td>
+                      <td>{item.baseUnit || "N/A"}</td>
                       <td>{`${item.gstRate || 0}%`}</td>
                       <td>
                         {item.maxDiscountPercentage > 0
@@ -1267,7 +976,6 @@ export default function Items() {
                           <span className="text-muted small">No Image</span>
                         )}
                       </td>
-
                       <td>
                         <div className="d-flex gap-1 justify-content-center">
                           <ActionButtons
@@ -1283,7 +991,7 @@ export default function Items() {
                             size="sm"
                           />
                           <button
-                            onClick={() => handleShowItemHistoryPage(item)} // Changed to navigate to page
+                            onClick={() => handleShowItemHistoryPage(item)}
                             className="btn btn-secondary btn-sm"
                             disabled={anyLoading}
                             title="View Item History"
@@ -1295,11 +1003,7 @@ export default function Items() {
                     </tr>
                     {expandedRow === item._id && (
                       <tr>
-                        <td
-                          colSpan="9
-                        "
-                          className="expanded-row"
-                        >
+                        <td colSpan="9" className="expanded-row">
                           <div className="expanded-container">
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Item Details</h6>
@@ -1314,73 +1018,54 @@ export default function Items() {
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td>
-                                    <strong>Name</strong>
-                                  </td>
+                                  <td><strong>Name</strong></td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Category</strong>
-                                  </td>
+                                  <td><strong>Category</strong></td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
-                                <tr></tr>
                                 <tr>
+                                  <td><strong>Quantity</strong></td>
                                   <td>
-                                    <strong>Quantity</strong>
-                                  </td>
-                                  <td>
-                                    {parseFloat(item.quantity || 0).toFixed(2)}
-
+                                    {parseFloat(item.quantity || 0).toFixed(2)} {item.baseUnit}
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"
-                                        })`
+                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"})`
                                       : item.quantity > 0 &&
-                                      item.quantity <=
-                                      item.lowStockThreshold &&
-                                      ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
+                                        item.quantity <= item.lowStockThreshold &&
+                                        ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
                                   </td>
                                 </tr>
                                 <tr>
+                                  <td><strong>Selling Price</strong></td>
+                                  <td>{`₹${parseFloat(item.sellingPrice || 0).toFixed(2)} per ${item.baseUnit}`}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Buying Price</strong></td>
+                                  <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)} per ${item.baseUnit}`}</td>
+                                </tr>
+                                <tr>
+                                  <td><strong>Units</strong></td>
                                   <td>
-                                    <strong>Selling Price</strong>
-                                  </td>
-                                  <td> {`₹${parseFloat(item.pricing?.sellingPrice || 0).toFixed(2)} per ${item.pricing?.baseUnit || ''}`}
+                                    {item.units?.map(u => (
+                                      <div key={u.name}>
+                                        {u.name} ({u.conversionFactor} {u.name} = 1 {item.baseUnit})
+                                      </div>
+                                    )) || 'N/A'}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Buying Price</strong>
-                                  </td>
-                                  <td> {`₹${parseFloat(item.pricing?.buyingPrice || 0).toFixed(2)} per ${item.pricing?.baseUnit || ''}`}
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>Unit</strong>
-                                  </td>
-                                  <td>{item.pricing?.baseUnit || "N/A"}</td>
-                                  <td>{item.units?.map(u => `${u.name} (${u.conversionFactor} to ${item.pricing?.baseUnit})`).join('; ') || 'N/A'}</td>
-                                </tr>
-                                <tr>
-                                  <td>
-                                    <strong>GST Rate</strong>
-                                  </td>
+                                  <td><strong>GST Rate</strong></td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>HSN Code</strong>
-                                  </td>
+                                  <td><strong>HSN Code</strong></td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td>
-                                    <strong>Max Discount</strong>
-                                  </td>
+                                  <td><strong>Max Discount</strong></td>
                                   <td>
                                     {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
@@ -1394,8 +1079,7 @@ export default function Items() {
                             </div>
                             {purchaseHistoryLoading[item._id] ? (
                               <div className="text-center">
-                                <Spinner animation="border" size="sm" /> Loading
-                                history...
+                                <Spinner animation="border" size="sm" /> Loading history...
                               </div>
                             ) : purchaseHistory[item._id]?.length > 0 ? (
                               <table className="table table-sm table-striped table-bordered">
@@ -1404,7 +1088,7 @@ export default function Items() {
                                     <th>Date</th>
                                     <th>Supplier</th>
                                     <th>Added By</th>
-                                    <th>Invoice No</th> {/* Invoice Number */}
+                                    <th>Invoice No</th>
                                     <th>Qty</th>
                                     <th>Price (₹)</th>
                                   </tr>
@@ -1485,13 +1169,11 @@ export default function Items() {
             onHide={() => {
               setShowAddItemModal(false);
               setFormData({
-                name: "", // Reset to empty string for new item
-                quantity: "0.00", // Reset to 0.00 for new item
-                pricing: {
-                  baseUnit: "Nos",
-                  sellingPrice: "",
-                  buyingPrice: "",
-                },
+                name: "",
+                quantity: "0.00",
+                baseUnit: "Nos", // Direct
+                sellingPrice: "", // Direct
+                buyingPrice: "", // Direct
                 units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
                 image: "",
                 gstRate: "0",
@@ -1512,8 +1194,10 @@ export default function Items() {
                     setShowAddItemModal(false);
                     setFormData({
                       name: "", // Reset to empty string for new item
-                      quantity: "0.00", // Reset to 0.00 for new item
-                      pricing: { baseUnit: 'Nos', sellingPrice: '', buyingPrice: '' },
+                      quantity: "0.00",
+                      baseUnit: "Nos", // Direct
+                      sellingPrice: "", // Direct
+                      buyingPrice: "", // Direct
                       units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
                       gstRate: "0",
                       hsnCode: "",
@@ -1533,7 +1217,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.pricing.sellingPrice ||
+                    !formData.sellingPrice || // Direct
                     !formData.category ||
                     isSubmitting ||
                     isAddingNewCategory
@@ -1782,12 +1466,12 @@ export default function Items() {
                   <h5>Pricing & Units</h5>
                   <div className="row">
                     <div className="col-md-6">
-                      <label>Buying Price (per Base Unit)</label>
+                      <label>Buying Price (per Base Unit) <span className="text-danger">*</span></label>
                       <input
                         type="number" step="0.01" className="form-control mb-2"
                         placeholder="Buying Price" name="buyingPrice"
-                        value={formData.pricing.buyingPrice}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pricing: { ...prev.pricing, buyingPrice: e.target.value } }))}
+                        value={formData.buyingPrice} // Direct
+                        onChange={(e) => setFormData(prev => ({ ...prev, buyingPrice: e.target.value }))} // Direct
                       />
                     </div>
                     <div className="col-md-6">
@@ -1795,8 +1479,7 @@ export default function Items() {
                       <input
                         type="number" step="0.01" className="form-control mb-2"
                         placeholder="Selling Price" name="sellingPrice"
-                        value={formData.pricing.sellingPrice}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pricing: { ...prev.pricing, sellingPrice: e.target.value } }))}
+                        value={formData.sellingPrice} // Direct
                         required
                       />
                     </div>
@@ -1823,8 +1506,8 @@ export default function Items() {
                                   const newUnits = [...formData.units];
                                   newUnits[index].name = e.target.value;
                                   // If this was the base unit, update the pricing object too
-                                  if (unit.isBaseUnit) {
-                                    setFormData(prev => ({ ...prev, units: newUnits, pricing: { ...prev.pricing, baseUnit: e.target.value } }));
+                                  if (unit.isBaseUnit) { // Update baseUnit directly on formData
+                                    setFormData(prev => ({ ...prev, units: newUnits, baseUnit: e.target.value }));
                                   } else {
                                     setFormData(prev => ({ ...prev, units: newUnits }));
                                   }
@@ -1860,8 +1543,8 @@ export default function Items() {
                                   const newBaseUnitName = newUnits[index].name;
                                   setFormData(prev => ({
                                     ...prev,
-                                    units: newUnits,
-                                    pricing: { ...prev.pricing, baseUnit: newBaseUnitName }
+                                    units: newUnits, // Update baseUnit directly on formData
+                                    baseUnit: newBaseUnitName
                                   }));
                                 }}
                               />
@@ -1876,8 +1559,8 @@ export default function Items() {
                                     if (unit.isBaseUnit) {
                                       newUnits[0].isBaseUnit = true;
                                       newUnits[0].conversionFactor = 1;
-                                      const newBaseUnitName = newUnits[0].name;
-                                      setFormData(prev => ({ ...prev, units: newUnits, pricing: { ...prev.pricing, baseUnit: newBaseUnitName } }));
+                                      const newBaseUnitName = newUnits[0].name; // Update baseUnit directly on formData
+                                      setFormData(prev => ({ ...prev, units: newUnits, baseUnit: newBaseUnitName }));
                                     } else {
                                       setFormData(prev => ({ ...prev, units: newUnits }));
                                     }
@@ -1935,15 +1618,15 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.pricing.sellingPrice ||
-                    !formData.category ||
-                    isSubmitting
+                    !formData.sellingPrice || // Direct
+                    !formData.category || // Direct
+                    isSubmitting // Direct
                   }
                 >
-                  {parseFloat(formData.pricing.buyingPrice) >
-                    parseFloat(formData.pricing.sellingPrice) && (
+                  {parseFloat(formData.buyingPrice) >
+                    parseFloat(formData.sellingPrice) && formData.sellingPrice !== '0' && (
                       <Alert variant="warning" className="p-2 small mb-0 me-2">
-                        Buying price cannot be greater than Selling price!
+                        Buying price cannot be greater than Selling price (if Selling Price is not 0)!
                       </Alert>
                     )}
 
@@ -2119,12 +1802,12 @@ export default function Items() {
                   <h5>Pricing & Units</h5>
                   <div className="row">
                     <div className="col-md-6">
-                      <label>Buying Price (per Base Unit)</label>
+                      <label>Buying Price (per Base Unit) <span className="text-danger">*</span></label>
                       <input
                         type="number" step="0.01" className="form-control mb-2"
                         placeholder="Buying Price" name="buyingPrice"
-                        value={formData.pricing.buyingPrice}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pricing: { ...prev.pricing, buyingPrice: e.target.value } }))}
+                        value={formData.buyingPrice} // Direct
+                        onChange={(e) => setFormData(prev => ({ ...prev, buyingPrice: e.target.value }))} // Direct
                       />
                     </div>
                     <div className="col-md-6">
@@ -2132,8 +1815,7 @@ export default function Items() {
                       <input
                         type="number" step="0.01" className="form-control mb-2"
                         placeholder="Selling Price" name="sellingPrice"
-                        value={formData.pricing.sellingPrice}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pricing: { ...prev.pricing, sellingPrice: e.target.value } }))}
+                        value={formData.sellingPrice} // Direct
                         required
                       />
                     </div>
@@ -2160,8 +1842,8 @@ export default function Items() {
                                   const newUnits = [...formData.units];
                                   newUnits[index].name = e.target.value;
                                   // If this was the base unit, update the pricing object too
-                                  if (unit.isBaseUnit) {
-                                    setFormData(prev => ({ ...prev, units: newUnits, pricing: { ...prev.pricing, baseUnit: e.target.value } }));
+                                  if (unit.isBaseUnit) { // Update baseUnit directly on formData
+                                    setFormData(prev => ({ ...prev, units: newUnits, baseUnit: e.target.value }));
                                   } else {
                                     setFormData(prev => ({ ...prev, units: newUnits }));
                                   }
@@ -2197,8 +1879,8 @@ export default function Items() {
                                   const newBaseUnitName = newUnits[index].name;
                                   setFormData(prev => ({
                                     ...prev,
-                                    units: newUnits,
-                                    pricing: { ...prev.pricing, baseUnit: newBaseUnitName }
+                                    units: newUnits, // Update baseUnit directly on formData
+                                    baseUnit: newBaseUnitName
                                   }));
                                 }}
                               />
@@ -2213,8 +1895,8 @@ export default function Items() {
                                     if (unit.isBaseUnit) {
                                       newUnits[0].isBaseUnit = true;
                                       newUnits[0].conversionFactor = 1;
-                                      const newBaseUnitName = newUnits[0].name;
-                                      setFormData(prev => ({ ...prev, units: newUnits, pricing: { ...prev.pricing, baseUnit: newBaseUnitName } }));
+                                      const newBaseUnitName = newUnits[0].name; // Update baseUnit directly on formData
+                                      setFormData(prev => ({ ...prev, units: newUnits, baseUnit: newBaseUnitName }));
                                     } else {
                                       setFormData(prev => ({ ...prev, units: newUnits }));
                                     }

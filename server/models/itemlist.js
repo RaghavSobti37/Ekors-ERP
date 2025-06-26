@@ -2,6 +2,15 @@ const mongoose = require("mongoose");
 
 const purchaseItemSchema = new mongoose.Schema(
   {
+    unit: {
+      type: String,
+      required: true,
+    },
+    pricePerBaseUnit: {
+      // Store price in base units
+      type: Number,
+      required: true,
+    },
     itemId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Item",
@@ -99,29 +108,26 @@ const purchaseSchema = new mongoose.Schema(
   }
 );
 
-const unitSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
+const unitSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    isBaseUnit: {
+      type: Boolean,
+      default: false,
+    },
+    conversionFactor: {
+      // How many of the base unit are in this unit. e.g., if base is 'kg' and this unit is 'Mtr', factor is 'weight per meter'.
+      type: Number,
+      required: true,
+      default: 1,
+    },
   },
-  isBaseUnit: {
-    type: Boolean,
-    default: false,
-  },
-  conversionFactor: { // How many of the base unit are in this unit. e.g., if base is 'kg' and this unit is 'Mtr', factor is 'weight per meter'.
-    type: Number,
-    required: true,
-    default: 1,
-  },
-}, { _id: false });
-
-const pricingSchema = new mongoose.Schema({
-  baseUnit: { type: String, required: true },
-  sellingPrice: { type: Number, required: true, min: 0 }, // Price per baseUnit
-  buyingPrice: { type: Number, default: 0, min: 0 }, // Price per baseUnit
-}, { _id: false });
-
+  { _id: false }
+);
 
 // Instead of embedding purchase history, reference purchase documents
 const itemSchema = new mongoose.Schema(
@@ -136,7 +142,24 @@ const itemSchema = new mongoose.Schema(
       type: String, // Will store the Base64 data URL
       default: "",
     },
-    pricing: pricingSchema,
+    // Remove pricing schema and add direct fields
+    baseUnit: {
+      type: String,
+      required: true,
+      default: "Nos",
+    },
+    sellingPrice: {
+      // Price per base unit
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    buyingPrice: {
+      // Price per base unit
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     units: [unitSchema],
 
     quantity: {

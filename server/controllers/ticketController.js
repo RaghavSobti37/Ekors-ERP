@@ -365,8 +365,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
 
         if (itemToUpdate) {
           let quantityToDecrementInBaseUnit = 0;
-          const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
-          const baseUnitName = itemToUpdate.pricing.baseUnit;
+          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+          const baseUnitName = itemToUpdate.baseUnit;
 
           if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
             quantityToDecrementInBaseUnit = Number(good.quantity);
@@ -818,8 +818,8 @@ exports.updateTicket = async (req, res) => {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
             let quantityToRollbackInBaseUnit = 0;
-            const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
-            const baseUnitName = itemToUpdate.pricing.baseUnit;
+          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const baseUnitName = itemToUpdate.baseUnit;
 
             if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
               quantityToRollbackInBaseUnit = Number(good.quantity);
@@ -875,8 +875,8 @@ exports.updateTicket = async (req, res) => {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
             let quantityToDeductInBaseUnit = 0;
-            const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
-            const baseUnitName = itemToUpdate.pricing.baseUnit;
+          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const baseUnitName = itemToUpdate.baseUnit;
 
             if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
               quantityToDeductInBaseUnit = Number(good.quantity);
@@ -941,9 +941,8 @@ exports.updateTicket = async (req, res) => {
           return 0;
         }
 
-        const transactionalUnitName = good.unit || itemDetails.pricing.baseUnit;
-        const baseUnitName = itemDetails.pricing.baseUnit;
-
+      const transactionalUnitName = good.unit || itemDetails.baseUnit;
+        const baseUnitName = itemDetails.baseUnit;
         if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
           return Number(good.quantity);
         }
@@ -958,6 +957,13 @@ exports.updateTicket = async (req, res) => {
       };
 
       const itemCache = new Map(); // Cache item details
+
+             const logContext = {
+        ticketId,
+        initiatorId: user.id,
+        initiatorEmail: user.email,
+        action: "UPDATE_TICKET",
+      };
 
       // Populate old quantities in base units
       for (const good of originalTicket.goods || []) {
@@ -986,6 +992,15 @@ exports.updateTicket = async (req, res) => {
             // We subtract the net change from the current inventory.
             // If more items were added (netChange > 0), we deduct.
             // If items were removed (netChange < 0), we add back (subtracting a negative).
+
+                        // Store the original quantity before applying the change
+            const originalQuantity = itemToUpdate.quantity;
+
+            if (itemToUpdate.quantity === undefined || itemToUpdate.quantity === null) {
+              logger.error("inventory", `Item "${description}" has NULL quantity before adjustment!`, user);
+              itemToUpdate.quantity = 0;
+            }
+
 
             itemToUpdate.quantity -= netChangeInBaseUnit;
 
@@ -1259,9 +1274,8 @@ exports.deleteTicket = async (req, res) => {
                 const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
                 if (itemToUpdate) {
                     let quantityToRollbackInBaseUnit = 0;
-                    const transactionalUnitName = good.unit || itemToUpdate.pricing.baseUnit;
-                    const baseUnitName = itemToUpdate.pricing.baseUnit;
-
+               const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+                    const baseUnitName = itemToUpdate.baseUnit;
                     if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
                       quantityToRollbackInBaseUnit = Number(good.quantity);
                     } else {

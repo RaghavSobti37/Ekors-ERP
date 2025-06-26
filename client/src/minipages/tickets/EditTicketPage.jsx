@@ -239,9 +239,9 @@ const EditTicketPage = () => {
       const newGoodsItem = {
         srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
         quantity: 1, unit: defaultUnit, // Set default unit
-        price: pricePerSelectedUnit, // Price per selected unit
+        price: pricePerSelectedUnit, // Price per selected unit (already calculated based on base unit)
         amount: pricePerSelectedUnit, // Amount for 1 quantity
-        originalPrice: parseFloat(item.pricing.sellingPrice) || 0, // Store base selling price
+        originalPrice: parseFloat(item.sellingPrice) || 0, // Store base selling price (direct property)
         maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: [],
@@ -362,12 +362,15 @@ const EditTicketPage = () => {
         termsAndConditions: ticketData.termsAndConditions, // Ensure terms and conditions are sent
         roundOff: ticketData.roundOff, // Use the value from ticketData state
         finalRoundedAmount: ticketData.finalRoundedAmount, // Use the value from ticketData state
+        // The backend will recalculate totalQuantity, totalAmount, GST, etc.
       };
       // Remove fields that shouldn't be sent or are managed by backend
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
       delete updatePayload.currentAssignee; delete updatePayload.createdBy; delete updatePayload.statusHistory; delete updatePayload.transferHistory;
 
       const responseData = await apiClient(`/tickets/${ticketIdFromParams}`, { method: "PUT", body: updatePayload });
+      console.log("Frontend sending updatePayload:", updatePayload); // <-- ADDED DEBUG LOG
+
       if (responseData) {
         toast.success(`Ticket ${ticketData.ticketNumber} updated!`);
         frontendLogger.info("ticketActivity", `Ticket ${ticketData.ticketNumber} updated`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_SUCCESS" });
