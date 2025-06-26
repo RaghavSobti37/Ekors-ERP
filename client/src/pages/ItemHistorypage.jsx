@@ -71,7 +71,7 @@ const transformPurchase = (purchase) => ({
   type: "Purchase Entry",
   user: purchase.createdByName || "System",
   details: `Supplier: ${purchase.companyName}, Inv: ${purchase.invoiceNumber}`,
-  quantityChange: parseFloat(purchase.quantity) || 0,
+  quantityChange: parseFloat(purchase.quantity) || 0,pricePerBaseUnit: parseFloat(purchase.pricePerBaseUnit) || 0, 
   source: "purchase",
 });
 
@@ -231,9 +231,17 @@ const ItemHistoryPage = () => {
   const sharedColumns = [
     { key: "date", header: "Date", sortable: true, renderCell: (e) => e.date.toLocaleString() },
     { key: "type", header: "Type", sortable: true },
-    { key: "user", header: "User/Source", sortable: true },
-    { key: "details", header: "Details", renderCell: (e) => <>{e.details}{e.ticketNumber ? ` (Ticket: ${e.ticketNumber})` : ""}</> },
-    { key: "quantityChange", header: "Qty Change", sortable: true, renderCell: (e) => <span className={e.quantityChange > 0 ? "text-success fw-bold" : e.quantityChange < 0 ? "text-danger fw-bold" : ""}>{e.quantityChange > 0 ? `+${e.quantityChange}` : e.quantityChange !== 0 ? e.quantityChange : "-"}</span> },
+    { key: "user", header: "User/Source", sortable: true }, // Added
+    { key: "details", header: "Details", renderCell: (e) => (
+      <>
+        {e.details}
+        {e.ticketNumber ? ` (Ticket: ${e.ticketNumber})` : ""}
+        {e.type === "Purchase" && e.pricePerBaseUnit !== undefined && e.pricePerBaseUnit !== null && (
+          <span className="d-block text-muted small">@ ₹{e.pricePerBaseUnit.toFixed(2)}/base unit</span>
+        )}
+      </>
+    )},
+    { key: "quantityChange", header: "Qty Change", sortable: true, renderCell: (e) => <span className={e.quantityChange > 0 ? "text-success fw-bold" : e.quantityChange < 0 ? "text-danger fw-bold" : ""}>{e.quantityChange > 0 ? `+${e.quantityChange.toFixed(2)}` : e.quantityChange !== 0 ? e.quantityChange.toFixed(2) : "-"}</span> },
   ];
 
   const editColumns = [

@@ -63,27 +63,10 @@ export default function Items() {
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
-  const [purchaseHistory, setPurchaseHistory] = useState({});
-  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add this line
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [selectedCategory, setSelectedCategory] = useState("All");
-
-  const [purchaseData, setPurchaseData] = useState({
-    companyName: "",
-    gstNumber: "",
-    address: "",
-    stateName: "",
-    invoiceNumber: "",
-    date: new Date().toISOString().split("T")[0],
-    items: [],
-  });
-
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [itemSearchTerm, setItemSearchTerm] = useState("");
-  const [filteredItemsList, setFilteredItemsList] = useState([]);
-  const [showItemSearch, setShowItemSearch] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingExcel, setIsProcessingExcel] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [excelUpdateStatus, setExcelUpdateStatus] = useState({
@@ -305,54 +288,7 @@ export default function Items() {
     }
   }, [authLoading, user, currentPage, itemsPerPage]);
 
-  useEffect(() => {
-    if (itemSearchTerm.trim() !== "") {
-      if (Array.isArray(items) && items.length > 0) {
-        const filtered = items.filter(
-          (item) =>
-            item.name.toLowerCase().includes(itemSearchTerm.toLowerCase()) ||
-            (item.hsnCode &&
-              item.hsnCode.toLowerCase().includes(itemSearchTerm.toLowerCase()))
-        );
-        setFilteredItemsList(filtered);
-      } else {
-        setFilteredItemsList([]);
-      }
-    } else {
-      setFilteredItemsList([]);
-    }
-  }, [itemSearchTerm, items]);
-
-  const fetchPurchaseHistoryForExpandedRow = useCallback(
-    async (itemId) => {
-      try {
-        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: true }));
-        setError(null);
-
-        const response = await apiClient(`/items/${itemId}/purchases`, {
-          timeout: 5000,
-        });
-
-        setPurchaseHistory((prev) => ({
-          ...prev,
-          [itemId]: response || [],
-        }));
-        setError(null);
-      } catch (err) {
-        handleApiError(err, "Failed to load history.", user);
-        console.error("Fetch purchase history error:", err);
-        setPurchaseHistory((prev) => ({
-          ...prev,
-          [itemId]: [],
-        }));
-      } finally {
-        setPurchaseHistoryLoading((prev) => ({ ...prev, [itemId]: false }));
-      }
-    },
-    [user]
-  );
-
-  const handleExportToExcel = async () => {
+    const handleExportToExcel = async () => {
     try {
       setIsExportingExcel(true);
       const response = await apiClient("/items/export-excel", {
@@ -517,6 +453,29 @@ export default function Items() {
     }
   };
 
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showToast("Category name cannot be empty.", false);
+      return;
+    }
+    setIsSubmittingCategory(true);
+    try {
+      await apiClient("/items/categories", {
+        method: "POST",
+        body: { categoryName: newCategoryName },
+      });
+      showToast(`Category "${newCategoryName}" is now available.`, true);
+      await fetchCategories(); // Refresh categories list
+      setFormData(prev => ({ ...prev, category: newCategoryName })); // Select the new category
+      setIsAddingNewCategory(false);
+      setNewCategoryName("");
+    } catch (err) {
+      handleApiError(err, "Failed to add category.", user);
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  };
+
   const handleApproveItem = async (itemId) => {
     if (!window.confirm("Are you sure you want to approve this item?")) return;
     setIsSubmitting(true);
@@ -564,10 +523,7 @@ export default function Items() {
     }
   };
 
-  const toggleExpandedRow = async (id) => {
-    if (expandedRow !== id) {
-      await fetchPurchaseHistoryForExpandedRow(id);
-    }
+  const toggleExpandedRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
@@ -608,9 +564,9 @@ export default function Items() {
     isExportingExcel ||
     loading;
 
-  return (
+  return ( // Removed showPurchaseModal from here
     <div className="items-container">
-      <Navbar showPurchaseModal={() => setShowPurchaseModal(true)} />
+      <Navbar />
       <div className="container mt-4">
         {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && (
           <div className="alert alert-danger" role="alert">
@@ -1074,53 +1030,6 @@ export default function Items() {
                                 </tr>
                               </tbody>
                             </table>
-                            <div className="d-flex justify-content-between align-items-center mb-3 mt-3">
-                              <h6>Purchase History (Expanded Row)</h6>
-                            </div>
-                            {purchaseHistoryLoading[item._id] ? (
-                              <div className="text-center">
-                                <Spinner animation="border" size="sm" /> Loading history...
-                              </div>
-                            ) : purchaseHistory[item._id]?.length > 0 ? (
-                              <table className="table table-sm table-striped table-bordered">
-                                <thead className="table-secondary">
-                                  <tr>
-                                    <th>Date</th>
-                                    <th>Supplier</th>
-                                    <th>Added By</th>
-                                    <th>Invoice No</th>
-                                    <th>Qty</th>
-                                    <th>Price (₹)</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {purchaseHistory[item._id].map(
-                                    (purchase, idx) => (
-                                      <tr key={purchase._id || idx}>
-                                        <td>
-                                          {new Date(
-                                            purchase.date
-                                          ).toLocaleDateString()}
-                                        </td>
-                                        <td>{purchase.companyName}</td>
-                                        <td>
-                                          {purchase.createdByName || "N/A"}
-                                        </td>
-                                        <td>{purchase.invoiceNumber}</td> {/* Invoice Number */}
-                                        <td>{purchase.quantity}</td>
-                                        <td>₹{purchase.price.toFixed(2)}</td>
-                                      </tr>
-                                    )
-                                  )}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <div className="alert alert-info">
-                                {error && expandedRow === item._id
-                                  ? `Error loading history: ${error}`
-                                  : "No purchase history found for this item."}
-                              </div>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -1927,307 +1836,6 @@ export default function Items() {
           </ReusableModal>
         )}
 
-        {showPurchaseModal && (
-          <ReusableModal
-            show={showPurchaseModal}
-            onHide={() => {
-              setShowPurchaseModal(false);
-              resetPurchaseForm();
-              setError(null);
-            }}
-            title="Purchase Tracking"
-            footerContent={
-              <>
-                <button
-                  onClick={() => {
-                    setShowPurchaseModal(false);
-                    resetPurchaseForm();
-                    setError(null);
-                  }}
-                  className="btn btn-secondary"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addPurchaseEntry}
-                  className="btn btn-success"
-                  disabled={!isPurchaseDataValid() || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Spinner
-                        as="span"
-                        animation="border"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                      />{" "}
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit Purchase"
-                  )}
-                </button>
-              </>
-            }
-            isLoading={isSubmitting}
-          >
-            <>
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Company Name*</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Company Name"
-                      name="companyName"
-                      value={purchaseData.companyName}
-                      onChange={handlePurchaseChange}
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>GST Number</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="GST Number"
-                      name="gstNumber"
-                      value={purchaseData.gstNumber}
-                      onChange={handlePurchaseChange}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Address</label>
-                <input
-                  className="form-control mb-2"
-                  placeholder="Address"
-                  name="address"
-                  value={purchaseData.address}
-                  onChange={handlePurchaseChange}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>State</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="State Name"
-                      name="stateName"
-                      value={purchaseData.stateName}
-                      onChange={handlePurchaseChange}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-group">
-                    <label>Invoice Number*</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Invoice Number"
-                      name="invoiceNumber"
-                      value={purchaseData.invoiceNumber}
-                      onChange={handlePurchaseChange}
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Invoice Date*</label>
-                <input
-                  type="date"
-                  className="form-control mb-3"
-                  name="date"
-                  value={purchaseData.date}
-                  onChange={handlePurchaseChange}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-              <h6>Items Purchased</h6>
-              {purchaseData.items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="purchase-item-container mb-3 p-3 border rounded"
-                >
-                  <div className="position-relative">
-                    <label>Search Item</label>
-                    <input
-                      className="form-control mb-2"
-                      placeholder="Search item by name or HSN..."
-                      value={itemSearchTerm} // Use a single itemSearchTerm for the active input
-                      onChange={(e) => {
-                        setItemSearchTerm(e.target.value);
-                        setShowItemSearch(true);
-                      }}
-                      onFocus={() => {
-                        setShowItemSearch(true);
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    {filteredItemsList.length > 0 &&
-                      showItemSearch && ( // Simpler condition for showing dropdown
-                        <div className="suggestions-dropdown">
-                          {filteredItemsList.map((suggestion, i) => (
-                            <div
-                              key={i}
-                              className="suggestion-item"
-                              onClick={() => {
-                                handleItemChange(
-                                  idx,
-                                  "description",
-                                  suggestion.name
-                                );
-                                handleItemChange(
-                                  idx,
-                                  "price",
-                                  suggestion.buyingPrice
-                                    ? suggestion.buyingPrice.toString()
-                                    : suggestion.lastPurchasePrice
-                                      ? suggestion.lastPurchasePrice.toString()
-                                      : "0"
-                                );
-                                handleItemChange(
-                                  idx,
-                                  "gstRate",
-                                  suggestion.gstRate.toString()
-                                );
-                                setItemSearchTerm(""); // Clear search term after selection
-                                setShowItemSearch(false);
-                              }}
-                            >
-                              <strong>{suggestion.name}</strong>
-                              <span className="text-muted">
-                                {" "}
-                                - SP: ₹{suggestion.sellingPrice.toFixed(2)}, BP:
-                                ₹{(suggestion.buyingPrice || 0).toFixed(2)}
-                              </span>
-                              <br />
-                              <small>
-                                HSN: {suggestion.hsnCode || "N/A"}, GST:{" "}
-                                {suggestion.gstRate || 0}%
-                              </small>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                  {item.description && (
-                    <div className="selected-item-details mb-2 p-2 bg-light border rounded">
-                      <strong>{item.description}</strong>
-                      {item.price && (
-                        <small className="d-block">
-                          Price: ₹{item.price}, GST: {item.gstRate || 0}%
-                        </small>
-                      )}
-                    </div>
-                  )}
-                  <div className="row">
-                    <div className="col-md-3">
-                      <div className="form-group">
-                        <label>Description*</label>
-                        <input
-                          type="text"
-                          className="form-control mb-2"
-                          placeholder="Description"
-                          value={item.description || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "description", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>Price*</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control mb-2"
-                          placeholder="Price"
-                          value={item.price || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "price", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>Quantity*</label>
-                        <input
-                          type="number"
-                          className="form-control mb-2"
-                          placeholder="Quantity"
-                          value={item.quantity || ""}
-                          onChange={(e) =>
-                            handleItemChange(idx, "quantity", e.target.value)
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2">
-                      <div className="form-group">
-                        <label>GST Rate (%)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control mb-2"
-                          placeholder="GST Rate"
-                          value={item.gstRate || "0"}
-                          onChange={(e) =>
-                            handleItemChange(idx, "gstRate", e.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="col-md-2 d-flex align-items-end">
-                      <button
-                        onClick={() => removeItem(idx)}
-                        className="btn btn-danger btn-block"
-                        disabled={purchaseData.items.length === 1}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div className="d-flex justify-content-between mb-3">
-                <button
-                  onClick={addNewPurchaseItem}
-                  className="btn btn-outline-primary"
-                >
-                  Add Another Item
-                </button>
-                <div className="total-amount">
-                  <strong>
-                    Total Amount: ₹{calculateTotalAmount().toFixed(2)}
-                  </strong>
-                </div>
-              </div>
-            </>
-          </ReusableModal>
-        )}
       </div>
       <Footer />
     </div>

@@ -7,6 +7,7 @@ const auth = require("../middleware/auth"); // Import auth middleware
 const { Purchase } = require("../models/itemlist"); // Import Purchase model
 
 // More specific routes first
+router.get("/purchases/new", auth, (req, res) => res.status(200).send("Purchase Form Page")); // This route is primarily for frontend navigation
 router.get("/purchases/all", auth, purchaseController.getAllPurchases); // Get all purchases (Protected)
 router.post("/purchase", auth, purchaseController.addBulkPurchase); // Add bulk purchase
 router.get("/categories", itemController.getCategories); // GET categories

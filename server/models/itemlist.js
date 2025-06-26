@@ -57,23 +57,7 @@ const purchaseSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    gstNumber: {
-      type: String,
-      trim: true,
-      default: "",
-      validate: {
-        validator: function (v) {
-          // Basic GST validation - can be enhanced
-          return (
-            v === "" ||
-            /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/.test(
-              v
-            )
-          );
-        },
-        message: (props) => `${props.value} is not a valid GST number!`,
-      },
-    },
+           gstNumber: { type: String, default: '' }, 
     address: {
       type: String,
       default: "",

@@ -8,7 +8,6 @@ const Ticket = require("../models/opentickets"); // Make sure this path is corre
 const exceljs = require("exceljs");
 const asyncHandler = require("express-async-handler");
 
-
 // Get all items - Updated for server-side pagination, sorting, and filtering
 exports.getAllItems = async (req, res) => {
   const user = req.user || null;
@@ -174,8 +173,16 @@ exports.exportItemsToExcel = async (req, res) => {
       },
       // Add generic custom unit columns
       ...Array.from({ length: MAX_CUSTOM_UNITS_TO_EXPORT }).flatMap((_, i) => [
-        { header: `Custom Unit ${i + 1} Name`, key: `customUnit${i + 1}Name`, width: 20 },
-        { header: `Custom Unit ${i + 1} Conversion Factor`, key: `customUnit${i + 1}ConversionFactor`, width: 25 },
+        {
+          header: `Custom Unit ${i + 1} Name`,
+          key: `customUnit${i + 1}Name`,
+          width: 20,
+        },
+        {
+          header: `Custom Unit ${i + 1} Conversion Factor`,
+          key: `customUnit${i + 1}ConversionFactor`,
+          width: 25,
+        },
       ]),
       { header: "Image", key: "image", width: 15 },
     ];
@@ -207,18 +214,28 @@ exports.exportItemsToExcel = async (req, res) => {
 
       // Add category header if it changes
       if (item.category !== currentCategory) {
-        const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
-        const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
+        const imageColIndex = worksheet.columns.findIndex(
+          (col) => col.key === "image"
+        );
+        const imageColLetter = String.fromCharCode(
+          "A".charCodeAt(0) + imageColIndex
+        );
         // Before adding new category header, finalize any pending image merge from previous category
         if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
-          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
+          worksheet.mergeCells(
+            `${imageColLetter}${imageMergeStartRow}:${imageColLetter}${
+              currentRow - 1
+            }`
+          );
         }
         // Reset image merge tracking for the new category
         imageMergeStartRow = -1;
         lastImageBase64 = null;
 
         currentCategory = item.category;
-        const lastColumnLetter = String.fromCharCode('A'.charCodeAt(0) + worksheet.columns.length - 1);
+        const lastColumnLetter = String.fromCharCode(
+          "A".charCodeAt(0) + worksheet.columns.length - 1
+        );
         worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`); // Merge all columns for category header
         worksheet.getCell(`A${currentRow}`).value = `Category: ${
           currentCategory || "Other"
@@ -255,11 +272,12 @@ exports.exportItemsToExcel = async (req, res) => {
         image: "", // Image will be added separately
       };
       // Populate custom unit columns
-      const nonBaseUnits = item.units?.filter(u => !u.isBaseUnit) || [];
+      const nonBaseUnits = item.units?.filter((u) => !u.isBaseUnit) || [];
       for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
         if (nonBaseUnits[j]) {
           rowData[`customUnit${j + 1}Name`] = nonBaseUnits[j].name;
-          rowData[`customUnit${j + 1}ConversionFactor`] = nonBaseUnits[j].conversionFactor;
+          rowData[`customUnit${j + 1}ConversionFactor`] =
+            nonBaseUnits[j].conversionFactor;
         } else {
           // Ensure empty cells if no more custom units
           rowData[`customUnit${j + 1}Name`] = "";
@@ -273,13 +291,21 @@ exports.exportItemsToExcel = async (req, res) => {
       // --- Image Placement and Merge Start ---
       const hasImage = !!item.image;
       const isNewImageSequence = item.image !== lastImageBase64;
-      const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
-      const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
+      const imageColIndex = worksheet.columns.findIndex(
+        (col) => col.key === "image"
+      );
+      const imageColLetter = String.fromCharCode(
+        "A".charCodeAt(0) + imageColIndex
+      );
 
       // If a new image sequence is starting (or no image for current item) AND an old sequence was active, finalize the old one.
       if (imageMergeStartRow !== -1 && (isNewImageSequence || !hasImage)) {
         if (currentRow - 1 >= imageMergeStartRow) {
-          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
+          worksheet.mergeCells(
+            `${imageColLetter}${imageMergeStartRow}:${imageColLetter}${
+              currentRow - 1
+            }`
+          );
         }
         imageMergeStartRow = -1; // Reset for new sequence
         lastImageBase64 = null; // Reset for new sequence
@@ -318,9 +344,18 @@ exports.exportItemsToExcel = async (req, res) => {
         vertical: "middle",
         horizontal: "center",
       };
-      addedRow.getCell('gstRate').alignment = { vertical: 'middle', horizontal: 'center' };
-      addedRow.getCell('maxDiscountPercentage').alignment = { vertical: 'middle', horizontal: 'center' };
-      addedRow.getCell('lowStockThreshold').alignment = { vertical: 'middle', horizontal: 'center' };
+      addedRow.getCell("gstRate").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      addedRow.getCell("maxDiscountPercentage").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      addedRow.getCell("lowStockThreshold").alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
 
       addedRow.getCell("sellingPriceBaseUnit").alignment = {
         vertical: "middle",
@@ -332,7 +367,10 @@ exports.exportItemsToExcel = async (req, res) => {
       };
       // Custom unit conversion factors should also be centered
       for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
-        addedRow.getCell(`customUnit${j + 1}ConversionFactor`).alignment = { vertical: 'middle', horizontal: 'center' };
+        addedRow.getCell(`customUnit${j + 1}ConversionFactor`).alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
       }
       addedRow.getCell("gstRate").alignment = {
         vertical: "middle",
@@ -352,9 +390,17 @@ exports.exportItemsToExcel = async (req, res) => {
 
     // Finalize any pending image merge for the last category
     if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
-      const imageColIndex = worksheet.columns.findIndex(col => col.key === 'image');
-      const imageColLetter = String.fromCharCode('A'.charCodeAt(0) + imageColIndex);
-      worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
+      const imageColIndex = worksheet.columns.findIndex(
+        (col) => col.key === "image"
+      );
+      const imageColLetter = String.fromCharCode(
+        "A".charCodeAt(0) + imageColIndex
+      );
+      worksheet.mergeCells(
+        `${imageColLetter}${imageMergeStartRow}:${imageColLetter}${
+          currentRow - 1
+        }`
+      );
     }
 
     const excelBuffer = await workbook.xlsx.writeBuffer();
@@ -389,7 +435,6 @@ exports.exportItemsToExcel = async (req, res) => {
 
 // --- EXCEL EXPORT LOGIC END ---
 
-
 // --- EXCEL IMPORT LOGIC START ---
 
 async function parseExcelBufferForUpdate(fileBuffer) {
@@ -405,16 +450,18 @@ async function parseExcelBufferForUpdate(fileBuffer) {
       throw new Error("No worksheet found in the Excel file.");
     }
 
-    let currentCategory = 'Other'; // Default category
+    let currentCategory = "Other"; // Default category
 
     // Collect all images first to map them by row
     const imageMap = new Map();
-    worksheet.getImages().forEach(image => {
+    worksheet.getImages().forEach((image) => {
       const row = image.range.tl.row + 1; // 1-based row number
       const imageId = image.imageId;
       const excelImage = workbook.getImage(imageId);
       if (excelImage) {
-        const base64Image = `data:image/${excelImage.extension || "png"};base64,${excelImage.buffer.toString("base64")}`;
+        const base64Image = `data:image/${
+          excelImage.extension || "png"
+        };base64,${excelImage.buffer.toString("base64")}`;
         imageMap.set(row, base64Image);
       }
     });
@@ -424,50 +471,62 @@ async function parseExcelBufferForUpdate(fileBuffer) {
       if (rowNumber === 1) return; // Skip the header row explicitly
 
       // Check if this row is a category header (merged cells in column A)
-      const firstCell = row.getCell('A');
+      const firstCell = row.getCell("A");
       if (firstCell.isMerged) {
         const categoryCellValue = firstCell.value;
-        if (typeof categoryCellValue === 'string' && categoryCellValue.startsWith('Category:')) {
-          currentCategory = categoryCellValue.replace('Category: ', '').trim();
+        if (
+          typeof categoryCellValue === "string" &&
+          categoryCellValue.startsWith("Category:")
+        ) {
+          currentCategory = categoryCellValue.replace("Category: ", "").trim();
           return; // This is a category header row, skip processing as an item
         }
       }
 
-      const name = row.getCell('B').value;
+      const name = row.getCell("B").value;
 
       // If the name is missing, consider it an empty row and skip
       if (!name) {
-        if (row.values.length > 1) { // Avoid logging for completely blank rows
-          parsingErrors.push({ row: rowNumber, message: `Skipped: Item name is missing in row ${rowNumber}.` });
+        if (row.values.length > 1) {
+          // Avoid logging for completely blank rows
+          parsingErrors.push({
+            row: rowNumber,
+            message: `Skipped: Item name is missing in row ${rowNumber}.`,
+          });
         }
         return;
       }
 
       const item = {
         name: String(name).trim(),
-        quantity: parseFloat(row.getCell('C').value) || 0,
-        hsnCode: String(row.getCell('D').value || '').trim(),
-        gstRate: parseFloat(row.getCell('E').value) || 0,
-        maxDiscountPercentage: parseFloat(row.getCell('F').value) || 0,
-        lowStockThreshold: parseInt(row.getCell('G').value, 10) || 5,
-        baseUnit: String(row.getCell('H').value || 'Nos').trim(),
-        sellingPriceBaseUnit: parseFloat(row.getCell('I').value) || 0,
-        buyingPriceBaseUnit: parseFloat(row.getCell('J').value) || 0,
+        quantity: parseFloat(row.getCell("C").value) || 0,
+        hsnCode: String(row.getCell("D").value || "").trim(),
+        gstRate: parseFloat(row.getCell("E").value) || 0,
+        maxDiscountPercentage: parseFloat(row.getCell("F").value) || 0,
+        lowStockThreshold: parseInt(row.getCell("G").value, 10) || 5,
+        baseUnit: String(row.getCell("H").value || "Nos").trim(),
+        sellingPriceBaseUnit: parseFloat(row.getCell("I").value) || 0,
+        buyingPriceBaseUnit: parseFloat(row.getCell("J").value) || 0,
         category: currentCategory,
-        image: imageMap.get(rowNumber) || '',
+        image: imageMap.get(rowNumber) || "",
       };
 
       // Read custom units dynamically. Custom Unit 1 Name starts at column K (11).
       for (let i = 0; i < MAX_CUSTOM_UNITS_TO_EXPORT; i++) {
-        const unitNameColIndex = 11 + (i * 2); // K, M, O
-        const conversionFactorColIndex = 12 + (i * 2); // L, N, P
+        const unitNameColIndex = 11 + i * 2; // K, M, O
+        const conversionFactorColIndex = 12 + i * 2; // L, N, P
 
         const unitName = row.getCell(unitNameColIndex).value;
         const conversionFactor = row.getCell(conversionFactorColIndex).value;
 
-        if (unitName && (conversionFactor !== null && conversionFactor !== undefined)) {
+        if (
+          unitName &&
+          conversionFactor !== null &&
+          conversionFactor !== undefined
+        ) {
           item[`customUnit${i + 1}Name`] = String(unitName).trim();
-          item[`customUnit${i + 1}ConversionFactor`] = parseFloat(conversionFactor);
+          item[`customUnit${i + 1}ConversionFactor`] =
+            parseFloat(conversionFactor);
         }
       }
 
@@ -475,7 +534,9 @@ async function parseExcelBufferForUpdate(fileBuffer) {
       if (isNaN(item.sellingPriceBaseUnit)) {
         parsingErrors.push({
           row: rowNumber,
-          message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}. Value: ${row.getCell('I').value}.`,
+          message: `Skipped: Invalid Selling Price for item "${
+            item.name
+          }" in row ${rowNumber}. Value: ${row.getCell("I").value}.`,
         });
         return;
       }
@@ -484,12 +545,20 @@ async function parseExcelBufferForUpdate(fileBuffer) {
     });
 
     return { itemsToUpsert, parsingErrors };
-
   } catch (error) {
-    logger.error('excel_importer', `Error parsing Excel buffer: ${error.message}`, error);
+    logger.error(
+      "excel_importer",
+      `Error parsing Excel buffer: ${error.message}`,
+      error
+    );
     return {
       itemsToUpsert: [],
-      parsingErrors: [{ row: 'general', message: `Fatal error during Excel parsing: ${error.message}` }],
+      parsingErrors: [
+        {
+          row: "general",
+          message: `Fatal error during Excel parsing: ${error.message}`,
+        },
+      ],
     };
   }
 }
@@ -684,7 +753,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
       const seenUnitNames = new Set();
 
       // Add units from Excel payload, ensuring uniqueness
-      unitsPayload.forEach(u => {
+      unitsPayload.forEach((u) => {
         const lowerCaseName = u.name.toLowerCase();
         if (!seenUnitNames.has(lowerCaseName)) {
           finalUnits.push(u);
@@ -695,20 +764,19 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
       // This ensures that any units not explicitly in the Excel (e.g., if MAX_CUSTOM_UNITS_TO_EXPORT is less than total units)
       // are preserved from the existing item, unless they conflict with an Excel-provided unit.
       if (existingItem && existingItem.units) {
-       existingItem.units.forEach(u => {
+        existingItem.units.forEach((u) => {
           const lowerCaseName = u.name.toLowerCase();
           if (!seenUnitNames.has(lowerCaseName)) {
             finalUnits.push(u);
             seenUnitNames.add(lowerCaseName);
           }
-        }
-        );
+        });
       }
 
       // Ensure base unit is correctly marked and conversion factor is 1
       // And ensure only one base unit exists
       let hasBaseUnit = false;
-      finalUnits.forEach(u => {
+      finalUnits.forEach((u) => {
         if (u.name.toLowerCase() === pricingPayload.baseUnit.toLowerCase()) {
           u.isBaseUnit = true;
           u.conversionFactor = 1;
@@ -787,7 +855,13 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         let itemActuallyModified = false;
         const compareObjects = (obj1, obj2) => {
           if (obj1 === obj2) return true;
-          if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
+          if (
+            typeof obj1 !== "object" ||
+            obj1 === null ||
+            typeof obj2 !== "object" ||
+            obj2 === null
+          )
+            return false;
           const keys1 = Object.keys(obj1);
           const keys2 = Object.keys(obj2);
           if (keys1.length !== keys2.length) return false;
@@ -802,8 +876,12 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         const compareUnits = (arr1, arr2) => {
           if (arr1.length !== arr2.length) return false;
           // Sort arrays by name for consistent comparison
-          const sortedArr1 = [...arr1].sort((a, b) => a.name.localeCompare(b.name));
-          const sortedArr2 = [...arr2].sort((a, b) => a.name.localeCompare(b.name));
+          const sortedArr1 = [...arr1].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+          const sortedArr2 = [...arr2].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
 
           for (let i = 0; i < sortedArr1.length; i++) {
             if (!compareObjects(sortedArr1[i], sortedArr2[i])) {
@@ -815,20 +893,21 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
 
         // Check for changes in simple fields
         Object.keys(payload).forEach((key) => {
-          if (key === 'pricing' || key === 'units') return; // Handle these separately
-          if (String(existingItem[key]) !== String(payload[key])) {              changes.push({
-                field: key,
-                oldValue: existingItem[key],
-                newValue: payload[key],
-              });
-              itemActuallyModified = true;
-            }
+          if (key === "pricing" || key === "units") return; // Handle these separately
+          if (String(existingItem[key]) !== String(payload[key])) {
+            changes.push({
+              field: key,
+              oldValue: existingItem[key],
+              newValue: payload[key],
+            });
+            itemActuallyModified = true;
+          }
         });
 
         // Check for changes in pricing object
         if (!compareObjects(existingItem.pricing, payload.pricing)) {
           changes.push({
-            field: 'pricing',
+            field: "pricing",
             oldValue: existingItem.pricing,
             newValue: payload.pricing,
           });
@@ -838,7 +917,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         // Check for changes in units array
         if (!compareUnits(existingItem.units, payload.units)) {
           changes.push({
-            field: 'units',
+            field: "units",
             oldValue: existingItem.units,
             newValue: payload.units,
           });
@@ -1720,7 +1799,8 @@ exports.updateItem = async (req, res) => {
             : 5;
       }
     }
-    const sellingPrice =       req.body.sellingPrice !== undefined
+    const sellingPrice =
+      req.body.sellingPrice !== undefined
         ? parseFloat(req.body.sellingPrice)
         : existingItem.sellingPrice;
     const buyingPrice =
@@ -2154,6 +2234,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
         invoiceNumber: 1,
         "items.$": 1,
         createdBy: 1,
+        "items.pricePerBaseUnit": 1,
       }
     )
       .populate("createdBy", "firstname lastname")
@@ -2176,6 +2257,7 @@ exports.getItemPurchaseHistory = async (req, res) => {
         invoiceNumber: purchase.invoiceNumber,
         quantity: itemData?.quantity || 0,
         price: itemData?.price || 0,
+        pricePerBaseUnit: itemData?.pricePerBaseUnit || 0, // Add this
         gstRate: itemData?.gstRate || 0,
         amount: (itemData?.price || 0) * (itemData?.quantity || 0),
         totalWithGst:
@@ -2246,15 +2328,28 @@ exports.clearItemLogs = async (req, res) => {
   const user = req.user;
 
   // This is a destructive action, so we restrict it to super-admin
-  if (user.role !== 'super-admin') {
-    logger.warn("item-log-clear", `Unauthorized attempt to clear logs for item ${itemId} by user ${user.email}.`, user);
-    return res.status(403).json({ message: "Forbidden: You do not have permission to perform this action." });
+  if (user.role !== "super-admin") {
+    logger.warn(
+      "item-log-clear",
+      `Unauthorized attempt to clear logs for item ${itemId} by user ${user.email}.`,
+      user
+    );
+    return res
+      .status(403)
+      .json({
+        message:
+          "Forbidden: You do not have permission to perform this action.",
+      });
   }
 
   try {
     const item = await Item.findById(itemId);
     if (!item) {
-      logger.warn("item-log-clear", `Item not found for log clearing: ${itemId}`, user);
+      logger.warn(
+        "item-log-clear",
+        `Item not found for log clearing: ${itemId}`,
+        user
+      );
       return res.status(404).json({ message: "Item not found." });
     }
 
@@ -2264,15 +2359,24 @@ exports.clearItemLogs = async (req, res) => {
 
     await item.save();
 
-    logger.info("item-log-clear", `All inventory and excel logs for item ${itemId} (${item.name}) cleared by ${user.email}.`, user);
-    res.status(200).json({ message: "All item logs have been cleared successfully." });
-
+    logger.info(
+      "item-log-clear",
+      `All inventory and excel logs for item ${itemId} (${item.name}) cleared by ${user.email}.`,
+      user
+    );
+    res
+      .status(200)
+      .json({ message: "All item logs have been cleared successfully." });
   } catch (error) {
-    logger.error("item-log-clear", `Error clearing logs for item ${itemId}`, error, user);
+    logger.error(
+      "item-log-clear",
+      `Error clearing logs for item ${itemId}`,
+      error,
+      user
+    );
     res.status(500).json({ message: "Server error while clearing item logs." });
   }
 };
-
 
 exports.getItemTicketUsageHistory = async (req, res) => {
   const user = req.user || null;

@@ -501,7 +501,7 @@ const QuotationFormPage = () => {
             unit: defaultUnit,
             price: pricePerSelectedUnit,
             amount: pricePerSelectedUnit,
-            originalPrice: parseFloat(item.pricing.sellingPrice) || 0,
+            originalPrice: parseFloat(item.sellingPrice) || 0, // Corrected
             maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
@@ -527,7 +527,10 @@ const QuotationFormPage = () => {
     try {
       const savedItem = await apiClient("/items", {
         method: "POST",
-        body: newItemData,
+        body: { // Flatten newItemData for the Item creation API
+          ...newItemData,
+          ...newItemData.pricing, // Spread pricing properties directly
+        },
       });
       toast.success(`Item "${savedItem.name}" created and added to quotation.`);
       handleAddItem(savedItem);
