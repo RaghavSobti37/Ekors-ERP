@@ -1,93 +1,54 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const goodsItemSchema = new mongoose.Schema(
-  {
-    srNo: { type: Number, required: true },
-    description: { type: String, required: true },
-    subtexts: { type: [String], default: [] },
-    hsnSacCode: { type: String, default: '' },
-    quantity: { type: Number, required: true, min: 1 },
-    unit: { 
-      type: String, 
-      required: true, 
-      default: 'Nos',
-      enum: ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG']
-    },
-    price: { type: Number, required: true, min: 0 },
-    amount: { type: Number, required: true, min: 0 },
+const goodSchema = new Schema({
+    itemId: { type: Schema.Types.ObjectId, ref: 'Item' },
+    name: { type: String, required: true },
+    hsnCode: String,
+    quantity: { type: Number, required: true },
+    unit: { type: String, required: true },
+    price: { type: Number, required: true },
+    amount: { type: Number, required: true },
     gstRate: { type: Number, default: 0 },
-    originalPrice: { type: Number },
-    maxDiscountPercentage: { type: Number, default: 0 }
-  },
-  { _id: false }
-);
-
-const documentSubSchema = new mongoose.Schema({
-  path: { type: String, required: true },
-  originalName: { type: String, required: true },
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  uploadedAt: { type: Date, default: Date.now }
+    maxDiscountPercentage: { type: Number, default: 0 },
+    subtexts: [String],
+    originalItem: { type: Schema.Types.Mixed }
 }, { _id: false });
 
-// Define billing address sub-schema
-const addressSchema = new mongoose.Schema({
-  address1: { type: String, default: '' },
-  address2: { type: String, default: '' },
-  city: { type: String, default: '' },
-  state: { type: String, default: '' },
-  pincode: { type: String, default: '' },
+const addressSchema = new Schema({
+    address1: String,
+    address2: String,
+    city: String,
+    state: String,
+    pincode: String,
 }, { _id: false });
 
-const quotationSchema = new mongoose.Schema(
-  {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    orderIssuedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    date: { type: Date, required: true },
-    referenceNumber: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+const quotationSchema = new Schema({
+    // --- Core Fields (for lightweight list views) ---
+    referenceNumber: { type: String, unique: true, required: true },
+    client: { type: Schema.Types.ObjectId, ref: 'Client', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true }, // The user who created it
+    date: { type: Date, default: Date.now, required: true },
     validityDate: { type: Date, required: true },
-    // Add billingAddress to Quotation
-    billingAddress: addressSchema,
-    goods: [goodsItemSchema],
-    totalQuantity: { type: Number, required: true, min: 0 },
-    totalAmount: { type: Number, required: true, min: 0 },
-    gstAmount: { type: Number, required: true, min: 0 },
-    grandTotal: { type: Number, required: true, min: 0 },
     status: {
-      type: String,
-      enum: ['open', 'closed', 'hold', 'running'], // Added 'running'
-      default: 'open'
+        type: String,
+        enum: ['open', 'running', 'closed', 'hold'],
+        default: 'open'
     },
-    client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Client",
-      required: true,
-    },
-    documents: { // Added documents field for quotations
-      quotationPdf: documentSubSchema, // For the generated PDF of this quotation
-      clientApproval: documentSubSchema, // Example: If client sends back a signed copy
-      other: [documentSubSchema]
-    },
-  },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
-);
+    grandTotal: { type: Number, default: 0 },
 
-// Compound index for unique reference numbers per user
-quotationSchema.index({ user: 1, referenceNumber: 1 }, { unique: true });
+    // --- Detail Fields (for form/preview pages, fetched on demand) ---
+    orderIssuedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    billingAddress: addressSchema,
+    goods: [goodSchema],
+    totalQuantity: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 },
+    gstAmount: { type: Number, default: 0 },
+    dispatchDays: String,
+    termsAndConditions: String,
+}, {
+    timestamps: true // Adds createdAt and updatedAt
+});
 
-// Index for better query performance
-quotationSchema.index({ date: -1 });
-quotationSchema.index({ status: 1 });
+module.exports = mongoose.model('Quotation', quotationSchema);
 
-module.exports = mongoose.model("Quotation", quotationSchema);

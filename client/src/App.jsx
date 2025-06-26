@@ -311,10 +311,10 @@ function App() {
           />
           
           <Route
-            path="/tickets/pi-preview"
+            path="/tickets/preview/pi/:id"
             element={
               <ProtectedRoute allowedRoles={["user", "admin", "super-admin"]}>
-                <PIPreviewPage /> {/* Assuming PIPreviewPage.jsx exists */}
+                <PIPreviewPage />
               </ProtectedRoute>
             }
           />

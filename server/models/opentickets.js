@@ -1,6 +1,7 @@
+// server/models/opentickets.js
 const mongoose = require('mongoose');
 
-const goodsSchema = new mongoose.Schema({
+const goodsSchema = new mongoose.Schema({ // _id: false for embedded documents
   srNo: { type: Number, required: true },
   description: { type: String, required: true },
     subtexts: { type: [String], default: [] }, 
@@ -12,18 +13,18 @@ const goodsSchema = new mongoose.Schema({
   originalPrice: { type: Number }, // For discount tracking
   maxDiscountPercentage: { type: Number, default: 0 },
   gstRate: { type: Number, required: true, min: 0, default: 0 } 
-}, { _id: false });
+}, { _id: false }); 
 
-const documentSubSchema = new mongoose.Schema({
+const documentSubSchema = new mongoose.Schema({ // _id: false for embedded documents
   path: { type: String, required: true },
   originalName: { type: String, required: true },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   uploadedAt: { type: Date, default: Date.now }
-  }, { _id: false }); // Ensure _id is false for subdocuments unless explicitly needed
+  }, { _id: false }); 
 
 const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
-  companyName: { type: String, required: true },
+  companyName: { type: String, required: true }, // Redundant if client is always populated, but useful for quick access
   quotationNumber: { type: String, required: true },
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' }, // If you have a Client model
   clientPhone: { type: String },
@@ -55,7 +56,7 @@ const ticketSchema = new mongoose.Schema({
   totalIgstAmount: { type: Number, default: 0 },
   finalGstAmount: { type: Number, required: true, default: 0 }, // Total GST
   grandTotal: { type: Number, required: true, default: 0 }, // Total Amount + Total GST
-   roundOff: { type: Number, default: 0 }, // To store the round off amount
+   roundOff: { type: Number, default: 0 }, // To store the round off amount (can be positive or negative)
   finalRoundedAmount: { type: Number },
   isBillingStateSameAsCompany: { type: Boolean, default: false },
 
@@ -93,7 +94,7 @@ const ticketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
+  }, // User who created the ticket
  currentAssignee: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -103,7 +104,7 @@ const ticketSchema = new mongoose.Schema({
     type: Date,
     required: true // Or true, depending on your requirements
   },
-
+  // assignedTo is redundant if currentAssignee is always used for the active assignee
    assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User' // No longer strictly required, will default to createdBy if not provided
@@ -124,19 +125,5 @@ const ticketSchema = new mongoose.Schema({
 dispatchDays: { type: String, default: "7-10 working days" } // Add this line
 
 }, { timestamps: true });
-
-
-// Pre-save hook to set finalRoundedAmount if not explicitly provided by client
-ticketSchema.pre('save', function(next) {
-  if (this.isNew || this.isModified('grandTotal') || this.isModified('roundOff')) {
-    if (this.finalRoundedAmount === undefined || this.finalRoundedAmount === null) {
-      this.finalRoundedAmount = (this.grandTotal || 0) + (this.roundOff || 0);
-    }
-  }
-  next();
-});
-
-// Create a unique compound index to ensure one ticket per quotation
-ticketSchema.index({ quotationNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

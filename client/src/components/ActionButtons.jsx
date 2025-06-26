@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "react-bootstrap";
+import { Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import {
   Eye, // View
   PencilSquare, // Edit
@@ -9,6 +9,7 @@ import {
   BarChart, // Generate Report
   CloudDownload, // For PDF Download
   FileEarmarkWord, // For Word Download
+  JournalText, // For Details/Documents
   FileEarmarkExcel, // For Generic Excel Report
 } from "react-bootstrap-icons";
 import { PDFDownloadLink } from "@react-pdf/renderer";
@@ -24,6 +25,8 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
  * @param {function} [props.onDelete] - Handler for the Delete action. If provided, the Delete button is shown.
  * @param {function} [props.onCreateTicket] - Handler for the Create Ticket action (Quotations).
  * @param {function} [props.onTransfer] - Handler for the Transfer action (Tickets).
+ *  * @param {function} [props.onViewDetails] - Handler for viewing details/documents.
+
  * @param {function} [props.onGenerateReport] - Handler for the Generate Report action (Users).
  * @param {object} [props.pdfProps] - Object containing `document` (React PDF component) and `fileName` for PDFDownloadLink. If provided, PDF button is shown.
  * @param {function} [props.onDownloadWord] - Handler for Word download. If provided, Word button is shown.
@@ -38,12 +41,15 @@ const ActionButtons = ({
   onEdit,
   onDelete,
   onCreateTicket,
+    onViewDetails,
+
   onTransfer,
   onGenerateReport,
   pdfProps,
   onDownloadWord,
   onGenerateExcelReport,
   isLoading = false,
+  user,
   disabled = {},
   createTicketDisabled = false, 
   size = "sm",
@@ -60,60 +66,69 @@ const ActionButtons = ({
 
   return (
     <div className="d-flex gap-2 justify-content-center">
-      {onView && (
-        <Button
-          variant="info"
-          size={size}
-          onClick={() => onView(item)}
-          disabled={isActionDisabled("view")}
-          title="View"
-        >
-          <Eye />
-        </Button>
+      {onView && ( // View action
+        <OverlayTrigger placement="top" overlay={<Tooltip>View</Tooltip>}>
+          <Button variant="info" size={size} onClick={() => onView(item)} disabled={isActionDisabled("view")} aria-label="View">
+            <Eye />
+          </Button>
+        </OverlayTrigger>
+
       )}
-      {onEdit && (
-        <Button
-          variant="warning"
-          size={size}
-          onClick={() => onEdit(item)}
-          disabled={isActionDisabled("edit")}
-          title="Edit"
-        >
-          <PencilSquare />
-        </Button>
+      {onEdit && (  // Edit action
+        <OverlayTrigger placement="top" overlay={<Tooltip>Edit</Tooltip>}>
+          <Button variant="warning" size={size} onClick={() => onEdit(item)} disabled={isActionDisabled("edit")} aria-label="Edit">
+            <PencilSquare />
+          </Button>
+        </OverlayTrigger>
       )}
-      {onDelete && (
-        <Button
-          variant="danger"
-          size={size}
-          onClick={() => onDelete(item)}
-          disabled={isActionDisabled("delete")}
-          title="Delete"
-        >
-          <Trash />
-        </Button>
+
+            {onViewDetails && ( // View Details/Documents action
+        <OverlayTrigger placement="top" overlay={<Tooltip>Details / Documents</Tooltip>}>
+          <Button
+            variant="secondary" size={size} onClick={() => onViewDetails(item)} disabled={isActionDisabled("viewDetails")} aria-label="View Details">
+            <JournalText />
+          </Button>
+        </OverlayTrigger>
       )}
-      {onCreateTicket && (
-        <Button
-          variant="success"
-          size={size}
-          onClick={() => onCreateTicket(item)}
-          disabled={isLoading || createTicketDisabled}
-          title="Create Ticket"
-        >
-          <PlusSquare />
-        </Button>
+
+      {onDelete && user?.role === "super-admin" && ( // Conditionally render delete button based on user role
+        <OverlayTrigger placement="top" overlay={<Tooltip>Delete</Tooltip>}>
+          <Button
+            variant="danger"
+            size={size}
+            onClick={() => onDelete(item)}
+            disabled={isActionDisabled("delete")}
+            aria-label="Delete"
+          >
+            <Trash />
+          </Button>
+        </OverlayTrigger>
       )}
-      {onTransfer && (
-        <Button
-          variant="info"
-          size={size}
-          onClick={() => onTransfer(item)}
-          disabled={isActionDisabled("transfer")}
-          title="Transfer Ticket"
-        >
-          <ArrowLeftRight />
-        </Button>
+      {onCreateTicket && ( // Create Ticket action (for Quotations)
+        <OverlayTrigger placement="top" overlay={<Tooltip>Create Ticket</Tooltip>}>
+          <Button
+            variant="success"
+            size={size}
+            onClick={() => onCreateTicket(item)}
+            disabled={isLoading || createTicketDisabled}
+            aria-label="Create Ticket"
+          >
+            <PlusSquare />
+          </Button>
+        </OverlayTrigger>
+      )}
+      {onTransfer && ( // Transfer action (for Tickets)
+        <OverlayTrigger placement="top" overlay={<Tooltip>Transfer Ticket</Tooltip>}>
+          <Button
+            variant="info"
+            size={size}
+            onClick={() => onTransfer(item)}
+            disabled={isActionDisabled("transfer")}
+            aria-label="Transfer Ticket"
+          >
+            <ArrowLeftRight />
+          </Button>
+        </OverlayTrigger>
       )}
       {onGenerateReport && (
         <Button

@@ -17,7 +17,7 @@ const QuotationPreviewPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [quotation, setQuotation] = useState(location.state?.quotationToPreview || null);
+  const [quotation, setQuotation] = useState(null); // Always start as null, fetch if ID exists
   const [isLoading, setIsLoading] = useState(!quotation); // Load if not passed in state
   const [error, setError] = useState(null);
 
@@ -27,7 +27,7 @@ const QuotationPreviewPage = () => {
         setIsLoading(true);
         setError(null);
         try {
-          const data = await apiClient(`/quotations/${id}`);
+const data = await apiClient(`/quotations/${id}`); // This fetches the full quotation
           setQuotation(data);
         } catch (err) {
           const errorMessage = handleApiError(err, "Failed to load quotation for preview.", user, "quotationPreviewActivity");
@@ -38,8 +38,7 @@ const QuotationPreviewPage = () => {
       };
       fetchQuotation();
     }
-  }, [id, quotation, user]);
-
+  }, [id, user]); 
   if (isCompanyInfoLoading) {
     return <ReusablePageStructure showBackButton={true} title="Loading Company Info..."><div className="text-center p-5"><Spinner animation="border" /></div></ReusablePageStructure>;
   }

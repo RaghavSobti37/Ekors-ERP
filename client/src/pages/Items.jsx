@@ -1389,6 +1389,7 @@ export default function Items() {
                         type="number" step="0.01" className="form-control mb-2"
                         placeholder="Selling Price" name="sellingPrice"
                         value={formData.sellingPrice} // Direct
+                         onChange={(e) => setFormData(prev => ({ ...prev, sellingprice: e.target.value }))}
                         required
                       />
                     </div>

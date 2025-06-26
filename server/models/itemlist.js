@@ -57,7 +57,7 @@ const purchaseSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-           gstNumber: { type: String, default: '' }, 
+    gstNumber: { type: String, default: "" },
     address: {
       type: String,
       default: "",

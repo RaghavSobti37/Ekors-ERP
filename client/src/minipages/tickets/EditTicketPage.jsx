@@ -95,14 +95,27 @@ const EditTicketPage = () => {
        setRoundOffAmount(data.roundOff || 0);
       setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null ? data.finalRoundedAmount : data.grandTotal + (data.roundOff || 0) );
     } catch (err) {
-      handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
-      navigate("/tickets");
+      const errorMessage = handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
+      setError(errorMessage);
+      if (err.status === 401 || err.response?.status === 401) {
+        toast.error("Authentication failed. Please log in again.");
+        navigate('/login', { state: { from: location.pathname } });
+      } else {
+        // For other errors (e.g., ticket not found), navigate back to the list
+        navigate("/tickets");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [ticketIdFromParams, navigate, authUser]);
+  }, [ticketIdFromParams, navigate, authUser, location.pathname]);
 
   useEffect(() => {
+    // Do not run this effect until the initial authentication check is complete.
+    // ProtectedRoute will handle redirecting if the user is not logged in.
+    if (authLoading) {
+      return;
+    }
+
     if (location.state?.ticketDataForForm) {
         const initialData = location.state.ticketDataForForm;
         const billingAddressObj = Array.isArray(initialData.billingAddress) && initialData.billingAddress.length === 5
@@ -136,7 +149,7 @@ const EditTicketPage = () => {
     } else if (ticketIdFromParams) {
       fetchTicketDetails();
     }
-  }, [ticketIdFromParams, location.state, fetchTicketDetails]);
+  }, [ticketIdFromParams, location.state, fetchTicketDetails, authLoading]);
 
 
   const calculateTaxes = useCallback(() => {

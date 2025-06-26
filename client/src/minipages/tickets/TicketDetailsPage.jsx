@@ -1,8 +1,8 @@
-// c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/tickets/TicketDetailsPage.jsx
+// TicketDetailsPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Form,
-  Button as BsButton,
+  Button,
   Alert,
   Spinner,
   Row,
@@ -23,12 +23,9 @@ import {
   formatDateTime,
 } from "../../utils/helpers";
 import frontendLogger from "../../utils/frontendLogger.js";
-import { PDFViewer } from "@react-pdf/renderer";
-import PIPDF from "../../components/PIPDF.jsx";
-import QuotationPDF from "../../components/QuotationPDF.jsx";
-import { PIActions } from "../../pages/Tickets.jsx"; // Assuming PIActions is correctly defined and exported
-import { FaEye, FaUpload, FaTrash, FaFilePdf } from "react-icons/fa"; // Removed unused FaDownload, FaFileWord, FaPlus
-import { useCompanyInfo } from "../../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
+import ActionButtons from "../../components/ActionButtons.jsx";
+import { FaEye, FaUpload, FaTrash, FaFilePdf } from "react-icons/fa";
+import { useCompanyInfo } from "../../context/CompanyInfoContext.jsx";
 
 const getStatusBadgeColor = (status) => {
   switch (status) {
@@ -78,12 +75,6 @@ const TicketDetailsPage = () => {
     file: null,
     isOther: false,
   });
-
-  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
-  const [pdfPreviewConfig, setPdfPreviewConfig] = useState({
-    type: null,
-    data: null,
-  });
   const [otherDocumentFile, setOtherDocumentFile] = useState(null);
 
   const fetchTicketDetails = useCallback(async () => {
@@ -102,21 +93,28 @@ const TicketDetailsPage = () => {
           (data.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
       );
     } catch (err) {
-      handleApiError(
+      const errorMessage = handleApiError(
         err,
         "Failed to fetch ticket details.",
         authUser,
         "ticketDetailsActivity"
       );
-      navigate("/tickets");
+      setError(errorMessage);
+      if (err.status === 401 || err.response?.status === 401) {
+        toast.error("Authentication failed. Please log in again.");
+        navigate('/login', { state: { from: location.pathname } });
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [ticketIdFromParams, navigate, authUser]);
+  }, [ticketIdFromParams, navigate, authUser, location.pathname]);
 
   useEffect(() => {
     if (!location.state?.ticketData && ticketIdFromParams) {
-      fetchTicketDetails();
+      // Only fetch once auth state is resolved to avoid race conditions.
+      if (!authLoading) {
+        fetchTicketDetails();
+      }
     } else if (location.state?.ticketData) {
       const initialTicket = location.state.ticketData;
       setTicket(initialTicket);
@@ -125,7 +123,7 @@ const TicketDetailsPage = () => {
           (initialTicket.payments?.reduce((sum, p) => sum + p.amount, 0) || 0)
       );
     }
-  }, [ticketIdFromParams, location.state, fetchTicketDetails]);
+  }, [ticketIdFromParams, location.state, fetchTicketDetails, authLoading]);
 
   const handlePaymentSubmit = useCallback(async () => {
     setIsLoading(true);
@@ -169,10 +167,6 @@ const TicketDetailsPage = () => {
     paymentReference,
     fetchTicketDetails,
     authUser,
-    setIsLoading,
-    setError,
-    setPaymentAmount,
-    setPaymentReference,
   ]);
 
   const handleDocumentUpload = useCallback(
@@ -207,19 +201,22 @@ const TicketDetailsPage = () => {
         setIsLoading(false);
       }
     },
-    [
-      ticket?._id,
-      fetchTicketDetails,
-      authUser,
-      setIsLoading,
-      setOtherDocumentFile,
-    ]
+    [ticket?._id, fetchTicketDetails, authUser]
   );
 
   const handleDocumentDelete = useCallback(
-    async (docType, documentId, isOther = false) => {
-      if (!window.confirm(`Are you sure you want to delete this ${docType}?`))
+    async (docType, doc, isOther = false) => {
+      const documentId = isOther ? doc?._id : undefined; // Get ID only if it's an 'other' doc
+      const docName = isOther ? doc?.originalName : docType;
+
+      if (isOther && !documentId) {
+        toast.error("Cannot delete document: missing a valid document ID.");
         return;
+      }
+
+      if (!window.confirm(`Are you sure you want to delete this document: ${docName}?`))
+        return;
+
       setIsLoading(true);
       try {
         await apiClient(`/tickets/${ticket._id}/documents`, {
@@ -239,63 +236,8 @@ const TicketDetailsPage = () => {
         setIsLoading(false);
       }
     },
-    [ticket?._id, fetchTicketDetails, authUser, setIsLoading]
+    [ticket?._id, fetchTicketDetails, authUser]
   );
-
-  const renderPdfPreviewModal = () => (
-    <ReusablePageStructure
-      showBackButton={true} // This modal is now a page, so back button is good
-      onBack={() => setShowPdfPreviewModal(false)} // Custom back handler to close the preview
-      title={`${pdfPreviewConfig.type?.toUpperCase()} Preview - ${
-        ticket?.ticketNumber || ticket?.quotationNumber
-      }`}
-      footerContent={
-        <>
-          {" "}
-          {/* PIActions might need to be adapted if it's for a modal context */}
-          {/* Pass the ticket data from the preview config to PIActions */}
-          {pdfPreviewConfig.type === "pi" && pdfPreviewConfig.data && (
-            <PIActions ticket={pdfPreviewConfig.data} />
-          )}
-          <BsButton
-            variant="secondary"
-            onClick={() => setShowPdfPreviewModal(false)}
-          >
-            Close Preview
-          </BsButton>
-        </>
-      }
-    >
-      {/* Ensure pdfPreviewConfig.data is available before rendering PDFViewer */}
-      {pdfPreviewConfig.type && pdfPreviewConfig.data ? (
-        <div style={{ height: "calc(100vh - 220px)", overflowY: "auto" }}>
-          {" "}
-          {/* Adjust height */}
-          <PDFViewer width="100%" height="99%">
-            {pdfPreviewConfig.type === "quotation" ? (
-              <QuotationPDF
-                quotation={pdfPreviewConfig.data}
-                companyInfo={companyInfo}
-              />
-            ) : (
-              <PIPDF
-                ticketData={pdfPreviewConfig.data}
-                companyInfo={companyInfo}
-              />
-            )}
-          </PDFViewer>
-        </div>
-      ) : (
-        <div style={{ textAlign: "center", marginTop: 50 }}>
-          <p>Preparing PDF data...</p>
-        </div>
-      )}
-    </ReusablePageStructure>
-  );
-
-  if (showPdfPreviewModal) {
-    return renderPdfPreviewModal();
-  }
 
   if (authLoading || isLoading || !ticket) {
     return (
@@ -351,7 +293,7 @@ const TicketDetailsPage = () => {
                   {doc.uploadedBy?.firstname}
                 </p>
                 <ButtonGroup>
-                  <BsButton
+                  <Button
                     variant="outline-info"
                     size="sm"
                     onClick={() =>
@@ -365,15 +307,15 @@ const TicketDetailsPage = () => {
                     title="View Document"
                   >
                     <FaEye /> View
-                  </BsButton>
-                  <BsButton
+                  </Button>
+                  <Button
                     variant="outline-danger"
                     size="sm"
-                    onClick={() => handleDocumentDelete(docConfig.type, docId)}
+                    onClick={() => handleDocumentDelete(docConfig.type, doc, false)}
                     title="Delete Document"
                   >
                     <FaTrash /> Delete
-                  </BsButton>
+                  </Button>
                 </ButtonGroup>
               </>
             ) : (
@@ -392,7 +334,7 @@ const TicketDetailsPage = () => {
                 }
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png"
               />
-              <BsButton
+              <Button
                 variant="outline-success"
                 size="sm"
                 onClick={() =>
@@ -402,9 +344,9 @@ const TicketDetailsPage = () => {
                 title="Upload Document"
               >
                 <FaUpload /> Upload
-              </BsButton>
+              </Button>
               {docConfig.canGenerate && (
-                <BsButton
+                <Button
                   variant="outline-primary"
                   size="sm"
                   onClick={async () => {
@@ -417,15 +359,14 @@ const TicketDetailsPage = () => {
                       }
                       try {
                         setIsLoading(true); // Use main page loading spinner
-                        // Assuming you have a backend endpoint to fetch quotation by ref number
-                        // This endpoint might need to allow access for users who can view the ticket
-                        const fetchedQuotation = await apiClient( // Corrected API path
-                          `/quotations/by-reference/${ticket.quotationNumber}`                        );
-                        setPdfPreviewConfig({
-                          type: docConfig.type,
-                          data: fetchedQuotation,
-                        });
-                        setShowPdfPreviewModal(true);
+                        const fetchedQuotation = await apiClient(
+                          `/quotations/by-reference/${ticket.quotationNumber}`
+                        );
+                        if (fetchedQuotation && fetchedQuotation._id) {
+                          navigate(`/quotations/preview/${fetchedQuotation._id}`); // Navigate to existing QuotationPreviewPage
+                        } else {
+                          toast.error("Could not find the linked quotation.");
+                        }
                       } catch (e) {
                         handleApiError(
                           e,
@@ -436,27 +377,16 @@ const TicketDetailsPage = () => {
                       } finally {
                         setIsLoading(false);
                       }
-                    } else {
-                      // For PI and other potential generated docs based on ticket data
-                      // For PI, the ticket data itself is sufficient
-                      setPdfPreviewConfig({
-                        type: docConfig.type,
-                        data: ticket,
-                      });
-                      setShowPdfPreviewModal(true);
+                    } else if (docConfig.type === "pi") {
+                      navigate(`/tickets/preview/pi/${ticket._id}`);
                     }
                   }}
                   title={`Generate/Preview ${docConfig.label}`}
                   disabled={isLoading}
                 >
                   <FaFilePdf /> Preview
-                </BsButton>
+                </Button>
               )}
-              {/* {docConfig.type === "pi" && ticket && ( // Specific for PI Word download
-                 <BsButton variant="outline-secondary" size="sm" className="ms-2" onClick={() => PIActions({ ticket }).handleDownloadWord()} title="Download PI as Word">
-                    <FaFileWord /> Word
-                 </BsButton>
-               )} */}
             </div>
           </Card.Body>
         </Card>
@@ -467,17 +397,18 @@ const TicketDetailsPage = () => {
   return (
     <ReusablePageStructure
       title={`Ticket Details - ${ticket.ticketNumber}`}
+      headerContent={
+        <ActionButtons item={ticket} onEdit={() => navigate(`/tickets/edit/${ticket._id}`)} onTransfer={() => navigate(`/tickets/transfer/${ticket._id}`)} user={authUser} />
+      }
       footerContent={
-        <BsButton variant="secondary" onClick={() => navigate("/tickets")}>
+        <Button variant="secondary" onClick={() => navigate("/tickets")}>
           Back to Tickets
-        </BsButton>
+        </Button>
       }
     >
       {error && <Alert variant="danger">{error}</Alert>}
       <Row>
         <Col md={7}>
-          {" "}
-          {/* Main Ticket Info and Documents */}
           <Card className="mb-3">
             <Card.Header>Ticket Information</Card.Header>
             <Card.Body>
@@ -524,8 +455,10 @@ const TicketDetailsPage = () => {
               </p>
             </Card.Body>
           </Card>
+
           <h5 className="mt-4 mb-3">Primary Documents</h5>
           <Row>{documentTypesConfig.map(renderDocumentCard)}</Row>
+
           <Card className="mb-3 mt-3">
             <Card.Header as="h6">Other Documents</Card.Header>
             <Card.Body>
@@ -537,7 +470,7 @@ const TicketDetailsPage = () => {
                   />
                 </Col>
                 <Col sm={4}>
-                  <BsButton
+                  <Button
                     variant="success"
                     onClick={() =>
                       handleDocumentUpload(otherDocumentFile, "other", true)
@@ -546,7 +479,7 @@ const TicketDetailsPage = () => {
                     className="w-100"
                   >
                     <FaUpload /> Upload Other
-                  </BsButton>
+                  </Button>
                 </Col>
               </Form.Group>
               <Form.Group as={Row} className="mb-3">
@@ -574,7 +507,7 @@ const TicketDetailsPage = () => {
                         <td>{doc.uploadedBy?.firstname}</td>
                         <td>
                           <ButtonGroup>
-                            <BsButton
+                            <Button
                               variant="outline-info"
                               size="sm"
                               onClick={() =>
@@ -587,16 +520,14 @@ const TicketDetailsPage = () => {
                               }
                             >
                               <FaEye />
-                            </BsButton>
-                            <BsButton
+                            </Button>
+                            <Button
                               variant="outline-danger"
                               size="sm"
-                              onClick={() =>
-                                handleDocumentDelete("other", doc._id, true)
-                              }
+                              onClick={() => handleDocumentDelete("other", doc, true)}
                             >
                               <FaTrash />
-                            </BsButton>
+                            </Button>
                           </ButtonGroup>
                         </td>
                       </tr>
@@ -611,8 +542,6 @@ const TicketDetailsPage = () => {
         </Col>
 
         <Col md={5}>
-          {" "}
-          {/* Sidebar for Payments, History */}
           {ticket.payments && ticket.payments.length > 0 && (
             <Card className="mb-3">
               <Card.Header>Payment History</Card.Header>
@@ -640,6 +569,7 @@ const TicketDetailsPage = () => {
               </Card.Body>
             </Card>
           )}
+
           {ticket.statusHistory && ticket.statusHistory.length > 0 && (
             <Card className="mb-3">
               <Card.Header>Status History</Card.Header>

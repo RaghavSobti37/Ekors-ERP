@@ -170,91 +170,68 @@ export default function Quotations() {
   }, []);
 
   const handleCreateTicket = useCallback(async (quotation) => {
-    setSourceQuotationForTicket(quotation);
-    let defaultDeadline = new Date();
-    // The previous try-catch block for fetching ticket defaults was removed,
-    // so we'll just use a default deadline here.
-    defaultDeadline.setDate(defaultDeadline.getDate() + 10); // Default fallback deadline
+setIsLoading(true); // Show loading spinner
+    try {
+      // Fetch the FULL quotation object to get all details, including 'goods'
+      const fullQuotation = await apiClient(`/quotations/${quotation._id}`);
+      setSourceQuotationForTicket(fullQuotation); // Set the full quotation for the ticket
 
-    const quotationBillingAddressObject = quotation.billingAddress || {};
-    const ticketBillingAddressArrayFromQuotation = [
-      quotationBillingAddressObject.address1 || "",
-      quotationBillingAddressObject.address2 || "",
-      quotationBillingAddressObject.state || "",
-      quotationBillingAddressObject.city || "",
-      quotationBillingAddressObject.pincode || "",
-    ];
-    const clientData = quotation.client || {};
+      let defaultDeadline = new Date();
+      defaultDeadline.setDate(defaultDeadline.getDate() + 10); // Default fallback deadline
 
-    const ticketNumberToSet = generateNextTicketNumber(); // Generate ticket number on frontend
-    const ticketDataForForm = {
-      ticketNumber: ticketNumberToSet,
-      companyName: quotation.client?.companyName || "",
-      quotationNumber: quotation.referenceNumber,
-      billingAddress: ticketBillingAddressArrayFromQuotation, 
-      shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" }, 
-      shippingSameAsBilling: false,
-      goods: quotation.goods.map((item) => ({
-        ...item,
-        quantity: Number(item.quantity),
-        price: Number(item.price),
-        amount: Number(item.amount),
-        gstRate: parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      })),
-      clientPhone: clientData.phone || "",
-      clientGstNumber: clientData.gstNumber || "",
-      totalQuantity: Number(quotation.totalQuantity),
-      totalAmount: Number(quotation.totalAmount),
-      dispatchDays: quotation.dispatchDays || "7-10 working days",
-      validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      termsAndConditions: quotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-      gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-      finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-      status: "Quotation Sent",
-      deadline: defaultDeadline.toISOString().split("T")[0],
-    };
-    navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
-  }, [navigate, initialQuotationData]); 
+      const quotationBillingAddressObject = fullQuotation.billingAddress || {};
+      const ticketBillingAddressArrayFromQuotation = [
+        quotationBillingAddressObject.address1 || "",
+        quotationBillingAddressObject.address2 || "",
+        quotationBillingAddressObject.state || "",
+        quotationBillingAddressObject.city || "",
+        quotationBillingAddressObject.pincode || "",
+      ];
+      const clientData = fullQuotation.client || {};
 
-  const handleEdit = useCallback(async (quotation) => {
-    let orderIssuedByIdToSet =
-      quotation.orderIssuedBy?._id || quotation.orderIssuedBy ||
-      quotation.user?._id || quotation.user || user?.id;
-    if (typeof orderIssuedByIdToSet === "object" && orderIssuedByIdToSet !== null) {
-      orderIssuedByIdToSet = orderIssuedByIdToSet._id;
+      const ticketNumberToSet = generateNextTicketNumber(); // Generate ticket number on frontend
+      const ticketDataForForm = {
+        ticketNumber: ticketNumberToSet,
+        companyName: fullQuotation.client?.companyName || "",
+        quotationNumber: fullQuotation.referenceNumber,
+        billingAddress: ticketBillingAddressArrayFromQuotation,
+        shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" },
+        shippingSameAsBilling: false,
+        goods: fullQuotation.goods.map((item) => ({ // Use fullQuotation.goods here
+          ...item,
+          quantity: Number(item.quantity),
+          price: Number(item.price),
+          amount: Number(item.amount),
+          gstRate: parseFloat(item.gstRate || 0),
+          subtexts: item.subtexts || [],
+        })),
+        clientPhone: clientData.phone || "",
+        clientGstNumber: clientData.gstNumber || "",
+        totalQuantity: Number(fullQuotation.totalQuantity),
+        totalAmount: Number(fullQuotation.totalAmount),
+        dispatchDays: fullQuotation.dispatchDays || "7-10 working days",
+        validityDate: fullQuotation.validityDate ? new Date(fullQuotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        termsAndConditions: fullQuotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
+        gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
+        finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
+        status: "Quotation Sent",
+        deadline: defaultDeadline.toISOString().split("T")[0],
+      };
+      navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: fullQuotation } });
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to load quotation details to create ticket.", authUserFromContext, "quotationActivity");
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false); // Hide loading spinner
     }
+  }, [navigate, authUserFromContext]);
 
-    const quotationDataForForm = {
-      date: formatDateForInputHelper(quotation.date),
-      referenceNumber: quotation.referenceNumber,
-      validityDate: formatDateForInputHelper(quotation.validityDate),
-      orderIssuedBy: orderIssuedByIdToSet,
-      goods: quotation.goods.map((item) => ({
-        ...item,
-        quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        // The 'unit' is now the name of the selected unit, e.g., "Mtr"
-        unit: item.unit, 
-        // The price in the goods list should be the price *per selected unit*
-        // The original item object with all its units and pricing info should also be stored
-        // to allow for changing the unit later in the form.
-        originalItem: item.originalItem || item, // Store the full item object
-        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
-        gstRate: parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      })),
-      totalQuantity: Number(quotation.totalQuantity), totalAmount: Number(quotation.totalAmount),
-      gstAmount: Number(quotation.gstAmount), grandTotal: Number(quotation.grandTotal),
-      billingAddress: quotation.billingAddress || initialQuotationData.billingAddress,
-      status: quotation.status || "open",
-      client: {
-        companyName: quotation.client?.companyName || "", gstNumber: quotation.client?.gstNumber || "",
-        clientName: quotation.client?.clientName || "", email: quotation.client?.email || "",
-        phone: quotation.client?.phone || "", _id: quotation.client?._id || null,
-      },
-    };
-    navigate(`/quotations/form/${quotation._id}`, { state: { quotationDataForForm, isEditing: true } });
-  }, [navigate, user, initialQuotationData]); 
+  const handleEdit = useCallback((quotation) => {
+    // The form page is now responsible for fetching the full quotation details.
+    // We just need to navigate to the correct URL with the ID.
+    // The `isEditing` flag can be passed in state if the form is used for both create and edit.
+    navigate(`/quotations/form/${quotation._id}`, { state: { isEditing: true } });
+  }, [navigate]); 
 
   const openCreateModal = useCallback(async () => { 
     if (!user) { toast.error("User data not available."); return; }
@@ -281,7 +258,7 @@ export default function Quotations() {
       newQuotationData.validityDate = formatDateForInputHelper(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)); // Fallback validity
       newQuotationData.orderIssuedBy = user.id; // Corrected syntax: assign to newQuotationData
   };
-    navigate("/quotations/form", { state: { quotationDataForForm: newQuotationData, isEditing: false } });
+    navigate("/quotations/form", { state: { isEditing: false } }); // No need to pass quotationDataForForm here
   }, [navigate, user, initialQuotationData]); 
 
   const handleDeleteQuotation = useCallback(async (quotation) => {
@@ -409,6 +386,7 @@ export default function Quotations() {
                 onView={() => navigate(`/quotations/preview/${quotation._id}`, { state: { quotationToPreview: quotation } })}
                 onDelete={user?.role === "super-admin" ? handleDeleteQuotation : undefined}
                 isLoading={isLoading} 
+                user={user}
                 createTicketDisabled={isLoading || quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold"}
               />
             )}

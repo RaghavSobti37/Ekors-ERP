@@ -1,3 +1,4 @@
+// server/controllers/ticketController.js
 const Ticket = require("../models/opentickets");
 const UniversalBackup = require("../models/universalBackup"); // Using UniversalBackup
 const Quotation = require("../models/quotation"); // Import Quotation model
@@ -13,6 +14,89 @@ const ReportController = require("./reportController"); // Import the report con
 
 // Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
+
+// --- Helper Function for Ticket Calculations ---
+/**
+ * Calculates all derived fields for a ticket (totals, GST, rounding).
+ * This is the SINGLE SOURCE OF TRUTH for ticket calculations on the backend.
+ * @param {Array} goods - Array of goods items.
+ * @param {Array} billingAddress - Array representing the billing address (e.g., [addr1, addr2, state, city, pincode]).
+ * @returns {Object} Object containing all calculated fields.
+ */
+const calculateTicketTotals = (goods, billingAddress) => {
+  let totalQuantity = 0;
+  let totalAmount = 0; // Pre-GST total
+
+  // Ensure goods is an array and each item has necessary numeric properties
+  const processedGoods = (goods || []).map((g) => ({
+    ...g,
+    quantity: Number(g.quantity || 0),
+    price: Number(g.price || 0),
+    amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))), // Recalculate amount for safety
+    gstRate: parseFloat(g.gstRate || 0),
+  }));
+
+  processedGoods.forEach((item) => {
+    totalQuantity += item.quantity;
+    totalAmount += item.amount;
+  });
+
+  const billingState = (billingAddress && billingAddress[2] ? billingAddress[2] : "")
+    .toUpperCase()
+    .trim();
+  const isBillingStateSameAsCompany =
+    billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+
+  const gstGroups = {};
+  processedGoods.forEach((item) => {
+    const itemGstRate = item.gstRate;
+    if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+      if (!gstGroups[itemGstRate])
+        gstGroups[itemGstRate] = { taxableAmount: 0 };
+      gstGroups[itemGstRate].taxableAmount += item.amount;
+    }
+  });
+
+  const newGstBreakdown = [];
+  let runningTotalCgst = 0;
+  let runningTotalSgst = 0;
+  let runningTotalIgst = 0;
+
+  for (const rateKey in gstGroups) {
+    const group = gstGroups[rateKey];
+    const itemGstRate = parseFloat(rateKey);
+    if (isNaN(itemGstRate) || itemGstRate < 0) continue;
+
+    const taxableAmount = group.taxableAmount;
+    let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+    let cgstRate = 0, sgstRate = 0, igstRate = 0;
+
+    if (itemGstRate > 0) {
+      if (isBillingStateSameAsCompany) {
+        cgstRate = itemGstRate / 2;
+        sgstRate = itemGstRate / 2;
+        cgstAmount = (taxableAmount * cgstRate) / 100;
+        sgstAmount = (taxableAmount * sgstRate) / 100;
+        runningTotalCgst += cgstAmount;
+        runningTotalSgst += sgstAmount;
+      } else {
+        igstRate = itemGstRate;
+        igstAmount = (taxableAmount * igstRate) / 100;
+        runningTotalIgst += igstAmount;
+      }
+    }
+    newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
+  }
+
+  const finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+  const grandTotal = totalAmount + finalGstAmount;
+
+  // Rounding logic is now mandatory and always applied
+  const finalRoundedAmount = Math.round(grandTotal);
+  const roundOff = finalRoundedAmount - grandTotal;
+
+  return { processedGoods, totalQuantity, totalAmount, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst, totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst, finalGstAmount, grandTotal, isBillingStateSameAsCompany, roundOff, finalRoundedAmount };
+};
 
 exports.createTicket = asyncHandler(async (req, res) => {
   const user = req.user; // Auth middleware should ensure req.user exists
@@ -40,18 +124,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       .json({ error: "Missing newTicketDetails in request body." });
   }
 
-  let finalTicketData = {
-    ...newTicketDetails,
-    createdBy: user.id,
-    currentAssignee: user.id,
-    assignedTo: user.id, // Default assignedTo to creator
-    dispatchDays:
-      sourceQuotationData?.dispatchDays ||
-      newTicketDetails.dispatchDays ||
-      "7-10 working", // Ensure default
-    roundOff: newTicketDetails.roundOff || 0, // Capture from frontend
-    finalRoundedAmount: newTicketDetails.finalRoundedAmount,
-  };
+  let finalTicketData;
 
   // If creating from a quotation, prioritize sourceQuotationData
   if (sourceQuotationData && sourceQuotationData.referenceNumber) {
@@ -63,10 +136,10 @@ exports.createTicket = asyncHandler(async (req, res) => {
       ? new Date(newTicketDetails.deadline)
       : sourceQuotationData.validityDate
       ? new Date(sourceQuotationData.validityDate)
-      : null;
+      : null; // Will be validated later
 
     finalTicketData = {
-      ...finalTicketData, // Keep any specific newTicketDetails not from quotation
+      ...newTicketDetails, // Keep any specific newTicketDetails not from quotation
       companyName: clientData.companyName || newTicketDetails.companyName,
       quotationNumber: sourceQuotationData.referenceNumber, // This should be the defining link
       client: clientData._id || newTicketDetails.client?._id,
@@ -80,21 +153,19 @@ exports.createTicket = asyncHandler(async (req, res) => {
         quotationBillingAddress.city || "",
         quotationBillingAddress.pincode || "",
       ],
-      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map(
-        (qGood, index) => ({
-          srNo: qGood.srNo || index + 1,
-          description: qGood.description, // Required
-          hsnSacCode: qGood.hsnSacCode, // Required
-          quantity: Number(qGood.quantity || 0), // Required, ensure number
-          unit: qGood.unit || "Nos",
-          price: Number(qGood.price || 0), // Required, ensure number
-          amount: Number(qGood.amount || 0), // Required, ensure number (price * quantity)
-          originalPrice: Number(qGood.originalPrice || qGood.price || 0),
-          maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
-          gstRate: Number(qGood.gstRate || 0), // Required, ensure number
-          subtexts: qGood.subtexts || [],
-        })
-      ),
+      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map((qGood, index) => ({
+        srNo: qGood.srNo || index + 1,
+        description: qGood.description,
+        hsnSacCode: qGood.hsnSacCode,
+        quantity: Number(qGood.quantity || 0),
+        unit: qGood.unit || "Nos",
+        price: Number(qGood.price || 0),
+        amount: Number(qGood.amount || (Number(qGood.quantity || 0) * Number(qGood.price || 0))), // Ensure amount is calculated
+        originalPrice: Number(qGood.originalPrice || qGood.price || 0),
+        maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
+        gstRate: Number(qGood.gstRate || 0),
+        subtexts: qGood.subtexts || [],
+      })),
       termsAndConditions:
         sourceQuotationData.termsAndConditions ||
         newTicketDetails.termsAndConditions, // If terms are on quotation
@@ -102,9 +173,19 @@ exports.createTicket = asyncHandler(async (req, res) => {
         sourceQuotationData.dispatchDays ||
         newTicketDetails.dispatchDays ||
         "7-10 working", // Ensure default
-      deadline: determinedDeadline, // Use the determined deadline
-      roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
-      finalRoundedAmount: newTicketDetails.finalRoundedAmount,
+      deadline: determinedDeadline,
+    };
+  } else {
+    // If not from quotation, use newTicketDetails directly
+    finalTicketData = {
+      ...newTicketDetails,
+      goods: (newTicketDetails.goods || []).map((g, index) => ({
+        ...g,
+        srNo: g.srNo || index + 1,
+        quantity: Number(g.quantity || 0),
+        price: Number(g.price || 0),
+        amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))),
+      })),
     };
   }
 
@@ -116,6 +197,22 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.deadline = null;
   }
 
+  // Set common fields
+  finalTicketData.createdBy = user.id;
+  finalTicketData.currentAssignee = user.id;
+  finalTicketData.assignedTo = user.id; // Default assignedTo to creator
+  finalTicketData.dispatchDays = finalTicketData.dispatchDays || "7-10 working days"; // Ensure default
+
+  // Validate required fields before calculations
+  if (!finalTicketData.goods || finalTicketData.goods.length === 0) {
+    logger.error(
+      "ticket-create",
+      "Ticket must contain at least one item.",
+      user,
+      { finalTicketData }
+    );
+    return res.status(400).json({ error: "Ticket must contain at least one item." });
+  }
   if (!finalTicketData.deadline) {
     logger.error(
       "ticket-create",
@@ -125,7 +222,13 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
     return res.status(400).json({ error: "Ticket deadline is required." });
   }
-
+  if (!finalTicketData.ticketNumber) {
+    return res.status(400).json({ error: "Ticket number is required." });
+  }
+  if (!finalTicketData.companyName) {
+    return res.status(400).json({ error: "Company name is required." });
+  }
+  
   // Set client ObjectId if available from sourceQuotationData
   if (
     !finalTicketData.client && // Only if not already set by sourceQuotationData block
@@ -142,7 +245,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.client = sourceQuotationData.client._id;
   }
 
-  // Ensure statusHistory is correctly formatted
+  // Ensure statusHistory is correctly formatted and initial status is set
   if (
     Array.isArray(finalTicketData.statusHistory) &&
     finalTicketData.statusHistory.length > 0
@@ -156,19 +259,17 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
   } else {
     finalTicketData.statusHistory = [
-      {
-        status: finalTicketData.status || "Quotation Sent", // Default from schema
-        changedAt: new Date(),
-        changedBy: user.id,
-        note:
-          sourceQuotationData && sourceQuotationData.referenceNumber
-            ? "Ticket created from quotation."
-            : "Ticket created.",
-      },
+      { status: finalTicketData.status || "Quotation Sent", changedAt: new Date(), changedBy: user.id, note: sourceQuotationData && sourceQuotationData.referenceNumber ? "Ticket created from quotation." : "Ticket created." },
     ];
   }
   if (!finalTicketData.status) {
     finalTicketData.status = "Quotation Sent"; // Ensure status is set
+  }
+
+  // Validate billing and shipping addresses
+  if (!Array.isArray(finalTicketData.billingAddress) || finalTicketData.billingAddress.length !== 5) {
+    logger.error("ticket-create", "Billing address is not in the expected array format.", user, { billingAddress: finalTicketData.billingAddress });
+    return res.status(400).json({ error: "Invalid billing address format." });
   }
 
   // Construct shippingAddress array
@@ -193,119 +294,61 @@ exports.createTicket = asyncHandler(async (req, res) => {
   }
   delete finalTicketData.shippingAddressObj; // Remove if not part of schema
 
-  // --- Calculate Totals and GST (Crucial for required fields) ---
-  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
-    finalTicketData.totalQuantity = finalTicketData.goods.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0
-    );
-    finalTicketData.totalAmount = finalTicketData.goods.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    ); // Pre-GST
+  // --- Calculate Totals and GST using the helper function ---
+  const {
+    processedGoods,
+    totalQuantity,
+    totalAmount,
+    gstBreakdown,
+    totalCgstAmount,
+    totalSgstAmount,
+    totalIgstAmount,
+    finalGstAmount,
+    grandTotal,
+    isBillingStateSameAsCompany,
+    roundOff, // Calculated by helper
+    finalRoundedAmount, // Calculated by helper
+  } = calculateTicketTotals(finalTicketData.goods, finalTicketData.billingAddress);
 
-    const billingState = (finalTicketData.billingAddress[2] || "")
-      .toUpperCase()
-      .trim(); // Assuming state is at index 2
-    const isBillingStateSameAsCompany =
-      billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
-    finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+  // Apply calculated values to finalTicketData
+  finalTicketData.goods = processedGoods; // Use processed goods (with recalculated amounts)
+  finalTicketData.totalQuantity = totalQuantity;
+  finalTicketData.totalAmount = totalAmount;
+  finalTicketData.gstBreakdown = gstBreakdown;
+  finalTicketData.totalCgstAmount = totalCgstAmount;
+  finalTicketData.totalSgstAmount = totalSgstAmount;
+  finalTicketData.totalIgstAmount = totalIgstAmount;
+  finalTicketData.finalGstAmount = finalGstAmount;
+  finalTicketData.grandTotal = grandTotal;
+  finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+  finalTicketData.roundOff = roundOff; // Set calculated roundOff
+  finalTicketData.finalRoundedAmount = finalRoundedAmount; // Set calculated finalRoundedAmount
 
-    const gstGroups = {};
-    finalTicketData.goods.forEach((item) => {
-      const itemGstRate = parseFloat(item.gstRate);
-      if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
-        if (!gstGroups[itemGstRate])
-          gstGroups[itemGstRate] = { taxableAmount: 0 };
-        gstGroups[itemGstRate].taxableAmount += item.amount || 0;
-      }
-    });
-
-    const newGstBreakdown = [];
-    let runningTotalCgst = 0,
-      runningTotalSgst = 0,
-      runningTotalIgst = 0;
-
-    for (const rateKey in gstGroups) {
-      const group = gstGroups[rateKey];
-      const itemGstRate = parseFloat(rateKey);
-      if (isNaN(itemGstRate) || itemGstRate < 0) continue;
-
-      const taxableAmount = group.taxableAmount;
-      let cgstAmount = 0,
-        sgstAmount = 0,
-        igstAmount = 0;
-      let cgstRate = 0,
-        sgstRate = 0,
-        igstRate = 0;
-
-      if (itemGstRate > 0) {
-        if (isBillingStateSameAsCompany) {
-          cgstRate = itemGstRate / 2;
-          sgstRate = itemGstRate / 2;
-          cgstAmount = (taxableAmount * cgstRate) / 100;
-          sgstAmount = (taxableAmount * sgstRate) / 100;
-          runningTotalCgst += cgstAmount;
-          runningTotalSgst += sgstAmount;
-        } else {
-          igstRate = itemGstRate;
-          igstAmount = (taxableAmount * igstRate) / 100;
-          runningTotalIgst += igstAmount;
-        }
-      }
-      newGstBreakdown.push({
-        itemGstRate,
-        taxableAmount,
-        cgstRate,
-        cgstAmount,
-        sgstRate,
-        sgstAmount,
-        igstRate,
-        igstAmount,
-      });
-    }
-    finalTicketData.gstBreakdown = newGstBreakdown;
-    finalTicketData.totalCgstAmount = runningTotalCgst;
-    finalTicketData.totalSgstAmount = runningTotalSgst;
-    finalTicketData.totalIgstAmount = runningTotalIgst;
-    finalTicketData.finalGstAmount =
-      runningTotalCgst + runningTotalSgst + runningTotalIgst;
-    finalTicketData.grandTotal =
-      (finalTicketData.totalAmount || 0) +
-      (finalTicketData.finalGstAmount || 0);
-    if (
-      finalTicketData.finalRoundedAmount === undefined ||
-      finalTicketData.finalRoundedAmount === null
-    ) {
-      finalTicketData.finalRoundedAmount =
-        finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
-    }
-  } else {
-    finalTicketData.totalQuantity = 0;
-    finalTicketData.totalAmount = 0;
-    finalTicketData.gstBreakdown = [];
-    finalTicketData.totalCgstAmount = 0;
-    finalTicketData.totalSgstAmount = 0;
-    finalTicketData.totalIgstAmount = 0;
-    finalTicketData.finalGstAmount = 0;
-    finalTicketData.grandTotal = 0;
-    finalTicketData.isBillingStateSameAsCompany = false;
-    finalTicketData.roundOff = 0;
-    finalTicketData.finalRoundedAmount = 0;
-  }
+  // --- Frontend Calculation Verification (Optional but Recommended) ---
+  // If frontend sends these, verify them against backend calculations
+  const frontendTotals = {
+    totalQuantity: Number(req.body.newTicketDetails.totalQuantity || 0),
+    totalAmount: Number(req.body.newTicketDetails.totalAmount || 0),
+    finalGstAmount: Number(req.body.newTicketDetails.finalGstAmount || 0),
+    grandTotal: Number(req.body.newTicketDetails.grandTotal || 0),
+    roundOff: Number(req.body.newTicketDetails.roundOff || 0),
+    finalRoundedAmount: Number(req.body.newTicketDetails.finalRoundedAmount || 0),
+  };
+  const tolerance = 0.01; // Allow for minor floating point discrepancies
 
   if (
-    !Array.isArray(finalTicketData.billingAddress) ||
-    finalTicketData.billingAddress.length !== 5
+    Math.abs(totalQuantity - frontendTotals.totalQuantity) > tolerance ||
+    Math.abs(totalAmount - frontendTotals.totalAmount) > tolerance ||
+    Math.abs(finalGstAmount - frontendTotals.finalGstAmount) > tolerance ||
+    Math.abs(grandTotal - frontendTotals.grandTotal) > tolerance ||
+    Math.abs(roundOff - frontendTotals.roundOff) > tolerance ||
+    Math.abs(finalRoundedAmount - frontendTotals.finalRoundedAmount) > tolerance
   ) {
-    logger.error(
-      "ticket-create",
-      "Billing address is not in the expected array format.",
-      user,
-      { billingAddress: finalTicketData.billingAddress }
-    );
-    return res.status(400).json({ error: "Invalid billing address format." });
+    logger.warn("ticket-create", `Calculation mismatch for new ticket ${finalTicketData.ticketNumber}. Frontend vs Backend.`, user, { frontend: frontendTotals, backend: { totalQuantity, totalAmount, finalGstAmount, grandTotal, roundOff, finalRoundedAmount }, action: "CALCULATION_MISMATCH_CREATE" });
+    await session.abortTransaction();
+    return res.status(400).json({ message: "Calculation mismatch detected. Please re-check ticket details." });
   }
+
   if (
     !Array.isArray(finalTicketData.shippingAddress) ||
     finalTicketData.shippingAddress.length !== 5
@@ -319,27 +362,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid shipping address format." });
   }
 
-  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
-    finalTicketData.goods = finalTicketData.goods.map((item) => ({
-      srNo: item.srNo,
-      description: item.description,
-      hsnSacCode: item.hsnSacCode,
-      quantity: Number(item.quantity || 0),
-      unit: item.unit || "Nos",
-      price: Number(item.price || 0),
-      amount: Number(
-        item.amount || Number(item.quantity || 0) * Number(item.price || 0)
-      ),
-      originalPrice: Number(item.originalPrice || item.price || 0),
-      maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
-      gstRate: Number(item.gstRate || 0),
-      subtexts: item.subtexts || [],
-    }));
-  }
-
-  
-
-    // Instantiate the ticket object here to get its _id for logging purposes before saving.
+  // Instantiate the ticket object here to get its _id for logging purposes before saving.
   const ticket = new Ticket(finalTicketData);
 
   try {
@@ -348,14 +371,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // --- Inventory Deduction Logic ---
     if (finalTicketData.goods && finalTicketData.goods.length > 0) {
       for (const good of finalTicketData.goods) {
-        if (!good.description || !(Number(good.quantity) > 0)) {
-          logger.warn(
-            "inventory",
-            `Skipping item with missing description or invalid quantity: ${JSON.stringify(
-              good
-            )}`,
-            user
-          );
+        if (!good.description || Number(good.quantity) <= 0) { // Ensure valid quantity
           continue;
         }
         const itemToUpdate = await Item.findOne({
@@ -364,27 +380,13 @@ exports.createTicket = asyncHandler(async (req, res) => {
         }).session(session);
 
         if (itemToUpdate) {
-          let quantityToDecrementInBaseUnit = 0;
-          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+          const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
+          const quantityToDecrementInBaseUnit = quantityInBaseUnit;
           const baseUnitName = itemToUpdate.baseUnit;
 
-          if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-            quantityToDecrementInBaseUnit = Number(good.quantity);
-          } else {
-            const transactionalUnitInfo = itemToUpdate.units.find(
-              (u) => u.name.toLowerCase() === transactionalUnitName.toLowerCase()
-            );
-            if (transactionalUnitInfo) {
-              const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
-              quantityToDecrementInBaseUnit = Number(good.quantity) * conversionFactor;
-            } else {
-              logger.warn(
-                "inventory",
-                `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}". Assuming quantity is in base unit.`,
-                user
-              );
-              quantityToDecrementInBaseUnit = Number(good.quantity);
-            }
+          if (quantityToDecrementInBaseUnit === 0) {
+            logger.warn("inventory", `Calculated quantity to decrement is zero for item ${good.description}. Skipping inventory update.`, user);
+            continue;
           }
 
           itemToUpdate.quantity -= quantityToDecrementInBaseUnit;
@@ -393,8 +395,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
           const historyEntry = {
             type: "Ticket Deduction (Creation)",
             date: new Date(),
-            quantityChange: -quantityToDecrementInBaseUnit,
-            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Transaction: ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+            quantityChange: -quantityToDecrementInBaseUnit, // Negative for deduction
+            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Transaction: ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
              ticketReference: ticket._id,
             userReference: user.id,
           };
@@ -412,10 +414,10 @@ exports.createTicket = asyncHandler(async (req, res) => {
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
           }
-          await itemToUpdate.save({ session });
+          await itemToUpdate.save({ session }); // Save within the transaction
           logger.info(
             "inventory",
-            `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrementInBaseUnit.toFixed(2)} ${baseUnitName} (from ${good.quantity} ${transactionalUnitName}), new qty: ${itemToUpdate.quantity.toFixed(2)}`,
+            `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrementInBaseUnit.toFixed(2)} ${baseUnitName} (from ${good.quantity} ${unitNameUsed}), new qty: ${itemToUpdate.quantity.toFixed(2)}`,
             user
           );
         } else {
@@ -431,7 +433,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     }
 
     // --- Ticket Creation ---
-    await ticket.save({ session });
+    await ticket.save({ session }); // Save within the transaction
 
     logger.info(
       "ticket",
@@ -445,7 +447,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
 
     // --- Update Quotation Status if applicable ---
-    if (finalTicketData.quotationNumber && sourceQuotationData) {
+    if (finalTicketData.quotationNumber && sourceQuotationData && sourceQuotationData._id) { // Ensure quotation ID is present
       try {
         const quotationOwnerId =
           sourceQuotationData.user?._id || sourceQuotationData.user;
@@ -455,7 +457,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
             "Source quotation user ID is missing.",
             user,
             { quotationNumber: ticket.quotationNumber }
-          );
+          ); // Log error, but don't block ticket creation
         } else {
           const updatedQuotation = await Quotation.findOneAndUpdate(
             {
@@ -481,7 +483,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
               "quotation",
               `Could not find quotation ${ticket.quotationNumber} (User: ${quotationOwnerId}) to update status after ticket creation.`,
               user
-            );
+            ); // Log warning, but don't block ticket creation
           }
         }
       } catch (quotationError) {
@@ -491,7 +493,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
           quotationError,
           user
         );
-        // Decide if this error should abort the transaction. For now, it won't.
+        // This error should ideally not abort the transaction if the ticket itself was created successfully.
       }
     }
 
@@ -714,18 +716,20 @@ exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
   const session = await mongoose.startSession();
-  // Destructure shippingSameAsBilling, statusChangeComment, and the rest of ticket data
+  // The entire request body is our payload.
+  const ticketDataForUpdate = req.body;
+
+  // Destructure specific fields from the payload for verification and logic.
   const {
     shippingSameAsBilling,
     statusChangeComment,
-        roundOff, // Capture roundOff sent from frontend
-    finalRoundedAmount, // Capture finalRoundedAmount sent from frontend (will be recalculated)
-    // Destructure other calculated fields to ensure backend recalculates them
-    totalQuantity, totalAmount, gstBreakdown, totalCgstAmount, totalSgstAmount, totalIgstAmount, finalGstAmount, grandTotal, isBillingStateSameAsCompany,
-
-    ...updatedTicketPayload
-  } = req.body;
-  let ticketDataForUpdate = { ...updatedTicketPayload }; // Use a new variable
+    totalQuantity: frontendTotalQuantity,
+    totalAmount: frontendTotalAmount,
+    finalGstAmount: frontendFinalGstAmount,
+    grandTotal: frontendGrandTotal,
+    roundOff: frontendRoundOff,
+    finalRoundedAmount: frontendFinalRoundedAmount
+  } = ticketDataForUpdate;
 
   // Ensure deadline is null if an empty string is passed.
   // Frontend should send ISOString or null, but this is a safeguard.
@@ -737,7 +741,7 @@ exports.updateTicket = async (req, res) => {
   }
   try {
     session.startTransaction();
-    const originalTicket = await Ticket.findOne({ _id: ticketId }).session(
+    const originalTicket = await Ticket.findById(ticketId).session(
       session
     );
 
@@ -746,6 +750,12 @@ exports.updateTicket = async (req, res) => {
       await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
+
+    // Ensure goods are properly formatted for calculation
+    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
+      ticketDataForUpdate.goods = ticketDataForUpdate.goods.map(g => ({ ...g, quantity: Number(g.quantity || 0), price: Number(g.price || 0), amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))) }));
+    }
+
 
     // Handle status change and history
     if (
@@ -799,13 +809,6 @@ exports.updateTicket = async (req, res) => {
         .json({ error: "Not authorized to update this ticket" });
     }
 
-    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
-      ticketDataForUpdate.goods = ticketDataForUpdate.goods.map((item) => ({
-        ...item,
-        subtexts: item.subtexts || [],
-      }));
-    }
-
     // --- New Inventory Adjustment Logic based on Status Transitions ---
     const oldStatus = originalTicket.status;
     const newStatus = ticketDataForUpdate.status; // This is the incoming status from req.body
@@ -814,24 +817,17 @@ exports.updateTicket = async (req, res) => {
     if (newStatus === "Hold" && oldStatus !== "Hold") {
       logger.info("inventory", `Ticket ${ticketId} moved to HOLD. Rolling back item quantities.`, user);
       for (const good of originalTicket.goods) { // Use original goods for rollback
+        if (!good.description || Number(good.quantity) <= 0) continue;
         try {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
-            let quantityToRollbackInBaseUnit = 0;
-          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
+            const quantityToRollbackInBaseUnit = quantityInBaseUnit;
             const baseUnitName = itemToUpdate.baseUnit;
 
-            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-              quantityToRollbackInBaseUnit = Number(good.quantity);
-            } else {
-              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
-              if (transactionalUnitInfo) {
-                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
-                quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
-              } else {
-                logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Hold rollback. Assuming base unit.`, user);
-                quantityToRollbackInBaseUnit = Number(good.quantity);
-              }
+            if (quantityToRollbackInBaseUnit === 0) { // Skip if conversion resulted in 0
+              logger.warn("inventory", `Calculated quantity to rollback is zero for item ${good.description}. Skipping inventory update.`, user);
+              continue;
             }
 
             itemToUpdate.quantity += quantityToRollbackInBaseUnit;
@@ -839,8 +835,8 @@ exports.updateTicket = async (req, res) => {
             const historyEntry = {
               type: "Temporary Rollback (Ticket Hold)",
               date: new Date(),
-           quantityChange: quantityToRollbackInBaseUnit,
-              details: `Ticket ${originalTicket.ticketNumber} put on hold. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+              quantityChange: quantityToRollbackInBaseUnit, // Positive for addition
+              details: `Ticket ${originalTicket.ticketNumber} put on hold. Rolled back ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
 
               ticketReference: originalTicket._id,
               userReference: user.id,
@@ -871,24 +867,17 @@ exports.updateTicket = async (req, res) => {
       // Use current/new goods for re-deduction. If goods were changed while on hold, this reflects the new state.
       const goodsToDeduct = ticketDataForUpdate.goods || originalTicket.goods; // Prefer updated goods if available
       for (const good of goodsToDeduct) { 
+        if (!good.description || Number(good.quantity) <= 0) continue;
         try {
           const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
           if (itemToUpdate) {
-            let quantityToDeductInBaseUnit = 0;
-          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
+            const quantityToDeductInBaseUnit = quantityInBaseUnit;
             const baseUnitName = itemToUpdate.baseUnit;
 
-            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-              quantityToDeductInBaseUnit = Number(good.quantity);
-            } else {
-              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
-              if (transactionalUnitInfo) {
-                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
-                quantityToDeductInBaseUnit = Number(good.quantity) * conversionFactor;
-              } else {
-                logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during From-Hold re-deduction. Assuming base unit.`, user);
-                quantityToDeductInBaseUnit = Number(good.quantity);
-              }
+            if (quantityToDeductInBaseUnit === 0) { // Skip if conversion resulted in 0
+              logger.warn("inventory", `Calculated quantity to re-deduct is zero for item ${good.description}. Skipping inventory update.`, user);
+              continue;
             }
 
             itemToUpdate.quantity -= quantityToDeductInBaseUnit;
@@ -896,8 +885,8 @@ exports.updateTicket = async (req, res) => {
             const historyEntry = {
               type: "Re-deducted (Ticket Off Hold)",
               date: new Date(),
-              quantityChange: -quantityToDeductInBaseUnit,
-              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Deducted ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+              quantityChange: -quantityToDeductInBaseUnit, // Negative for deduction
+              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Deducted ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
@@ -923,113 +912,7 @@ exports.updateTicket = async (req, res) => {
     // Scenario 3: General update (not a Hold status transition OR status remains the same but goods might have changed)
     // This also covers if status changes but neither old nor new is "Hold"
     else if (newStatus !== "Hold" && oldStatus !== "Hold") {
-      // Create a map to track net changes for each item.
-      // Key: 'description-hsnSacCode', Value: { oldBaseQty: 0, newBaseQty: 0 }
-      const itemBaseQtyChanges = new Map();
-
-      // Helper function to get base quantity, with caching to reduce DB calls
-      const getBaseQuantity = async (good, itemCache) => {
-        const itemKey = `${good.description}-${good.hsnSacCode || ""}`;
-        let itemDetails = itemCache.get(itemKey);
-        if (!itemDetails) {
-          itemDetails = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).lean();
-          if (itemDetails) itemCache.set(itemKey, itemDetails);
-        }
-
-        if (!itemDetails) {
-          logger.warn("inventory", `Item "${good.description}" not found for quantity calculation.`, user);
-          return 0;
-        }
-
-      const transactionalUnitName = good.unit || itemDetails.baseUnit;
-        const baseUnitName = itemDetails.baseUnit;
-        if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-          return Number(good.quantity);
-        }
-
-        const unitInfo = itemDetails.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
-        if (unitInfo) {
-          return Number(good.quantity) * Number(unitInfo.conversionFactor);
-        }
-
-        logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemDetails.name}". Assuming base unit.`, user);
-        return Number(good.quantity);
-      };
-
-      const itemCache = new Map(); // Cache item details
-
-             const logContext = {
-        ticketId,
-        initiatorId: user.id,
-        initiatorEmail: user.email,
-        action: "UPDATE_TICKET",
-      };
-
-      // Populate old quantities in base units
-      for (const good of originalTicket.goods || []) {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
-        const oldBaseQty = await getBaseQuantity(good, itemCache);
-        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
-        itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
-      }
-
-      // Populate new quantities in base units
-      for (const good of ticketDataForUpdate.goods || []) {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
-        const newBaseQty = await getBaseQuantity(good, itemCache);
-        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
-        itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
-      }
-
-      // Apply net changes to the database
-      for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
-        const netChangeInBaseUnit = newBaseQty - oldBaseQty;
-        if (netChangeInBaseUnit === 0) continue;
-        const [description, hsnSacCode] = key.split("-");
-        try {
-          const itemToUpdate = await Item.findOne({ name: description, ...(hsnSacCode && { hsnCode: hsnSacCode }) }).session(session);
-          if (itemToUpdate) {
-            // We subtract the net change from the current inventory.
-            // If more items were added (netChange > 0), we deduct.
-            // If items were removed (netChange < 0), we add back (subtracting a negative).
-
-                        // Store the original quantity before applying the change
-            const originalQuantity = itemToUpdate.quantity;
-
-            if (itemToUpdate.quantity === undefined || itemToUpdate.quantity === null) {
-              logger.error("inventory", `Item "${description}" has NULL quantity before adjustment!`, user);
-              itemToUpdate.quantity = 0;
-            }
-
-
-            itemToUpdate.quantity -= netChangeInBaseUnit;
-
-            const historyEntry = {
-              type: "Inventory Adjustment (Ticket Update)",
-              date: new Date(),
-              quantityChange: -netChangeInBaseUnit, // A positive netChange (more items used) results in a negative quantityChange (deduction).
-              details: `Ticket ${originalTicket.ticketNumber} updated. Base quantity changed from ${oldBaseQty.toFixed(2)} to ${newBaseQty.toFixed(2)}. Net stock change: ${(-netChangeInBaseUnit).toFixed(2)}. Action by: ${user.firstname || user.email}.`,
-              ticketReference: originalTicket._id,
-              userReference: user.id,
-            };
-            itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
-            itemToUpdate.inventoryLog.push(historyEntry);
-            if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
-              itemToUpdate.needsRestock = true;
-              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
-            } else {
-              itemToUpdate.needsRestock = false;
-              itemToUpdate.restockAmount = 0;
-            }
-            await itemToUpdate.save({ session });
-                        logger.info("inventory", `Adjusted stock for ${itemToUpdate.name} (Ticket ${ticketId} general update). Inventory Change: ${(-netChangeInBaseUnit).toFixed(2)}, New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
-          } else if (netChangeInBaseUnit > 0) { // Item was added to ticket but not found in DB
-           logger.warn("inventory", `Item "${description}" (HSN: ${hsnSacCode || "N/A"}) not found for stock deduction (Ticket ${ticketId} general update).`, user);
-          }
-        } catch (invError) {
-          logger.error("inventory", `Error adjusting stock for item "${description}" (Ticket ${ticketId} general update): ${invError.message}`, user, { error: invError });
-        }
-      }
+      await handleInventoryAdjustmentOnTicketUpdate(originalTicket, ticketDataForUpdate, user, session);
     }
     // --- End New Inventory Adjustment Logic ---
 
@@ -1066,95 +949,50 @@ exports.updateTicket = async (req, res) => {
       }
     }
 
-        // --- Recalculate Totals and GST based on updated goods ---
-    // This block is crucial to ensure backend data integrity
-    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
-        ticketDataForUpdate.totalQuantity = ticketDataForUpdate.goods.reduce(
-            (sum, item) => sum + Number(item.quantity || 0),
-            0
-        );
-        ticketDataForUpdate.totalAmount = ticketDataForUpdate.goods.reduce(
-            (sum, item) => sum + Number(item.amount || 0), // Assuming item.amount is quantity * price
-            0
-        ); 
+    // --- Recalculate Totals and GST based on updated goods using helper ---
+    const {
+      processedGoods,
+      totalQuantity,
+      totalAmount,
+      gstBreakdown,
+      totalCgstAmount,
+      totalSgstAmount,
+      totalIgstAmount,
+      finalGstAmount,
+      grandTotal,
+      isBillingStateSameAsCompany,
+      roundOff, // Calculated by helper
+      finalRoundedAmount, // Calculated by helper
+    } = calculateTicketTotals(ticketDataForUpdate.goods, ticketDataForUpdate.billingAddress || originalTicket.billingAddress);
 
-        // Ensure billingAddress is in the expected array format for calculation
-        const currentBillingAddress = Array.isArray(ticketDataForUpdate.billingAddress) && ticketDataForUpdate.billingAddress.length === 5
-            ? ticketDataForUpdate.billingAddress
-            : Array.isArray(originalTicket.billingAddress) && originalTicket.billingAddress.length === 5
-                ? originalTicket.billingAddress
-                : ["", "", "", "", ""]; // Fallback
+    // Apply calculated values to ticketDataForUpdate
+    ticketDataForUpdate.goods = processedGoods;
+    ticketDataForUpdate.totalQuantity = totalQuantity;
+    ticketDataForUpdate.totalAmount = totalAmount;
+    ticketDataForUpdate.gstBreakdown = gstBreakdown;
+    ticketDataForUpdate.totalCgstAmount = totalCgstAmount;
+    ticketDataForUpdate.totalSgstAmount = totalSgstAmount;
+    ticketDataForUpdate.totalIgstAmount = totalIgstAmount;
+    ticketDataForUpdate.finalGstAmount = finalGstAmount;
+    ticketDataForUpdate.grandTotal = grandTotal;
+    ticketDataForUpdate.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+    ticketDataForUpdate.roundOff = roundOff; // Set calculated roundOff
+    ticketDataForUpdate.finalRoundedAmount = finalRoundedAmount; // Set calculated finalRoundedAmount
 
-        const billingState = (currentBillingAddress[2] || "")
-            .toUpperCase()
-            .trim(); // Assuming state is at index 2
-        const isBillingStateSameAsCompany =
-            billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
-        ticketDataForUpdate.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
-
-        const gstGroups = {};
-        ticketDataForUpdate.goods.forEach((item) => {
-            const itemGstRate = parseFloat(item.gstRate);
-            if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
-                if (!gstGroups[itemGstRate])
-                    gstGroups[itemGstRate] = { taxableAmount: 0 };
-                gstGroups[itemGstRate].taxableAmount += item.amount || 0;
-            }
-        });
-
-        const newGstBreakdown = [];
-        let runningTotalCgst = 0,
-            runningTotalSgst = 0,
-            runningTotalIgst = 0;
-
-        for (const rateKey in gstGroups) {
-            const group = gstGroups[rateKey];
-            const itemGstRate = parseFloat(rateKey);
-            if (isNaN(itemGstRate) || itemGstRate < 0) continue;
-
-            const taxableAmount = group.taxableAmount;
-            let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
-            let cgstRate = 0, sgstRate = 0, igstRate = 0;
-
-            if (itemGstRate > 0) {
-                if (isBillingStateSameAsCompany) {
-                    cgstRate = itemGstRate / 2; sgstRate = itemGstRate / 2;
-                    cgstAmount = (taxableAmount * cgstRate) / 100; sgstAmount = (taxableAmount * sgstRate) / 100;
-                    runningTotalCgst += cgstAmount; runningTotalSgst += sgstAmount;
-                } else {
-                    igstRate = itemGstRate;
-                    igstAmount = (taxableAmount * igstRate) / 100;
-                    runningTotalIgst += igstAmount;
-                }
-            }
-            newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
-        }
-        ticketDataForUpdate.gstBreakdown = newGstBreakdown;
-        ticketDataForUpdate.totalCgstAmount = runningTotalCgst;
-        ticketDataForUpdate.totalSgstAmount = runningTotalSgst;
-        ticketDataForUpdate.totalIgstAmount = runningTotalIgst;
-        ticketDataForUpdate.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
-        ticketDataForUpdate.grandTotal = (ticketDataForUpdate.totalAmount || 0) + (ticketDataForUpdate.finalGstAmount || 0);
-
-        // Use the roundOff sent from the frontend and calculate finalRoundedAmount based on the NEW grandTotal
-        ticketDataForUpdate.roundOff = roundOff || 0; // Use the roundOff captured from req.body
-        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
-
-    } else {
-        // Handle case with no goods or invalid goods array
-        ticketDataForUpdate.totalQuantity = 0;
-        ticketDataForUpdate.totalAmount = 0;
-        ticketDataForUpdate.gstBreakdown = [];
-        ticketDataForUpdate.totalCgstAmount = 0;
-        ticketDataForUpdate.totalSgstAmount = 0;
-        ticketDataForUpdate.totalIgstAmount = 0;
-        ticketDataForUpdate.finalGstAmount = 0;
-        ticketDataForUpdate.grandTotal = 0;
-        ticketDataForUpdate.isBillingStateSameAsCompany = false;
-        ticketDataForUpdate.roundOff = roundOff || 0; // Still capture roundOff if sent
-        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+    // --- Frontend Calculation Verification ---
+    const tolerance = 0.01;
+    if (
+      Math.abs(totalQuantity - frontendTotalQuantity) > tolerance ||
+      Math.abs(totalAmount - frontendTotalAmount) > tolerance ||
+      Math.abs(finalGstAmount - frontendFinalGstAmount) > tolerance ||
+      Math.abs(grandTotal - frontendGrandTotal) > tolerance ||
+      Math.abs(roundOff - frontendRoundOff) > tolerance ||
+      Math.abs(finalRoundedAmount - frontendFinalRoundedAmount) > tolerance
+    ) {
+      logger.warn("ticket-update", `Calculation mismatch for ticket update ${ticketId}. Frontend vs Backend.`, user, { frontend: { totalQuantity: frontendTotalQuantity, totalAmount: frontendTotalAmount, finalGstAmount: frontendFinalGstAmount, grandTotal: frontendGrandTotal, roundOff: frontendRoundOff, finalRoundedAmount: frontendFinalRoundedAmount }, backend: { totalQuantity, totalAmount, finalGstAmount, grandTotal, roundOff, finalRoundedAmount }, action: "CALCULATION_MISMATCH_UPDATE" });
+      await session.abortTransaction();
+      return res.status(400).json({ message: "Calculation mismatch detected. Please re-check ticket details." });
     }
-    // --- End Recalculation ---
 
     const ticket = await Ticket.findOneAndUpdate(
       { _id: ticketId },
@@ -1162,17 +1000,13 @@ exports.updateTicket = async (req, res) => {
       { new: true, runValidators: true, session: session }
     );
 
-    if (!ticket) {
-      logger.warn(
-        "ticket",
-        `Ticket not found for update: ${req.params.id}`,
-        user,
-        { requestBody: req.body }
-      );
+    if (!ticket) { // Should not happen if originalTicket was found
+      logger.error("ticket", `Ticket update failed unexpectedly for ID: ${ticketId}.`, user, { requestBody: ticketDataForUpdate });
       await session.abortTransaction();
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(500).json({ error: "Failed to update ticket unexpectedly." });
     }
 
+    // Update quotation status if ticket is closed and linked to a quotation
     if (
       originalTicket.status !== ticket.status &&
       ticket.status === "Closed" &&
@@ -1202,7 +1036,7 @@ exports.updateTicket = async (req, res) => {
           quotationError,
           user
         );
-        // Decide if this error should abort the transaction. For now, it won't.
+        // Decide if this error should abort the transaction. For now, it's not critical.
       }
     }
 
@@ -1229,6 +1063,116 @@ exports.updateTicket = async (req, res) => {
     res.status(500).json({ error: "Failed to update ticket" });
   } finally {
     session.endSession();
+  }
+};
+
+// Helper to convert quantity to base unit
+const convertToBaseUnit = (quantity, unit, item) => {
+  const transactionalUnitName = unit || item.baseUnit;
+  const baseUnitName = item.baseUnit;
+  let quantityInBaseUnit = Number(quantity);
+
+  if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+    return { quantityInBaseUnit, unitNameUsed: baseUnitName };
+  }
+
+  const transactionalUnitInfo = item.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+  if (transactionalUnitInfo) {
+    const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+    quantityInBaseUnit = Number(quantity) * conversionFactor;
+    return { quantityInBaseUnit, unitNameUsed: transactionalUnitName };
+  }
+
+  logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${item.name}". Assuming quantity is in base unit.`, null);
+  return { quantityInBaseUnit, unitNameUsed: baseUnitName }; // Fallback to base unit if conversion not found
+};
+
+// Helper for general inventory adjustment on ticket update (not Hold transitions)
+const handleInventoryAdjustmentOnTicketUpdate = async (originalTicket, updatedTicketData, user, session) => {
+  // Create a map to track net changes for each item.
+  // Key: 'description-hsnSacCode', Value: { oldBaseQty: 0, newBaseQty: 0 }
+  const itemBaseQtyChanges = new Map();
+
+  // Helper function to get base quantity, with caching to reduce DB calls
+  const getItemDetailsAndBaseQuantity = async (good, itemCache) => {
+    const itemKey = `${good.description}-${good.hsnSacCode || ""}`;
+    let itemDetails = itemCache.get(itemKey);
+    if (!itemDetails) {
+      itemDetails = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).lean();
+      if (itemDetails) itemCache.set(itemKey, itemDetails);
+    }
+
+    if (!itemDetails) {
+      logger.warn("inventory", `Item "${good.description}" not found for quantity calculation.`, user);
+      return { quantity: 0, item: null };
+    }
+
+    const { quantityInBaseUnit } = convertToBaseUnit(good.quantity, good.unit, itemDetails);
+    return { quantity: quantityInBaseUnit, item: itemDetails };
+  };
+
+  const itemCache = new Map(); // Cache item details
+
+  // Populate old quantities in base units
+  for (const good of originalTicket.goods || []) {
+    if (!good.description || Number(good.quantity) <= 0) continue;
+    const key = `${good.description}-${good.hsnSacCode || ""}`;
+    const { quantity: oldBaseQty } = await getItemDetailsAndBaseQuantity(good, itemCache);
+    if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+    itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
+  }
+
+  // Populate new quantities in base units
+  for (const good of updatedTicketData.goods || []) {
+    if (!good.description || Number(good.quantity) <= 0) continue;
+    const key = `${good.description}-${good.hsnSacCode || ""}`;
+    const { quantity: newBaseQty } = await getItemDetailsAndBaseQuantity(good, itemCache);
+    if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+    itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
+  }
+
+  // Apply net changes to the database
+  for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
+    const netChangeInBaseUnit = newBaseQty - oldBaseQty;
+    if (netChangeInBaseUnit === 0) continue; // No change, skip
+
+    const [description, hsnSacCode] = key.split("-");
+    try {
+      const itemToUpdate = await Item.findOne({ name: description, ...(hsnSacCode && { hsnCode: hsnSacCode }) }).session(session);
+      if (itemToUpdate) {
+        if (itemToUpdate.quantity === undefined || itemToUpdate.quantity === null) {
+          logger.error("inventory", `Item "${description}" has NULL quantity before adjustment! Setting to 0.`, user);
+          itemToUpdate.quantity = 0;
+        }
+
+        itemToUpdate.quantity -= netChangeInBaseUnit; // Deduct if netChange is positive (more used), add if negative (less used/removed)
+
+        const historyEntry = {
+          type: "Inventory Adjustment (Ticket Update)",
+          date: new Date(),
+          quantityChange: -netChangeInBaseUnit, // Negative for deduction, positive for addition
+          details: `Ticket ${originalTicket.ticketNumber} updated. Base quantity changed from ${oldBaseQty.toFixed(2)} to ${newBaseQty.toFixed(2)}. Net stock change: ${(-netChangeInBaseUnit).toFixed(2)}. Action by: ${user.firstname || user.email}.`,
+          ticketReference: originalTicket._id,
+          userReference: user.id,
+        };
+        itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
+        itemToUpdate.inventoryLog.push(historyEntry);
+
+        if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
+          itemToUpdate.needsRestock = true;
+          itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+        } else {
+          itemToUpdate.needsRestock = false;
+          itemToUpdate.restockAmount = 0;
+        }
+        await itemToUpdate.save({ session });
+        logger.info("inventory", `Adjusted stock for ${itemToUpdate.name} (Ticket ${originalTicket.ticketNumber} general update). Inventory Change: ${(-netChangeInBaseUnit).toFixed(2)}, New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
+      } else if (netChangeInBaseUnit > 0) { // Item was added to ticket but not found in DB
+        logger.warn("inventory", `Item "${description}" (HSN: ${hsnSacCode || "N/A"}) not found for stock deduction (Ticket ${originalTicket.ticketNumber} general update).`, user);
+      }
+    } catch (invError) {
+      logger.error("inventory", `Error adjusting stock for item "${description}" (Ticket ${originalTicket.ticketNumber} general update): ${invError.message}`, user, { error: invError });
+    }
   }
 };
 
@@ -1270,23 +1214,16 @@ exports.deleteTicket = async (req, res) => {
     if (!["Hold", "Closed"].includes(ticketToBackup.status)) {
         logger.info("inventory", `Ticket ${ticketId} being deleted (status: ${ticketToBackup.status}). Rolling back item quantities.`, user);
         for (const good of ticketToBackup.goods) {
+            if (!good.description || Number(good.quantity) <= 0) continue;
             try {
                 const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
                 if (itemToUpdate) {
-                    let quantityToRollbackInBaseUnit = 0;
-               const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+                    const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
+                    const quantityToRollbackInBaseUnit = quantityInBaseUnit;
                     const baseUnitName = itemToUpdate.baseUnit;
-                    if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-                      quantityToRollbackInBaseUnit = Number(good.quantity);
-                    } else {
-                      const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
-                      if (transactionalUnitInfo) {
-                        const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
-                        quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
-                      } else {
-                        logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Ticket Deletion rollback. Assuming base unit.`, user);
-                        quantityToRollbackInBaseUnit = Number(good.quantity);
-                      }
+                    if (quantityToRollbackInBaseUnit === 0) { // Skip if conversion resulted in 0
+                      logger.warn("inventory", `Calculated quantity to rollback is zero for item ${good.description}. Skipping inventory update.`, user);
+                      continue;
                     }
 
                     itemToUpdate.quantity += quantityToRollbackInBaseUnit;
@@ -1294,8 +1231,8 @@ exports.deleteTicket = async (req, res) => {
                     const historyEntry = {
                         type: "Rollback (Ticket Deletion)",
                         date: new Date(),
-                        quantityChange: quantityToRollbackInBaseUnit,
-                        details: `Ticket ${ticketToBackup.ticketNumber} deleted. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+                        quantityChange: quantityToRollbackInBaseUnit, // Positive for addition
+                        details: `Ticket ${ticketToBackup.ticketNumber} deleted. Rolled back ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
                         ticketReference: ticketToBackup._id,
                         userReference: user.id,
                     };
@@ -1846,7 +1783,7 @@ exports.getQuotationByReference = asyncHandler(async (req, res) =>{
     // For simplicity, this example assumes any authenticated user can fetch a quotation by ref,
     // but you should implement stricter checks based on your application's logic.
     // Example check:
-    // if (user.role !== 'super-admin' &amp;&amp; user.role !== 'admin' &amp;&amp; quotation.user.toString() !== user.id.toString()) {
+    // if (user.role !== 'super-admin' && user.role !== 'admin' && quotation.user.toString() !== user.id.toString()) {
     //     logger.warn("quotation-fetch-by-ref", `Unauthorized access attempt for quotation ${quotationNumber}.`, user, logContext);
     //     return res.status(403).json({ message: "Forbidden: You do not have permission to view this quotation." });
     // }
@@ -1892,7 +1829,6 @@ exports.uploadTicketDocument = async (req, res) => {
       );
       return res.status(400).json({ error: "No file uploaded" });
     }
-const ticketId = req.params.id;
     const ticket = await OpenticketModel.findById(ticketId);
 
     if (!ticket) {
@@ -1942,6 +1878,8 @@ const ticketId = req.params.id;
       { documentType: req.body.documentType }
     );
     res.status(500).json({ error: "Error uploading document" });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -1949,8 +1887,7 @@ exports.deleteTicketDocument = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { ticketId } = req.params; // Assuming ticketId is in URL params for DELETE
-    const { documentType, documentId, isOther } = req.body; // Get these from request body
+const ticketId = req.params.id;     const { documentType, documentId, isOther } = req.body; // Get these from request body
     const user = req.user;
 
     if (!documentType) {

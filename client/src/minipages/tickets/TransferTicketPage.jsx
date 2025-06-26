@@ -4,7 +4,7 @@ import { Form, Button as BsButton, Alert, Spinner, Badge, Row, Col, Table, Card 
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import { UserSearchComponent } from "../../pages/Tickets.jsx"; 
+import UserSearchComponent from "../../components/UserSearchComponent.jsx"; 
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError } from "../../utils/helpers";
@@ -14,9 +14,7 @@ const TransferTicketPage = () => {
   const { id: ticketIdFromParams } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user: authUser, loading: authLoading } = useAuth();
-  const auth = useAuth();
-
+  const { user: authUser, loading: authLoading } = useAuth(); 
   const [ticketToTransfer, setTicketToTransfer] = useState(location.state?.ticketDataForTransfer || null);
   const [selectedUserToTransfer, setSelectedUserToTransfer] = useState(null);
   const [transferNote, setTransferNote] = useState("");
@@ -125,7 +123,7 @@ const TransferTicketPage = () => {
             <i className="bi bi-person-plus-fill me-1"></i>Select User to Transfer To
         </Card.Header>
         <Card.Body>
-            <UserSearchComponent onUserSelect={handleUserSelect} authContext={auth} />
+            <UserSearchComponent onUserSelect={handleUserSelect} currentAssigneeId={ticketToTransfer.currentAssignee?._id} />
         </Card.Body>
       </Card>
 

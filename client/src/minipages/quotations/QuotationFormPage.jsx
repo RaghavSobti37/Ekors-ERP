@@ -13,7 +13,6 @@ import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
-  generateNextQuotationNumber, // This was the incorrect import
   formatDateForInput,
 } from "../../utils/helpers.js"; // Keep for formatting
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Keep for frontend display calculations
@@ -345,7 +344,7 @@ const QuotationFormPage = () => {
 
   const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
-    referenceNumber: generateQuotationNumber(),
+    referenceNumber: "",
     validityDate: formatDateForInput(
       new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
     ),
@@ -374,10 +373,12 @@ const QuotationFormPage = () => {
   }), []);
 
   const [quotationData, setQuotationData] = useState(
-    location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
+
+    getInitialQuotationData(user?.id) // Always start with initial, then fetch/populate
   );
   const [isEditing, setIsEditing] = useState(
-    !!quotationIdFromParams || !!location.state?.isEditing
+     !!quotationIdFromParams || location.state?.isEditing // Determine editing mode from URL or state
+
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -474,14 +475,32 @@ const QuotationFormPage = () => {
         }
       };
       fetchQuotation();
-    } else if (location.state?.quotationDataForForm) {
-      setQuotationData(location.state.quotationDataForForm);
-      setSelectedClientIdForForm(
-        location.state.quotationDataForForm.client?._id || null
-      );
-    }
-    if (!isEditing && !location.state?.quotationDataForForm) {
-      setQuotationData((prev) => ({ ...prev, orderIssuedBy: user?.id || "" }));
+    } else if (!isEditing) { // If creating a new quotation
+      const fetchDefaults = async () => {
+        setIsLoading(true);
+        try {
+          const defaults = await apiClient('/quotations/defaults');
+          setQuotationData(prev => ({
+            ...prev,
+            referenceNumber: defaults.nextQuotationNumber,
+            validityDate: defaults.defaultValidityDate,
+            dispatchDays: defaults.defaultDispatchDays,
+            termsAndConditions: defaults.defaultTermsAndConditions,
+            orderIssuedBy: user?.id || "", // Set the current user as orderIssuedBy
+          }));
+        } catch (err) {
+          handleApiError(err, "Failed to fetch quotation defaults. Using fallback values.", user, "quotationFormActivity");
+          // Fallback to client-side defaults if API fails
+          setQuotationData(prev => ({
+            ...prev,
+            validityDate: formatDateForInput(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)),
+            orderIssuedBy: user?.id || "",
+          }));
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchDefaults();
     }
   }, [quotationIdFromParams, isEditing, location.state, navigate, user, getInitialQuotationData]);
 
@@ -891,7 +910,7 @@ const QuotationFormPage = () => {
             getInitialQuotationData(user?.id).billingAddress,
           goods: replicatedGoods,
           ...totals,
-          referenceNumber: generateQuotationNumber(),
+          referenceNumber: "",
           date: formatDateForInput(new Date()),
         }));
         setSelectedClientIdForForm(fullQuotation.client._id);
