@@ -38,6 +38,7 @@ import EditClientPage from "./minipages/clients/EditClientPage";
 import ClientsPage from "./pages/ClientsPage.jsx"; // ClientsPage is now used for the /clients route
 import BackupsPage from "./pages/BackupsPage.jsx"; // Import the new BackupsPage
 import ItemHistoryPage from "./pages/ItemHistorypage.jsx";
+import PurchaseFormPage from "./pages/PurchaseFormPage.jsx";
 
 function App() {
   return (
@@ -297,6 +298,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
                 <ItemHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases/new"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <PurchaseFormPage />
               </ProtectedRoute>
             }
           />

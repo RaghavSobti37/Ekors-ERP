@@ -6,7 +6,6 @@ import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { showToast, handleApiError } from "../../utils/helpers.js";
-import frontendLogger from "../../utils/frontendLogger.js";
 
 const MIN_PASSWORD_LENGTH = 5;
 
@@ -78,12 +77,10 @@ const EditProfilePage = () => {
       
       updateUserContext(response.data); // Assuming API returns { data: userObject }
       showToast("Profile updated successfully!", true);
-      frontendLogger.info("profileUpdate", "User profile updated successfully", user, { userId: user._id });
       navigate(-1); // Go back to the previous page (e.g., where Navbar was)
     } catch (err) {
       const errorMsg = handleApiError(err, "Failed to update profile.", user, "profileUpdateError");
       setError(errorMsg);
-      frontendLogger.error("profileUpdateError", "Failed to update profile", user, { userId: user._id, error: errorMsg });
     } finally {
       setIsLoading(false);
     }

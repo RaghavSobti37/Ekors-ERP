@@ -22,7 +22,6 @@ import {
   formatDateForInput,
   formatDateTime,
 } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
 import { PDFViewer } from "@react-pdf/renderer";
 import PIPDF from "../../components/PIPDF.jsx";
 import QuotationPDF from "../../components/QuotationPDF.jsx";

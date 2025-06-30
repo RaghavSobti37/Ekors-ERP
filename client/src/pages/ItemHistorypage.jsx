@@ -15,13 +15,11 @@ const transformLogEntry = (log) => ({
   date: new Date(log.date),
   type: log.type,
   user: log.userReference
-    ? `${log.userReference.firstname || ""} ${
-        log.userReference.lastname || ""
-      }`.trim() || log.userReference.email
+    ? `${log.userReference.firstname || ""} ${log.userReference.lastname || ""}`.trim() || log.userReference.email
     : "System",
   details: log.details || log.type,
   quantityChange: parseFloat(log.quantityChange) || 0,
-  ticketNumber: log.ticketReference?.ticketNumber,
+  ticketNumber: log.ticketReference?.ticketNumber || "",
   source: "inventoryLog",
 });
 
@@ -65,16 +63,6 @@ const transformExcelHistory = (entry) => {
   };
 };
 
-const transformPurchase = (purchase) => ({
-  _id: purchase._id,
-  date: new Date(purchase.date),
-  type: "Purchase Entry",
-  user: purchase.createdByName || "System",
-  details: `Supplier: ${purchase.companyName}, Inv: ${purchase.invoiceNumber}`,
-  quantityChange: parseFloat(purchase.quantity) || 0,
-  source: "purchase",
-});
-
 const ItemHistoryPage = () => {
   const { itemId } = useParams();
   const navigate = useNavigate();
@@ -82,6 +70,7 @@ const ItemHistoryPage = () => {
 
   const [item, setItem] = useState(null);
   const [inventoryLogs, setInventoryLogs] = useState([]);
+  const [ticketLogs, setTicketLogs] = useState([]);
   const [editLogs, setEditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -99,25 +88,32 @@ const ItemHistoryPage = () => {
     setError(null);
 
     try {
-      const [itemData, purchasesData] = await Promise.all([
-        apiClient(`/items/${itemId}`, {
-          params: {
-            populate:
-              "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
-          },
-        }),
-        apiClient(`/items/${itemId}/purchases`),
-      ]);
+      const itemData = await apiClient(`/items/${itemId}`, {
+        params: {
+          populate:
+            "inventoryLog.userReference,inventoryLog.ticketReference,excelImportHistory.importedBy,createdBy,reviewedBy",
+        },
+      });
 
       setItem(itemData);
+      // console.log("Frontend received itemData.inventoryLog:", itemData.inventoryLog);
 
       const allInventoryLogs = [];
+      const allTicketLogs = [];
       const allEditLogs = [];
 
       if (Array.isArray(itemData.inventoryLog)) {
         itemData.inventoryLog.forEach((log) => {
           const transformed = transformLogEntry(log);
-          if (transformed.type === "Item Details Updated") {
+          // Separate ticket-related logs.
+          // This is now more robust: it checks for a populated ticket number OR
+          // if the log type string contains "ticket", ensuring categorization
+          // even if population fails for any reason.
+          if (transformed.ticketNumber || (transformed.type && transformed.type.toLowerCase().includes('ticket'))) {
+            allTicketLogs.push(transformed);
+          }
+          // Separate edit logs
+          else if (transformed.type === "Item Details Updated") {
             allEditLogs.push(transformed);
           } else {
             allInventoryLogs.push(transformed);
@@ -129,10 +125,6 @@ const ItemHistoryPage = () => {
         allInventoryLogs.push(...itemData.excelImportHistory.map(transformExcelHistory));
       }
 
-      if (Array.isArray(purchasesData)) {
-        allInventoryLogs.push(...purchasesData.map(transformPurchase));
-      }
-
       const sortFunc = (a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -140,6 +132,7 @@ const ItemHistoryPage = () => {
       };
 
       setInventoryLogs(allInventoryLogs.sort(sortFunc));
+      setTicketLogs(allTicketLogs.sort(sortFunc));
       setEditLogs(allEditLogs.sort(sortFunc));
     } catch (err) {
       const errorMessage = handleApiError(err, "Failed to load item history.", user);
@@ -178,6 +171,24 @@ const ItemHistoryPage = () => {
     }
   }, [user, itemId, fetchItemHistory]);
 
+  const handleClearAllLogs = useCallback(async () => {
+    if (!window.confirm("DANGER: This will permanently delete ALL inventory, ticket, and excel import logs for this item. This action cannot be undone. Are you absolutely sure?")) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await apiClient(`/items/${itemId}/clear-logs`, {
+        method: "DELETE",
+      });
+      showToast("All logs for this item have been cleared.", true);
+      await fetchItemHistory(); // Refresh the history view
+    } catch (err) {
+      handleApiError(err, "Failed to clear logs.", user);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [itemId, fetchItemHistory, user]);
+
   const handleGoBack = useCallback(() => {
     navigate("/items");
   }, [navigate]);
@@ -197,12 +208,14 @@ const ItemHistoryPage = () => {
   if (error) return <Alert variant="danger">{error}</Alert>;
   if (!item) return <Alert variant="info">Item not found or no data available.</Alert>;
 
-  const inventoryColumns = [
+  const sharedColumns = [
     { key: "date", header: "Date", sortable: true, renderCell: (e) => e.date.toLocaleString() },
     { key: "type", header: "Type", sortable: true },
-    { key: "user", header: "User/Source", sortable: true },
-    { key: "details", header: "Details", renderCell: (e) => <>{e.details}{e.ticketNumber ? ` (Ticket: ${e.ticketNumber})` : ""}</> },
-    { key: "quantityChange", header: "Qty Change", sortable: true, renderCell: (e) => <span className={e.quantityChange > 0 ? "text-success fw-bold" : e.quantityChange < 0 ? "text-danger fw-bold" : ""}>{e.quantityChange > 0 ? `+${e.quantityChange}` : e.quantityChange !== 0 ? e.quantityChange : "-"}</span> },
+    { key: "user", header: "User/Source", sortable: true }, // Added
+    { key: "details", header: "Details", renderCell: (e) => (
+      <>{e.details}{e.ticketNumber ? ` (Ticket: ${e.ticketNumber})` : ""}</>
+    )},
+    { key: "quantityChange", header: "Qty Change", sortable: true, renderCell: (e) => <span className={e.quantityChange > 0 ? "text-success fw-bold" : e.quantityChange < 0 ? "text-danger fw-bold" : ""}>{e.quantityChange > 0 ? `+${e.quantityChange.toFixed(2)}` : e.quantityChange !== 0 ? e.quantityChange.toFixed(2) : "-"}</span> },
   ];
 
   const editColumns = [
@@ -216,13 +229,31 @@ const ItemHistoryPage = () => {
       <Navbar />
       <ReusablePageStructure title="Item History" showBackButton onBack={handleGoBack}>
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="mb-0">Item History: {item.name}</h5>
+          <h5 className="mb-0">History for: {item.name}</h5>
+          {user?.role === 'super-admin' && (
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={handleClearAllLogs}
+              disabled={isSubmitting || loading}
+              title="Permanently delete all logs for this item"
+            >
+              <EraserFill className="me-1" /> Clear All Logs
+            </Button>
+          )}
         </div>
+
+        {ticketLogs.length > 0 && (
+          <div className="mb-4">
+            <h5>Ticket Interactions</h5>
+            <ReusableTable columns={sharedColumns} data={ticketLogs} keyField="_id" isLoading={loading} error={error} onSort={handleSort} sortConfig={{ key: "date", direction: sortDirection === "asc" ? "ascending" : "descending" }} noDataMessage="No ticket-related logs found." tableClassName="table-sm" theadClassName="table-light sticky-top" />
+          </div>
+        )}
 
         {inventoryLogs.length > 0 && (
           <div className="mb-4">
-            <h5>Inventory Adjustments & Interactions</h5>
-            <ReusableTable columns={inventoryColumns} data={inventoryLogs} keyField="_id" isLoading={loading} error={error} onSort={handleSort} sortConfig={{ key: "date", direction: sortDirection === "asc" ? "ascending" : "descending" }} noDataMessage="No inventory adjustment logs found." tableClassName="table-sm" theadClassName="table-light sticky-top" />
+            <h5>Other Inventory Logs (Purchases, Manual Adjustments)</h5>
+            <ReusableTable columns={sharedColumns} data={inventoryLogs} keyField="_id" isLoading={loading} error={error} onSort={handleSort} sortConfig={{ key: "date", direction: sortDirection === "asc" ? "ascending" : "descending" }} noDataMessage="No other inventory logs found." tableClassName="table-sm" theadClassName="table-light sticky-top" />
           </div>
         )}
 

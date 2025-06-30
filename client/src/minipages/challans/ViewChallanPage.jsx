@@ -6,7 +6,6 @@ import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
 
 const ViewChallanPageComponent = () => {
   const { id: challanId } = useParams();

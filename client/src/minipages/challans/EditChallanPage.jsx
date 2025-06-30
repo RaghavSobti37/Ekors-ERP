@@ -15,7 +15,6 @@ import ClientSearchComponent from "../../components/ClientSearchComponent.jsx"; 
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, showToast } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
 
 const EditChallanPageComponent = () => {
   const { id: challanId } = useParams();
@@ -122,12 +121,6 @@ const EditChallanPageComponent = () => {
         });
 
         showToast("Challan updated successfully!", true);
-        frontendLogger.info(
-          "challanActivity",
-          `Challan ${challanId} updated`,
-          authUser,
-          { action: "UPDATE_CHALLAN_SUCCESS" }
-        );
         navigate("/challans");
       } catch (err) {
         const errorMessage = handleApiError(
@@ -138,12 +131,6 @@ const EditChallanPageComponent = () => {
         );
         setError(errorMessage);
         toast.error(errorMessage);
-        frontendLogger.error(
-          "challanActivity",
-          `Failed to update challan ${challanId}`,
-          authUser,
-          { action: "UPDATE_CHALLAN_FAILURE", error: err }
-        );
       } finally {
         setIsLoading(false);
       }

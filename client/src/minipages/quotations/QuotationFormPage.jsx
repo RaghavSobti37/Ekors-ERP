@@ -1,20 +1,35 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationFormPage.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Form, Button, Alert, Spinner, Table, Row, Col } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import ClientSearchComponent from "../../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../../components/ItemSearch.jsx";
-import frontendLogger from "../../utils/frontendLogger.js";
+
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
+
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
   formatDateForInput,
-} from "../../utils/helpers.js";
-import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
+} from "../../utils/helpers.js"; // Keep for formatting
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Keep for frontend display calculations
+const initialNewItemFormData = {
+  name: "",
+  pricing: {
+    baseUnit: "nos",
+    sellingPrice: "",
+    buyingPrice: "",
+  },
+  units: [{ name: 'nos', isBaseUnit: true, conversionFactor: 1 }],
+  category: "",
+  hsnCode: "",
+  gstRate: "0",
+  quantity: 1, // This is for the item master, not the quotation line
+  lowStockThreshold: "5",
+};
 
 const generateQuotationNumber = () => {
   const now = new Date();
@@ -25,21 +40,6 @@ const generateQuotationNumber = () => {
   const minutes = String(now.getMinutes()).padStart(2, "0");
   const seconds = String(now.getSeconds()).padStart(2, "0");
   return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
-};
-
-const initialNewItemFormData = {
-  name: "",
-  pricing: {
-    baseUnit: "Nos",
-    sellingPrice: "",
-    buyingPrice: "",
-  },
-  units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
-  category: "",
-  hsnCode: "",
-  gstRate: "0",
-  quantity: 1, // This is for the item master, not the quotation line
-  lowStockThreshold: "5",
 };
 
 const GoodsTable = ({
@@ -161,7 +161,7 @@ const GoodsTable = ({
                 {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
                   <Form.Control
                     as="select"
-                    value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                    value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
                     onChange={(e) =>
                       handleGoodsChange(index, "unit", e.target.value)
                     }
@@ -174,7 +174,7 @@ const GoodsTable = ({
                   </Form.Control>
                 ) : (
                   <Form.Control
-                    type="text" value={item.unit || "Nos"} readOnly
+                    type="text" value={item.unit || "nos"} readOnly
                   />
                 )}
               </td>
@@ -218,7 +218,7 @@ const GoodsTable = ({
       </Table>
       <div className="mb-3">
         <div className="d-flex gap-2 mb-2">
-          <Button
+          {/* <Button
             variant={
               itemCreationMode === "search" ? "primary" : "outline-primary"
             }
@@ -226,7 +226,7 @@ const GoodsTable = ({
             size="sm"
           >
             Search Existing Item
-          </Button>
+          </Button> */}
           <Button
             variant={itemCreationMode === "new" ? "primary" : "outline-primary"}
             onClick={() => setItemCreationMode("new")}
@@ -269,7 +269,7 @@ const GoodsTable = ({
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>Base Unit</Form.Label>
-                    <Form.Control type="text" placeholder="e.g., Nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
+                    <Form.Control type="text" placeholder="e.g., nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
@@ -303,7 +303,7 @@ const GoodsTable = ({
                 variant="success"
                 size="sm"
                 className="mt-2"
-                onClick={() => handleSaveAndAddNewItemToQuotation(newItemFormData)}
+                onClick={() => {handleSaveAndAddNewItemToQuotation (newItemFormData) , setItemCreationMode("search")}}
                 disabled={
                   isSavingNewItem ||
                   !newItemFormData.name ||
@@ -334,24 +334,7 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const recalculateTotals = useCallback((goodsList) => {
-    const totalQuantity = goodsList.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0
-    );
-    const totalAmount = goodsList.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    );
-    const gstAmount = goodsList.reduce(
-      (sum, item) =>
-        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
-      0
-    );
-    const grandTotal = totalAmount + gstAmount;
-    return { totalQuantity, totalAmount, gstAmount, grandTotal };
-  }, []);
-
+  // Add roundOffTotal to initial quotation data
   const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
     referenceNumber: generateQuotationNumber(),
@@ -371,6 +354,7 @@ const QuotationFormPage = () => {
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
+    roundOffTotal: 0, // <-- Add this
     status: "open",
     client: {
       _id: null,
@@ -381,6 +365,26 @@ const QuotationFormPage = () => {
       phone: "",
     },
   }), []);
+
+  // Update recalculateTotals to include roundOffTotal
+  const recalculateTotals = useCallback((goodsList) => {
+    const totalQuantity = goodsList.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = goodsList.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    const gstAmount = goodsList.reduce(
+      (sum, item) =>
+        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
+      0
+    );
+    const grandTotal = totalAmount + gstAmount;
+    const roundOffTotal = Math.round(grandTotal); // <-- Always round off
+    return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
+  }, []);
 
   const [quotationData, setQuotationData] = useState(
     location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
@@ -443,7 +447,7 @@ const QuotationFormPage = () => {
               quantity: Number(item.quantity),
               price: Number(item.price),
               amount: Number(item.amount),
-              unit: item.unit || "Nos",
+              unit: item.unit || "nos",
               originalPrice: Number(item.originalPrice || item.price),
               maxDiscountPercentage: item.maxDiscountPercentage
                 ? Number(item.maxDiscountPercentage)
@@ -497,7 +501,7 @@ const QuotationFormPage = () => {
   const handleAddItem = useCallback(
     (item) => {
       setQuotationData((prevQuotationData) => {
-        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
         const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
         const newGoods = [
@@ -510,7 +514,7 @@ const QuotationFormPage = () => {
             unit: defaultUnit,
             price: pricePerSelectedUnit,
             amount: pricePerSelectedUnit,
-            originalPrice: parseFloat(item.pricing.sellingPrice) || 0,
+            originalPrice: parseFloat(item.sellingPrice) || 0, // Corrected
             maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
@@ -534,9 +538,14 @@ const QuotationFormPage = () => {
     setError(null);
 
     try {
+      const { pricing, ...restOfItemData } = newItemData;
+      const payload = {
+        ...restOfItemData,
+        ...pricing,
+      };
       const savedItem = await apiClient("/items", {
         method: "POST",
-        body: newItemData,
+        body: payload,
       });
       toast.success(`Item "${savedItem.name}" created and added to quotation.`);
       handleAddItem(savedItem);
@@ -808,17 +817,6 @@ const QuotationFormPage = () => {
         setSelectedClientIdForForm(responseData._id);
         setError(null);
         toast.success("Client saved successfully!");
-        if (user)
-          frontendLogger.info(
-            "clientActivity",
-            "New client saved successfully",
-            user,
-            {
-              clientId: responseData._id,
-              clientName: responseData.companyName,
-              action: "SAVE_NEW_CLIENT_SUCCESS",
-            }
-          );
       } else {
         setError("Failed to save client: Unexpected response.");
         toast.error("Failed to save client: Unexpected response.");
@@ -832,19 +830,6 @@ const QuotationFormPage = () => {
       );
       setError(errorMessage);
       toast.error(errorMessage);
-      if (user)
-        frontendLogger.error(
-          "clientActivity",
-          "Failed to save new client",
-          user,
-          {
-            clientPayload,
-            errorMessage: error.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.data,
-            action: "SAVE_NEW_CLIENT_FAILURE",
-          }
-        );
     } finally {
       setIsSavingClient(false);
     }
@@ -869,7 +854,7 @@ const QuotationFormPage = () => {
           description: item.description,
           hsnSacCode: item.hsnSacCode || "",
           quantity: Number(item.quantity || 1),
-          unit: item.unit || "Nos",
+          unit: item.unit || "nos",
           price: Number(item.price || 0),
           amount: Number(item.quantity || 1) * Number(item.price || 0),
           originalPrice: Number(item.originalPrice || item.price),
@@ -949,7 +934,7 @@ const QuotationFormPage = () => {
         return;
       }
       for (let i = 0; i < quotationData.goods.length; i++) {
-        const item = quotationData.goods[i];
+        const item = quotationData.goods[i]; // This is the item from the quotation's goods array
         if (
           !item.description ||
           !(parseFloat(item.quantity) > 0) ||
@@ -962,7 +947,7 @@ const QuotationFormPage = () => {
           return;
         }
         if (item.maxDiscountPercentage > 0) {
-          const selectedUnitInfo = item.originalItem?.units.find(u => u.name === item.unit);
+          const selectedUnitInfo = item.originalItem?.units?.find(u => u.name === item.unit); // Added optional chaining for .units
           const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
           const originalBasePrice = parseFloat(item.originalItem?.pricing?.sellingPrice || item.originalPrice);
           const minAllowedPrice = (originalBasePrice * (1 - (item.maxDiscountPercentage || 0) / 100)) * conversionFactor;
@@ -986,7 +971,7 @@ const QuotationFormPage = () => {
           description: item.description,
           hsnSacCode: item.hsnSacCode || "",
           quantity: Number(item.quantity),
-          unit: item.unit || "Nos",
+          unit: item.unit || "nos",
           price: Number(item.price),
           amount: Number(item.amount),
           originalPrice: Number(item.originalItem?.pricing?.sellingPrice || item.originalPrice),
@@ -995,12 +980,13 @@ const QuotationFormPage = () => {
             : 0,
           gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
           subtexts: item.subtexts || [],
-          originalItem: item.originalItem, // Send the full original item
+          // originalItem: item.originalItem, 
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
+        roundOffTotal: Number(quotationData.roundOffTotal), // <-- Add this
         status: quotationData.status || "open",
         client: quotationData.client,
         billingAddress: quotationData.billingAddress,
@@ -1021,20 +1007,6 @@ const QuotationFormPage = () => {
               isEditing ? "updated" : "created"
             }!`
           );
-          if (user)
-            frontendLogger.info(
-              "quotationActivity",
-              `Quotation ${submissionData.referenceNumber} ${
-                isEditing ? "updated" : "created"
-              }`,
-              user,
-              {
-                quotationId: responseData._id,
-                action: isEditing
-                  ? "UPDATE_QUOTATION_SUCCESS"
-                  : "CREATE_QUOTATION_SUCCESS",
-              }
-            );
           navigate("/quotations");
         }
       } catch (error) {
@@ -1056,20 +1028,6 @@ const QuotationFormPage = () => {
         }
         setError(errorMessage);
         toast.error(errorMessage);
-        if (user)
-          frontendLogger.error(
-            "quotationActivity",
-            isEditing ? "Failed to update" : "Failed to create",
-            user,
-            {
-              referenceNumber: quotationData.referenceNumber,
-              quotationId: quotationIdFromParams,
-              submittedData: submissionData,
-              action: isEditing
-                ? "UPDATE_QUOTATION_FAILURE"
-                : "CREATE_QUOTATION_FAILURE",
-            }
-          );
       } finally {
         setIsLoading(false);
       }
@@ -1509,14 +1467,20 @@ const QuotationFormPage = () => {
                 </td>
               </tr>
               <tr>
+                <td>Grand Total</td>
+                <td className="text-end">
+                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                </td>
+              </tr>
+              <tr>
                 <td style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-                  Grand Total
+                  Round Off Total <span className="text-danger">*</span>
                 </td>
                 <td
                   className="text-end"
                   style={{ fontWeight: "bold", fontSize: "1.1rem" }}
                 >
-                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                  <strong>₹{quotationData.roundOffTotal}</strong>
                 </td>
               </tr>
             </tbody>

@@ -20,7 +20,7 @@ import apiClient from "../utils/apiClient"; // Assuming you have this
 const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
 const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
 
-function NavbarComponent({ showPurchaseModal }) {
+function NavbarComponent() {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showManagementDropdown, setShowManagementDropdown] = useState(false);
@@ -167,15 +167,13 @@ function NavbarComponent({ showPurchaseModal }) {
                 onMouseEnter={handleMouseEnterDropdown}
                 onMouseLeave={handleMouseLeaveDropdown}
               >
-                <NavLink
-                  to="/items"
-                  className={({ isActive }) =>
-                    isActive ? "nav-link active" : "nav-link"
-                  }
+                <span
+                  className="nav-link"
+                   style={{ cursor: "pointer" }}
                 >
                   <FaBoxOpen /> Items List
-                </NavLink>
-                {showItemsDropdown && (
+                </span>
+              {showItemsDropdown && (
                   <div className="dropdown-menu">
                     <div
                       onClick={handleViewAllItems}
@@ -184,7 +182,7 @@ function NavbarComponent({ showPurchaseModal }) {
                       View All Items
                     </div>
                     <div
-                      onClick={showPurchaseModal}
+                      onClick={() => navigate("/purchases/new")}
                       style={{ cursor: "pointer", padding: "10px 15px" }}
                     >
                       Update Stock
@@ -206,15 +204,12 @@ function NavbarComponent({ showPurchaseModal }) {
                 onMouseEnter={handleMouseEnterManagementDropdown}
                 onMouseLeave={handleMouseLeaveManagementDropdown}
               >
-                {/* Changed from span to NavLink to match Items List dropdown behavior */}
-                <NavLink
-                  to="/users" // Default management page
-                  className={({ isActive }) =>
-                    isActive ? "nav-link active" : "nav-link"
-                  }
+               <span
+                  className="nav-link"
+                   style={{ cursor: "pointer" }}
                 >
                   <FaCogs /> Management
-                </NavLink>
+                </span>
                 {showManagementDropdown && (
                   <div className="dropdown-menu">
                     <NavLink to="/users" className="dropdown-item"> {/* Custom class for NavLink styling */}
