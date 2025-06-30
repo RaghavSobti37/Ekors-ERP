@@ -1,146 +1,203 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { Item, STANDARD_UNITS } = require('./models/itemlist');
 
-async function connectDB() {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('MongoDB Connected');
-  } catch (error) {
-    console.error(error);
-    process.exit(1);
+const { STANDARD_UNITS } = require('./models/itemlist');
+const Quotation = require('./models/quotation');
+const Ticket = require('./models/opentickets');
+
+const VALID_TICKET_STATUSES = [
+  "Quotation Sent", "PO Received", "Payment Pending", "Inspection",
+  "Packing List", "Invoice Sent", "Hold", "Closed"
+];
+const VALID_QUOTATION_STATUSES = ['open', 'closed', 'hold', 'running'];
+
+function cleanAddress(addr) {
+  // If it's an array or not an object, return empty address object
+  if (!addr || typeof addr !== 'object' || Array.isArray(addr)) {
+    return {
+      address1: '', address2: '', city: '', state: '', pincode: ''
+    };
+  }
+  return {
+    address1: typeof addr.address1 === 'string' ? addr.address1 : '',
+    address2: typeof addr.address2 === 'string' ? addr.address2 : '',
+    city: typeof addr.city === 'string' ? addr.city : '',
+    state: typeof addr.state === 'string' ? addr.state : '',
+    pincode: typeof addr.pincode === 'string' ? addr.pincode : ''
+  };
+}
+
+function cleanGoods(goods) {
+  return (goods || []).map(good => {
+    const cleaned = {};
+
+    // Always set a non-empty hsnCode (fallback to 'NA' if missing/empty)
+    let hsn = (good.hsnCode || good.hsnSacCode || '').toString().trim();
+    if (!hsn) hsn = 'NA';
+    cleaned.hsnCode = hsn;
+
+    cleaned.srNo = typeof good.srNo === 'number' ? good.srNo : 0;
+    cleaned.description = good.description || '';
+    cleaned.subtexts = Array.isArray(good.subtexts) ? good.subtexts : [];
+    cleaned.quantity = typeof good.quantity === 'number' ? good.quantity : 0;
+    cleaned.unit = STANDARD_UNITS.includes(good.unit) ? good.unit : 'nos';
+    cleaned.price = typeof good.price === 'number' ? good.price : 0;
+    cleaned.amount = typeof good.amount === 'number' ? good.amount : 0;
+    cleaned.gstRate = typeof good.gstRate === 'number' ? good.gstRate : 0;
+    cleaned.originalPrice = typeof good.originalPrice === 'number' ? good.originalPrice : cleaned.price;
+    cleaned.maxDiscountPercentage = typeof good.maxDiscountPercentage === 'number' ? good.maxDiscountPercentage : 0;
+    cleaned.sellingPrice = typeof good.sellingPrice === 'number' ? good.sellingPrice : cleaned.price;
+
+    // Ensure originalItem is ObjectId or null
+    if (good.originalItem && typeof good.originalItem === 'object' && good.originalItem._id) {
+      cleaned.originalItem = good.originalItem._id;
+    } else if (typeof good.originalItem === 'string') {
+      cleaned.originalItem = good.originalItem;
+    } else {
+      cleaned.originalItem = null;
+    }
+
+    return cleaned;
+  });
+}
+
+async function migrateQuotations() {
+  const quotations = await Quotation.find({});
+  for (const q of quotations) {
+    let updated = false;
+
+    // Clean goods
+    if (Array.isArray(q.goods)) {
+      const cleanedGoods = cleanGoods(q.goods);
+      if (JSON.stringify(q.goods) !== JSON.stringify(cleanedGoods)) {
+        q.goods = cleanedGoods;
+        updated = true;
+      }
+    }
+
+    // Ensure billingAddress is an object with correct keys
+    if (q.billingAddress) {
+      const cleanedAddr = cleanAddress(q.billingAddress);
+      if (JSON.stringify(q.billingAddress) !== JSON.stringify(cleanedAddr)) {
+        q.billingAddress = cleanedAddr;
+        updated = true;
+      }
+    } else {
+      q.billingAddress = cleanAddress();
+      updated = true;
+    }
+
+    // Add roundOffTotal if missing
+    if (typeof q.roundOffTotal !== 'number') {
+      q.roundOffTotal = 0;
+      updated = true;
+    }
+
+    // Ensure status is valid
+    if (!VALID_QUOTATION_STATUSES.includes(q.status)) {
+      q.status = 'open';
+      updated = true;
+    }
+
+    // Remove deprecated/unknown fields at root
+    Object.keys(q._doc).forEach(k => {
+      if (![
+        'user', 'orderIssuedBy', 'date', 'referenceNumber', 'validityDate',
+        'billingAddress', 'goods', 'totalQuantity', 'totalAmount', 'gstAmount',
+        'grandTotal', 'roundOffTotal', 'status', 'client', 'documents',
+        'createdAt', 'updatedAt', '_id', '__v'
+      ].includes(k)) {
+        delete q[k];
+        updated = true;
+      }
+    });
+
+    if (updated) await q.save();
   }
 }
 
-// Helper to split and clean unit strings
-function splitUnits(str) {
-  if (!str) return [];
-  return str
-    .split(',')
-    .map(s => s.trim().toLowerCase())
-    .filter(Boolean);
+async function migrateTickets() {
+  const tickets = await Ticket.find({});
+  for (const t of tickets) {
+    let updated = false;
+
+    // Clean goods
+    if (Array.isArray(t.goods)) {
+      const cleanedGoods = cleanGoods(t.goods);
+      if (JSON.stringify(t.goods) !== JSON.stringify(cleanedGoods)) {
+        t.goods = cleanedGoods;
+        updated = true;
+      }
+    }
+
+    // Ensure billingAddress and shippingAddress are objects
+    if (t.billingAddress) {
+      const cleanedAddr = cleanAddress(t.billingAddress);
+      if (JSON.stringify(t.billingAddress) !== JSON.stringify(cleanedAddr)) {
+        t.billingAddress = cleanedAddr;
+        updated = true;
+      }
+    } else {
+      t.billingAddress = cleanAddress();
+      updated = true;
+    }
+    if (t.shippingAddress) {
+      const cleanedAddr = cleanAddress(t.shippingAddress);
+      if (JSON.stringify(t.shippingAddress) !== JSON.stringify(cleanedAddr)) {
+        t.shippingAddress = cleanedAddr;
+        updated = true;
+      }
+    } else {
+      t.shippingAddress = cleanAddress();
+      updated = true;
+    }
+
+    // Add roundOff and finalRoundedAmount if missing
+    if (typeof t.roundOff !== 'number') {
+      t.roundOff = 0;
+      updated = true;
+    }
+    if (typeof t.finalRoundedAmount !== 'number') {
+      t.finalRoundedAmount = (t.grandTotal || 0) + (t.roundOff || 0);
+      updated = true;
+    }
+
+    // Ensure status is valid
+    if (!VALID_TICKET_STATUSES.includes(t.status)) {
+      t.status = 'Quotation Sent';
+      updated = true;
+    }
+
+    // Remove deprecated/unknown fields at root
+    Object.keys(t._doc).forEach(k => {
+      if (![
+        'ticketNumber', 'companyName', 'quotationNumber', 'client', 'clientPhone', 'clientGstNumber',
+        'billingAddress', 'shippingAddress', 'shippingSameAsBilling', 'goods', 'totalQuantity',
+        'totalAmount', 'gstBreakdown', 'totalCgstAmount', 'totalSgstAmount', 'totalIgstAmount',
+        'finalGstAmount', 'grandTotal', 'roundOff', 'finalRoundedAmount', 'isBillingStateSameAsCompany',
+        'status', 'documents', 'statusHistory', 'createdBy', 'currentAssignee', 'deadline',
+        'assignedTo', 'transferHistory', 'assignmentLog', 'dispatchDays', 'createdAt', 'updatedAt', '_id', '__v'
+      ].includes(k)) {
+        delete t[k];
+        updated = true;
+      }
+    });
+
+    if (updated) await t.save();
+  }
 }
 
-// Map common aliases to standard units
-const UNIT_ALIASES = {
-  kg: 'kgs',
-  kgs: 'kgs',
-  kilogram: 'kgs',
-  kilograms: 'kgs',
-  gm: 'kgs', // or map to 'gms' if you add it
-  gms: 'kgs',
-  meter: 'mtr',
-  meters: 'mtr',
-  m: 'mtr',
-  nos: 'nos',
-  no: 'nos',
-  piece: 'pcs',
-  pieces: 'pcs',
-  pc: 'pcs',
-  pkt: 'pkt',
-  set: 'set',
-  sets: 'sets',
-  kwp: 'kwp',
-  ltr: 'ltr',
-  litre: 'ltr',
-  liters: 'ltr',
-  bottle: 'bottle',
-  each: 'each',
-  bag: 'bag',
-  // Add more aliases as needed
+const runMigration = async () => {
+  await mongoose.connect(process.env.MONGO_URI, {});
+
+  await migrateQuotations();
+  await migrateTickets();
+
+  console.log('Full migration complete!');
+  mongoose.disconnect();
 };
 
-// Try to map a unit to a valid enum value
-function mapToStandardUnit(unit) {
-  if (!unit) return null;
-  unit = unit.trim().toLowerCase();
-  if (STANDARD_UNITS.includes(unit)) return unit;
-  if (UNIT_ALIASES[unit]) return UNIT_ALIASES[unit];
-  // Try plural/singular forms
-  if (STANDARD_UNITS.includes(unit + 's')) return unit + 's';
-  if (STANDARD_UNITS.includes(unit.slice(0, -1))) return unit.slice(0, -1);
-  return null; // Could not map
-}
-
-// Normalize units and baseUnit to new schema (all lowercase, base unit always present)
-function normalizeUnitsAndBaseUnit(units, baseUnit) {
-  // If baseUnit is comma-separated, split it
-  let baseUnitsArr = splitUnits(baseUnit);
-  // Map all base units to standard units, filter out invalids
-  baseUnitsArr = baseUnitsArr.map(mapToStandardUnit).filter(Boolean);
-  if (baseUnitsArr.length === 0) return { baseUnit: '', units: [] };
-  const baseUnitLower = baseUnitsArr[0];
-
-  // Collect all unique unit names from baseUnit and units array
-  let allUnitNames = new Set(baseUnitsArr);
-  if (Array.isArray(units)) {
-    for (const u of units) {
-      if (u && u.name) {
-        splitUnits(u.name)
-          .map(mapToStandardUnit)
-          .filter(Boolean)
-          .forEach(n => allUnitNames.add(n));
-      }
-    }
-  }
-
-  // Build normalized units array
-  const normalizedUnits = [];
-  for (const name of allUnitNames) {
-    normalizedUnits.push({
-      name,
-      isBaseUnit: name === baseUnitLower,
-      conversionFactor: 1,
-    });
-  }
-
-  return { baseUnit: baseUnitLower, units: normalizedUnits };
-}
-
-async function migrateAllItems() {
-  await connectDB();
-
-  const items = await Item.find({});
-  let updatedCount = 0;
-
-  for (const item of items) {
-    // Remove items with name longer than 100 chars
-    if (item.name && item.name.length > 100) {
-      try {
-        await item.deleteOne();
-        console.warn(`Deleted item with too long name: ${item.name}`);
-      } catch (err) {
-        console.warn(`Could not delete item "${item.name}": ${err.message}`);
-      }
-      continue;
-    }
-
-    // Normalize baseUnit and units
-    const { baseUnit, units } = normalizeUnitsAndBaseUnit(item.units || [], item.baseUnit);
-
-    // Only update if normalization changes something
-    const needsUpdate =
-      item.baseUnit !== baseUnit ||
-      JSON.stringify(item.units) !== JSON.stringify(units);
-
-    if (needsUpdate) {
-      item.baseUnit = baseUnit;
-      item.units = units;
-      try {
-        await item.save();
-        updatedCount++;
-        console.log(`Updated: ${item.name}`);
-      } catch (err) {
-        console.warn(`Could not update ${item.name}: ${err.message}`);
-      }
-    }
-  }
-
-  console.log(`Migration complete. Updated ${updatedCount} items.`);
-  await mongoose.disconnect();
-}
-
-migrateAllItems().catch(err => {
-  console.error(err);
-  process.exit(1);
+runMigration().catch(err => {
+  console.error('Migration failed:', err);
+  mongoose.disconnect();
 });
