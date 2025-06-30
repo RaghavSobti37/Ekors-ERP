@@ -44,6 +44,49 @@ const calculateBaseUnitDetails = async (item, quantity, price, unitName, session
     };
 };
 
+// Helper function to update item pricing on purchase
+const updateItemPricingOnPurchase = async (item, newQuantity, purchasePricePerBaseUnit, session, user) => {
+  // If there's existing stock, calculate the weighted average
+  let newBuyingPrice;
+  if (item.quantity > 0) {
+    const totalValueBeforePurchase = item.quantity * item.buyingPrice;
+    const purchaseValue = newQuantity * purchasePricePerBaseUnit;
+    const totalQuantityAfterPurchase = item.quantity + newQuantity;
+    newBuyingPrice = (totalValueBeforePurchase + purchaseValue) / totalQuantityAfterPurchase;
+  } else {
+    // If no existing stock, the new buying price is simply the purchase price
+    newBuyingPrice = purchasePricePerBaseUnit;
+  }
+
+  // Ensure the buying price is not NaN or negative after calculation
+  if (isNaN(newBuyingPrice) || newBuyingPrice < 0) {
+    logger.error(
+      "purchase_pricing",
+      `Invalid calculated buying price for item ${item.name}: ${newBuyingPrice}. Resetting to purchase price.`,
+      user,
+      { itemId: item._id }
+    );
+    newBuyingPrice = purchasePricePerBaseUnit; // Reset to the purchase price as a fallback
+  }
+
+  // Calculate the new selling price based on the profit margin
+  const profitMargin = item.profitMarginPercentage / 100;
+  const newSellingPrice = newBuyingPrice * (1 + profitMargin);
+
+  // Update the item with the new prices
+  item.buyingPrice = newBuyingPrice;
+  item.sellingPrice = newSellingPrice;
+  item.quantity += newQuantity; // Also update the quantity here
+
+  logger.info(
+    "purchase_pricing",
+    `Updated pricing for item ${item.name}: Buying Price = ${newBuyingPrice.toFixed(2)}, Selling Price = ${newSellingPrice.toFixed(2)}`,
+    user,
+    { itemId: item._id, profitMarginPercentage: item.profitMarginPercentage }
+  );
+};
+
+
 
 // Add purchase to specific item
 exports.addSinglePurchase = async (req, res) => {
@@ -80,9 +123,7 @@ exports.addSinglePurchase = async (req, res) => {
           const { quantityInBaseUnit, pricePerBaseUnit, baseUnitName } = await calculateBaseUnitDetails(item, quantity, price, unit, session, user);
 
           // Update item quantity and buying price
-          item.quantity += quantityInBaseUnit;
-          item.buyingPrice = pricePerBaseUnit; // Update item's buying price per base unit
-          item.lastPurchaseDate = new Date(date); // Update last purchase date
+          await updateItemPricingOnPurchase(item, quantityInBaseUnit, pricePerBaseUnit, session, user);          item.lastPurchaseDate = new Date(date); // Update last purchase date
           item.lastPurchasePrice = pricePerBaseUnit; // Update last purchase price
 
           // Add inventory log entry for the purchase
@@ -303,12 +344,8 @@ exports.addBulkPurchase = async (req, res) => {
                 user
               );
 
-              // Recalculate quantity in base unit for inventory update
-              const { quantityInBaseUnit, pricePerBaseUnit, baseUnitName } = await calculateBaseUnitDetails(itemToUpdate, purchasedItem.quantity, purchasedItem.price, purchasedItem.unit, session, user);
-
-              itemToUpdate.quantity += quantityInBaseUnit; // Add quantity in base units
-              itemToUpdate.buyingPrice = pricePerBaseUnit; // Update item's buying price per base unit
-              itemToUpdate.lastPurchaseDate = savedPurchase.date;
+               const { quantityInBaseUnit, pricePerBaseUnit, baseUnitName } = await calculateBaseUnitDetails(itemToUpdate, purchasedItem.quantity, purchasedItem.price, purchasedItem.unit, session, user);
+               await updateItemPricingOnPurchase(itemToUpdate, quantityInBaseUnit, pricePerBaseUnit, session, user);              itemToUpdate.lastPurchaseDate = savedPurchase.date;
               itemToUpdate.lastPurchasePrice = pricePerBaseUnit; // Store price per base unit
 
               // Add inventory log entry

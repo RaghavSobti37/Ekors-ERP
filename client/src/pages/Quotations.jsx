@@ -20,8 +20,8 @@ import "react-toastify/dist/ReactToastify.css";
 import {
   showToast,
   handleApiError,
-  formatDateForInput as formatDateForInputHelper, generateNextTicketNumber
-} from "../utils/helpers"; // Import helper function
+  formatDateForInput as formatDateForInputHelper,
+} from "../utils/helpers";
 import apiClient from "../utils/apiClient";
 import "../css/Style.css";
 import "../css/Items.css";
@@ -30,7 +30,6 @@ import { FaChartBar } from "react-icons/fa";
 export default function Quotations() {
   const [quotations, setQuotations] = useState([]); // Holds current page's quotations
   const [totalQuotations, setTotalQuotations] = useState(0); // Total quotations for pagination
-  const { generateNextQuotationNumber } = useAuth();
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -45,11 +44,23 @@ export default function Quotations() {
   const [isLoading, setIsLoading] = useState(false); // Local loading state for fetch
   const [sourceQuotationForTicket, setSourceQuotationForTicket] = useState(null); 
 
-  // Initial state for quotation data, will be populated from backend defaults
-  const initialQuotationData = useMemo(() => ({
-    date: formatDateForInputHelper(new Date()), // Placeholder, will be overwritten by backend default or current date
-    referenceNumber: "", // Placeholder, will be fetched from backend
-    validityDate: formatDateForInputHelper(new Date()), // Placeholder, will be fetched from backend
+  const generateQuotationNumber = useCallback(() => { 
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  }, []);
+
+  const initialQuotationData = useMemo(() => ({ 
+    date: formatDateForInputHelper(new Date()),
+    referenceNumber: generateQuotationNumber(),
+    validityDate: formatDateForInputHelper(
+      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    ),
     orderIssuedBy: "",
     billingAddress: {
       address1: "", address2: "", city: "", state: "", pincode: "",
@@ -57,10 +68,10 @@ export default function Quotations() {
     goods: [],
     totalQuantity: 0, totalAmount: 0, gstAmount: 0, grandTotal: 0,
     status: "open",
-    client: { _id: null, companyName: "", clientName: "", gstNumber: "", email: "", phone: "", },
-    dispatchDays: "", // Placeholder for backend default
-    termsAndConditions: "", // Placeholder for backend default
-  }), []);
+    client: {
+      _id: null, companyName: "", clientName: "", gstNumber: "", email: "", phone: "",
+    },
+  }), [generateQuotationNumber]);
 
 
   const fetchQuotations = useCallback(async (page = currentPage, limit = itemsPerPage) => {
@@ -169,13 +180,23 @@ export default function Quotations() {
     setError(null);
   }, []);
 
+  const generateTicketNumber = useCallback(async () => { 
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    return `EKORS/${year}${month}${day}${hours}${minutes}${seconds}`;
+  }, []);
+
   const handleCreateTicket = useCallback(async (quotation) => {
     setSourceQuotationForTicket(quotation);
-    let defaultDeadline = new Date();
-    // The previous try-catch block for fetching ticket defaults was removed,
-    // so we'll just use a default deadline here.
-    defaultDeadline.setDate(defaultDeadline.getDate() + 10); // Default fallback deadline
+    const defaultDeadline = new Date();
+    defaultDeadline.setDate(defaultDeadline.getDate() + 10);
 
+    const ticketNumberToSet = await generateTicketNumber();
     const quotationBillingAddressObject = quotation.billingAddress || {};
     const ticketBillingAddressArrayFromQuotation = [
       quotationBillingAddressObject.address1 || "",
@@ -186,7 +207,6 @@ export default function Quotations() {
     ];
     const clientData = quotation.client || {};
 
-    const ticketNumberToSet = generateNextTicketNumber(); // Generate ticket number on frontend
     const ticketDataForForm = {
       ticketNumber: ticketNumberToSet,
       companyName: quotation.client?.companyName || "",
@@ -215,7 +235,7 @@ export default function Quotations() {
       deadline: defaultDeadline.toISOString().split("T")[0],
     };
     navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
-  }, [navigate, initialQuotationData]); 
+  }, [navigate, generateTicketNumber, initialQuotationData]); 
 
   const handleEdit = useCallback(async (quotation) => {
     let orderIssuedByIdToSet =
@@ -233,12 +253,7 @@ export default function Quotations() {
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        // The 'unit' is now the name of the selected unit, e.g., "Mtr"
-        unit: item.unit, 
-        // The price in the goods list should be the price *per selected unit*
-        // The original item object with all its units and pricing info should also be stored
-        // to allow for changing the unit later in the form.
-        originalItem: item.originalItem || item, // Store the full item object
+        unit: item.unit || "Nos", originalPrice: Number(item.originalPrice || item.price),
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],
@@ -257,32 +272,18 @@ export default function Quotations() {
   }, [navigate, user, initialQuotationData]); 
 
   const openCreateModal = useCallback(async () => { 
-    if (!user) { toast.error("User data not available."); return; }
-    setIsLoading(true); // Show loading spinner while fetching defaults
-    let newQuotationData = { ...initialQuotationData };
-    try {
-      // Fetch defaults from backend
-      const defaults = await apiClient('/quotations/defaults');
-      newQuotationData = {
-        ...initialQuotationData,
-        date: formatDateForInputHelper(new Date()), // Current date for creation
-        referenceNumber: defaults.nextQuotationNumber,
-        validityDate: defaults.defaultValidityDate,
-        dispatchDays: defaults.defaultDispatchDays,
-        termsAndConditions: defaults.defaultTermsAndConditions,
-        orderIssuedBy: user.id,
-      };
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to fetch quotation defaults. Using fallback values.", authUserFromContext, "quotationActivity");
-      setError(errorMessage);
-      toast.error(errorMessage);
-      // Fallback to client-side defaults if API fails
-      newQuotationData.validityDate = formatDateForInputHelper(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)); // Fallback validity
-      newQuotationData.orderIssuedBy = user.id; // Corrected syntax: assign to newQuotationData
-  };
+    if (!user) {
+      toast.error("User data not available.");
+      return;
+    }
+    const newQuotationData = {
+      ...initialQuotationData, 
+      date: formatDateForInputHelper(new Date()),
+      referenceNumber: generateQuotationNumber(),
+      orderIssuedBy: user.id, 
+    };
     navigate("/quotations/form", { state: { quotationDataForForm: newQuotationData, isEditing: false } });
-  }, [navigate, user, initialQuotationData]); 
+  }, [navigate, user, initialQuotationData, generateQuotationNumber]); 
 
   const handleDeleteQuotation = useCallback(async (quotation) => {
     if (!quotation || !quotation._id) {

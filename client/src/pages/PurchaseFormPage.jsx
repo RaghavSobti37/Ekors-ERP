@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table } from "react-bootstrap";
+import {
+  Form,
+  Button as BsButton,
+  Alert,
+  Spinner,
+  Row,
+  Col,
+  Table,
+} from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../utils/apiClient";
 import { showToast, handleApiError } from "../utils/helpers";
@@ -27,7 +35,8 @@ const PurchaseFormPage = () => {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
-  const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] = useState(false);
+  const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] =
+    useState(false);
 
   const handlePurchaseChange = useCallback((e) => {
     setPurchaseData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -35,29 +44,39 @@ const PurchaseFormPage = () => {
 
   const handlePincodeChangeForAddress = useCallback(async (pincode) => {
     // Update pincode in state immediately
-    setPurchaseData(prev => ({ ...prev, address: { ...prev.address, pincode } }));
+    setPurchaseData((prev) => ({
+      ...prev,
+      address: { ...prev.address, pincode },
+    }));
 
     if (pincode.length === 6) {
-        setIsFetchingAddress(true);
-        try {
-            const response = await axios.get(`https://api.postalpincode.in/pincode/${pincode}`);
-            const data = response.data[0];
-            if (data.Status === "Success") {
-                const postOffice = data.PostOffice[0];
-                setPurchaseData(prev => ({
-                    ...prev,
-                    address: {
-                        ...prev.address,
-                        city: postOffice.District,
-                        state: postOffice.State,
-                        pincode: pincode // Ensure pincode is also set here
-                    },
-                    stateName: postOffice.State // Update stateName directly
-                }));
-                showToast(`City and State auto-filled for pincode ${pincode}.`, true);
-            } else { showToast(`Pincode ${pincode} not found or invalid.`, false); }
-        } catch (err) { showToast("Error fetching address from pincode.", false); }
-        finally { setIsFetchingAddress(false); }
+      setIsFetchingAddress(true);
+      try {
+        const response = await axios.get(
+          `https://api.postalpincode.in/pincode/${pincode}`
+        );
+        const data = response.data[0];
+        if (data.Status === "Success") {
+          const postOffice = data.PostOffice[0];
+          setPurchaseData((prev) => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              city: postOffice.District,
+              state: postOffice.State,
+              pincode: pincode, // Ensure pincode is also set here
+            },
+            stateName: postOffice.State, // Update stateName directly
+          }));
+          showToast(`City and State auto-filled for pincode ${pincode}.`, true);
+        } else {
+          showToast(`Pincode ${pincode} not found or invalid.`, false);
+        }
+      } catch (err) {
+        showToast("Error fetching address from pincode.", false);
+      } finally {
+        setIsFetchingAddress(false);
+      }
     }
   }, []);
 
@@ -67,22 +86,24 @@ const PurchaseFormPage = () => {
       // Convert quantity and price to numbers, otherwise keep as is
       updatedItems[index] = {
         ...updatedItems[index],
-        [field]: (["quantity", "price"].includes(field)) ? Number(value) : value
+        [field]: ["quantity", "price"].includes(field) ? Number(value) : value,
       };
       return { ...prev, items: updatedItems };
     });
   }, []);
 
   const handleAddItemToPurchase = useCallback((item) => {
-    setPurchaseData(prev => {
+    setPurchaseData((prev) => {
       const newItem = {
         itemId: item._id, // Store item ID
         description: item.name,
         hsnSacCode: item.hsnCode,
         quantity: 1, // Default quantity
-        unit: item.baseUnit, // Direct property
-        price: item.buyingPrice || item.sellingPrice, // Direct property
+        unit: item.baseUnit,
+        price: item.buyingPrice || 0, // Use item's average buying price as a default, user will edit
         gstRate: item.gstRate,
+        profitMarginPercentage: item.profitMarginPercentage || 20,
+        originalItem: item, // Store the original item to access its units
       };
       return { ...prev, items: [...prev.items, newItem] };
     });
@@ -97,7 +118,8 @@ const PurchaseFormPage = () => {
 
   const calculateTotalAmount = useCallback(() => {
     return purchaseData.items.reduce((total, item) => {
-      const itemSubtotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
+      const itemSubtotal =
+        (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
       const itemGst = itemSubtotal * ((parseFloat(item.gstRate) || 0) / 100);
       return total + itemSubtotal + itemGst;
     }, 0);
@@ -140,19 +162,47 @@ const PurchaseFormPage = () => {
       // Prepare address for backend (flat string)
       const addressString = `${purchaseData.address.address1}, ${purchaseData.address.address2}, ${purchaseData.address.city}, ${purchaseData.address.state}, ${purchaseData.address.pincode}`;
 
+      const processedItems = purchaseData.items.map((item) => {
+        const { originalItem, unit: selectedUnitName, quantity, price } = item;
+
+        if (!originalItem?.units || !selectedUnitName) return item;
+
+        const selectedUnitInfo = originalItem.units.find(
+          (u) => u.name === selectedUnitName
+        );
+        const baseUnitInfo = originalItem.units.find((u) => u.isBaseUnit);
+
+        if (
+          !selectedUnitInfo ||
+          !baseUnitInfo ||
+          selectedUnitInfo.name === baseUnitInfo.name
+        ) {
+          return item; // No conversion needed or possible
+        }
+
+        const conversionFactor = selectedUnitInfo.conversionFactor || 1;
+        const quantityInBaseUnit = (quantity || 0) * conversionFactor;
+        const pricePerBaseUnit =
+          conversionFactor > 0 ? (price || 0) / conversionFactor : 0;
+
+        return {
+          ...item,
+          quantity: quantityInBaseUnit,
+          unit: baseUnitInfo.name,
+          price: pricePerBaseUnit,
+        };
+      });
+
       const payload = {
         ...purchaseData,
-        address: addressString, // Send as a single string
+        address: addressString,
+        items: processedItems,
       };
 
-      // The /purchase endpoint handles bulk purchases as per your routes
-      await apiClient("/items/purchase", {
-        method: "POST",
-        body: payload,
-      });
-      showToast("Purchase added successfully!", true);
-      setPurchaseData(initialPurchaseData); // Reset form
-      navigate("/items"); // Navigate back to items list or a success page
+      await apiClient("/items/purchase", { method: "POST", body: payload });
+      showToast("Purchase added successfully! Item quantities updated.", true);
+      setPurchaseData(initialPurchaseData);
+      navigate("/items");
     } catch (err) {
       const errorMessage = handleApiError(err, "Failed to add purchase.", user);
       setError(errorMessage);
@@ -170,13 +220,27 @@ const PurchaseFormPage = () => {
       title="Add New Purchase"
       footerContent={
         <>
-          <BsButton variant="secondary" onClick={() => navigate("/items")} disabled={isSubmitting}>
+          <BsButton
+            variant="secondary"
+            onClick={() => navigate("/items")}
+            disabled={isSubmitting}
+          >
             Cancel
           </BsButton>
-          <BsButton variant="primary" onClick={handleSubmitPurchase} disabled={!isPurchaseDataValid() || isSubmitting}>
+          <BsButton
+            variant="primary"
+            onClick={handleSubmitPurchase}
+            disabled={!isPurchaseDataValid() || isSubmitting}
+          >
             {isSubmitting ? (
               <>
-                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />{" "}
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                />{" "}
                 Submitting...
               </>
             ) : (
@@ -225,7 +289,12 @@ const PurchaseFormPage = () => {
                 type="text"
                 name="address1"
                 value={purchaseData.address.address1 || ""}
-                onChange={(e) => setPurchaseData(prev => ({ ...prev, address: { ...prev.address, address1: e.target.value } }))}
+                onChange={(e) =>
+                  setPurchaseData((prev) => ({
+                    ...prev,
+                    address: { ...prev.address, address1: e.target.value },
+                  }))
+                }
                 placeholder="Address line 1"
                 disabled={isSubmitting || isFetchingAddress}
               />
@@ -238,7 +307,12 @@ const PurchaseFormPage = () => {
                 type="text"
                 name="address2"
                 value={purchaseData.address.address2 || ""}
-                onChange={(e) => setPurchaseData(prev => ({ ...prev, address: { ...prev.address, address2: e.target.value } }))}
+                onChange={(e) =>
+                  setPurchaseData((prev) => ({
+                    ...prev,
+                    address: { ...prev.address, address2: e.target.value },
+                  }))
+                }
                 placeholder="Address line 2"
                 disabled={isSubmitting || isFetchingAddress}
               />
@@ -268,7 +342,12 @@ const PurchaseFormPage = () => {
                 type="text"
                 name="city"
                 value={purchaseData.address.city || ""}
-                onChange={(e) => setPurchaseData(prev => ({ ...prev, address: { ...prev.address, city: e.target.value } }))}
+                onChange={(e) =>
+                  setPurchaseData((prev) => ({
+                    ...prev,
+                    address: { ...prev.address, city: e.target.value },
+                  }))
+                }
                 placeholder="City"
                 readOnly={!isFetchingAddress && !!purchaseData.address.city}
                 disabled={isSubmitting || isFetchingAddress}
@@ -321,8 +400,16 @@ const PurchaseFormPage = () => {
         </Row>
 
         <h5 className="mt-4 mb-3">Items Purchased</h5>
-        <ItemSearchComponent onItemSelect={handleAddItemToPurchase} onDropdownToggle={setIsItemSearchDropdownOpen} placeholder="Search and add item..."/>
-        {isItemSearchDropdownOpen && <div style={{ height: "200px" }}></div> /* Spacer for open dropdown */}
+        <ItemSearchComponent
+          onItemSelect={handleAddItemToPurchase}
+          onDropdownToggle={setIsItemSearchDropdownOpen}
+          placeholder="Search and add item..."
+        />
+        {
+          isItemSearchDropdownOpen && (
+            <div style={{ height: "200px" }}></div>
+          ) /* Spacer for open dropdown */
+        }
 
         <div className="table-responsive mt-3">
           <Table bordered hover size="sm">
@@ -332,8 +419,9 @@ const PurchaseFormPage = () => {
                 <th>HSN/SAC</th>
                 <th>Qty*</th>
                 <th>Unit*</th>
-                <th>Price*</th>
+                <th>Total Purchase Price*</th>
                 <th>GST%</th>
+                <th>Profit Margin %</th>
                 <th>Amount</th>
                 <th>Actions</th>
               </tr>
@@ -341,7 +429,9 @@ const PurchaseFormPage = () => {
             <tbody>
               {purchaseData.items.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center text-muted">No items added yet. Search and add above.</td>
+                  <td colSpan="9" className="text-center text-muted">
+                    No items added yet. Search and add above.
+                  </td>
                 </tr>
               ) : (
                 purchaseData.items.map((item, idx) => (
@@ -350,7 +440,9 @@ const PurchaseFormPage = () => {
                       <Form.Control
                         type="text"
                         value={item.description || ""}
-                        onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                        onChange={(e) =>
+                          handleItemChange(idx, "description", e.target.value)
+                        }
                         placeholder="Description"
                         required
                         disabled={isSubmitting}
@@ -360,7 +452,9 @@ const PurchaseFormPage = () => {
                       <Form.Control
                         type="text"
                         value={item.hsnSacCode || ""}
-                        onChange={(e) => handleItemChange(idx, "hsnSacCode", e.target.value)}
+                        onChange={(e) =>
+                          handleItemChange(idx, "hsnSacCode", e.target.value)
+                        }
                         placeholder="HSN/SAC"
                         disabled={isSubmitting}
                       />
@@ -369,7 +463,9 @@ const PurchaseFormPage = () => {
                       <Form.Control
                         type="number"
                         value={item.quantity || ""}
-                        onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                        onChange={(e) =>
+                          handleItemChange(idx, "quantity", e.target.value)
+                        }
                         placeholder="Qty"
                         required
                         min="0"
@@ -377,22 +473,49 @@ const PurchaseFormPage = () => {
                       />
                     </td>
                     <td>
-                      <Form.Control
-                        type="text"
-                        value={item.unit || ""}
-                        onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
-                        placeholder="Unit"
-                        required
-                        disabled={isSubmitting}
-                      />
+                      {item.originalItem &&
+                      item.originalItem.units &&
+                      item.originalItem.units.length > 0 ? (
+                        <Form.Control
+                          as="select"
+                          value={item.unit || ""}
+                          onChange={(e) =>
+                            handleItemChange(idx, "unit", e.target.value)
+                          }
+                          required
+                          disabled={isSubmitting}
+                        >
+                          {item.originalItem.units.map((unitOption) => (
+                            <option
+                              key={unitOption.name}
+                              value={unitOption.name}
+                            >
+                              {unitOption.name}
+                            </option>
+                          ))}
+                        </Form.Control>
+                      ) : (
+                        <Form.Control
+                          type="text"
+                          value={item.unit || ""}
+                          onChange={(e) =>
+                            handleItemChange(idx, "unit", e.target.value)
+                          }
+                          placeholder="Unit"
+                          required
+                          disabled={isSubmitting}
+                        />
+                      )}
                     </td>
                     <td>
                       <Form.Control
                         type="number"
                         step="0.01"
                         value={item.price || ""}
-                        onChange={(e) => handleItemChange(idx, "price", e.target.value)}
-                        placeholder="Price"
+                        onChange={(e) =>
+                          handleItemChange(idx, "price", e.target.value)
+                        }
+                        placeholder="Total Purchase Price"
                         required
                         min="0"
                         disabled={isSubmitting}
@@ -403,17 +526,47 @@ const PurchaseFormPage = () => {
                         type="number"
                         step="0.01"
                         value={item.gstRate || "0"}
-                        onChange={(e) => handleItemChange(idx, "gstRate", e.target.value)}
+                        onChange={(e) =>
+                          handleItemChange(idx, "gstRate", e.target.value)
+                        }
                         placeholder="GST %"
                         min="0"
                         disabled={isSubmitting}
                       />
                     </td>
+                    <td>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        value={item.profitMarginPercentage || ""}
+                        onChange={(e) =>
+                          handleItemChange(
+                            idx,
+                            "profitMarginPercentage",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Profit %"
+                        min="0"
+                        disabled={isSubmitting}
+                        title="This will update the item's stored profit margin."
+                      />
+                    </td>
                     <td className="align-middle text-end">
-                      {( (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) ).toFixed(2)}
+                      {(
+                        (parseFloat(item.quantity) || 0) *
+                        (parseFloat(item.price) || 0)
+                      ).toFixed(2)}
                     </td>
                     <td className="align-middle text-center">
-                      <BsButton variant="danger" size="sm" onClick={() => removeItem(idx)} disabled={isSubmitting || purchaseData.items.length === 1}>
+                      <BsButton
+                        variant="danger"
+                        size="sm"
+                        onClick={() => removeItem(idx)}
+                        disabled={
+                          isSubmitting || purchaseData.items.length === 1
+                        }
+                      >
                         Remove
                       </BsButton>
                     </td>

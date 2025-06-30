@@ -113,7 +113,7 @@ const unitSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Instead of embedding purchase history, reference purchase documents
+
 const itemSchema = new mongoose.Schema(
   {
     name: {
@@ -172,10 +172,6 @@ const itemSchema = new mongoose.Schema(
       default: "",
       index: true,
     },
-    discountAvailable: {
-      type: Boolean,
-      default: false,
-    },
     maxDiscountPercentage: {
       type: Number,
       min: 0,
@@ -183,7 +179,12 @@ const itemSchema = new mongoose.Schema(
       default: 0,
     },
     needsRestock: { type: Boolean, default: false },
-    lowStockThreshold: { type: Number, default: 5 }, // Default low stock threshold
+    lowStockThreshold: { type: Number, default: 5 }, 
+        profitMarginPercentage: {
+      type: Number,
+      default: 20, // You can set a default profit margin here
+      min: 0,
+    },
     excelImportHistory: [
       {
         action: { type: String, enum: ["created", "updated"], required: true },
@@ -261,6 +262,23 @@ purchaseSchema.pre("save", function (next) {
       return sum + itemTotal + gstAmount;
     }, 0);
   }
+  next();
+});
+
+// Add validation
+itemSchema.path('units').validate(function(units) {
+  if (!units || units.length === 0) return false;
+  const baseUnitCount = units.filter(unit => unit.isBaseUnit).length;
+  return baseUnitCount === 1;
+}, 'There must be exactly one base unit in the units array');
+
+// Add pre-save hook
+itemSchema.pre('save', function(next) {
+  const baseUnits = this.units.filter(unit => unit.isBaseUnit);
+  if (baseUnits.length !== 1) {
+    return next(new Error('There must be exactly one base unit'));
+  }
+  this.baseUnit = baseUnits[0].name;
   next();
 });
 

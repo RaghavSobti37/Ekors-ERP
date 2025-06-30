@@ -11,10 +11,7 @@ import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons.jsx";
 import Footer from "../components/Footer";
 import {
-  Eye,
   Trash,
-  FileEarmarkArrowDown,
-  FileEarmarkArrowUp,
   PlusCircle,
   ClockHistory,
   CheckCircleFill,
@@ -25,7 +22,8 @@ import ReusableModal from "../components/ReusableModal.jsx";
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE = "globalLowStockThresholdSetting";
+const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
+  "globalLowStockThresholdSetting";
 
 export default function Items() {
   const { user, loading: authLoading } = useAuth();
@@ -48,10 +46,11 @@ export default function Items() {
   const [formData, setFormData] = useState({
     name: "",
     quantity: "0",
-    baseUnit: "Nos", // Directly on formData
-    sellingPrice: "", // Directly on formData
-    buyingPrice: "", // Directly on formData
-    units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+    baseUnit: "Nos",
+    sellingPrice: "",
+    buyingPrice: "",
+    profitMarginPercentage: "20",
+    units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
     gstRate: "0",
     hsnCode: "",
     category: "",
@@ -63,7 +62,7 @@ export default function Items() {
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add this line
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -82,7 +81,8 @@ export default function Items() {
   const location = useLocation();
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [quantityFilterInputValue, setQuantityFilterInputValue] = useState("");
-  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] = useState("");
+  const [stockAlertsPageFilterThreshold, setStockAlertsPageFilterThreshold] =
+    useState("");
 
   const queryParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -142,7 +142,7 @@ export default function Items() {
           sortDirection: sortConfig.direction,
           status: "approved",
         };
-        
+
         if (selectedCategory !== "All") params.category = selectedCategory;
         if (searchTerm) params.searchTerm = searchTerm.toLowerCase();
 
@@ -288,11 +288,11 @@ export default function Items() {
     }
   }, [authLoading, user, currentPage, itemsPerPage]);
 
-    const handleExportToExcel = async () => {
+  const handleExportToExcel = async () => {
     try {
       setIsExportingExcel(true);
       const response = await apiClient("/items/export-excel", {
-        responseType: "blob", // Important for file downloads
+        responseType: "blob",
       });
       saveAs(response, "items_export.xlsx");
       showToast("Items exported successfully!", true);
@@ -320,18 +320,36 @@ export default function Items() {
 
   const handleEditItem = (item) => {
     setEditingItem(item);
+
+    // Safely handle units array
+    const itemUnits = item.units || [];
+    const processedUnits =
+      itemUnits.length > 0
+        ? itemUnits.filter(Boolean).map((unit) => ({
+            name: unit?.name || "Nos",
+            conversionFactor: unit?.conversionFactor || 1,
+            isBaseUnit: unit?.isBaseUnit || false,
+          }))
+        : [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }];
+
+      console.log("Processing units for item:", item.name, processedUnits);
+
     setFormData({
       name: item.name,
       quantity: item.quantity?.toFixed(2) || "0.00",
-      baseUnit: item.baseUnit || 'Nos', // Direct
-      sellingPrice: item.sellingPrice?.toString() || '0', // Direct
-      buyingPrice: item.buyingPrice?.toString() || '0', // Direct
-      units: item.units?.length > 0 ? item.units : [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+      baseUnit:
+        item.baseUnit ||
+        processedUnits.find((u) => u.isBaseUnit)?.name ||
+        "Nos",
+      sellingPrice: item.sellingPrice?.toFixed(2) || "0.00",
+      buyingPrice: item.buyingPrice?.toFixed(2) || "0.00",
+      profitMarginPercentage: item.profitMarginPercentage?.toString() || "20",
+      units: processedUnits,
       gstRate: item.gstRate?.toString() || "0",
       hsnCode: item.hsnCode || "",
       category: item.category || "",
-      lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       maxDiscountPercentage: item.maxDiscountPercentage?.toString() || "",
+      lowStockThreshold: item.lowStockThreshold?.toString() || "5",
       image: item.image || "",
     });
     setShowEditItemModal(true);
@@ -342,38 +360,53 @@ export default function Items() {
       setError("Item name is required.");
       return;
     }
-    
+
     const sellingPrice = parseFloat(formData.sellingPrice) || 0;
     const buyingPrice = parseFloat(formData.buyingPrice) || 0;
-    
-    if (buyingPrice > sellingPrice && sellingPrice !== 0) { // Allow buyingPrice > sellingPrice if sellingPrice is 0 (e.g., for internal tracking)
+
+    if (buyingPrice > sellingPrice && sellingPrice !== 0) {
       setError("Buying price cannot be greater than selling price.");
       return;
     }
-    
-    if (!formData.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
+
+    if (!formData.baseUnit || !formData.units.some((u) => u?.isBaseUnit)) {
       setError("A base unit must be selected.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const updatedItemPayload = { 
-        ...formData,
+      const updatedItemPayload = {
+        name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        sellingPrice: sellingPrice,
-        buyingPrice: buyingPrice,
+        baseUnit: formData.baseUnit,
+        sellingPrice: parseFloat(formData.sellingPrice) || sellingPrice,
+        buyingPrice: parseFloat(formData.buyingPrice) || buyingPrice,
+        profitMarginPercentage:
+        parseFloat(formData.profitMarginPercentage) || 20,
+        units: formData.units.filter(Boolean),
         gstRate: parseFloat(formData.gstRate) || 0,
+        hsnCode: formData.hsnCode,
+        category: formData.category,
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
+        image: formData.image,
       };
 
-      await apiClient(`/items/${editingItem._id}`, {
+      console.log("Updating item with payload:", updatedItemPayload);
+      const response = await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
         body: updatedItemPayload,
       });
-      
-      await fetchItems();
+
+      console.log("Update response:", response);
+
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item._id === editingItem._id ? response.data : item
+        )
+      );
+
       setShowEditItemModal(false);
       setEditingItem(null);
       showToast("Item updated successfully!", true);
@@ -390,16 +423,16 @@ export default function Items() {
       setError("Item name is required");
       return;
     }
-    
+
     const sellingPrice = parseFloat(formData.sellingPrice) || 0;
     const buyingPrice = parseFloat(formData.buyingPrice) || 0;
-    
-    if (buyingPrice > sellingPrice && sellingPrice !== 0) { // Allow buyingPrice > sellingPrice if sellingPrice is 0
+
+    if (buyingPrice > sellingPrice && sellingPrice !== 0) {
       setError("Buying price cannot be greater than selling price.");
       return;
     }
-    
-    if (!formData.baseUnit || !formData.units.some(u => u.isBaseUnit)) {
+
+    if (!formData.baseUnit || !formData.units.some((u) => u?.isBaseUnit)) {
       setError("A base unit must be selected.");
       return;
     }
@@ -412,7 +445,9 @@ export default function Items() {
         baseUnit: formData.baseUnit,
         sellingPrice: sellingPrice,
         buyingPrice: buyingPrice,
-        units: formData.units,
+        profitMarginPercentage:
+          parseFloat(formData.profitMarginPercentage) || 20,
+        units: formData.units.filter(Boolean),
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         category: formData.category,
@@ -420,7 +455,7 @@ export default function Items() {
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
         image: formData.image || "",
       };
-      
+
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
       setShowAddItemModal(false);
@@ -430,7 +465,8 @@ export default function Items() {
         baseUnit: "Nos",
         sellingPrice: "",
         buyingPrice: "",
-        units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+        profitMarginPercentage: "20",
+        units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
         gstRate: "0",
         hsnCode: "",
         category: "",
@@ -465,8 +501,8 @@ export default function Items() {
         body: { categoryName: newCategoryName },
       });
       showToast(`Category "${newCategoryName}" is now available.`, true);
-      await fetchCategories(); // Refresh categories list
-      setFormData(prev => ({ ...prev, category: newCategoryName })); // Select the new category
+      await fetchCategories();
+      setFormData((prev) => ({ ...prev, category: newCategoryName }));
       setIsAddingNewCategory(false);
       setNewCategoryName("");
     } catch (err) {
@@ -501,7 +537,11 @@ export default function Items() {
         await fetchPendingReviewItems();
         showToast("Item Deleted Successfully", true);
       } catch (err) {
-        const errorMessage = handleApiError(err, "Failed to delete item.", user);
+        const errorMessage = handleApiError(
+          err,
+          "Failed to delete item.",
+          user
+        );
         setError(errorMessage);
         console.error("Error deleting item:", err);
       } finally {
@@ -559,21 +599,18 @@ export default function Items() {
   };
 
   const anyLoading =
-    isSubmitting ||
-    isProcessingExcel ||
-    isExportingExcel ||
-    loading;
+    isSubmitting || isProcessingExcel || isExportingExcel || loading;
 
-  return ( // Removed showPurchaseModal from here
+  return (
     <div className="items-container">
       <Navbar />
       <div className="container mt-4">
-        {error && !showAddItemModal && !showEditItemModal && !showPurchaseModal && (
+        {error && !showAddItemModal && !showEditItemModal && (
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
         )}
-        
+
         {excelUpdateStatus.error && (
           <div className="alert alert-danger" role="alert">
             Excel Update Error: {excelUpdateStatus.error}
@@ -581,7 +618,8 @@ export default function Items() {
         )}
 
         {/* Pending Review Items Section */}
-        {user && (user.role === "admin" || user.role === "super-admin") &&
+        {user &&
+          (user.role === "admin" || user.role === "super-admin") &&
           totalPendingReviewItems > 0 && (
             <Card className="mb-4 border-warning">
               <Card.Header className="bg-warning text-dark">
@@ -668,24 +706,33 @@ export default function Items() {
 
         {/* Main Items Table Section */}
         <div className="mb-3">
-          <div className="d-flex align-items-center justify-content-between mb-3" style={{ width: "100%", minWidth: "100%" }}>
+          <div
+            className="d-flex align-items-center justify-content-between mb-3"
+            style={{ width: "100%", minWidth: "100%" }}
+          >
             <div style={{ flexShrink: 0, minWidth: "200px" }}>
               <h2 style={{ color: "black", margin: 0, whiteSpace: "nowrap" }}>
                 {stockAlertFilterActive
-                  ? `Stock Alerts (Qty < ${parseInt(stockAlertsPageFilterThreshold, 10) || effectiveLowStockThreshold})`
-                  : user && (user.role === "admin" || user.role === "super-admin")
-                    ? "Items List (Approved)"
-                    : "All Items List"}
+                  ? `Stock Alerts (Qty < ${
+                      parseInt(stockAlertsPageFilterThreshold, 10) ||
+                      effectiveLowStockThreshold
+                    })`
+                  : user &&
+                    (user.role === "admin" || user.role === "super-admin")
+                  ? "Items List (Approved)"
+                  : "All Items List"}
               </h2>
             </div>
 
-            <div style={{
-              flexGrow: 1,
-              flexShrink: 1,
-              minWidth: "200px",
-              maxWidth: "400px",
-              margin: "0 10px"
-            }}>
+            <div
+              style={{
+                flexGrow: 1,
+                flexShrink: 1,
+                minWidth: "200px",
+                maxWidth: "400px",
+                margin: "0 10px",
+              }}
+            >
               <SearchBar
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -699,16 +746,21 @@ export default function Items() {
               />
             </div>
 
-            <div style={{
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              whiteSpace: "nowrap"
-            }}>
+            <div
+              style={{
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                whiteSpace: "nowrap",
+              }}
+            >
               {stockAlertFilterActive ? (
                 <>
-                  <label htmlFor="stockAlertThresholdInput" className="mb-0 me-1">
+                  <label
+                    htmlFor="stockAlertThresholdInput"
+                    className="mb-0 me-1"
+                  >
                     Alert Qty &lt;
                   </label>
                   <input
@@ -725,7 +777,9 @@ export default function Items() {
                       }
                     }}
                     onBlur={applyStockAlertFilter}
-                    onKeyPress={(e) => e.key === "Enter" && applyStockAlertFilter()}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && applyStockAlertFilter()
+                    }
                     style={{ width: "70px" }}
                     min="0"
                     disabled={anyLoading}
@@ -741,7 +795,11 @@ export default function Items() {
                   <Button
                     size="sm"
                     variant="outline-secondary"
-                    onClick={() => handleUpdateGlobalLowStockThreshold(stockAlertsPageFilterThreshold)}
+                    onClick={() =>
+                      handleUpdateGlobalLowStockThreshold(
+                        stockAlertsPageFilterThreshold
+                      )
+                    }
                     disabled={anyLoading}
                     title="Set as global default"
                   >
@@ -773,7 +831,9 @@ export default function Items() {
                     className="form-control form-control-sm"
                     placeholder="Qty ≤"
                     value={quantityFilterInputValue}
-                    onChange={(e) => setQuantityFilterInputValue(e.target.value)}
+                    onChange={(e) =>
+                      setQuantityFilterInputValue(e.target.value)
+                    }
                     style={{ width: "70px" }}
                     min="0"
                     disabled={anyLoading}
@@ -793,7 +853,7 @@ export default function Items() {
               )}
             </div>
           </div>
-          
+
           {excelUpdateStatus.success && !stockAlertFilterActive && (
             <Alert variant="success" className="mt-2 py-1 px-2 small">
               {excelUpdateStatus.success}
@@ -877,12 +937,19 @@ export default function Items() {
             </thead>
             <tbody>
               {items.length > 0 ? (
+                // console.log('Items array:', items),
+                // console.log('Items length:', items?.length),
+                // console.log('First item:', items?.[0]),
+                // console.log('Items type:', typeof items),
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
-                      <td>{item.name}</td>
+                      <td>{item.name}
+                        
+                      </td>
                       <td>
-                        {parseFloat(item.quantity || 0).toFixed(2)} {item.baseUnit || ''}{" "}
+                        {parseFloat(item.quantity || 0).toFixed(2)}{" "}
+                        {item.baseUnit || ""}{" "}
                         {item.quantity <= 0 ? (
                           <span
                             className="badge bg-danger ms-2"
@@ -900,8 +967,12 @@ export default function Items() {
                           </span>
                         ) : null}
                       </td>
-                      <td>{`₹${parseFloat(item.sellingPrice || 0).toFixed(2)}`}</td>
-                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)}`}</td>
+                      <td>{`₹${parseFloat(item.sellingPrice || 0).toFixed(
+                        2
+                      )}`}</td>
+                      <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(
+                        2
+                      )}`}</td>
                       <td>{item.baseUnit || "N/A"}</td>
                       <td>{`${item.gstRate || 0}%`}</td>
                       <td>
@@ -974,54 +1045,86 @@ export default function Items() {
                             <table className="table table-sm table-bordered item-details-table">
                               <tbody>
                                 <tr>
-                                  <td><strong>Name</strong></td>
+                                  <td>
+                                    <strong>Name</strong>
+                                  </td>
                                   <td>{item.name}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Category</strong></td>
+                                  <td>
+                                    <strong>Category</strong>
+                                  </td>
                                   <td>{item.category || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Quantity</strong></td>
                                   <td>
-                                    {parseFloat(item.quantity || 0).toFixed(2)} {item.baseUnit}
+                                    <strong>Quantity</strong>
+                                  </td>
+                                  <td>
+                                    {parseFloat(item.quantity || 0).toFixed(2)}{" "}
+                                    {/* {item.baseUnit} */}
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
-                                        : ` (Below item's restock threshold: ${item.lowStockThreshold || "Not Set"})`
+                                        : ` (Below item's restock threshold: ${
+                                            item.lowStockThreshold || "Not Set"
+                                          })`
                                       : item.quantity > 0 &&
-                                        item.quantity <= item.lowStockThreshold &&
+                                        item.quantity <=
+                                          item.lowStockThreshold &&
                                         ` (Low stock based on item's threshold: ${item.lowStockThreshold})`}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Selling Price</strong></td>
-                                  <td>{`₹${parseFloat(item.sellingPrice || 0).toFixed(2)} per ${item.baseUnit}`}</td>
-                                </tr>
-                                <tr>
-                                  <td><strong>Buying Price</strong></td>
-                                  <td>{`₹${parseFloat(item.buyingPrice || 0).toFixed(2)} per ${item.baseUnit}`}</td>
-                                </tr>
-                                <tr>
-                                  <td><strong>Units</strong></td>
                                   <td>
-                                    {item.units?.map(u => (
-                                      <div key={u.name}>
-                                        {u.name} ({u.conversionFactor} {u.name} = 1 {item.baseUnit})
-                                      </div>
-                                    )) || 'N/A'}
+                                    <strong>Selling Price</strong>
+                                  </td>
+                                  <td>{`₹${parseFloat(
+                                    item.sellingPrice || 0
+                                  ).toFixed(2)} per ${item.baseUnit}`}</td>
+                                </tr>
+                                <tr>
+                                  <td>
+                                    <strong>Buying Price</strong>
+                                  </td>
+                                  <td>{`₹${parseFloat(
+                                    item.buyingPrice || 0
+                                  ).toFixed(2)} per ${item.baseUnit}`}</td>
+                                </tr>
+                                <tr>
+                                  <td>
+                                    <strong>Units</strong>
+                                  </td>
+                                  <td>
+                                    {item.units && item.units.length > 0
+                                      ? item.units
+                                          .filter((u) => u && u.name) // Filter out undefined/null units
+                                          .map((u) => (
+                                            <div key={u.name}>
+                                              {u.name} (
+                                              {u.conversionFactor || 0} {u.name}{" "}
+                                              = 1 {item.baseUnit})
+                                            </div>
+                                          ))
+                                      : "N/A"}
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td><strong>GST Rate</strong></td>
+                                  <td>
+                                    <strong>GST Rate</strong>
+                                  </td>
                                   <td>{item.gstRate}%</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>HSN Code</strong></td>
+                                  <td>
+                                    <strong>HSN Code</strong>
+                                  </td>
                                   <td>{item.hsnCode || "-"}</td>
                                 </tr>
                                 <tr>
-                                  <td><strong>Max Discount</strong></td>
+                                  <td>
+                                    <strong>Max Discount</strong>
+                                  </td>
                                   <td>
                                     {item.maxDiscountPercentage > 0
                                       ? `${item.maxDiscountPercentage}%`
@@ -1057,7 +1160,6 @@ export default function Items() {
                 }
               }}
               onItemsPerPageChange={handleItemsPerPageChange}
-              // Pass export/import handlers
               onExportExcel={
                 !stockAlertFilterActive ? handleExportToExcel : undefined
               }
@@ -1080,16 +1182,17 @@ export default function Items() {
               setFormData({
                 name: "",
                 quantity: "0.00",
-                baseUnit: "Nos", // Direct
-                sellingPrice: "", // Direct
-                buyingPrice: "", // Direct
-                units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+                baseUnit: "Nos",
+                sellingPrice: "",
+                buyingPrice: "",
+                profitMarginPercentage: "20",
+                units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
                 image: "",
                 gstRate: "0",
                 hsnCode: "",
                 category: "",
                 maxDiscountPercentage: "",
-                lowStockThreshold: "5", // Default threshold
+                lowStockThreshold: "5",
               });
               setError(null);
             }}
@@ -1102,12 +1205,15 @@ export default function Items() {
                   onClick={() => {
                     setShowAddItemModal(false);
                     setFormData({
-                      name: "", // Reset to empty string for new item
+                      name: "",
                       quantity: "0.00",
-                      baseUnit: "Nos", // Direct
-                      sellingPrice: "", // Direct
-                      buyingPrice: "", // Direct
-                      units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+                      baseUnit: "Nos",
+                      sellingPrice: "",
+                      buyingPrice: "",
+                      profitMarginPercentage: "20",
+                      units: [
+                        { name: "Nos", isBaseUnit: true, conversionFactor: 1 },
+                      ],
                       gstRate: "0",
                       hsnCode: "",
                       category: "",
@@ -1126,7 +1232,7 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || // Direct
+                    !formData.sellingPrice ||
                     !formData.category ||
                     isSubmitting ||
                     isAddingNewCategory
@@ -1176,16 +1282,17 @@ export default function Items() {
                       type="number"
                       className="form-control mb-2"
                       placeholder="Quantity"
-                      name="quantity" // Quantity input
+                      name="quantity"
                       value={formData.quantity}
                       onChange={(e) => {
-     const val = e.target.value;
+                        const val = e.target.value;
                         if (val === "" || !isNaN(val)) {
                           if (Number(val) < 0) {
                             setFormData({ ...formData, quantity: "0" });
                           } else {
                             setFormData({ ...formData, quantity: val });
-                          }                        }
+                          }
+                        }
                       }}
                     />
                   </div>
@@ -1374,22 +1481,63 @@ export default function Items() {
                 <div className="col-12 mt-3 pt-3 border-top">
                   <h5>Pricing & Units</h5>
                   <div className="row">
-                    <div className="col-md-6">
-                      <label>Buying Price (per Base Unit) <span className="text-danger">*</span></label>
+                    <div className="col-md-4">
+                      <label>
+                        Buying Price (per Base Unit){" "}
+                        <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="number" step="0.01" className="form-control mb-2"
-                        placeholder="Buying Price" name="buyingPrice"
-                        value={formData.buyingPrice} // Direct
-                        onChange={(e) => setFormData(prev => ({ ...prev, buyingPrice: e.target.value }))} // Direct
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Buying Price"
+                        name="buyingPrice"
+                        value={formData.buyingPrice}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            buyingPrice: e.target.value,
+                          }))
+                        }
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label>Selling Price (per Base Unit) <span className="text-danger">*</span></label>
+                    <div className="col-md-4">
+                      <label>
+                        Selling Price (per Base Unit){" "}
+                        <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="number" step="0.01" className="form-control mb-2"
-                        placeholder="Selling Price" name="sellingPrice"
-                        value={formData.sellingPrice} // Direct
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Selling Price"
+                        name="sellingPrice"
+                        value={formData.sellingPrice}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            sellingPrice: e.target.value,
+                          }))
+                        }
                         required
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label>Profit Margin (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="e.g., 20"
+                        name="profitMarginPercentage"
+                        value={formData.profitMarginPercentage}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            profitMarginPercentage: e.target.value,
+                          }))
+                        }
+                        min="0"
                       />
                     </div>
                   </div>
@@ -1405,91 +1553,138 @@ export default function Items() {
                         </tr>
                       </thead>
                       <tbody>
-                        {formData.units.map((unit, index) => (
-                          <tr key={index}>
-                            <td>
-                              <input
-                                type="text" className="form-control form-control-sm"
-                                value={unit.name}
-                                onChange={(e) => {
-                                  const newUnits = [...formData.units];
-                                  newUnits[index].name = e.target.value;
-                                  // If this was the base unit, update the pricing object too
-                                  if (unit.isBaseUnit) { // Update baseUnit directly on formData
-                                    setFormData(prev => ({ ...prev, units: newUnits, baseUnit: e.target.value }));
-                                  } else {
-                                    setFormData(prev => ({ ...prev, units: newUnits }));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number" step="any" className="form-control form-control-sm"
-                                value={unit.conversionFactor}
-                                disabled={unit.isBaseUnit}
-                                onChange={(e) => {
-                                  const newUnits = [...formData.units];
-                                  newUnits[index].conversionFactor = parseFloat(e.target.value) || 0;
-                                  setFormData(prev => ({ ...prev, units: newUnits }));
-                                }}
-                              />
-                            </td>
-                            <td className="text-center align-middle">
-                              <input
-                                type="radio" className="form-check-input"
-                                name="isBaseUnit"
-                                checked={unit.isBaseUnit}
-                                onChange={() => {
-                                  const newUnits = formData.units.map((u, i) => {
-                                    const isThisOne = i === index;
-                                    return {
-                                      ...u,
-                                      isBaseUnit: isThisOne,
-                                      conversionFactor: isThisOne ? 1 : u.conversionFactor,
-                                    };
-                                  });
-                                  const newBaseUnitName = newUnits[index].name;
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    units: newUnits, // Update baseUnit directly on formData
-                                    baseUnit: newBaseUnitName
-                                  }));
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <Button
-                                variant="danger" size="sm"
-                                onClick={() => {
-                                  if (formData.units.length > 1) {
-                                    const newUnits = formData.units.filter((_, i) => i !== index);
-                                    // If the deleted unit was the base unit, make the first one the new base
-                                    if (unit.isBaseUnit) {
-                                      newUnits[0].isBaseUnit = true;
-                                      newUnits[0].conversionFactor = 1;
-                                      const newBaseUnitName = newUnits[0].name; // Update baseUnit directly on formData
-                                      setFormData(prev => ({ ...prev, units: newUnits, baseUnit: newBaseUnitName }));
+                        {(formData.units || [])
+                          .filter(Boolean)
+                          .map((unit, index) => (
+                            <tr key={index}>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={unit?.name || ""}
+                                  onChange={(e) => {
+                                    const newName = e.target.value;
+                                    const newUnits = formData.units.map(
+                                      (u, i) =>
+                                        i === index
+                                          ? { ...u, name: newName }
+                                          : u
+                                    );
+                                    if (newUnits[index]?.isBaseUnit) {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        units: newUnits,
+                                        baseUnit: newName,
+                                      }));
                                     } else {
-                                      setFormData(prev => ({ ...prev, units: newUnits }));
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        units: newUnits,
+                                      }));
                                     }
-                                  }
-                                }}
-                                disabled={formData.units.length <= 1}
-                              >
-                                <Trash />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  className="form-control form-control-sm"
+                                  value={unit?.conversionFactor || 1}
+                                  disabled={unit?.isBaseUnit}
+                                  onChange={(e) => {
+                                    const newConversionFactor =
+                                      parseFloat(e.target.value) || 0;
+                                    const newUnits = formData.units.map(
+                                      (u, i) =>
+                                        i === index
+                                          ? {
+                                              ...u,
+                                              conversionFactor:
+                                                newConversionFactor,
+                                            }
+                                          : u
+                                    );
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      units: newUnits,
+                                    }));
+                                  }}
+                                />
+                              </td>
+                              <td className="text-center align-middle">
+                                <input
+                                  type="radio"
+                                  className="form-check-input"
+                                  name="isBaseUnit"
+                                  checked={unit?.isBaseUnit || false}
+                                  onChange={() => {
+                                    const newUnits = formData.units.map(
+                                      (u, i) => {
+                                        const isThisOne = i === index;
+                                        return {
+                                          ...u,
+                                          isBaseUnit: isThisOne,
+                                          conversionFactor: isThisOne
+                                            ? 1
+                                            : u.conversionFactor,
+                                        };
+                                      }
+                                    );
+                                    const newBaseUnitName =
+                                      newUnits[index]?.name || "Nos";
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      units: newUnits,
+                                      baseUnit: newBaseUnitName,
+                                    }));
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (formData.units.length > 1) {
+                                      const newUnits = formData.units.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      if (unit?.isBaseUnit) {
+                                        newUnits[0].isBaseUnit = true;
+                                        newUnits[0].conversionFactor = 1;
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          units: newUnits,
+                                          baseUnit: newUnits[0]?.name || "Nos",
+                                        }));
+                                      } else {
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          units: newUnits,
+                                        }));
+                                      }
+                                    }
+                                  }}
+                                  disabled={formData.units.length <= 1}
+                                >
+                                  <Trash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
                   <Button
-                    variant="outline-primary" size="sm"
+                    variant="outline-primary"
+                    size="sm"
                     onClick={() => {
-                      const newUnits = [...formData.units, { name: '', conversionFactor: 1, isBaseUnit: false }];
-                      setFormData(prev => ({ ...prev, units: newUnits }));
+                      const newUnits = [
+                        ...formData.units,
+                        { name: "", conversionFactor: 1, isBaseUnit: false },
+                      ];
+                      setFormData((prev) => ({ ...prev, units: newUnits }));
                     }}
                   >
                     + Add Unit
@@ -1527,15 +1722,17 @@ export default function Items() {
                   className="btn btn-success"
                   disabled={
                     !formData.name ||
-                    !formData.sellingPrice || // Direct
-                    !formData.category || // Direct
-                    isSubmitting // Direct
+                    !formData.sellingPrice ||
+                    !formData.category ||
+                    isSubmitting
                   }
                 >
                   {parseFloat(formData.buyingPrice) >
-                    parseFloat(formData.sellingPrice) && formData.sellingPrice !== '0' && (
+                    parseFloat(formData.sellingPrice) &&
+                    formData.sellingPrice !== "0" && (
                       <Alert variant="warning" className="p-2 small mb-0 me-2">
-                        Buying price cannot be greater than Selling price (if Selling Price is not 0)!
+                        Buying price cannot be greater than Selling price (if
+                        Selling Price is not 0)!
                       </Alert>
                     )}
 
@@ -1580,9 +1777,9 @@ export default function Items() {
                       type="number"
                       className="form-control mb-2"
                       name="quantity"
-                      value={formData.quantity} // Quantity input
+                      value={formData.quantity}
                       onChange={(e) => {
-         const val = e.target.value;
+                        const val = e.target.value;
                         if (val === "" || !isNaN(val)) {
                           if (Number(val) < 0) {
                             setFormData({ ...formData, quantity: "0" });
@@ -1706,26 +1903,67 @@ export default function Items() {
                     )}
                   </div>
                 </div>
-                 {/* Unit Management Section */}
-                 <div className="col-12 mt-3 pt-3 border-top">
+                {/* Unit Management Section */}
+                <div className="col-12 mt-3 pt-3 border-top">
                   <h5>Pricing & Units</h5>
                   <div className="row">
-                    <div className="col-md-6">
-                      <label>Buying Price (per Base Unit) <span className="text-danger">*</span></label>
+                    <div className="col-md-4">
+                      <label>
+                        Buying Price (per Base Unit){" "}
+                        <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="number" step="0.01" className="form-control mb-2"
-                        placeholder="Buying Price" name="buyingPrice"
-                        value={formData.buyingPrice} // Direct
-                        onChange={(e) => setFormData(prev => ({ ...prev, buyingPrice: e.target.value }))} // Direct
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Buying Price"
+                        name="buyingPrice"
+                        value={formData.buyingPrice}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            buyingPrice: e.target.value,
+                          }))
+                        }
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label>Selling Price (per Base Unit) <span className="text-danger">*</span></label>
+                    <div className="col-md-4">
+                      <label>
+                        Selling Price (per Base Unit){" "}
+                        <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="number" step="0.01" className="form-control mb-2"
-                        placeholder="Selling Price" name="sellingPrice"
-                        value={formData.sellingPrice} // Direct
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="Selling Price"
+                        name="sellingPrice"
+                        value={formData.sellingPrice}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            sellingPrice: e.target.value,
+                          }))
+                        }
                         required
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label>Profit Margin (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mb-2"
+                        placeholder="e.g., 20"
+                        name="profitMarginPercentage"
+                        value={formData.profitMarginPercentage}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            profitMarginPercentage: e.target.value,
+                          }))
+                        }
+                        min="0"
                       />
                     </div>
                   </div>
@@ -1741,91 +1979,138 @@ export default function Items() {
                         </tr>
                       </thead>
                       <tbody>
-                        {formData.units.map((unit, index) => (
-                          <tr key={index}>
-                            <td>
-                              <input
-                                type="text" className="form-control form-control-sm"
-                                value={unit.name}
-                                onChange={(e) => {
-                                  const newUnits = [...formData.units];
-                                  newUnits[index].name = e.target.value;
-                                  // If this was the base unit, update the pricing object too
-                                  if (unit.isBaseUnit) { // Update baseUnit directly on formData
-                                    setFormData(prev => ({ ...prev, units: newUnits, baseUnit: e.target.value }));
-                                  } else {
-                                    setFormData(prev => ({ ...prev, units: newUnits }));
-                                  }
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number" step="any" className="form-control form-control-sm"
-                                value={unit.conversionFactor}
-                                disabled={unit.isBaseUnit}
-                                onChange={(e) => {
-                                  const newUnits = [...formData.units];
-                                  newUnits[index].conversionFactor = parseFloat(e.target.value) || 0;
-                                  setFormData(prev => ({ ...prev, units: newUnits }));
-                                }}
-                              />
-                            </td>
-                            <td className="text-center align-middle">
-                              <input
-                                type="radio" className="form-check-input"
-                                name="isBaseUnit"
-                                checked={unit.isBaseUnit}
-                                onChange={() => {
-                                  const newUnits = formData.units.map((u, i) => {
-                                    const isThisOne = i === index;
-                                    return {
-                                      ...u,
-                                      isBaseUnit: isThisOne,
-                                      conversionFactor: isThisOne ? 1 : u.conversionFactor,
-                                    };
-                                  });
-                                  const newBaseUnitName = newUnits[index].name;
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    units: newUnits, // Update baseUnit directly on formData
-                                    baseUnit: newBaseUnitName
-                                  }));
-                                }}
-                              />
-                            </td>
-                            <td>
-                              <Button
-                                variant="danger" size="sm"
-                                onClick={() => {
-                                  if (formData.units.length > 1) {
-                                    const newUnits = formData.units.filter((_, i) => i !== index);
-                                    // If the deleted unit was the base unit, make the first one the new base
-                                    if (unit.isBaseUnit) {
-                                      newUnits[0].isBaseUnit = true;
-                                      newUnits[0].conversionFactor = 1;
-                                      const newBaseUnitName = newUnits[0].name; // Update baseUnit directly on formData
-                                      setFormData(prev => ({ ...prev, units: newUnits, baseUnit: newBaseUnitName }));
+                        {(formData.units || [])
+                          .filter(Boolean)
+                          .map((unit, index) => (
+                            <tr key={index}>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={unit?.name || ""}
+                                  onChange={(e) => {
+                                    const newName = e.target.value;
+                                    const newUnits = formData.units.map(
+                                      (u, i) =>
+                                        i === index
+                                          ? { ...u, name: newName }
+                                          : u
+                                    );
+                                    if (newUnits[index]?.isBaseUnit) {
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        units: newUnits,
+                                        baseUnit: newName,
+                                      }));
                                     } else {
-                                      setFormData(prev => ({ ...prev, units: newUnits }));
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        units: newUnits,
+                                      }));
                                     }
-                                  }
-                                }}
-                                disabled={formData.units.length <= 1}
-                              >
-                                <Trash />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  className="form-control form-control-sm"
+                                  value={unit?.conversionFactor || 1}
+                                  disabled={unit?.isBaseUnit}
+                                  onChange={(e) => {
+                                    const newConversionFactor =
+                                      parseFloat(e.target.value) || 0;
+                                    const newUnits = formData.units.map(
+                                      (u, i) =>
+                                        i === index
+                                          ? {
+                                              ...u,
+                                              conversionFactor:
+                                                newConversionFactor,
+                                            }
+                                          : u
+                                    );
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      units: newUnits,
+                                    }));
+                                  }}
+                                />
+                              </td>
+                              <td className="text-center align-middle">
+                                <input
+                                  type="radio"
+                                  className="form-check-input"
+                                  name="isBaseUnit"
+                                  checked={unit?.isBaseUnit || false}
+                                  onChange={() => {
+                                    const newUnits = formData.units.map(
+                                      (u, i) => {
+                                        const isThisOne = i === index;
+                                        return {
+                                          ...u,
+                                          isBaseUnit: isThisOne,
+                                          conversionFactor: isThisOne
+                                            ? 1
+                                            : u.conversionFactor,
+                                        };
+                                      }
+                                    );
+                                    const newBaseUnitName =
+                                      newUnits[index]?.name || "Nos";
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      units: newUnits,
+                                      baseUnit: newBaseUnitName,
+                                    }));
+                                  }}
+                                />
+                              </td>
+                              <td>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (formData.units.length > 1) {
+                                      const newUnits = formData.units.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      if (unit?.isBaseUnit) {
+                                        newUnits[0].isBaseUnit = true;
+                                        newUnits[0].conversionFactor = 1;
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          units: newUnits,
+                                          baseUnit: newUnits[0]?.name || "Nos",
+                                        }));
+                                      } else {
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          units: newUnits,
+                                        }));
+                                      }
+                                    }
+                                  }}
+                                  disabled={formData.units.length <= 1}
+                                >
+                                  <Trash />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
                   <Button
-                    variant="outline-primary" size="sm"
+                    variant="outline-primary"
+                    size="sm"
                     onClick={() => {
-                      const newUnits = [...formData.units, { name: '', conversionFactor: 1, isBaseUnit: false }];
-                      setFormData(prev => ({ ...prev, units: newUnits }));
+                      const newUnits = [
+                        ...formData.units,
+                        { name: "", conversionFactor: 1, isBaseUnit: false },
+                      ];
+                      setFormData((prev) => ({ ...prev, units: newUnits }));
                     }}
                   >
                     + Add Unit
@@ -1835,7 +2120,6 @@ export default function Items() {
             </>
           </ReusableModal>
         )}
-
       </div>
       <Footer />
     </div>

@@ -209,7 +209,7 @@ const GoodsTable = ({
       </Table>
       <div className="mb-3">
         <div className="d-flex gap-2 mb-2">
-          <Button
+          {/* <Button
             variant={
               itemCreationMode === "search" ? "primary" : "outline-primary"
             }
@@ -217,7 +217,7 @@ const GoodsTable = ({
             size="sm"
           >
             Search Existing Item
-          </Button>
+          </Button> */}
           <Button
             variant={itemCreationMode === "new" ? "primary" : "outline-primary"}
             onClick={() => setItemCreationMode("new")}
@@ -294,7 +294,7 @@ const GoodsTable = ({
                 variant="success"
                 size="sm"
                 className="mt-2"
-                onClick={() => handleSaveAndAddNewItemToQuotation(newItemFormData)}
+                onClick={() => {handleSaveAndAddNewItemToQuotation (newItemFormData) , setItemCreationMode("search")}}
                 disabled={
                   isSavingNewItem ||
                   !newItemFormData.name ||
@@ -525,12 +525,14 @@ const QuotationFormPage = () => {
     setError(null);
 
     try {
+      const { pricing, ...restOfItemData } = newItemData;
+      const payload = {
+        ...restOfItemData,
+        ...pricing,
+      };
       const savedItem = await apiClient("/items", {
         method: "POST",
-        body: { // Flatten newItemData for the Item creation API
-          ...newItemData,
-          ...newItemData.pricing, // Spread pricing properties directly
-        },
+        body: payload,
       });
       toast.success(`Item "${savedItem.name}" created and added to quotation.`);
       handleAddItem(savedItem);
