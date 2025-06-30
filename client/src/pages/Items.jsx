@@ -22,8 +22,11 @@ import ReusableModal from "../components/ReusableModal.jsx";
 import { Spinner, Alert, Card, Badge, Button } from "react-bootstrap";
 
 const DEFAULT_LOW_QUANTITY_THRESHOLD_ITEMS_PAGE = 5;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE =
-  "globalLowStockThresholdSetting";
+const LOCAL_STORAGE_LOW_QUANTITY_KEY_ITEMS_PAGE = "globalLowStockThresholdSetting";
+
+const STANDARD_UNITS = [
+  "nos", "pkt", "pcs", "kgs", "mtr", "sets", "kwp", "ltr", "bottle", "each", "bag" , "set"
+];
 
 export default function Items() {
   const { user, loading: authLoading } = useAuth();
@@ -43,16 +46,17 @@ export default function Items() {
   });
 
   const [editingItem, setEditingItem] = useState(null);
+  const [initialUnit] = useState({ name: "nos", isBaseUnit: true, conversionFactor: 1 }); // <-- lowercase
   const [formData, setFormData] = useState({
     name: "",
-    quantity: "0",
-    baseUnit: "Nos",
+    quantity: "",
     sellingPrice: "",
     buyingPrice: "",
-    profitMarginPercentage: "20",
-    units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
+    profitMarginPercentage: "",
     gstRate: "0",
     hsnCode: "",
+    baseUnit: "nos", // <-- lowercase
+    units: [initialUnit],
     category: "",
     maxDiscountPercentage: "",
     lowStockThreshold: "5",
@@ -321,26 +325,33 @@ export default function Items() {
   const handleEditItem = (item) => {
     setEditingItem(item);
 
-    // Safely handle units array
-    const itemUnits = item.units || [];
-    const processedUnits =
-      itemUnits.length > 0
-        ? itemUnits.filter(Boolean).map((unit) => ({
-            name: unit?.name || "Nos",
-            conversionFactor: unit?.conversionFactor || 1,
-            isBaseUnit: unit?.isBaseUnit || false,
+    // Process units with validation
+    const itemUnits = Array.isArray(item.units) ? [...item.units] : [];
+    let processedUnits = itemUnits.length > 0
+      ? itemUnits
+          .filter(unit => unit && typeof unit === 'object' && STANDARD_UNITS.includes(unit.name.toLowerCase()))
+          .map((unit) => ({
+            name: unit.name.toLowerCase(), // <-- force lowercase
+            conversionFactor: unit.isBaseUnit ? 1 : (unit.conversionFactor || 1),
+            isBaseUnit: unit.isBaseUnit || false
           }))
-        : [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }];
+      : [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }];
 
-      console.log("Processing units for item:", item.name, processedUnits);
+    // Ensure exactly one base unit
+    const baseUnits = processedUnits.filter(u => u.isBaseUnit);
+    if (baseUnits.length !== 1) {
+      processedUnits = processedUnits.map((u, index) => ({
+        ...u,
+        isBaseUnit: index === 0
+      }));
+    }
+
+    const baseUnit = processedUnits.find(u => u.isBaseUnit)?.name || "nos";
 
     setFormData({
       name: item.name,
       quantity: item.quantity?.toFixed(2) || "0.00",
-      baseUnit:
-        item.baseUnit ||
-        processedUnits.find((u) => u.isBaseUnit)?.name ||
-        "Nos",
+      baseUnit: baseUnit, // already lowercase
       sellingPrice: item.sellingPrice?.toFixed(2) || "0.00",
       buyingPrice: item.buyingPrice?.toFixed(2) || "0.00",
       profitMarginPercentage: item.profitMarginPercentage?.toString() || "20",
@@ -355,10 +366,10 @@ export default function Items() {
     setShowEditItemModal(true);
   };
 
-  const handleSaveEditedItem = async () => {
-    if (!editingItem || !formData.name) {
+  const validateFormData = () => {
+    if (!formData.name) {
       setError("Item name is required.");
-      return;
+      return false;
     }
 
     const sellingPrice = parseFloat(formData.sellingPrice) || 0;
@@ -366,25 +377,77 @@ export default function Items() {
 
     if (buyingPrice > sellingPrice && sellingPrice !== 0) {
       setError("Buying price cannot be greater than selling price.");
-      return;
+      return false;
     }
 
-    if (!formData.baseUnit || !formData.units.some((u) => u?.isBaseUnit)) {
-      setError("A base unit must be selected.");
-      return;
+    // Validate units
+    const validUnits = formData.units.filter(unit => 
+      unit && typeof unit === 'object' && 
+      STANDARD_UNITS.includes(unit.name) &&
+      (unit.isBaseUnit ? unit.conversionFactor === 1 : true)
+    );
+
+    if (validUnits.length !== formData.units.length) {
+      setError("Invalid units detected. Please check all unit entries.");
+      return false;
     }
+
+    const baseUnits = validUnits.filter(u => u.isBaseUnit);
+    if (baseUnits.length !== 1) {
+      setError("Exactly one base unit must be specified.");
+      return false;
+    }
+
+    if (formData.baseUnit !== baseUnits[0].name) {
+      setError("Base unit field must match the marked base unit.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSaveEditedItem = async () => {
+    if (!validateFormData()) return;
 
     try {
       setIsSubmitting(true);
+
+      // Always ensure only one base unit
+      const baseUnitName = formData.baseUnit.toLowerCase();
+
+      console.log("DEBUG: formData.units before save:", formData.units);
+
+      const filteredUnits = (formData.units || []).filter(
+        unit =>
+          unit &&
+          typeof unit === "object" &&
+          unit.name &&
+          STANDARD_UNITS.includes(unit.name.toLowerCase())
+      );
+
+      if (filteredUnits.length === 0) {
+        setError("No valid units found. Please add at least one unit.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Ensure only one base unit
+      const unitsPayload = filteredUnits.map((unit) => ({
+        name: unit.name.toLowerCase(),
+        isBaseUnit: unit.name.toLowerCase() === baseUnitName,
+        conversionFactor: unit.name.toLowerCase() === baseUnitName ? 1 : parseFloat(unit.conversionFactor) || 1,
+      }));
+
+      console.log("DEBUG: unitsPayload to be sent:", unitsPayload);
+
       const updatedItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        baseUnit: formData.baseUnit,
-        sellingPrice: parseFloat(formData.sellingPrice) || sellingPrice,
-        buyingPrice: parseFloat(formData.buyingPrice) || buyingPrice,
-        profitMarginPercentage:
-        parseFloat(formData.profitMarginPercentage) || 20,
-        units: formData.units.filter(Boolean),
+        baseUnit: baseUnitName,
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,
+        profitMarginPercentage: parseFloat(formData.profitMarginPercentage) || 20,
+        units: unitsPayload,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode,
         category: formData.category,
@@ -393,18 +456,13 @@ export default function Items() {
         image: formData.image,
       };
 
-      console.log("Updating item with payload:", updatedItemPayload);
       const response = await apiClient(`/items/${editingItem._id}`, {
         method: "PUT",
         body: updatedItemPayload,
       });
 
-      console.log("Update response:", response);
-
-      setItems((prevItems) =>
-        prevItems.map((item) =>
-          item._id === editingItem._id ? response.data : item
-        )
+      setItems(prevItems =>
+        prevItems.map(item => item._id === editingItem._id ? response.data : item)
       );
 
       setShowEditItemModal(false);
@@ -419,56 +477,70 @@ export default function Items() {
   };
 
   const handleAddItem = async () => {
-    if (!formData.name) {
-      setError("Item name is required");
-      return;
-    }
-
-    const sellingPrice = parseFloat(formData.sellingPrice) || 0;
-    const buyingPrice = parseFloat(formData.buyingPrice) || 0;
-
-    if (buyingPrice > sellingPrice && sellingPrice !== 0) {
-      setError("Buying price cannot be greater than selling price.");
-      return;
-    }
-
-    if (!formData.baseUnit || !formData.units.some((u) => u?.isBaseUnit)) {
-      setError("A base unit must be selected.");
-      return;
-    }
+    if (!validateFormData()) return;
 
     try {
       setIsSubmitting(true);
+
+      // Always ensure only one base unit
+      const baseUnitName = formData.baseUnit.toLowerCase();
+
+      console.log("DEBUG: formData.units before save:", formData.units);
+
+      const filteredUnits = (formData.units || []).filter(
+        unit =>
+          unit &&
+          typeof unit === "object" &&
+          unit.name &&
+          STANDARD_UNITS.includes(unit.name.toLowerCase())
+      );
+
+      if (filteredUnits.length === 0) {
+        setError("No valid units found. Please add at least one unit.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Ensure only one base unit
+      const unitsPayload = filteredUnits.map((unit) => ({
+        name: unit.name.toLowerCase(),
+        isBaseUnit: unit.name.toLowerCase() === baseUnitName,
+        conversionFactor: unit.name.toLowerCase() === baseUnitName ? 1 : parseFloat(unit.conversionFactor) || 1,
+      }));
+
+      console.log("DEBUG: unitsPayload to be sent:", unitsPayload);
+
       const newItemPayload = {
         name: formData.name,
         quantity: parseFloat(formData.quantity) || 0,
-        baseUnit: formData.baseUnit,
-        sellingPrice: sellingPrice,
-        buyingPrice: buyingPrice,
-        profitMarginPercentage:
-          parseFloat(formData.profitMarginPercentage) || 20,
-        units: formData.units.filter(Boolean),
+        baseUnit: baseUnitName,
+        sellingPrice: parseFloat(formData.sellingPrice) || 0,
+        buyingPrice: parseFloat(formData.buyingPrice) || 0,
+        profitMarginPercentage: parseFloat(formData.profitMarginPercentage) || 20,
+        units: unitsPayload,
         gstRate: parseFloat(formData.gstRate) || 0,
         hsnCode: formData.hsnCode || "",
         category: formData.category,
         maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
         lowStockThreshold: parseFloat(formData.lowStockThreshold) || 5,
         image: formData.image || "",
+        status: user.role === "user" ? "pending_review" : "approved"
       };
 
       await apiClient("/items", { method: "POST", body: newItemPayload });
       await fetchItems();
       setShowAddItemModal(false);
       setFormData({
+        ...formData,
         name: "",
-        quantity: "0.00",
-        baseUnit: "Nos",
+        quantity: "",
         sellingPrice: "",
         buyingPrice: "",
-        profitMarginPercentage: "20",
-        units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
+        profitMarginPercentage: "",
         gstRate: "0",
         hsnCode: "",
+        baseUnit: "nos",
+        units: [initialUnit],
         category: "",
         maxDiscountPercentage: "",
         lowStockThreshold: "5",
@@ -477,16 +549,29 @@ export default function Items() {
       setError(null);
       showToast("Item added successfully!", true);
     } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to add item. Please try again.",
-        user
-      );
+      const errorMessage = handleApiError(err, "Failed to add item.", user);
       setError(errorMessage);
-      console.error("Error adding item:", err);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetFormData = () => {
+    setFormData({
+      name: "",
+      quantity: "0.00",
+      baseUnit: "nos", // <-- lowercase
+      sellingPrice: "",
+      buyingPrice: "",
+      profitMarginPercentage: "20",
+      units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }], // <-- lowercase
+      gstRate: "0",
+      hsnCode: "",
+      category: "",
+      maxDiscountPercentage: "",
+      lowStockThreshold: "5",
+      image: "",
+    });
   };
 
   const handleAddNewCategory = async () => {
@@ -601,6 +686,229 @@ export default function Items() {
   const anyLoading =
     isSubmitting || isProcessingExcel || isExportingExcel || loading;
 
+  const renderUnitManagement = () => (
+    <div className="col-12 mt-3 pt-3 border-top">
+      <h5>Pricing & Units</h5>
+      <div className="row">
+        <div className="col-md-4">
+          <label>
+            Buying Price (per Base Unit) <span className="text-danger">*</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            className="form-control mb-2"
+            placeholder="Buying Price"
+            name="buyingPrice"
+            value={formData.buyingPrice}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                buyingPrice: e.target.value,
+              }))
+            }
+          />
+        </div>
+        <div className="col-md-4">
+          <label>
+            Selling Price (per Base Unit) <span className="text-danger">*</span>
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            className="form-control mb-2"
+            placeholder="Selling Price"
+            name="sellingPrice"
+            value={formData.sellingPrice}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                sellingPrice: e.target.value,
+              }))
+            }
+            required
+          />
+        </div>
+        <div className="col-md-4">
+          <label>Profit Margin (%)</label>
+          <input
+            type="number"
+            step="0.01"
+            className="form-control mb-2"
+            placeholder="e.g., 20"
+            name="profitMarginPercentage"
+            value={formData.profitMarginPercentage}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                profitMarginPercentage: e.target.value,
+              }))
+            }
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div className="table-responsive">
+        <table className="table table-sm">
+          <thead>
+            <tr>
+              <th>Unit Name</th>
+              <th>Conversion Factor (to Base)</th>
+              <th>Is Base Unit?</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(formData.units || [])
+              .filter(
+                unit =>
+                  unit &&
+                  typeof unit === "object" &&
+                  unit.name &&
+                  STANDARD_UNITS.includes(unit.name.toLowerCase())
+              )
+              .map((unit, index) => (
+                <tr key={index}>
+                  <td>
+                    <select
+                      className="form-control form-control-sm"
+                      value={unit?.name || ""}
+                      onChange={(e) => handleUnitNameChange(index, e.target.value)}
+                      disabled={unit?.isBaseUnit}
+                    >
+                      {STANDARD_UNITS.map((unitName) => (
+                        <option key={unitName} value={unitName}>
+                          {unitName}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      step="any"
+                      className="form-control form-control-sm"
+                      value={unit?.conversionFactor || 1}
+                      disabled={unit?.isBaseUnit}
+                      onChange={(e) =>
+                        handleUnitConversionChange(index, e.target.value)
+                      }
+                    />
+                  </td>
+                  <td className="text-center align-middle">
+                    <input
+                      type="radio"
+                      className="form-check-input"
+                      name="isBaseUnit"
+                      checked={unit?.isBaseUnit || false}
+                      onChange={() => handleSetBaseUnit(index)}
+                    />
+                  </td>
+                  <td>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleRemoveUnit(index)}
+                      disabled={formData.units.length <= 1 || unit.isBaseUnit}
+                    >
+                      <Trash />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      <Button
+        variant="outline-primary"
+        size="sm"
+        onClick={handleAddUnit}
+        disabled={formData.units.length >= STANDARD_UNITS.length}
+      >
+        + Add Unit
+      </Button>
+    </div>
+  );
+
+  const renderUnitsDisplay = (item) => (
+    <td>
+      {Array.isArray(item.units) && item.units.length > 0
+        ? item.units
+            .filter(unit => unit && typeof unit === 'object' && unit.name)
+            .map((u, idx) => (
+              <div key={u.name || idx}>
+                {u.name} (
+                {u.conversionFactor || 0} {u.name} = 1 {item.baseUnit})
+                {u.isBaseUnit && " (Base Unit)"}
+              </div>
+            ))
+        : "N/A"}
+    </td>
+  );
+
+  // Add these helper functions before your renderUnitManagement definition:
+
+  const handleAddUnit = () => {
+    setFormData((prev) => {
+      // Find first unused unit name
+      const usedNames = prev.units.map((u) => u.name);
+      const available = STANDARD_UNITS.find((u) => !usedNames.includes(u));
+      if (!available) return prev;
+      return {
+        ...prev,
+        units: [
+          ...prev.units,
+          { name: available, isBaseUnit: false, conversionFactor: 1 },
+        ],
+      };
+    });
+  };
+
+  const handleRemoveUnit = (index) => {
+    setFormData((prev) => {
+      let units = [...prev.units];
+      units.splice(index, 1);
+      // Ensure at least one base unit remains
+      if (!units.some((u) => u.isBaseUnit)) {
+        units[0].isBaseUnit = true;
+        units[0].conversionFactor = 1;
+      }
+      return { ...prev, units, baseUnit: units.find((u) => u.isBaseUnit).name };
+    });
+  };
+
+  const handleUnitNameChange = (index, value) => {
+    setFormData((prev) => {
+      const units = [...prev.units];
+      units[index].name = value.toLowerCase(); // <-- force lowercase
+      // If this is the base unit, update baseUnit field
+      if (units[index].isBaseUnit) {
+        return { ...prev, units, baseUnit: value.toLowerCase() }; // <-- force lowercase
+      }
+      return { ...prev, units };
+    });
+  };
+
+  const handleUnitConversionChange = (index, value) => {
+    setFormData((prev) => {
+      const units = [...prev.units];
+      units[index].conversionFactor = units[index].isBaseUnit ? 1 : parseFloat(value) || 1;
+      return { ...prev, units };
+    });
+  };
+
+  const handleSetBaseUnit = (index) => {
+    setFormData((prev) => {
+      const units = prev.units.map((u, i) => ({
+        ...u,
+        isBaseUnit: i === index,
+        conversionFactor: i === index ? 1 : u.conversionFactor,
+      }));
+      return { ...prev, units, baseUnit: units[index].name.toLowerCase() }; // <-- force lowercase
+    });
+  };
+
   return (
     <div className="items-container">
       <Navbar />
@@ -618,7 +926,7 @@ export default function Items() {
         )}
 
         {/* Pending Review Items Section */}
-        {user &&
+        {user && 
           (user.role === "admin" || user.role === "super-admin") &&
           totalPendingReviewItems > 0 && (
             <Card className="mb-4 border-warning">
@@ -937,16 +1245,10 @@ export default function Items() {
             </thead>
             <tbody>
               {items.length > 0 ? (
-                // console.log('Items array:', items),
-                // console.log('Items length:', items?.length),
-                // console.log('First item:', items?.[0]),
-                // console.log('Items type:', typeof items),
                 items.map((item) => (
                   <React.Fragment key={item._id}>
                     <tr>
-                      <td>{item.name}
-                        
-                      </td>
+                      <td>{item.name}</td>
                       <td>
                         {parseFloat(item.quantity || 0).toFixed(2)}{" "}
                         {item.baseUnit || ""}{" "}
@@ -1062,7 +1364,6 @@ export default function Items() {
                                   </td>
                                   <td>
                                     {parseFloat(item.quantity || 0).toFixed(2)}{" "}
-                                    {/* {item.baseUnit} */}
                                     {item.quantity <= 0 || item.needsRestock
                                       ? item.quantity <= 0
                                         ? " (Out of stock! Needs immediate restock.)"
@@ -1095,18 +1396,41 @@ export default function Items() {
                                   <td>
                                     <strong>Units</strong>
                                   </td>
-                                  <td>
-                                    {item.units && item.units.length > 0
-                                      ? item.units
-                                          .filter((u) => u && u.name) // Filter out undefined/null units
-                                          .map((u) => (
-                                            <div key={u.name}>
-                                              {u.name} (
-                                              {u.conversionFactor || 0} {u.name}{" "}
-                                              = 1 {item.baseUnit})
-                                            </div>
-                                          ))
-                                      : "N/A"}
+                                  <td colSpan="100">
+                                    <table className="table table-bordered table-sm mb-0">
+                                      <thead>
+                                        <tr>
+                                          <th>Unit Name</th>
+                                          <th>Conversion Factor</th>
+                                          <th>Is Base Unit?</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Array.isArray(item.units) && item.units.length > 0 ? (
+                                          item.units
+                                            .filter(unit => unit && typeof unit === 'object' && unit.name)
+                                            .map((u, idx) => (
+                                              <tr key={u.name || idx}>
+                                                <td>{u.name}</td>
+                                                <td>
+                                                  {u.isBaseUnit
+                                                    ? "1 (Base Unit)"
+                                                    : `${Number(
+                                                        typeof u.conversionFactor === "object"
+                                                          ? Object.values(u.conversionFactor)[0]
+                                                          : u.conversionFactor
+                                                      ) || 0} ${u.name} = 1 ${item.baseUnit}`}
+                                                </td>
+                                                <td>{u.isBaseUnit ? "Yes" : ""}</td>
+                                              </tr>
+                                            ))
+                                        ) : (
+                                          <tr>
+                                            <td colSpan={3}>N/A</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
                                   </td>
                                 </tr>
                                 <tr>
@@ -1179,21 +1503,7 @@ export default function Items() {
             show={showAddItemModal}
             onHide={() => {
               setShowAddItemModal(false);
-              setFormData({
-                name: "",
-                quantity: "0.00",
-                baseUnit: "Nos",
-                sellingPrice: "",
-                buyingPrice: "",
-                profitMarginPercentage: "20",
-                units: [{ name: "Nos", isBaseUnit: true, conversionFactor: 1 }],
-                image: "",
-                gstRate: "0",
-                hsnCode: "",
-                category: "",
-                maxDiscountPercentage: "",
-                lowStockThreshold: "5",
-              });
+              resetFormData();
               setError(null);
             }}
             title="Add New Item"
@@ -1204,23 +1514,7 @@ export default function Items() {
                   className="btn btn-secondary"
                   onClick={() => {
                     setShowAddItemModal(false);
-                    setFormData({
-                      name: "",
-                      quantity: "0.00",
-                      baseUnit: "Nos",
-                      sellingPrice: "",
-                      buyingPrice: "",
-                      profitMarginPercentage: "20",
-                      units: [
-                        { name: "Nos", isBaseUnit: true, conversionFactor: 1 },
-                      ],
-                      gstRate: "0",
-                      hsnCode: "",
-                      category: "",
-                      maxDiscountPercentage: "",
-                      lowStockThreshold: "5",
-                      image: "",
-                    });
+                    resetFormData();
                     setError(null);
                   }}
                   disabled={isSubmitting}
@@ -1477,219 +1771,7 @@ export default function Items() {
                     )}
                   </div>
                 </div>
-                {/* Unit Management Section */}
-                <div className="col-12 mt-3 pt-3 border-top">
-                  <h5>Pricing & Units</h5>
-                  <div className="row">
-                    <div className="col-md-4">
-                      <label>
-                        Buying Price (per Base Unit){" "}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Buying Price"
-                        name="buyingPrice"
-                        value={formData.buyingPrice}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            buyingPrice: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label>
-                        Selling Price (per Base Unit){" "}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Selling Price"
-                        name="sellingPrice"
-                        value={formData.sellingPrice}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            sellingPrice: e.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label>Profit Margin (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="e.g., 20"
-                        name="profitMarginPercentage"
-                        value={formData.profitMarginPercentage}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            profitMarginPercentage: e.target.value,
-                          }))
-                        }
-                        min="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="table-responsive">
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Unit Name</th>
-                          <th>Conversion Factor (to Base)</th>
-                          <th>Is Base Unit?</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(formData.units || [])
-                          .filter(Boolean)
-                          .map((unit, index) => (
-                            <tr key={index}>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={unit?.name || ""}
-                                  onChange={(e) => {
-                                    const newName = e.target.value;
-                                    const newUnits = formData.units.map(
-                                      (u, i) =>
-                                        i === index
-                                          ? { ...u, name: newName }
-                                          : u
-                                    );
-                                    if (newUnits[index]?.isBaseUnit) {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        units: newUnits,
-                                        baseUnit: newName,
-                                      }));
-                                    } else {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        units: newUnits,
-                                      }));
-                                    }
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  className="form-control form-control-sm"
-                                  value={unit?.conversionFactor || 1}
-                                  disabled={unit?.isBaseUnit}
-                                  onChange={(e) => {
-                                    const newConversionFactor =
-                                      parseFloat(e.target.value) || 0;
-                                    const newUnits = formData.units.map(
-                                      (u, i) =>
-                                        i === index
-                                          ? {
-                                              ...u,
-                                              conversionFactor:
-                                                newConversionFactor,
-                                            }
-                                          : u
-                                    );
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      units: newUnits,
-                                    }));
-                                  }}
-                                />
-                              </td>
-                              <td className="text-center align-middle">
-                                <input
-                                  type="radio"
-                                  className="form-check-input"
-                                  name="isBaseUnit"
-                                  checked={unit?.isBaseUnit || false}
-                                  onChange={() => {
-                                    const newUnits = formData.units.map(
-                                      (u, i) => {
-                                        const isThisOne = i === index;
-                                        return {
-                                          ...u,
-                                          isBaseUnit: isThisOne,
-                                          conversionFactor: isThisOne
-                                            ? 1
-                                            : u.conversionFactor,
-                                        };
-                                      }
-                                    );
-                                    const newBaseUnitName =
-                                      newUnits[index]?.name || "Nos";
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      units: newUnits,
-                                      baseUnit: newBaseUnitName,
-                                    }));
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (formData.units.length > 1) {
-                                      const newUnits = formData.units.filter(
-                                        (_, i) => i !== index
-                                      );
-                                      if (unit?.isBaseUnit) {
-                                        newUnits[0].isBaseUnit = true;
-                                        newUnits[0].conversionFactor = 1;
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          units: newUnits,
-                                          baseUnit: newUnits[0]?.name || "Nos",
-                                        }));
-                                      } else {
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          units: newUnits,
-                                        }));
-                                      }
-                                    }
-                                  }}
-                                  disabled={formData.units.length <= 1}
-                                >
-                                  <Trash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={() => {
-                      const newUnits = [
-                        ...formData.units,
-                        { name: "", conversionFactor: 1, isBaseUnit: false },
-                      ];
-                      setFormData((prev) => ({ ...prev, units: newUnits }));
-                    }}
-                  >
-                    + Add Unit
-                  </Button>
-                </div>
+                {renderUnitManagement()}
               </div>
             </>
           </ReusableModal>
@@ -1903,219 +1985,7 @@ export default function Items() {
                     )}
                   </div>
                 </div>
-                {/* Unit Management Section */}
-                <div className="col-12 mt-3 pt-3 border-top">
-                  <h5>Pricing & Units</h5>
-                  <div className="row">
-                    <div className="col-md-4">
-                      <label>
-                        Buying Price (per Base Unit){" "}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Buying Price"
-                        name="buyingPrice"
-                        value={formData.buyingPrice}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            buyingPrice: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label>
-                        Selling Price (per Base Unit){" "}
-                        <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="Selling Price"
-                        name="sellingPrice"
-                        value={formData.sellingPrice}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            sellingPrice: e.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label>Profit Margin (%)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mb-2"
-                        placeholder="e.g., 20"
-                        name="profitMarginPercentage"
-                        value={formData.profitMarginPercentage}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            profitMarginPercentage: e.target.value,
-                          }))
-                        }
-                        min="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="table-responsive">
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Unit Name</th>
-                          <th>Conversion Factor (to Base)</th>
-                          <th>Is Base Unit?</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(formData.units || [])
-                          .filter(Boolean)
-                          .map((unit, index) => (
-                            <tr key={index}>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={unit?.name || ""}
-                                  onChange={(e) => {
-                                    const newName = e.target.value;
-                                    const newUnits = formData.units.map(
-                                      (u, i) =>
-                                        i === index
-                                          ? { ...u, name: newName }
-                                          : u
-                                    );
-                                    if (newUnits[index]?.isBaseUnit) {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        units: newUnits,
-                                        baseUnit: newName,
-                                      }));
-                                    } else {
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        units: newUnits,
-                                      }));
-                                    }
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  step="any"
-                                  className="form-control form-control-sm"
-                                  value={unit?.conversionFactor || 1}
-                                  disabled={unit?.isBaseUnit}
-                                  onChange={(e) => {
-                                    const newConversionFactor =
-                                      parseFloat(e.target.value) || 0;
-                                    const newUnits = formData.units.map(
-                                      (u, i) =>
-                                        i === index
-                                          ? {
-                                              ...u,
-                                              conversionFactor:
-                                                newConversionFactor,
-                                            }
-                                          : u
-                                    );
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      units: newUnits,
-                                    }));
-                                  }}
-                                />
-                              </td>
-                              <td className="text-center align-middle">
-                                <input
-                                  type="radio"
-                                  className="form-check-input"
-                                  name="isBaseUnit"
-                                  checked={unit?.isBaseUnit || false}
-                                  onChange={() => {
-                                    const newUnits = formData.units.map(
-                                      (u, i) => {
-                                        const isThisOne = i === index;
-                                        return {
-                                          ...u,
-                                          isBaseUnit: isThisOne,
-                                          conversionFactor: isThisOne
-                                            ? 1
-                                            : u.conversionFactor,
-                                        };
-                                      }
-                                    );
-                                    const newBaseUnitName =
-                                      newUnits[index]?.name || "Nos";
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      units: newUnits,
-                                      baseUnit: newBaseUnitName,
-                                    }));
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (formData.units.length > 1) {
-                                      const newUnits = formData.units.filter(
-                                        (_, i) => i !== index
-                                      );
-                                      if (unit?.isBaseUnit) {
-                                        newUnits[0].isBaseUnit = true;
-                                        newUnits[0].conversionFactor = 1;
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          units: newUnits,
-                                          baseUnit: newUnits[0]?.name || "Nos",
-                                        }));
-                                      } else {
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          units: newUnits,
-                                        }));
-                                      }
-                                    }
-                                  }}
-                                  disabled={formData.units.length <= 1}
-                                >
-                                  <Trash />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    onClick={() => {
-                      const newUnits = [
-                        ...formData.units,
-                        { name: "", conversionFactor: 1, isBaseUnit: false },
-                      ];
-                      setFormData((prev) => ({ ...prev, units: newUnits }));
-                    }}
-                  >
-                    + Add Unit
-                  </Button>
-                </div>
+                {renderUnitManagement()}
               </div>
             </>
           </ReusableModal>

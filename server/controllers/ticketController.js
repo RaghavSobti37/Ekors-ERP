@@ -1,17 +1,16 @@
 const Ticket = require("../models/opentickets");
-const UniversalBackup = require("../models/universalBackup"); // Using UniversalBackup
-const Quotation = require("../models/quotation"); // Import Quotation model
-const OpenticketModel = require("../models/opentickets.js"); // Used by index.js logic
+const UniversalBackup = require("../models/universalBackup");
+const Quotation = require("../models/quotation");
+const OpenticketModel = require("../models/opentickets.js");
 const User = require("../models/users");
-const logger = require("../utils/logger"); // Import logger
-const { Item } = require("../models/itemlist"); // Import Item model for inventory
-const fs = require("fs-extra"); // fs-extra for recursive directory removal
+const logger = require("../utils/logger");
+const { Item } = require("../models/itemlist");
+const fs = require("fs-extra");
 const path = require("path");
 const asyncHandler = require("express-async-handler");
-const mongoose = require("mongoose"); // Added mongoose for session
-const ReportController = require("./reportController"); // Import the report controller
+const mongoose = require("mongoose");
+const ReportController = require("./reportController");
 
-// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 
 exports.createTicket = asyncHandler(async (req, res) => {
@@ -433,16 +432,20 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // --- Ticket Creation ---
     await ticket.save({ session });
 
-    logger.info(
-      "ticket",
-      `Ticket ${ticket.ticketNumber} created successfully.`,
+    logger.log({
       user,
-      {
+      page: "Ticket",
+      action: "Create Ticket",
+      api: req.originalUrl,
+      req,
+      message: `Ticket ${ticket.ticketNumber} created successfully.`,
+      details: {
         ticketId: ticket._id,
         ticketNumber: ticket.ticketNumber,
         companyName: ticket.companyName,
-      }
-    );
+      },
+      level: "info"
+    });
 
     // --- Update Quotation Status if applicable ---
     if (finalTicketData.quotationNumber && sourceQuotationData) {
@@ -571,12 +574,16 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
   const finalQuery =
     queryConditions.length > 0 ? { $and: queryConditions } : {};
 
-  logger.debug(
-    "ticket-list-query",
-    "Constructed final query for tickets",
+  logger.log({
     user,
-    { finalQuery: JSON.stringify(finalQuery) }
-  );
+    page: "Ticket",
+    action: "Get All Tickets",
+    api: req.originalUrl,
+    req,
+    message: `Fetched ${tickets.length} of ${totalItems} tickets.`,
+    details: { page: pageNum, limit: limitNum, query: finalQuery },
+    level: "info"
+  });
 
   const totalItems = await Ticket.countDocuments(finalQuery);
   let ticketsQuery = Ticket.find(finalQuery)
@@ -688,24 +695,42 @@ exports.getTicketById = async (req, res) => {
       });
 
     if (!ticket) {
-      logger.warn(
-        "ticket-fetch",
-        `Ticket not found or access denied for ID: ${req.params.id}`,
-        req.user
-      );
+      logger.log({
+        user: req.user,
+        page: "Ticket",
+        action: "Get Ticket By ID",
+        api: req.originalUrl,
+        req,
+        message: `Ticket not found or access denied for ID: ${req.params.id}`,
+        details: {},
+        level: "warn"
+      });
       return res
         .status(404)
         .json({ error: "Ticket not found or access denied" });
     }
-
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID",
+      api: req.originalUrl,
+      req,
+      message: `Fetched ticket: ${req.params.id}`,
+      details: { ticketId: req.params.id },
+      level: "info"
+    });
     res.json(ticket);
   } catch (error) {
-    logger.error(
-      "ticket",
-      `Failed to fetch single ticket by ID: ${req.params.id}`,
-      error,
-      user
-    );
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch single ticket by ID: ${req.params.id}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ error: "Failed to fetch ticket" });
   }
 };
@@ -1207,15 +1232,19 @@ exports.updateTicket = async (req, res) => {
     }
 
     await session.commitTransaction();
-    logger.info(
-      "ticket",
-      `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
+    logger.log({
       user,
-      {
+      page: "Ticket",
+      action: "Update Ticket",
+      api: req.originalUrl,
+      req,
+      message: `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
+      details: {
         ticketId: ticket._id,
         ticketNumber: ticket.ticketNumber,
-      }
-    );
+      },
+      level: "info"
+    });
     res.json(ticket);
   } catch (error) {
     await session.abortTransaction();
@@ -1882,6 +1911,8 @@ exports.uploadTicketDocument = async (req, res) => {
         session.startTransaction();
     const { documentType } = req.body;
     const isOther = req.body.isOther === 'true' || req.body.isOther === true;
+
+
 
     if (!req.file) {
       logger.warn(

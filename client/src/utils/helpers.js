@@ -1,5 +1,4 @@
 import { toast } from 'react-toastify';
-import frontendLogger from './frontendLogger';
 
 /**
  * Displays a toast notification.
@@ -31,7 +30,6 @@ export const showToast = (message, isSuccess = true, options = {}) => {
  * @param {Error} error - The error object from an API call (e.g., from Axios or Fetch).
  * @param {string} [defaultMessage='An unexpected error occurred.'] - Default message if a specific one cannot be extracted.
  * @param {object} [userForLogging=null] - Optional user object for enriching logs.
- * @param {string} [logType='apiError'] - Type of log for frontendLogger.
  * @returns {string} A user-friendly error message.
  */
 export const handleApiError = (error, defaultMessage = 'An unexpected error occurred.', userForLogging = null, logType = 'apiError') => {
@@ -61,22 +59,6 @@ export const handleApiError = (error, defaultMessage = 'An unexpected error occu
     // Something happened in setting up the request that triggered an Error
     errorMessage = safeError.message;
   }
-
-  // Log the error
-  frontendLogger.error(
-    logType,
-    `API Error: ${errorMessage}`,
-    userForLogging,
-    {
-      // Use the safeError object for all property access to guarantee safety.
-      // Explicitly set to null if undefined to provide consistent input to the logger.
-      originalErrorMessage: safeError.message || 'Error object was null or had no message.',
-      status: safeError.response?.status || null,
-      responseData: safeError.response?.data || null,
-      requestConfig: safeError.config || null, // If using Axios, this contains request details.
-      stack: safeError.stack || null,
-    }
-  );
 
   // Display the error message to the user in a toast
   showToast(errorMessage, false);
@@ -172,7 +154,6 @@ export const formatDateTime = (dateString) => {
       hour: '2-digit', minute: '2-digit', hour12: true,
     });
   } catch (error) {
-    // Log error if needed, e.g., frontendLogger.error('dateFormatting', 'Error in formatDateTime', null, { dateString, error });
     return 'Invalid Date';
   }
 };

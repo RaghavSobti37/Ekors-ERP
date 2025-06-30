@@ -1,5 +1,5 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationFormPage.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Form, Button, Alert, Spinner, Table, Row, Col } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -13,11 +13,9 @@ import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
-  generateNextQuotationNumber, // This was the incorrect import
   formatDateForInput,
 } from "../../utils/helpers.js"; // Keep for formatting
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Keep for frontend display calculations
-import frontendLogger from "../../utils/frontendLogger.js";
 const initialNewItemFormData = {
   name: "",
   pricing: {
@@ -31,6 +29,17 @@ const initialNewItemFormData = {
   gstRate: "0",
   quantity: 1, // This is for the item master, not the quotation line
   lowStockThreshold: "5",
+};
+
+const generateQuotationNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
 };
 
 const GoodsTable = ({
@@ -804,17 +813,6 @@ const QuotationFormPage = () => {
         setSelectedClientIdForForm(responseData._id);
         setError(null);
         toast.success("Client saved successfully!");
-        if (user)
-          frontendLogger.info(
-            "clientActivity",
-            "New client saved successfully",
-            user,
-            {
-              clientId: responseData._id,
-              clientName: responseData.companyName,
-              action: "SAVE_NEW_CLIENT_SUCCESS",
-            }
-          );
       } else {
         setError("Failed to save client: Unexpected response.");
         toast.error("Failed to save client: Unexpected response.");
@@ -828,19 +826,6 @@ const QuotationFormPage = () => {
       );
       setError(errorMessage);
       toast.error(errorMessage);
-      if (user)
-        frontendLogger.error(
-          "clientActivity",
-          "Failed to save new client",
-          user,
-          {
-            clientPayload,
-            errorMessage: error.data?.message || error.message,
-            stack: error.stack,
-            responseData: error.data,
-            action: "SAVE_NEW_CLIENT_FAILURE",
-          }
-        );
     } finally {
       setIsSavingClient(false);
     }
@@ -1017,20 +1002,6 @@ const QuotationFormPage = () => {
               isEditing ? "updated" : "created"
             }!`
           );
-          if (user)
-            frontendLogger.info(
-              "quotationActivity",
-              `Quotation ${submissionData.referenceNumber} ${
-                isEditing ? "updated" : "created"
-              }`,
-              user,
-              {
-                quotationId: responseData._id,
-                action: isEditing
-                  ? "UPDATE_QUOTATION_SUCCESS"
-                  : "CREATE_QUOTATION_SUCCESS",
-              }
-            );
           navigate("/quotations");
         }
       } catch (error) {
@@ -1052,20 +1023,6 @@ const QuotationFormPage = () => {
         }
         setError(errorMessage);
         toast.error(errorMessage);
-        if (user)
-          frontendLogger.error(
-            "quotationActivity",
-            isEditing ? "Failed to update" : "Failed to create",
-            user,
-            {
-              referenceNumber: quotationData.referenceNumber,
-              quotationId: quotationIdFromParams,
-              submittedData: submissionData,
-              action: isEditing
-                ? "UPDATE_QUOTATION_FAILURE"
-                : "CREATE_QUOTATION_FAILURE",
-            }
-          );
       } finally {
         setIsLoading(false);
       }

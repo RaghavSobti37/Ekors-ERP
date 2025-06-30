@@ -15,13 +15,11 @@ const transformLogEntry = (log) => ({
   date: new Date(log.date),
   type: log.type,
   user: log.userReference
-    ? `${log.userReference.firstname || ""} ${
-        log.userReference.lastname || ""
-      }`.trim() || log.userReference.email
+    ? `${log.userReference.firstname || ""} ${log.userReference.lastname || ""}`.trim() || log.userReference.email
     : "System",
   details: log.details || log.type,
   quantityChange: parseFloat(log.quantityChange) || 0,
-  ticketNumber: log.ticketReference?.ticketNumber,
+  ticketNumber: log.ticketReference?.ticketNumber || "",
   source: "inventoryLog",
 });
 

@@ -10,10 +10,19 @@ const requireSuperAdmin = (req, res, next) => {
   if (req.user && req.user.role === "super-admin") {
     next();
   } else {
-    logger.warn('auth-middleware', `Unauthorized access attempt by ${req.user?.email || 'unknown'}`, req.user);
-    return res.status(403).json({ 
+    logger.log({
+      user: req.user,
+      page: "User",
+      action: "Require Super Admin",
+      api: req.originalUrl,
+      req,
+      message: `Unauthorized access attempt by ${req.user?.email || 'unknown'}`,
+      details: {},
+      level: "warn"
+    });
+    return res.status(403).json({
       success: false,
-      error: "Forbidden: Super-admin access required" 
+      error: "Forbidden: Super-admin access required"
     });
   }
 };

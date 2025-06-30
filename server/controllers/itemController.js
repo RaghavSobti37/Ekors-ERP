@@ -1,16 +1,20 @@
 const mongoose = require("mongoose");
 const { Item, Purchase } = require("../models/itemlist");
 const UniversalBackup = require("../models/universalBackup");
-const logger = require("../utils/logger");
+const logger = require("../logger"); // Use unified logger
 const multer = require("multer");
 const exceljs = require("exceljs");
 const asyncHandler = require("express-async-handler");
 const Ticket = require("../models/opentickets");
 
 // Constants
-const MAX_CUSTOM_UNITS_TO_EXPORT = 3;
+const MAX_CUSTOM_UNITS_TO_EXPORT = 1;
 const DEFAULT_LOW_STOCK_THRESHOLD = 5;
 const DEFAULT_PROFIT_MARGIN = 20;
+
+const STANDARD_UNITS = [
+  'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag',  'set'
+];
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -32,9 +36,18 @@ const upload = multer({
 exports.uploadMiddleware = upload.single("excelFile");
 
 // Helper functions
-const handleErrorResponse = (res, error, context, user) => {
+const handleErrorResponse = (res, error, context, user, req = null) => {
   const errorMessage = `Error in ${context}: ${error.message}`;
-  logger.error(context, errorMessage, error, user);
+  logger.log({
+    user,
+    page: "Item",
+    action: context,
+    api: req?.originalUrl,
+    req,
+    message: errorMessage,
+    details: { error: error.message, stack: error.stack },
+    level: "error"
+  });
   res.status(500).json({
     message: `Server error during ${context}`,
     error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -56,9 +69,30 @@ const validateItemData = (itemData) => {
   if (!itemData.units || !itemData.units.some(u => u.isBaseUnit)) {
     throw new Error("A base unit must be selected");
   }
+
+  // Validate units structure
+  if (itemData.units) {
+    const baseUnits = itemData.units.filter(u => u.isBaseUnit);
+    if (baseUnits.length !== 1) {
+      throw new Error("Exactly one base unit must be specified");
+    }
+    
+    if (!STANDARD_UNITS.includes(baseUnits[0].name)) {
+      throw new Error(`Base unit must be one of: ${STANDARD_UNITS.join(', ')}`);
+    }
+
+    for (const unit of itemData.units) {
+      if (!STANDARD_UNITS.includes(unit.name)) {
+        throw new Error(`Invalid unit name: ${unit.name}. Must be one of: ${STANDARD_UNITS.join(', ')}`);
+      }
+      
+      if (unit.isBaseUnit && unit.conversionFactor !== 1) {
+        throw new Error("Base unit must have conversion factor of 1");
+      }
+    }
+  }
 };
 
-// Controller methods
 exports.getAllItems = asyncHandler(async (req, res) => {
   const user = req.user || null;
   const {
@@ -98,7 +132,16 @@ exports.getAllItems = asyncHandler(async (req, res) => {
       if (Number.isFinite(thresholdValue)) {
         query.quantity = { $lt: thresholdValue };
       } else {
-        logger.warn("item", `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`, user);
+        logger.log({
+          user,
+          page: "Item",
+          action: "Get All Items",
+          api: req.originalUrl,
+          req,
+          message: `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`,
+          details: {},
+          level: "warn"
+        });
       }
     }
 
@@ -111,11 +154,20 @@ exports.getAllItems = asyncHandler(async (req, res) => {
         .limit(limit)
     ]);
 
-    logger.debug("item", "Items fetched successfully", user, {
-      count: items.length,
-      totalItems,
-      currentPage: page,
-      totalPages: Math.ceil(totalItems / limit),
+    logger.log({
+      user,
+      page: "Item",
+      action: "Get All Items",
+      api: req.originalUrl,
+      req,
+      message: "Items fetched successfully",
+      details: {
+        count: items.length,
+        totalItems,
+        currentPage: page,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+      level: "info"
     });
 
     res.json({
@@ -125,9 +177,10 @@ exports.getAllItems = asyncHandler(async (req, res) => {
       totalPages: Math.ceil(totalItems / limit),
     });
   } catch (error) {
-    handleErrorResponse(res, error, "fetching items", user);
+    handleErrorResponse(res, error, "fetching items", user, req);
   }
 });
+
 
 exports.exportItemsToExcel = asyncHandler(async (req, res) => {
   const user = req.user || null;
@@ -791,20 +844,42 @@ exports.getItemById = asyncHandler(async (req, res) => {
   }
 
   try {
-    const item = await Item.findById(id)
-      .populate("createdBy reviewedBy", "firstname lastname email")
-      .populate({
-        path: "inventoryLog.userReference",
-        select: "firstname lastname email",
-      })
-      .populate({
-        path: "inventoryLog.ticketReference",
-        select: "ticketNumber",
-      })
-      .populate({
-        path: "excelImportHistory.importedBy",
-        select: "firstname lastname email",
+    // Support ?populate=field1,field2,field3
+    let query = Item.findById(id);
+    const populateParam = req.query.populate;
+    if (populateParam) {
+      const fields = populateParam.split(",").map(f => f.trim());
+      fields.forEach(field => {
+        // Nested population for logs
+        if (field === "inventoryLog.userReference") {
+          query = query.populate({
+            path: "inventoryLog.userReference",
+            select: "firstname lastname email"
+          });
+        } else if (field === "inventoryLog.ticketReference") {
+          query = query.populate({
+            path: "inventoryLog.ticketReference",
+            select: "ticketNumber"
+          });
+        } else if (field === "excelImportHistory.importedBy") {
+          query = query.populate({
+            path: "excelImportHistory.importedBy",
+            select: "firstname lastname email"
+          });
+        } else if (["createdBy", "reviewedBy"].includes(field)) {
+          query = query.populate(field, "firstname lastname email");
+        }
       });
+    } else {
+      // Default population if none specified
+      query = query
+        .populate("createdBy reviewedBy", "firstname lastname email")
+        .populate({ path: "inventoryLog.userReference", select: "firstname lastname email" })
+        .populate({ path: "inventoryLog.ticketReference", select: "ticketNumber" })
+        .populate({ path: "excelImportHistory.importedBy", select: "firstname lastname email" });
+    }
+
+    const item = await query.lean();
 
     if (!item) {
       logger.warn("item", `Item not found when fetching details: ${id}`, user);
@@ -817,30 +892,97 @@ exports.getItemById = asyncHandler(async (req, res) => {
   }
 });
 
+const normalizeUnitsToLowercaseAndBase = (units, baseUnit) => {
+  baseUnit = baseUnit?.toLowerCase();
+  let foundBase = false;
+  const normalized = units
+    .map(unit => {
+      const name = unit.name.toLowerCase();
+      if (name === baseUnit) {
+        foundBase = true;
+        return {
+          ...unit,
+          name,
+          isBaseUnit: true,
+          conversionFactor: 1,
+        };
+      }
+      return {
+        ...unit,
+        name,
+        isBaseUnit: false,
+        conversionFactor: Number(unit.conversionFactor) || 1,
+      };
+    });
+
+  // If no base unit found, add it
+  if (!foundBase && baseUnit) {
+    normalized.unshift({
+      name: baseUnit,
+      isBaseUnit: true,
+      conversionFactor: 1,
+    });
+  }
+
+  // Remove any duplicate units with the same name
+  const unique = [];
+  const seen = new Set();
+  for (const u of normalized) {
+    if (!seen.has(u.name)) {
+      unique.push(u);
+      seen.add(u.name);
+    }
+  }
+  return unique;
+};
+
 exports.createItem = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user) {
-    logger.warn("item", "Create item attempt without authenticated user.", null);
+    logger.log({
+      user: null,
+      page: "Item",
+      action: "Create Item",
+      api: req.originalUrl,
+      req,
+      message: "Create item attempt without authenticated user.",
+      details: {},
+      level: "warn"
+    });
     return res.status(401).json({ message: "Authentication required." });
   }
 
   try {
+    req.body.baseUnit = req.body.baseUnit?.toLowerCase();
+    if (Array.isArray(req.body.units)) {
+      req.body.units = normalizeUnitsToLowercaseAndBase(req.body.units, req.body.baseUnit);
+    }
+
     validateItemData(req.body);
+
+    // Process units - ensure exactly one base unit
+    const units = req.body.units.map(unit => ({
+      name: unit.name,
+      isBaseUnit: !!unit.isBaseUnit,
+      conversionFactor: unit.isBaseUnit ? 1 : Number(unit.conversionFactor) || 1
+    }));
+
+    const baseUnit = units.find(u => u.isBaseUnit);
+    if (!baseUnit) {
+      throw new Error("A base unit must be specified");
+    }
 
     const quantity = parseFloat(req.body.quantity) || 0;
     const lowStockThreshold = req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : DEFAULT_LOW_STOCK_THRESHOLD;
-    const sellingPrice = parseFloat(req.body.sellingPrice) || 0;
-    const buyingPrice = parseFloat(req.body.buyingPrice) || 0;
-    const profitMarginPercentage = parseFloat(req.body.profitMarginPercentage) || DEFAULT_PROFIT_MARGIN;
 
     const newItemData = {
       name: req.body.name,
       quantity: quantity,
-      baseUnit: req.body.baseUnit || "Nos",
-      sellingPrice: sellingPrice,
-      buyingPrice: buyingPrice,
-      profitMarginPercentage: profitMarginPercentage,
-      units: req.body.units,
+      baseUnit: baseUnit.name,
+      sellingPrice: parseFloat(req.body.sellingPrice) || 0,
+      buyingPrice: parseFloat(req.body.buyingPrice) || 0,
+      profitMarginPercentage: parseFloat(req.body.profitMarginPercentage) || DEFAULT_PROFIT_MARGIN,
+      units: units,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       category: req.body.category || "Other",
@@ -860,10 +1002,19 @@ exports.createItem = asyncHandler(async (req, res) => {
     const newItem = new Item(newItemData);
     const savedItem = await newItem.save();
 
-    logger.info("item", `Item created successfully by ${user.email}`, user, {
-      itemId: savedItem._id,
-      itemName: savedItem.name,
-      status: savedItem.status,
+    logger.log({
+      user,
+      page: "Item",
+      action: "Create Item",
+      api: req.originalUrl,
+      req,
+      message: `Item created successfully by ${user.email}`,
+      details: {
+        itemId: savedItem._id,
+        itemName: savedItem.name,
+        status: savedItem.status,
+      },
+      level: "info"
     });
 
     res.status(201).json(savedItem);
@@ -882,7 +1033,7 @@ exports.createItem = asyncHandler(async (req, res) => {
       });
     }
 
-    handleErrorResponse(res, error, "creating item", req.user);
+    handleErrorResponse(res, error, "creating item", req.user, req);
   }
 });
 
@@ -898,31 +1049,48 @@ exports.updateItem = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Invalid item ID format" });
   }
 
+  // Add this debug log:
+  console.log("DEBUG: updateItem req.body.units received:", req.body.units);
+
   try {
+    req.body.baseUnit = req.body.baseUnit?.toLowerCase();
+    if (Array.isArray(req.body.units)) {
+      req.body.units = normalizeUnitsToLowercaseAndBase(req.body.units, req.body.baseUnit);
+    }
+
+    validateItemData(req.body);
+
     const existingItem = await Item.findById(itemId);
     if (!existingItem) {
       logger.warn("item", `Item not found for update: ${itemId}`, user);
       return res.status(404).json({ message: "Item not found" });
     }
 
-    validateItemData(req.body);
+    // Process units - ensure exactly one base unit
+    const units = req.body.units.map(unit => ({
+      name: unit.name,
+      isBaseUnit: !!unit.isBaseUnit,
+      conversionFactor: unit.isBaseUnit ? 1 : Number(unit.conversionFactor) || 1
+    }));
+
+    const baseUnit = units.find(u => u.isBaseUnit);
+    if (!baseUnit) {
+      throw new Error("A base unit must be specified");
+    }
 
     const quantity = req.body.quantity !== undefined ? parseFloat(req.body.quantity) || 0 : existingItem.quantity;
     const lowStockThreshold = req.body.lowStockThreshold !== undefined && req.body.lowStockThreshold !== null
       ? parseInt(String(req.body.lowStockThreshold), 10)
       : existingItem.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
     
-    const sellingPrice = req.body.sellingPrice !== undefined ? parseFloat(req.body.sellingPrice) : existingItem.sellingPrice;
-    const buyingPrice = req.body.buyingPrice !== undefined ? parseFloat(req.body.buyingPrice) : existingItem.buyingPrice;
-
     const updatePayload = {
       name: req.body.name,
       quantity: quantity,
-      baseUnit: req.body.baseUnit || existingItem.baseUnit,
-      sellingPrice: sellingPrice,
-      buyingPrice: buyingPrice,
+      baseUnit: baseUnit.name,
+      sellingPrice: req.body.sellingPrice !== undefined ? parseFloat(req.body.sellingPrice) : existingItem.sellingPrice,
+      buyingPrice: req.body.buyingPrice !== undefined ? parseFloat(req.body.buyingPrice) : existingItem.buyingPrice,
       profitMarginPercentage: req.body.profitMarginPercentage || DEFAULT_PROFIT_MARGIN,
-      units: req.body.units || existingItem.units,
+      units: units,
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       category: req.body.category || "Other",
@@ -1015,7 +1183,6 @@ exports.updateItem = asyncHandler(async (req, res) => {
     handleErrorResponse(res, error, `updating item ID: ${itemId}`, user);
   }
 });
-
 exports.approveItem = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user || (user.role !== "admin" && user.role !== "super-admin")) {
@@ -1055,7 +1222,7 @@ exports.approveItem = asyncHandler(async (req, res) => {
 
 exports.deleteItem = asyncHandler(async (req, res) => {
   const itemId = req.params.id;
-  const user = req.user || null;
+  const user = req.user;
   const session = await mongoose.startSession();
 
   if (!mongoose.Types.ObjectId.isValid(itemId)) {

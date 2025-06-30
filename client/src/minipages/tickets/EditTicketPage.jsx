@@ -9,7 +9,6 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
-import frontendLogger from "../../utils/frontendLogger.js";
 import axios from "axios"; // For pincode API
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";

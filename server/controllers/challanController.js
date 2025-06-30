@@ -1,6 +1,6 @@
 const Challan = require("../models/challan");
-const UniversalBackup = require("../models/universalBackup.js"); // Import backup model
-const logger = require("../utils/logger"); // Import logger
+const UniversalBackup = require("../models/universalBackup.js");
+const logger = require("../logger"); // Use unified logger
 
 // Create or Submit Challan
 exports.createChallan = async (req, res) => {
@@ -13,7 +13,7 @@ exports.createChallan = async (req, res) => {
       email,
       totalBilling,
       billNumber,
-      createdBy: user._id, // Track creator
+      createdBy: user._id,
     };
 
     if (req.file) {
@@ -27,19 +27,32 @@ exports.createChallan = async (req, res) => {
     const newChallan = new Challan(challanData);
     await newChallan.save();
 
-    logger.info("challan", `Challan created by user: ${user._id}`, user, {
-      challanId: newChallan._id,
-      companyName: newChallan.companyName,
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Create Challan",
+      api: req.originalUrl,
+      req,
+      message: `Challan created by user: ${user._id}`,
+      details: {
+        challanId: newChallan._id,
+        companyName: newChallan.companyName,
+      },
+      level: "info",
     });
 
     res.status(201).json(newChallan);
   } catch (err) {
-    logger.error(
-      "challan",
-      `Failed to create challan by user: ${user._id}`,
-      err,
-      user
-    );
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Create Challan Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to create challan by user: ${user._id}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error",
+    });
     res.status(500).json({ error: "Failed to create challan" });
   }
 };
@@ -48,25 +61,35 @@ exports.createChallan = async (req, res) => {
 exports.getAllChallans = async (req, res) => {
   const user = req.user;
   const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 10; // Default limit to 10, adjust as needed
+  const limit = parseInt(req.query.limit, 10) || 10;
   const skip = (page - 1) * limit;
   try {
     let query = {};
 
-    // If the user is not a super-admin, filter challans by createdBy
     if (user.role !== "super-admin") {
       query.createdBy = user._id;
     }
 
     const totalItems = await Challan.countDocuments(query);
 
-    const challans = await Challan.find(query) // Apply the query
-      .sort({ createdAt: -1 }) // Sort by creation date, newest first
+    const challans = await Challan.find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .select("-document")
-      .populate("createdBy", "firstname lastname email") // Populate creator info
-      .populate("updatedBy", "firstname lastname email"); // Populate updater info
+      .populate("createdBy", "firstname lastname email")
+      .populate("updatedBy", "firstname lastname email");
+
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Get All Challans",
+      api: req.originalUrl,
+      req,
+      message: `Fetched challans for user: ${user._id}, role: ${user.role}`,
+      details: { totalItems, page, limit },
+      level: "info",
+    });
 
     res.json({
       data: challans,
@@ -75,12 +98,16 @@ exports.getAllChallans = async (req, res) => {
       totalPages: Math.ceil(totalItems / limit),
     });
   } catch (err) {
-    logger.error(
-      "challan",
-      `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`,
-      err,
-      user
-    );
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Get All Challans Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error",
+    });
     res.status(500).json({ error: "Failed to fetch challans" });
   }
 };
@@ -93,10 +120,42 @@ exports.getChallanById = async (req, res) => {
       .populate("createdBy", "firstname lastname email")
       .populate("updatedBy", "firstname lastname email");
 
-    if (!challan) return res.status(404).json({ error: "Challan not found" });
+    if (!challan) {
+      logger.log({
+        page: "Challan",
+        action: "Get Challan By ID",
+        api: req.originalUrl,
+        req,
+        message: `Challan not found: ${req.params.id}`,
+        details: { challanId: req.params.id },
+        level: "warn",
+      });
+      return res.status(404).json({ error: "Challan not found" });
+    }
+
+    logger.log({
+      user: req.user,
+      page: "Challan",
+      action: "Get Challan By ID",
+      api: req.originalUrl,
+      req,
+      message: `Fetched challan: ${req.params.id}`,
+      details: { challanId: req.params.id },
+      level: "info",
+    });
+
     res.json(challan);
   } catch (err) {
-    logger.error("challan", `Failed to fetch challan: ${req.params.id}`, err);
+    logger.log({
+      user: req.user,
+      page: "Challan",
+      action: "Get Challan By ID Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch challan: ${req.params.id}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error",
+    });
     res.status(500).json({ error: "Failed to fetch challan" });
   }
 };
@@ -106,28 +165,43 @@ exports.getDocument = async (req, res) => {
   try {
     const challan = await Challan.findById(req.params.id);
     if (!challan || !challan.document || !challan.document.data) {
-      logger.warn(
-        "challan",
-        `Document not found for Challan ID: ${req.params.id}`,
-        req.user
-      );
+      logger.log({
+        user: req.user,
+        page: "Challan",
+        action: "Get Document",
+        api: req.originalUrl,
+        req,
+        message: `Document not found for Challan ID: ${req.params.id}`,
+        details: { challanId: req.params.id },
+        level: "warn",
+      });
       return res.status(404).json({ error: "Document not found" });
     }
 
-    logger.debug(
-      "challan",
-      `Serving document for Challan ID: ${req.params.id}`,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Challan",
+      action: "Get Document",
+      api: req.originalUrl,
+      req,
+      message: `Serving document for Challan ID: ${req.params.id}`,
+      details: { challanId: req.params.id },
+      level: "debug",
+    });
+
     res.set("Content-Type", challan.document.contentType);
     res.send(challan.document.data);
   } catch (err) {
-    logger.error(
-      "challan",
-      `Failed to retrieve document for Challan ID: ${req.params.id}`,
-      err,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Challan",
+      action: "Get Document Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to retrieve document for Challan ID: ${req.params.id}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error",
+    });
     res.status(500).json({ error: "Failed to retrieve document" });
   }
 };
@@ -136,7 +210,6 @@ exports.getDocument = async (req, res) => {
 exports.updateChallan = async (req, res) => {
   const user = req.user;
   try {
-    // Explicitly pick fields to update to prevent unintended modifications
     const { companyName, phone, email, totalBilling, billNumber } = req.body;
     const updateData = {};
 
@@ -144,10 +217,8 @@ exports.updateChallan = async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email;
     if (totalBilling !== undefined) updateData.totalBilling = totalBilling;
-    // Allow billNumber to be set to an empty string (cleared) or a new value
     if (billNumber !== undefined) updateData.billNumber = billNumber;
 
-    // Always set updatedBy
     updateData.updatedBy = user._id;
 
     if (req.file) {
@@ -158,23 +229,36 @@ exports.updateChallan = async (req, res) => {
       };
     }
 
-    // If no actual data fields are being updated (e.g., only a file or nothing)
-    // and no file, we might still want to update 'updatedBy' and 'updatedAt'
-    // Mongoose handles updatedAt automatically. findByIdAndUpdate will proceed.
-    // If updateData (excluding updatedBy and document) is empty, it means only metadata or file might change.
-
     const updated = await Challan.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
 
-    logger.info("challan", `Challan updated by user: ${user._id}`, user, {
-      challanId: updated._id,
-      companyName: updated.companyName,
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Update Challan",
+      api: req.originalUrl,
+      req,
+      message: `Challan updated by user: ${user._id}`,
+      details: {
+        challanId: updated?._id,
+        companyName: updated?.companyName,
+      },
+      level: "info",
     });
 
     res.json(updated);
   } catch (err) {
-    logger.error("challan", `Update failed by user: ${user._id}`, err, user);
+    logger.log({
+      user,
+      page: "Challan",
+      action: "Update Challan Error",
+      api: req.originalUrl,
+      req,
+      message: `Update failed by user: ${user._id}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error",
+    });
     res.status(500).json({ error: "Failed to update challan" });
   }
 };
@@ -182,89 +266,119 @@ exports.updateChallan = async (req, res) => {
 // Delete Challan with backup
 exports.deleteChallan = async (req, res) => {
   const challanId = req.params.id;
-  const user = req.user; // Assuming req.user is populated by auth middleware
+  const user = req.user;
   const userId = user?._id;
-  let newBackupEntry = null; // Declare newBackupEntry here to ensure it's in scope for the catch block
+  let newBackupEntry = null;
 
   const logDetails = { userId, challanId, model: "Challan" };
-  logger.info(
-    "delete",
-    `[DELETE_INITIATED] Challan ID: ${challanId}`,
+  logger.log({
     user,
-    logDetails
-  );
+    page: "Challan",
+    action: "Delete Challan Initiated",
+    api: req.originalUrl,
+    req,
+    message: `[DELETE_INITIATED] Challan ID: ${challanId}`,
+    details: logDetails,
+    level: "info",
+  });
 
   try {
-    logger.debug(
-      "delete",
-      `[FETCH_ATTEMPT] Finding Challan ID: ${challanId} for backup and deletion.`,
+    logger.log({
       user,
-      logDetails
-    );
+      page: "Challan",
+      action: "Delete Challan Fetch Attempt",
+      api: req.originalUrl,
+      req,
+      message: `[FETCH_ATTEMPT] Finding Challan ID: ${challanId} for backup and deletion.`,
+      details: logDetails,
+      level: "debug",
+    });
     const challanToBackup = await Challan.findById(challanId);
 
     if (!challanToBackup) {
-      logger.warn(
-        "delete",
-        `[NOT_FOUND] Challan not found for deletion.`,
+      logger.log({
         user,
-        logDetails
-      );
+        page: "Challan",
+        action: "Delete Challan Not Found",
+        api: req.originalUrl,
+        req,
+        message: `[NOT_FOUND] Challan not found for deletion.`,
+        details: logDetails,
+        level: "warn",
+      });
       return res.status(404).json({ message: "Challan not found." });
     }
-    logger.debug(
-      "delete",
-      `[FETCH_SUCCESS] Found Challan ID: ${challanId}. Preparing for backup.`,
+    logger.log({
       user,
-      logDetails
-    );
+      page: "Challan",
+      action: "Delete Challan Fetch Success",
+      api: req.originalUrl,
+      req,
+      message: `[FETCH_SUCCESS] Found Challan ID: ${challanId}. Preparing for backup.`,
+      details: logDetails,
+      level: "debug",
+    });
 
     const challanDataToBackup = challanToBackup.toObject();
 
     newBackupEntry = new UniversalBackup({
-      // Assign to the already declared variable
       originalId: challanToBackup._id,
-      originalModel: "Challan", // Specify the model being backed up
+      originalModel: "Challan",
       data: challanDataToBackup,
       deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: challanToBackup.createdAt,
       originalUpdatedAt: challanToBackup.updatedAt,
-      // backupReason: "User-initiated deletion via API",
     });
 
-    logger.debug(
-      "delete",
-      `[PRE_BACKUP_SAVE] Attempting to save backup for Challan ID: ${challanToBackup._id}.`,
+    logger.log({
       user,
-      { ...logDetails, originalId: challanToBackup._id }
-    );
+      page: "Challan",
+      action: "Delete Challan Pre Backup Save",
+      api: req.originalUrl,
+      req,
+      message: `[PRE_BACKUP_SAVE] Attempting to save backup for Challan ID: ${challanToBackup._id}.`,
+      details: { ...logDetails, originalId: challanToBackup._id },
+      level: "debug",
+    });
     await newBackupEntry.save();
-    logger.info(
-      "delete",
-      `[BACKUP_SUCCESS] Challan successfully backed up. Backup ID: ${newBackupEntry._id}.`,
+    logger.log({
       user,
-      {
+      page: "Challan",
+      action: "Delete Challan Backup Success",
+      api: req.originalUrl,
+      req,
+      message: `[BACKUP_SUCCESS] Challan successfully backed up. Backup ID: ${newBackupEntry._id}.`,
+      details: {
         ...logDetails,
         originalId: challanToBackup._id,
         backupId: newBackupEntry._id,
         backupModel: "UniversalBackup",
-      }
-    );
+      },
+      level: "info",
+    });
 
-    logger.debug(
-      "delete",
-      `[PRE_ORIGINAL_DELETE] Attempting to delete original Challan ID: ${challanToBackup._id}.`,
+    logger.log({
       user,
-      { ...logDetails, originalId: challanToBackup._id }
-    );
+      page: "Challan",
+      action: "Delete Challan Pre Original Delete",
+      api: req.originalUrl,
+      req,
+      message: `[PRE_ORIGINAL_DELETE] Attempting to delete original Challan ID: ${challanToBackup._id}.`,
+      details: { ...logDetails, originalId: challanToBackup._id },
+      level: "debug",
+    });
     await Challan.findByIdAndDelete(challanId);
-    logger.info(
-      "delete",
-      `[ORIGINAL_DELETE_SUCCESS] Original Challan successfully deleted.`,
+    logger.log({
       user,
-      { ...logDetails, originalId: challanToBackup._id }
-    );
+      page: "Challan",
+      action: "Delete Challan Original Delete Success",
+      api: req.originalUrl,
+      req,
+      message: `[ORIGINAL_DELETE_SUCCESS] Original Challan successfully deleted.`,
+      details: { ...logDetails, originalId: challanToBackup._id },
+      level: "info",
+    });
 
     res.status(200).json({
       message: "Challan deleted and backed up successfully.",
@@ -272,50 +386,62 @@ exports.deleteChallan = async (req, res) => {
       backupId: newBackupEntry._id,
     });
   } catch (error) {
-    logger.error(
-      "delete",
-      `[DELETE_ERROR] Error during Challan deletion process for ID: ${challanId}.`,
-      error,
+    logger.log({
       user,
-      logDetails
-    );
-    // Check if backup was made before error
-    // If newBackupEntry is null (error before its creation) OR
-    // if newBackupEntry exists but isNew is true (meaning .save() likely failed or didn't happen)
+      page: "Challan",
+      action: "Delete Challan Error",
+      api: req.originalUrl,
+      req,
+      message: `[DELETE_ERROR] Error during Challan deletion process for ID: ${challanId}.`,
+      details: { ...logDetails, error: error.message, stack: error.stack },
+      level: "error",
+    });
     if (
       error.name === "ValidationError" ||
       !newBackupEntry ||
       (newBackupEntry && newBackupEntry.isNew)
     ) {
-      logger.warn(
-        "delete",
-        `[ROLLBACK_DELETE] Backup failed or error before backup for Challan ID: ${challanId}. Original document will not be deleted.`,
+      logger.log({
         user,
-        logDetails
-      );
+        page: "Challan",
+        action: "Delete Challan Rollback",
+        api: req.originalUrl,
+        req,
+        message: `[ROLLBACK_DELETE] Backup failed or error before backup for Challan ID: ${challanId}. Original document will not be deleted.`,
+        details: logDetails,
+        level: "warn",
+      });
     } else {
       const backupExists = await UniversalBackup.findOne({
         originalId: challanId,
       });
       if (backupExists && !(await Challan.findById(challanId))) {
-        logger.info(
-          "delete",
-          `[CRITICAL_STATE] Challan was backed up (ID: ${backupExists._id}) but original might not have been deleted or error occurred after backup. Manual check recommended.`,
+        logger.log({
           user,
-          { ...logDetails, backupId: backupExists._id }
-        );
+          page: "Challan",
+          action: "Delete Challan Critical State",
+          api: req.originalUrl,
+          req,
+          message: `[CRITICAL_STATE] Challan was backed up (ID: ${backupExists._id}) but original might not have been deleted or error occurred after backup. Manual check recommended.`,
+          details: { ...logDetails, backupId: backupExists._id },
+          level: "info",
+        });
       } else if (backupExists) {
-        logger.warn(
-          `[DELETE_POST_BACKUP_ERROR] Challan backup (ID: ${backupExists._id}) was created, but an error occurred before original deletion could be confirmed.`,
-          { ...logDetails, backupId: backupExists._id }
-        );
+        logger.log({
+          user,
+          page: "Challan",
+          action: "Delete Challan Post Backup Error",
+          api: req.originalUrl,
+          req,
+          message: `[DELETE_POST_BACKUP_ERROR] Challan backup (ID: ${backupExists._id}) was created, but an error occurred before original deletion could be confirmed.`,
+          details: { ...logDetails, backupId: backupExists._id },
+          level: "warn",
+        });
       }
     }
-    res
-      .status(500)
-      .json({
-        message:
-          "Server error during the deletion process. Please check server logs.",
-      });
+    res.status(500).json({
+      message:
+        "Server error during the deletion process. Please check server logs.",
+    });
   }
 };

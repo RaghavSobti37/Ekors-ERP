@@ -94,16 +94,30 @@ router.get("/:id", auth, async (req, res) => {
       }),
     });
     if (!ticket) {
-      logger.warn(
-        "ticket-fetch",
-        `Ticket not found or access denied for ID: ${req.params.id}`,
-        req.user
-      );
+      logger.log({
+        user: req.user,
+        page: "Ticket",
+        action: "Get Ticket By ID",
+        api: req.originalUrl,
+        req,
+        message: `Ticket not found or access denied for ID: ${req.params.id}`,
+        details: {},
+        level: "warn"
+      });
       return res
         .status(404)
         .json({ error: "Ticket not found or access denied" });
     }
-
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID",
+      api: req.originalUrl,
+      req,
+      message: `Fetched ticket: ${req.params.id}`,
+      details: { ticketId: req.params.id },
+      level: "info"
+    });
     // ... (rest of your population logic for GET /:id)
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate({ path: "currentAssignee", select: "firstname lastname email" })
@@ -155,13 +169,16 @@ router.get("/:id", auth, async (req, res) => {
 
     res.json(populatedTicket);
   } catch (error) {
-    // This is the source of the "Failed to fetch ticket" error
-    logger.error(
-      "ticket-fetch-error",
-      `Error fetching ticket by ID: ${req.params.id}`,
-      error,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch ticket by ID: ${req.params.id}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ error: "Failed to fetch ticket" });
   }
 });
