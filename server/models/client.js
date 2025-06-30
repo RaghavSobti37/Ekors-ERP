@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
-const ticketSchema = new mongoose.Schema({}, { strict: false }); // Placeholder if Ticket model is complex or just for ObjectId
-
+const ticketSchema = new mongoose.Schema({}, { strict: false }); 
 const clientSchema = new mongoose.Schema(
   {
     email: {

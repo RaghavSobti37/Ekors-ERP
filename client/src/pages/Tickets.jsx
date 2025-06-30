@@ -17,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { handleApiError } from "../utils/helpers";
-import frontendLogger from "../utils/frontendLogger.js";
 import ReusableTable from "../components/ReusableTable.jsx";
 import SearchBar from "../components/Searchbar.jsx";
 import apiClient from "../utils/apiClient";
@@ -64,28 +63,7 @@ export const UserSearchComponent = ({ onUserSelect, authContext }) => {
       setError(specificMessage);
 
       if (authContext?.user) {
-        frontendLogger.error(
-          "userSearch",
-          "Failed to fetch users",
-          authContext.user,
-          {
-            errorMessage: err.message,
-            specificMessageDisplayed: specificMessage,
-            stack: err.stack,
-          }
-        );
-      } else {
-        frontendLogger.error(
-          "userSearch",
-          "Failed to fetch users (user context unavailable)",
-          null,
-          {
-            errorMessage: err.message,
-            specificMessageDisplayed: specificMessage,
-            stack: err.stack,
-          }
-        );
-      }
+      } 
     } finally {
       setLoading(false);
     }
@@ -203,7 +181,6 @@ export const PIActions = ({ ticket, onPreviewPI }) => {
     } catch (error) {
       console.error("Error generating PI Word document:", error);
       toast.error("Failed to generate PI Word document. Please try again.");
-      frontendLogger.error("piGeneration", "Failed to generate PI DOCX", ticketForDoc.createdBy, { ticketId: ticketForDoc?._id, error: error.message });
     }
   }, [ticket]);
 
@@ -304,7 +281,6 @@ export default function Dashboard() {
       const errorMsg = handleApiError(error, "Failed to load tickets", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
       setTickets([]); setTotalTickets(0);
-      frontendLogger.error("ticketActivity", "Failed to fetch tickets", authUser, { errorMessage: errorMsg, stack: error.stack, status: error.status, action: "FETCH_TICKETS_FAILURE" });
       if (error.status === 401) { toast.error("Authentication failed."); navigate("/login", { state: { from: "/tickets" } }); }
     } finally { setIsLoading(false); }
   }, [authUser, navigate, sortConfig, searchTerm, statusFilter, currentPage, itemsPerPage]);
@@ -325,7 +301,6 @@ export default function Dashboard() {
   const handleDelete = useCallback(async (ticketToDelete) => {
     if (!authUser || authUser.role !== "super-admin") {
       const msg = "Permission denied to delete ticket."; setError(msg); toast.warn(msg);
-      frontendLogger.warn("ticketActivity", "Delete permission denied", authUser, { ticketId: ticketToDelete?._id, action: "DELETE_TICKET_PERMISSION_DENIED" });
       return;
     }
     if (window.confirm(`Delete ticket ${ticketToDelete.ticketNumber}?`)) {
@@ -339,11 +314,9 @@ export default function Dashboard() {
           fetchTickets(currentPage, itemsPerPage); // Or fetch current page again
         }
         setError(null); const successMsg = `Ticket ${ticketToDelete.ticketNumber} deleted.`; toast.success(successMsg);
-        frontendLogger.info("ticketActivity", successMsg, authUser, { ticketId: ticketToDelete._id, action: "DELETE_TICKET_SUCCESS" });
       } catch (error) {
         const errorMsg = handleApiError(error, "Delete failed", authUser, "ticketActivity");
         setError(errorMsg); toast.error(errorMsg);
-        frontendLogger.error("ticketActivity", `Failed to delete ticket ${ticketToDelete.ticketNumber}`, authUser, { ticketId: ticketToDelete._id, action: "DELETE_TICKET_FAILURE" });
       } finally { setIsLoading(false); }
     }
   }, [authUser, fetchTickets, tickets.length, currentPage, itemsPerPage]);

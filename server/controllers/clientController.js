@@ -38,7 +38,7 @@ exports.searchClients = async (req, res) => {
       // This maintains security for unrecognised or restricted roles.
 
 
-      logger.warn('client_search', `User with unhandled role '${userRole}' attempted to search clients.`, { userId });
+
 return res.status(403).json({ message: 'Access denied for your role.' });
     }
 
@@ -48,7 +48,6 @@ return res.status(403).json({ message: 'Access denied for your role.' });
 
     res.json(clients);
   } catch (error) {
-    logger.error("Error searching clients:", error.message, { stack: error.stack, userId: req.user?._id });
     res.status(500).json({ message: 'Error searching clients', error: error.message });
   }
 };
@@ -92,7 +91,6 @@ exports.createClient = async (req, res) => {
     logger.info('client_create', `New client created successfully by user ${userId}`, { clientId: newClient._id });
     res.status(201).json(newClient);
  } catch (error) {
-    logger.error("Error in POST /api/clients (createClient):", error.message, { stack: error.stack, userId: req.user?._id, body: req.body });
 
     if (error.code === 11000) {
       // MongoDB unique index violation
@@ -169,7 +167,6 @@ exports.getAllClientsForDashboard = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error("Error fetching clients for dashboard:", error.message, { stack: error.stack, userId: req.user?._id });
         res.status(500).json({ message: 'Error fetching clients', error: error.message });
     }
 };
@@ -219,7 +216,6 @@ exports.getClientById = async (req, res) => {
         };
         res.json(clientObj);
     } catch (error) {
-        logger.error(`Error fetching client by ID ${req.params.id}:`, error.message, { stack: error.stack, userId: req.user?._id });
         res.status(500).json({ message: 'Error fetching client details', error: error.message });
     }
 };
@@ -261,7 +257,6 @@ exports.updateClient = async (req, res) => {
         logger.info('client_update', `Client ${id} updated successfully by user ${currentUserId}`, { clientId: updatedClient._id });
         res.json(updatedClient);
     } catch (error) {
-        logger.error(`Error updating client ${req.params.id}:`, error.message, { stack: error.stack, userId: req.user?._id, body: req.body });
         if (error.code === 11000) return res.status(400).json({ message: 'Update failed due to a conflict with an existing client (email or GST).', field: error.keyPattern.email ? 'email' : 'gstNumber' });
         res.status(500).json({ message: 'Error updating client', error: error.message });
     }
@@ -320,8 +315,6 @@ exports.deleteClient = async (req, res) => {
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        logger.error(`Error deleting client ${req.params.id}:`, error.message, { stack: error.stack, userId: req.user?._id });
-
         res.status(500).json({ message: 'Error deleting client', error: error.message });
     }
 };

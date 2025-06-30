@@ -1,6 +1,4 @@
-// src/utils/helpers.js
 import { toast } from 'react-toastify';
-import frontendLogger from './frontendLogger'; // Assuming frontendLogger.js is in the same utils directory
 
 /**
  * Displays a toast notification.
@@ -32,49 +30,38 @@ export const showToast = (message, isSuccess = true, options = {}) => {
  * @param {Error} error - The error object from an API call (e.g., from Axios or Fetch).
  * @param {string} [defaultMessage='An unexpected error occurred.'] - Default message if a specific one cannot be extracted.
  * @param {object} [userForLogging=null] - Optional user object for enriching logs.
- * @param {string} [logType='apiError'] - Type of log for frontendLogger.
  * @returns {string} A user-friendly error message.
  */
 export const handleApiError = (error, defaultMessage = 'An unexpected error occurred.', userForLogging = null, logType = 'apiError') => {
   let errorMessage = defaultMessage;
 
-  if (error.response) {
+  // Ensure error is an object to prevent "Cannot read properties of null" errors
+  const safeError = error || {};
+
+  if (safeError.response) {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
-    if (error.response.data) {
-      if (typeof error.response.data === 'string' && error.response.data.length < 250) { // Avoid overly long strings
-        errorMessage = error.response.data;
-      } else if (error.response.data.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response.data.error) {
-        errorMessage = error.response.data.error;
+    if (safeError.response.data) {
+      if (typeof safeError.response.data === 'string' && safeError.response.data.length < 250) { // Avoid overly long strings
+        errorMessage = safeError.response.data;
+      } else if (safeError.response.data.message) {
+        errorMessage = safeError.response.data.message;
+      } else if (safeError.response.data.error) {
+        errorMessage = safeError.response.data.error;
       }
-      // You can add more specific checks here if your backend has consistent error structures
-      // e.g., if (error.response.data.errors && Array.isArray(error.response.data.errors)) { ... }
-    } else if (error.response.statusText) {
-      errorMessage = `Error ${error.response.status}: ${error.response.statusText}`;
+    } else if (safeError.response.statusText) {
+      errorMessage = `Error ${safeError.response.status}: ${safeError.response.statusText}`;
     }
-  } else if (error.request) {
+  } else if (safeError.request) {
     // The request was made but no response was received
     errorMessage = 'No response from server. Please check your network connection.';
-  } else if (error.message) {
+  } else if (safeError.message) {
     // Something happened in setting up the request that triggered an Error
-    errorMessage = error.message;
+    errorMessage = safeError.message;
   }
 
-  // Log the error
-  frontendLogger.error(
-    logType,
-    `API Error: ${errorMessage}`,
-    userForLogging,
-    {
-      originalErrorMessage: error.message,
-      status: error.response?.status,
-      responseData: error.response?.data,
-      requestConfig: error.config, // If using Axios, this contains request details
-      stack: error.stack,
-    }
-  );
+  // Display the error message to the user in a toast
+  showToast(errorMessage, false);
 
   return errorMessage;
 };
@@ -167,7 +154,6 @@ export const formatDateTime = (dateString) => {
       hour: '2-digit', minute: '2-digit', hour12: true,
     });
   } catch (error) {
-    // Log error if needed, e.g., frontendLogger.error('dateFormatting', 'Error in formatDateTime', null, { dateString, error });
     return 'Invalid Date';
   }
 };
@@ -191,4 +177,33 @@ export const dateToYYYYMMDD = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+/**
+ * Generates the next quotation number based on the current timestamp.
+ * @returns {string} The generated quotation number.
+ */
+export const generateNextQuotationNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
+};
+
+/**
+ * Generates the next ticket number based on the current timestamp.
+ * @returns {string} The generated ticket number.
+ */
+export const generateNextTicketNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
+  return `EKORS/${year}${month}${day}-${hours}${minutes}${seconds}`;
+};
 

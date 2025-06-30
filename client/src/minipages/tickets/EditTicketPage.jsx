@@ -3,12 +3,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Form, Button as BsButton, Alert, Spinner, Row, Col, Table, Badge, Card, ProgressBar } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
-import ItemSearchComponent from "../../components/ItemSearch.jsx";
+import ReusablePageStructure from "../../components/ReusablePageStructure.jsx"; // Ensure this path is correct
+import ItemSearchComponent from "../../components/ItemSearch.jsx"; // Ensure this path is correct
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
-import { handleApiError, formatDateForInput } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
+import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 import axios from "axios"; // For pincode API
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
@@ -23,7 +23,8 @@ const EditTicketPage = () => {
 
   const initialTicketData = {
     companyName: "", quotationNumber: "",
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
+    ticketNumber: generateNextTicketNumber(), // Generate on frontend
+    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Initial empty object
     shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
     shippingSameAsBilling: false,
     goods: [], totalQuantity: 0, totalAmount: 0,
@@ -86,6 +87,7 @@ const EditTicketPage = () => {
             maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
             gstRate: parseFloat(g.gstRate || 0),
             subtexts: g.subtexts || [],
+            originalItem: g.originalItem || g, // Ensure originalItem is preserved
         })),
       });
       setOriginalStatus(data.status);
@@ -179,13 +181,25 @@ const EditTicketPage = () => {
     const finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
     const currentTotalAmount = ticketData.totalAmount || 0;
     const grandTotal = currentTotalAmount + finalGstAmount;
-    setTicketData(prev => ({
-        ...prev, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst,
-        totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst,
-        finalGstAmount, grandTotal, isBillingStateSameAsCompany,
-    }));
-  }, [ticketData.goods, ticketData.billingAddress?.state, ticketData.totalAmount]);
 
+    // Calculate roundOff and finalRoundedAmount
+    const decimalPart = grandTotal - Math.floor(grandTotal);
+    let newRoundOffAmount;
+    let newFinalRoundedAmount;
+
+    if (decimalPart === 0) {
+      newRoundOffAmount = 0;
+      newFinalRoundedAmount = grandTotal;
+    } else if (decimalPart < 0.50) {
+      newFinalRoundedAmount = Math.floor(grandTotal);
+      newRoundOffAmount = -decimalPart;
+    } else {
+      newFinalRoundedAmount = Math.ceil(grandTotal);
+      newRoundOffAmount = 1 - decimalPart;
+    }
+
+    setTicketData(prev => ({ ...prev, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst, totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst, finalGstAmount, grandTotal, isBillingStateSameAsCompany, roundOff: newRoundOffAmount, finalRoundedAmount: newFinalRoundedAmount }));
+  }, [ticketData.goods, ticketData.billingAddress?.state, ticketData.totalAmount]);
   useEffect(() => {
     calculateTaxes();
   }, [calculateTaxes]);
@@ -217,13 +231,20 @@ const EditTicketPage = () => {
 
   const handleAddItemToTicket = useCallback((item) => {
     setTicketData(prev => {
+      // Determine the default unit to use (e.g., the base unit)
+      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
+      const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
+
       const newGoodsItem = {
         srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
-        quantity: 1, unit: item.unit || "Nos", price: Number(item.sellingPrice) || 0,
-        amount: (Number(item.sellingPrice) || 0) * 1, originalPrice: Number(item.sellingPrice) || 0,
+        quantity: 1, unit: defaultUnit, // Set default unit
+        price: pricePerSelectedUnit, // Price per selected unit (already calculated based on base unit)
+        amount: pricePerSelectedUnit, // Amount for 1 quantity
+        originalPrice: parseFloat(item.sellingPrice) || 0, // Store base selling price (direct property)
         maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: [],
+        originalItem: item, // Store the full item object for unit conversion
       };
       const newGoods = [...prev.goods, newGoodsItem];
       const totalQuantity = newGoods.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
@@ -303,31 +324,6 @@ const EditTicketPage = () => {
     }
   }, [initialTicketData, setTicketData, setIsFetchingAddress]);
 
-  const handleStatusChange = useCallback((status) => {
-    setTicketData(prev => ({ ...prev, status }));
-    if (status !== originalStatus) {
-        setStatusChangeComment(""); // setStatusChangeComment is stable
-    }
-  }, [originalStatus, setTicketData, setStatusChangeComment]);
-
-  const handleRoundOff = useCallback(() => {
-    const currentGrandTotal = ticketData.grandTotal || 0;
-    const decimalPart = currentGrandTotal - Math.floor(currentGrandTotal);
-    let newRoundedTotal;
-    let newRoundOffAmount;
-
-    if (decimalPart < 0.50) {
-      newRoundedTotal = Math.floor(currentGrandTotal);
-      newRoundOffAmount = -decimalPart;
-    } else {
-      newRoundedTotal = Math.ceil(currentGrandTotal);
-      newRoundOffAmount = 1 - decimalPart;
-    }
-    setRoundedGrandTotal(newRoundedTotal);
-    setRoundOffAmount(newRoundOffAmount);
-    toast.info(`Amount rounded. Round off: ₹${newRoundOffAmount.toFixed(2)}`);
-  }, [ticketData.grandTotal, setRoundedGrandTotal, setRoundOffAmount]);
-
   const handleUpdateTicket = useCallback(async () => {
     setFormValidated(true);
     // Basic form validation (can be expanded)
@@ -362,27 +358,29 @@ const EditTicketPage = () => {
           originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
-         roundOff: roundOffAmount,
-        finalRoundedAmount: roundedGrandTotal !== null ? roundedGrandTotal : ticketData.grandTotal + roundOffAmount,
+        termsAndConditions: ticketData.termsAndConditions, // Ensure terms and conditions are sent
+        roundOff: ticketData.roundOff, // Use the value from ticketData state
+        finalRoundedAmount: ticketData.finalRoundedAmount, // Use the value from ticketData state
+        // The backend will recalculate totalQuantity, totalAmount, GST, etc.
       };
       // Remove fields that shouldn't be sent or are managed by backend
       delete updatePayload._id; delete updatePayload.__v; delete updatePayload.createdAt; delete updatePayload.updatedAt;
       delete updatePayload.currentAssignee; delete updatePayload.createdBy; delete updatePayload.statusHistory; delete updatePayload.transferHistory;
 
       const responseData = await apiClient(`/tickets/${ticketIdFromParams}`, { method: "PUT", body: updatePayload });
+      console.log("Frontend sending updatePayload:", updatePayload); // <-- ADDED DEBUG LOG
+
       if (responseData) {
         toast.success(`Ticket ${ticketData.ticketNumber} updated!`);
-        frontendLogger.info("ticketActivity", `Ticket ${ticketData.ticketNumber} updated`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_SUCCESS" });
         navigate("/tickets");
-      }
+      } // Removed setFormValidated from here
     } catch (error) {
       const errorMsg = handleApiError(error, "Failed to update ticket", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
-      frontendLogger.error("ticketActivity", `Failed to update ticket ${ticketData.ticketNumber}`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_FAILURE" });
     } finally { setIsLoading(false); } // Removed setFormValidated from here
   }, [ticketData, originalStatus, statusChangeComment, ticketIdFromParams, navigate, authUser, roundOffAmount, roundedGrandTotal, setFormValidated, setIsLoading, setError, setStatusChangeComment]);
 
-  const handleQuotationNumberClick = useCallback(async () => {
+  const handleQuotationNumberClick = useCallback(async () => { // Removed setFormValidated from here
     if (!ticketData.quotationNumber) {
       toast.info("No quotation number associated with this ticket.");
       return;
@@ -419,6 +417,13 @@ const EditTicketPage = () => {
       default: return "dark";
     }
   };
+
+  const handleStatusChange = useCallback((status) => {
+    setTicketData(prev => ({ ...prev, status }));
+    if (status !== originalStatus) {
+        setStatusChangeComment(""); // setStatusChangeComment is stable
+    }
+  }, [originalStatus, setTicketData, setStatusChangeComment]);
 
   if (authLoading || (isLoading && !ticketData._id && ticketIdFromParams)) { // Check if loading initial data for an existing ticket
     return <ReusablePageStructure title="Loading Ticket..."><Spinner animation="border" /></ReusablePageStructure>;
@@ -610,10 +615,19 @@ const EditTicketPage = () => {
                   </td>
                   <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
-                  <td>
-                    <Form.Select value={item.unit || "Nos"} onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}>
-                        <option value="Nos">Nos</option><option value="Mtr">Mtr</option><option value="Pcs">Pcs</option><option value="Set">Set</option><option value="KG">KG</option><option value="Ltr">Ltr</option>
-                    </Form.Select>
+                  <td style={{ minWidth: "100px" }}>
+                    {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
+                      <Form.Select
+                        value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
+                        onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
+                      >
+                        {item.originalItem.units.map((unitOption) => (
+                          <option key={unitOption.name} value={unitOption.name}>{unitOption.name}</option>
+                        ))}
+                      </Form.Select>
+                    ) : (
+                      <Form.Control type="text" value={item.unit || "nos"} readOnly />
+                    )}
                   </td>
                   <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>
                   <td><Form.Control required type="number" value={item.price} onChange={(e) => handleTicketGoodsChange(index, "price", e.target.value)} placeholder="Price" min="0" step="0.01" /></td>
@@ -673,11 +687,7 @@ const EditTicketPage = () => {
                 </Row>
             </Card.Body>
         </Card>
-
         <Form.Group className="mb-3">
-             {roundedGrandTotal === null && ticketData.grandTotal > 0 && (
-                <BsButton variant="outline-primary" size="sm" onClick={handleRoundOff} className="mt-2 mb-3 float-end">Round Off Total</BsButton>
-            )}
             <div style={{clear: "both"}}></div>
             {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
                 <i className="bi bi-card-checklist me-1"></i>Other Details

@@ -1,13 +1,19 @@
 const UniversalBackup = require('../models/universalBackup');
 const mongoose = require('mongoose');
-const logger = require('../utils/logger'); // Assuming you have a logger
+const logger = require('../logger'); // Unified logger
 
 // Helper function to get the Mongoose model by name
 const getModelByName = (modelName) => {
   try {
     return mongoose.model(modelName);
   } catch (error) {
-    logger.error(`Model not found: ${modelName}`, { error: error.message });
+    logger.log({
+      page: "Backup",
+      action: "Get Model By Name",
+      message: `Model not found: ${modelName}`,
+      details: { error: error.message },
+      level: "error"
+    });
     return null;
   }
 };
@@ -19,6 +25,16 @@ exports.listBackups = async (req, res) => {
     const userRole = req.user.role;
 
     if (userRole !== 'super-admin') {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "List Backups",
+        api: req.originalUrl,
+        req,
+        message: "Access Denied. Only super-admins can view backups.",
+        details: {},
+        level: "warn"
+      });
       return res.status(403).json({ message: 'Access Denied. Only super-admins can view backups.' });
     }
 
@@ -27,17 +43,15 @@ exports.listBackups = async (req, res) => {
       const searchRegex = { $regex: search, $options: 'i' };
       query.$or = [
         { originalModel: searchRegex },
-        // { backupReason: searchRegex },
-        // Search within the 'data' object for common identifier fields
         { 'data.name': searchRegex },
         { 'data.companyName': searchRegex },
-        { 'data.ticketNumber': searchRegex }, // Assuming ticketNumber can be searched as string
-        { 'data.referenceNumber': searchRegex }, // Assuming referenceNumber can be searched as string
+        { 'data.ticketNumber': searchRegex },
+        { 'data.referenceNumber': searchRegex },
         { 'data.title': searchRegex },
       ];
       if (mongoose.Types.ObjectId.isValid(search)) {
-        query.$or.push({ originalId: search }); // Match originalId exactly
-        query.$or.push({ deletedBy: search }); // Match deletedBy (user ID) exactly
+        query.$or.push({ originalId: search });
+        query.$or.push({ deletedBy: search });
       }
     }
 
@@ -53,6 +67,17 @@ exports.listBackups = async (req, res) => {
 
     const totalBackups = await UniversalBackup.countDocuments(query);
 
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "List Backups",
+      api: req.originalUrl,
+      req,
+      message: "Listed backups",
+      details: { totalBackups, page, limit, query },
+      level: "info"
+    });
+
     res.json({
       backups,
       totalPages: Math.ceil(totalBackups / limit),
@@ -60,7 +85,16 @@ exports.listBackups = async (req, res) => {
       totalBackups,
     });
   } catch (error) {
-    logger.error('Error listing backups:', error.message, { stack: error.stack, userId: req.user?._id });
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "List Backups Error",
+      api: req.originalUrl,
+      req,
+      message: "Error listing backups",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ message: 'Error listing backups', error: error.message });
   }
 };
@@ -72,20 +106,71 @@ exports.getBackupDetails = async (req, res) => {
     const userRole = req.user.role;
 
     if (userRole !== 'super-admin') {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Get Backup Details",
+        api: req.originalUrl,
+        req,
+        message: "Access Denied.",
+        details: { id },
+        level: "warn"
+      });
       return res.status(403).json({ message: 'Access Denied.' });
     }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Get Backup Details",
+        api: req.originalUrl,
+        req,
+        message: "Invalid backup ID",
+        details: { id },
+        level: "warn"
+      });
       return res.status(400).json({ message: 'Invalid backup ID' });
     }
 
     const backup = await UniversalBackup.findById(id).populate('deletedBy', 'firstname lastname email');
     if (!backup) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Get Backup Details",
+        api: req.originalUrl,
+        req,
+        message: "Backup entry not found",
+        details: { id },
+        level: "warn"
+      });
       return res.status(404).json({ message: 'Backup entry not found' });
     }
+
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "Get Backup Details",
+      api: req.originalUrl,
+      req,
+      message: "Fetched backup details",
+      details: { id },
+      level: "info"
+    });
+
     res.json(backup);
   } catch (error) {
-    logger.error(`Error fetching backup details for ID ${req.params.id}:`, error.message, { stack: error.stack, userId: req.user?._id });
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "Get Backup Details Error",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching backup details for ID ${req.params.id}`,
+      details: { error: error.message, stack: error.stack, id: req.params.id },
+      level: "error"
+    });
     res.status(500).json({ message: 'Error fetching backup details', error: error.message });
   }
 };
@@ -100,12 +185,32 @@ exports.restoreBackup = async (req, res) => {
     const userId = req.user._id;
 
     if (userRole !== 'super-admin') {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Restore Backup",
+        api: req.originalUrl,
+        req,
+        message: "Access Denied. Only super-admins can restore data.",
+        details: { backupId },
+        level: "warn"
+      });
       await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ message: 'Access Denied. Only super-admins can restore data.' });
     }
 
     if (!mongoose.Types.ObjectId.isValid(backupId)) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Restore Backup",
+        api: req.originalUrl,
+        req,
+        message: "Invalid backup ID",
+        details: { backupId },
+        level: "warn"
+      });
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ message: 'Invalid backup ID' });
@@ -113,6 +218,16 @@ exports.restoreBackup = async (req, res) => {
 
     const backupEntry = await UniversalBackup.findById(backupId).session(session);
     if (!backupEntry) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Restore Backup",
+        api: req.originalUrl,
+        req,
+        message: "Backup entry not found",
+        details: { backupId },
+        level: "warn"
+      });
       await session.abortTransaction();
       session.endSession();
       return res.status(404).json({ message: 'Backup entry not found' });
@@ -120,6 +235,16 @@ exports.restoreBackup = async (req, res) => {
 
     const OriginalModel = getModelByName(backupEntry.originalModel);
     if (!OriginalModel) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Restore Backup",
+        api: req.originalUrl,
+        req,
+        message: `Cannot restore: Model ${backupEntry.originalModel} not found.`,
+        details: { backupId, originalModel: backupEntry.originalModel },
+        level: "error"
+      });
       await session.abortTransaction();
       session.endSession();
       return res.status(500).json({ message: `Cannot restore: Model ${backupEntry.originalModel} not found.` });
@@ -128,9 +253,18 @@ exports.restoreBackup = async (req, res) => {
     // Check if a document with the originalId already exists in the target collection
     const existingDocument = await OriginalModel.findById(backupEntry.originalId).session(session);
     if (existingDocument) {
+      logger.log({
+        user: req.user,
+        page: "Backup",
+        action: "Restore Backup",
+        api: req.originalUrl,
+        req,
+        message: `Cannot restore: A document with ID ${backupEntry.originalId} already exists in ${backupEntry.originalModel}.`,
+        details: { backupId, originalId: backupEntry.originalId, originalModel: backupEntry.originalModel },
+        level: "warn"
+      });
       await session.abortTransaction();
       session.endSession();
-      // Consider offering an overwrite option or creating a new document with a new ID
       return res.status(409).json({
         message: `Cannot restore: A document with ID ${backupEntry.originalId} already exists in ${backupEntry.originalModel}.`,
         conflict: true,
@@ -138,28 +272,12 @@ exports.restoreBackup = async (req, res) => {
     }
 
     // Prepare the data for restoration
-    // Important: Remove _id from backupEntry.data to let MongoDB generate a new one if needed,
-    // OR ensure backupEntry.data._id is the originalId.
-    // For this strategy, we assume we want to restore with the *original* ID.
     const dataToRestore = { ...backupEntry.data };
-    
-    // Ensure _id is set to originalId for restoration
     dataToRestore._id = backupEntry.originalId;
+    delete dataToRestore.createdAt;
+    delete dataToRestore.updatedAt;
 
-    // Remove fields that should not be directly restored or are auto-managed
-    delete dataToRestore.createdAt; // Will be set by Mongoose timestamps if schema has it
-    delete dataToRestore.updatedAt; // Will be set by Mongoose timestamps
-    // If your original models have `createdBy`, `updatedBy` fields, you might want to set them
-    // or preserve the original ones if they are part of `backupEntry.data`.
-    // For now, we assume the backed-up data contains all necessary fields.
-
-    // If your original models have specific pre-save hooks or validations,
-    // creating a new instance and then saving might be better.
-    // const restoredDocument = new OriginalModel(dataToRestore);
-    // await restoredDocument.save({ session });
-    // OR, for more direct insertion if you trust the backup data structure:
     await OriginalModel.collection.insertOne(dataToRestore, { session });
-
 
     // After successful restoration, delete the backup entry
     await UniversalBackup.findByIdAndDelete(backupId).session(session);
@@ -167,16 +285,37 @@ exports.restoreBackup = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    logger.info('backup_restore', `Backup ${backupId} for ${backupEntry.originalModel} (ID: ${backupEntry.originalId}) restored by user ${userId}.`, { backupId, originalModel: backupEntry.originalModel, originalId: backupEntry.originalId, userId });
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "Restore Backup Success",
+      api: req.originalUrl,
+      req,
+      message: `Backup ${backupId} for ${backupEntry.originalModel} (ID: ${backupEntry.originalId}) restored and backup entry removed.`,
+      details: { backupId, originalModel: backupEntry.originalModel, originalId: backupEntry.originalId, userId },
+      level: "info"
+    });
+
     res.json({ message: `${backupEntry.originalModel} (ID: ${backupEntry.originalId}) restored successfully and backup entry removed.` });
 
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    logger.error(`Error restoring backup ID ${req.params.id}:`, error.message, { stack: error.stack, userId: req.user?._id });
-    // Check for MongoDB duplicate key error if _id was not handled correctly
+    logger.log({
+      user: req.user,
+      page: "Backup",
+      action: "Restore Backup Error",
+      api: req.originalUrl,
+      req,
+      message: `Error restoring backup ID ${req.params.id}`,
+      details: { error: error.message, stack: error.stack, backupId: req.params.id },
+      level: "error"
+    });
     if (error.code === 11000) {
-        return res.status(409).json({ message: `Restore failed: A document with a conflicting unique key (likely _id) already exists in ${error.keyValue ? Object.keys(error.keyValue).join(', ') : 'the target collection'}.`, error: error.message });
+      return res.status(409).json({
+        message: `Restore failed: A document with a conflicting unique key (likely _id) already exists in ${error.keyValue ? Object.keys(error.keyValue).join(', ') : 'the target collection'}.`,
+        error: error.message
+      });
     }
     res.status(500).json({ message: 'Error restoring backup', error: error.message });
   }

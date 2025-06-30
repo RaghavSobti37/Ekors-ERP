@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const morgan = require('morgan');
 const cors = require('cors');
-const logger = require('./utils/logger');
+const logger = require('./logger');
 require('dotenv').config();
 
 const connectDB = require('./db.js');
@@ -14,13 +14,11 @@ const quotationRoutes = require('./routes/quotations.js');
 const logtimeRoutes = require('./routes/logTimeRoutes.js');
 const itemRoutes = require('./routes/itemlistRoutes.js');
 const challanRoutes = require('./routes/challanRoutes.js');
-const initRouter = require('./routes/init');
 const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clients');
 const ticketsRouter = require('./routes/tickets');
 const reportRoutes = require("./routes/reportRoutes");
 const auditLogRoutes = require('./routes/auditLogRoutes');
-const frontendLogRoute = require('./routes/frontendLogRoute.js');
 const backupRoutes = require('./routes/backupRoutes');
 
 const app = express();
@@ -68,12 +66,17 @@ if (!fs.existsSync(serverUploadsPath)) {
   console.log(`[SETUP] Created directory: ${serverUploadsPath}`);
 }
 
+// Create logs folder if not exists (for robust local logging)
+const logsPath = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsPath)) {
+  fs.mkdirSync(logsPath, { recursive: true });
+  console.log(`[SETUP] Created directory: ${logsPath}`);
+}
+
 // ---------------------------
 // API Routes with Logging
 function mountRoute(path, router) {
   app.use(path, router);
-  console.log(`[ROUTE MOUNTED] ${path}`);
-  logger.info('route-mount', `Mounted: ${path}`);
 }
 
 mountRoute('/api/auth', authRoutes);
@@ -86,8 +89,6 @@ mountRoute('/api/challans', challanRoutes);
 mountRoute('/api/logtime', logtimeRoutes);
 mountRoute('/api/reports', reportRoutes);
 mountRoute('/api/audit', auditLogRoutes);
-mountRoute('/api/init', initRouter);
-mountRoute('/api', frontendLogRoute);
 app.use('/api/backups', backupRoutes);
 app.use('/api/company', companyRoutes);
 app.use('/api/uploads', express.static(serverUploadsPath));
@@ -99,8 +100,14 @@ app.get('/', (req, res) => res.json({ message: 'Ekors ERP API is live and runnin
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('[GLOBAL ERROR] Unhandled:', err);
-  logger.error('general', `Unhandled error on ${req.path}`, err, null, {
-    requestMethod: req.method
+  logger.log({
+    page: "Server",
+    action: "Global Error",
+    api: req.path,
+    req,
+    message: `Unhandled error on ${req.path}`,
+    details: { error: err.message, stack: err.stack, requestMethod: req.method },
+    level: "error"
   });
   res.status(500).send('Something broke!');
 });
@@ -110,5 +117,12 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[SERVER STARTED] Listening on port ${PORT}`);
-  logger.info('server-lifecycle', `Server running on port ${PORT}`);
+  logger.log({
+    page: "Server",
+    action: "Server Started",
+    api: `PORT:${PORT}`,
+    message: `Server running on port ${PORT}`,
+    details: {},
+    level: "info"
+  });
 });

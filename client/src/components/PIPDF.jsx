@@ -796,10 +796,9 @@ const PIPDF = ({ ticketData, companyInfo }) => {
 
         <View style={styles.termsConditions}>
           <Text style={styles.bold}>Terms & Conditions:</Text>
-          {(
-            ticket.termsAndConditions ||
-            "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction."
-          )
+          {/* Ensure termsAndConditions is always a string, even if empty, to avoid hitting fallback unnecessarily */}
+          {(String(ticket.termsAndConditions || '') ||
+            "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.")
             .split("\n")
             .map((term, i) => (
               <Text key={i}>- {term}</Text>

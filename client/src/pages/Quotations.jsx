@@ -15,7 +15,7 @@ import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons";
 import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import { toast } from "react-toastify";
-import frontendLogger from "../utils/frontendLogger.js";
+
 import "react-toastify/dist/ReactToastify.css";
 import {
   showToast,
@@ -102,18 +102,6 @@ export default function Quotations() {
       setQuotations([]);
       setTotalQuotations(0);
       showToast(errorMessage, false); 
-      if (authUserFromContext) { 
-        frontendLogger.error(
-          "quotationActivity",
-          "Failed to fetch quotations",
-          authUserFromContext,
-          {
-            errorMessage: error.response?.data?.message || error.message,
-            statusFilter,
-            action: "FETCH_QUOTATIONS_FAILURE",
-          }
-        );
-      }
       if (error.status === 401) {
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
@@ -253,7 +241,7 @@ export default function Quotations() {
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        unit: item.unit || "Nos", originalPrice: Number(item.originalPrice || item.price),
+        unit: item.unit || "nos", originalPrice: Number(item.originalPrice || item.price),
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],
@@ -303,16 +291,6 @@ export default function Quotations() {
         fetchQuotations(currentPage, itemsPerPage); 
       }
       toast.success(`Quotation ${quotation.referenceNumber} deleted.`);
-        frontendLogger.info(
-          "quotationActivity",
-          `Quotation ${quotation.referenceNumber} deleted`,
-          authUserFromContext,
-          {
-            quotationId: quotation._id,
-            referenceNumber: quotation.referenceNumber,
-            action: "DELETE_QUOTATION_SUCCESS",
-          }
-        );
     } catch (error) {
       const errorMessage = handleApiError(
         error, "Failed to delete quotation.", authUserFromContext, "quotationActivity"
@@ -323,15 +301,6 @@ export default function Quotations() {
       }
       setError(errorMessage); 
       toast.error(errorMessage);
-      if (authUserFromContext) {
-        frontendLogger.error(
-          "quotationActivity", "Failed to delete quotation", authUserFromContext,
-          {
-            quotationId: quotation._id, referenceNumber: quotation.referenceNumber,
-            action: "DELETE_QUOTATION_FAILURE",
-          }
-        );
-      }
     } finally {
       setIsLoading(false);
     }

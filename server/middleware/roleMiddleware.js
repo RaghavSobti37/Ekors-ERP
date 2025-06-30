@@ -11,4 +11,3 @@ const isSuperAdmin = (req, res, next) => {
 };
 
 module.exports = { isSuperAdmin };
-
