@@ -1,7 +1,7 @@
 const User = require("../models/users");
 const UniversalBackup = require("../models/universalBackup"); // Import backup model
 const asyncHandler = require("express-async-handler");
-const logger = require("../utils/logger"); // Import logger
+const logger = require("../logger"); // Import logger
 
 // @desc    Create a new user
 // @route   POST /api/users

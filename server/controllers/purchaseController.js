@@ -9,16 +9,16 @@ const calculateBaseUnitDetails = async (item, quantity, price, unitName, session
     let totalPriceForTransaction = parseFloat(price);
 
     if (isNaN(quantityInTransactionalUnit) || quantityInTransactionalUnit <= 0) {
-        logger.warn("purchase_helper", `Invalid quantity: ${quantity}. Assuming 1 for calculation.`, user);
+       
         quantityInTransactionalUnit = 1;
     }
     if (isNaN(totalPriceForTransaction) || totalPriceForTransaction < 0) {
-        logger.warn("purchase_helper", `Invalid price: ${price}. Assuming 0 for calculation.`, user);
+      
         totalPriceForTransaction = 0;
     }
 
     if (!item) {
-        logger.warn("purchase_helper", `Item not found for base unit calculation. Returning raw values.`, user);
+      
         return { quantityInBaseUnit: quantityInTransactionalUnit, pricePerBaseUnit: totalPriceForTransaction, baseUnitName: unitName || "N/A" };
     }
 
@@ -30,7 +30,7 @@ const calculateBaseUnitDetails = async (item, quantity, price, unitName, session
         if (foundUnit) {
             conversionFactor = foundUnit.conversionFactor;
         } else {
-            logger.warn("purchase_helper", `Unit "${unitName}" not found for item "${item.name}". Assuming it's the base unit for conversion.`, user);
+           
         }
     }
 
@@ -60,12 +60,6 @@ const updateItemPricingOnPurchase = async (item, newQuantity, purchasePricePerBa
 
   // Ensure the buying price is not NaN or negative after calculation
   if (isNaN(newBuyingPrice) || newBuyingPrice < 0) {
-    logger.error(
-      "purchase_pricing",
-      `Invalid calculated buying price for item ${item.name}: ${newBuyingPrice}. Resetting to purchase price.`,
-      user,
-      { itemId: item._id }
-    );
     newBuyingPrice = purchasePricePerBaseUnit; // Reset to the purchase price as a fallback
   }
 
@@ -78,12 +72,7 @@ const updateItemPricingOnPurchase = async (item, newQuantity, purchasePricePerBa
   item.sellingPrice = newSellingPrice;
   item.quantity += newQuantity; // Also update the quantity here
 
-  logger.info(
-    "purchase_pricing",
-    `Updated pricing for item ${item.name}: Buying Price = ${newBuyingPrice.toFixed(2)}, Selling Price = ${newSellingPrice.toFixed(2)}`,
-    user,
-    { itemId: item._id, profitMarginPercentage: item.profitMarginPercentage }
-  );
+ 
 };
 
 
@@ -167,12 +156,7 @@ exports.addSinglePurchase = async (req, res) => {
 
           await session.commitTransaction();
 
-          logger.info(
-            "purchase",
-            `Single purchase added successfully for item ID: ${itemId}`,
-            user,
-            { purchaseId: savedPurchase._id, itemId }
-          );
+         
           res
             .status(201)
             .json({
@@ -183,13 +167,16 @@ exports.addSinglePurchase = async (req, res) => {
     if (session.inTransaction()) {
         await session.abortTransaction();
     }
-    logger.error(
-      "purchase",
-      `Error adding single purchase for item ID: ${itemId}`,
-      error,
+    logger.log({
       user,
-      { requestBody: req.body }
-    );
+      page: "Purchase",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error adding single purchase for item ID: ${itemId}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res
       .status(500)
       .json({
@@ -288,7 +275,7 @@ exports.addBulkPurchase = async (req, res) => {
             } else {
                 // If item not found, we can't convert, so pricePerBaseUnit is just price/quantity
                 calculatedPricePerBaseUnit = pItem.quantity > 0 ? (pItem.price / pItem.quantity) : 0;
-                logger.warn("purchase_bulk", `Item "${pItem.description}" not found for base unit conversion. PricePerBaseUnit calculated as total price / quantity.`, user);
+               
             }
 
             let finalGstRate = parseFloat(pItem.gstRate);
@@ -367,39 +354,19 @@ exports.addBulkPurchase = async (req, res) => {
                 ) {
                   itemToUpdate.needsRestock = false;
                   itemToUpdate.restockAmount = 0;
-                  logger.info(
-                    "inventory",
-                    `Item ${itemToUpdate.name} restocked. No longer needs restock. New Qty: ${itemToUpdate.quantity}`,
-                    user
-                  );
+               
                 } else {
-                  logger.info(
-                    "inventory",
-                    `Item ${itemToUpdate.name} partially restocked. Still needs: ${itemToUpdate.restockAmount}. New Qty: ${itemToUpdate.quantity}`,
-                    user
-                  );
+                  
                 }
               }
 
               await itemToUpdate.save({ session });
-              logger.info(
-                "inventory",
-                `Inventory updated for item: ${itemToUpdate.name} via purchase ${invoiceNumber}. Added: ${quantityInBaseUnit} ${baseUnitName}, New Qty: ${itemToUpdate.quantity}`,
-                user
-              );
+            
             } else {
               const identifier = purchasedItem.itemId
                 ? `ID ${purchasedItem.itemId}`
                 : `description "${purchasedItem.description}"`;
-              logger.warn(
-                "purchase_stock_update",
-                `Item with ${identifier} not found in DB during bulk purchase stock update. Stock not updated for this item.`,
-                user,
-                {
-                  searchedItemId: purchasedItem.itemId,
-                  searchedDescription: purchasedItem.description,
-                }
-              );
+             
             }
           }
 
@@ -413,23 +380,20 @@ exports.addBulkPurchase = async (req, res) => {
             quantityPurchased: pi.quantity,
           }));
 
-          logger.info(
-            "purchase",
-            `Bulk purchase added successfully. Invoice: ${invoiceNumber}`,
-            user,
-            { purchaseId: savedPurchase._id, itemsProcessed: purchasedItemsDetails }
-          );
           res.status(201).json({ success: true, data: savedPurchase });
         } catch (error) {
    if (session.inTransaction()) {
             await session.abortTransaction();
-          }          logger.error(
-            "purchase",
-            `Error adding bulk purchase. Invoice: ${req.body.invoiceNumber}`,
-            error,
+          }          logger.log({
             user,
-            { requestBody: req.body }
-          );
+            page: "Purchase",
+            action: "Error",
+            api: req.originalUrl,
+            req,
+            message: `Error adding bulk purchase. Invoice: ${req.body.invoiceNumber}`,
+            details: { error: error.message, stack: error.stack },
+            level: "error"
+          });
           if (error.name === "ValidationError") {
             return res
               .status(400)
@@ -480,11 +444,7 @@ exports.addBulkPurchase = async (req, res) => {
 
               if (!itemInPurchase) {
                 // This log helps identify if a parent purchase doc was found, but the specific item was not found within its 'items' array.
-                logger.warn(
-                  "purchase_history_transform",
-                  `Item ID ${req.params.id} not found in items array of purchase ${purchase._id}, though parent document matched. This is unexpected.`,
-                  { purchaseItems: JSON.stringify(purchase.items) }
-                );
+              
               }
               if (!itemInPurchase) return null;
 
@@ -513,12 +473,6 @@ exports.addBulkPurchase = async (req, res) => {
             { count: transformed.length }
           );
         } catch (err) {
-          logger.error(
-            "purchase",
-            `Error fetching item purchase history for item ID: ${req.params.id}`,
-            err,
-            user
-          );
           res.status(500).json({ message: "Server error fetching purchase history" });
         }
       }
@@ -534,7 +488,16 @@ exports.addBulkPurchase = async (req, res) => {
             count: purchases.length,
           });
         } catch (error) {
-          logger.error("purchase", `Error fetching all purchases`, error, user);
+          logger.log({
+            user,
+            page: "Purchase",
+            action: "Error",
+            api: req.originalUrl,
+            req,
+            message: `Error fetching all purchases`,
+            details: { error: error.message, stack: error.stack },
+            level: "error"
+          });
           res
             .status(500)
             .json({
@@ -557,12 +520,16 @@ exports.addBulkPurchase = async (req, res) => {
           }
           res.json(purchase);
         } catch (error) {
-          logger.error(
-            "purchase",
-            `Error fetching purchase by ID: ${req.params.id}`,
-            error,
-            user
-          );
+          logger.log({
+            user,
+            page: "Purchase",
+            action: "Error",
+            api: req.originalUrl,
+            req,
+            message: `Error fetching purchase by ID: ${req.params.id}`,
+            details: { error: error.message, stack: error.stack },
+            level: "error"
+          });
           res.status(500).json({ message: "Server error while fetching purchase" });
         }
       }

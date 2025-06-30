@@ -184,7 +184,7 @@ exports.getAllItems = asyncHandler(async (req, res) => {
 
 exports.exportItemsToExcel = asyncHandler(async (req, res) => {
   const user = req.user || null;
-  logger.info("excel_export", "Starting Excel export process", { userId: user?._id });
+ 
 
   try {
     const items = await Item.find({ status: "approved" })
@@ -192,7 +192,7 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
       .lean();
 
     if (!items || items.length === 0) {
-      logger.info("excel_export", "No items found to export", { userId: user?._id });
+    
       return res.status(404).json({ message: "No approved items found to export." });
     }
 
@@ -357,10 +357,7 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="items_export.xlsx"');
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     
-    logger.info("excel_export", "Excel file generated and sent for download", {
-      userId: user?._id,
-      itemCount: items.length
-    });
+ 
     
     res.send(excelBuffer);
   } catch (error) {
@@ -451,7 +448,16 @@ async function parseExcelBufferForUpdate(fileBuffer) {
 
     return { itemsToUpsert, parsingErrors };
   } catch (error) {
-    logger.error("excel_importer", `Error parsing Excel buffer: ${error.message}`, error);
+    logger.log({
+      user: null,
+      page: "Item",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error parsing Excel buffer: ${error.message}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     return {
       itemsToUpsert: [],
       parsingErrors: [{ row: "general", message: `Fatal error during Excel parsing: ${error.message}` }],
@@ -472,11 +478,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
 
   try {
     await session.withTransaction(async () => {
-      logger.info(logContextPrefix, "Starting database sync with Excel data within transaction.", {
-        userId: importUserId,
-        itemCountExcel: excelItems.length,
-        sessionId: session.id
-      });
+
 
       // Fetch existing items and create a map
       const existingDbItems = await Item.find().session(session).lean();
@@ -621,9 +623,15 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         if (backupResult.hasWriteErrors()) {
           backupResult.getWriteErrors().forEach(err => {
             const failedItemId = backupInsertOps[err.index]?.insertOne?.document?.originalId;
-            logger.error(logContextPrefix, `UniversalBackup failed for item ID: ${failedItemId}`, {
-              error: err.errmsg,
-              userId: importUserId
+            logger.log({
+              user: importUserId,
+              page: "Item",
+              action: "Error",
+              api: req.originalUrl,
+              req,
+              message: `UniversalBackup failed for item ID: ${failedItemId}`,
+              details: { error: err.errmsg },
+              level: "error"
             });
             databaseProcessingErrors.push({
               name: `Backup for item ${failedItemId}`,
@@ -645,9 +653,15 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
               ? `Create item "${itemUpsertOps[err.index].insertOne.document.name}"`
               : `Update item (filter: ${JSON.stringify(itemUpsertOps[err.index]?.updateOne?.filter)})`;
             
-            logger.error(logContextPrefix, `DB Bulk Write Error during upsert: ${opDescription}`, {
-              error: err.errmsg,
-              userId: importUserId
+            logger.log({
+              user: importUserId,
+              page: "Item",
+              action: "Error",
+              api: req.originalUrl,
+              req,
+              message: `DB Bulk Write Error during upsert: ${opDescription}`,
+              details: { error: err.errmsg },
+              level: "error"
             });
             
             databaseProcessingErrors.push({
@@ -666,9 +680,15 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
 
         if (deleteResult.hasWriteErrors()) {
           deleteResult.getWriteErrors().forEach(err => {
-            logger.error(logContextPrefix, `DB Bulk Write Error during delete`, {
-              error: err.errmsg,
-              userId: importUserId
+            logger.log({
+              user: importUserId,
+              page: "Item",
+              action: "Error",
+              api: req.originalUrl,
+              req,
+              message: `DB Bulk Write Error during delete`,
+              details: { error: err.errmsg },
+              level: "error"
             });
             databaseProcessingErrors.push({
               name: "Delete operation",
@@ -689,13 +709,7 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
         );
       }
 
-      logger.info(logContextPrefix, "Database sync with Excel data completed", {
-        userId: importUserId,
-        itemsCreated,
-        itemsUpdated,
-        itemsDeleted,
-        errors: databaseProcessingErrors.length
-      });
+     
     });
 
     return {
@@ -706,9 +720,15 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
       databaseProcessingErrors,
     };
   } catch (error) {
-    logger.error(logContextPrefix, `Error during syncItemsWithDatabase: ${error.message}`, {
-      error,
-      userId: importUserId
+    logger.log({
+      user: importUserId,
+      page: "Item",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error during syncItemsWithDatabase: ${error.message}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
     });
     throw error;
   } finally {
@@ -718,10 +738,9 @@ async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
 
 exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
   const user = req.user || null;
-  logger.info("excel_upload_import", "Starting Excel import from uploaded file", { userId: user?._id });
-
+ 
   if (!req.file) {
-    logger.warn("excel_upload_import", "No file uploaded.", { userId: user?._id });
+
     return res.status(400).json({ message: "No Excel file uploaded." });
   }
 
@@ -729,7 +748,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(req.file.buffer);
 
     if (!itemsToUpsert || itemsToUpsert.length === 0) {
-      logger.info("excel_upload_import", "No items found in uploaded Excel to process", { userId: user?._id });
+     
       return res.status(200).json({
         message: "No valid items found in the uploaded Excel to process or file is empty.",
         itemsCreated: 0,
@@ -757,8 +776,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
 
 exports.importItemsFromExcelViaAPI = asyncHandler(async (req, res) => {
   const user = req.user || null;
-  logger.info("excel_import_api", "Starting Excel import process from server file", { userId: user?._id });
-
+ 
   try {
     const excelFilePath = require("path").resolve(__dirname, "..", "itemlist.xlsx");
     const fileBuffer = require("fs").readFileSync(excelFilePath);
@@ -766,7 +784,7 @@ exports.importItemsFromExcelViaAPI = asyncHandler(async (req, res) => {
     const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(fileBuffer);
 
     if (!itemsToUpsert || itemsToUpsert.length === 0) {
-      logger.info("excel_import_api", "No items found in Excel to process", { userId: user?._id });
+     
       return res.status(200).json({
         message: "No valid items found in Excel to process or file is empty.",
         itemsCreated: 0,
@@ -813,7 +831,7 @@ exports.createCategory = asyncHandler(async (req, res) => {
   const { categoryName } = req.body;
 
   if (!categoryName?.trim()) {
-    logger.warn("item", "API: createCategory - Invalid or missing categoryName", user);
+
     return res.status(400).json({ message: "Category name is required." });
   }
 
@@ -822,7 +840,7 @@ exports.createCategory = asyncHandler(async (req, res) => {
   try {
     const existingCategory = await Item.findOne({ category: trimmedCategoryName });
     if (existingCategory) {
-      logger.info("item", `API: createCategory - Category "${trimmedCategoryName}" already exists.`, user);
+     
       return res.status(409).json({ message: `Category "${trimmedCategoryName}" already exists.` });
     }
 
@@ -882,12 +900,22 @@ exports.getItemById = asyncHandler(async (req, res) => {
     const item = await query.lean();
 
     if (!item) {
-      logger.warn("item", `Item not found when fetching details: ${id}`, user);
+
       return res.status(404).json({ message: "Item not found" });
     }
 
     res.json(item);
   } catch (error) {
+    logger.log({
+      user,
+      page: "Item",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching item details for ID: ${id}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     handleErrorResponse(res, error, `fetching item details for ID: ${id}`, user);
   }
 });
@@ -1040,7 +1068,7 @@ exports.createItem = asyncHandler(async (req, res) => {
 exports.updateItem = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user) {
-    logger.warn("item", "Update item attempt without authenticated user.", null);
+   
     return res.status(401).json({ message: "Authentication required." });
   }
 
@@ -1062,7 +1090,7 @@ exports.updateItem = asyncHandler(async (req, res) => {
 
     const existingItem = await Item.findById(itemId);
     if (!existingItem) {
-      logger.warn("item", `Item not found for update: ${itemId}`, user);
+
       return res.status(404).json({ message: "Item not found" });
     }
 
@@ -1186,7 +1214,7 @@ exports.updateItem = asyncHandler(async (req, res) => {
 exports.approveItem = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user || (user.role !== "admin" && user.role !== "super-admin")) {
-    logger.warn("item", `Unauthorized attempt to approve item ${req.params.id}`, user);
+
     return res.status(403).json({ message: "Forbidden: Only admins can approve items." });
   }
 
@@ -1198,12 +1226,12 @@ exports.approveItem = asyncHandler(async (req, res) => {
   try {
     const itemToApprove = await Item.findById(itemId);
     if (!itemToApprove) {
-      logger.warn("item", `Item not found for approval: ${itemId}`, user);
+
       return res.status(404).json({ message: "Item not found." });
     }
 
     if (itemToApprove.status === "approved") {
-      logger.info("item", `Item ${itemId} is already approved.`, user);
+     
       return res.status(200).json(itemToApprove);
     }
 
@@ -1212,7 +1240,7 @@ exports.approveItem = asyncHandler(async (req, res) => {
     itemToApprove.reviewedAt = new Date();
 
     const approvedItem = await itemToApprove.save();
-    logger.info("item", `Item ${itemId} approved successfully by ${user.email}.`, user);
+   
 
     res.json(approvedItem);
   } catch (error) {
@@ -1231,11 +1259,11 @@ exports.deleteItem = asyncHandler(async (req, res) => {
 
   try {
     await session.withTransaction(async () => {
-      logger.info("delete", `[DELETE_INITIATED] Item ID: ${itemId}.`, user);
+      
 
       const itemToBackup = await Item.findById(itemId).session(session);
       if (!itemToBackup) {
-        logger.warn("delete", `[NOT_FOUND] Item not found for deletion: ${itemId}`, user);
+
         return res.status(404).json({ message: "Item not found" });
       }
 
@@ -1270,14 +1298,23 @@ exports.deleteItem = asyncHandler(async (req, res) => {
         { session }
       );
 
-      logger.info("delete", `[DELETE_SUCCESS] Item ${itemId} deleted successfully.`, user);
+   
       res.status(200).json({
         message: "Item deleted and backed up successfully.",
         originalId: itemToBackup._id,
       });
     });
   } catch (error) {
-    logger.error("delete", `[DELETE_ERROR] Error deleting item ${itemId}`, error, user);
+    logger.log({
+      user,
+      page: "Item",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error deleting item ${itemId}: ${error.message}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({
       message: "Server error during the deletion process.",
     });
@@ -1291,15 +1328,13 @@ exports.getItemPurchaseHistory = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    logger.warn("item_ticket_usage", `Invalid item ID format: ${id}`, user);
-    return res.status(400).json({ message: "Invalid item ID format" });
+
   }
 
   try {
     const itemExists = await Item.exists({ _id: id });
     if (!itemExists) {
-      logger.warn("item_ticket_usage", `Item not found: ${id}`, user);
-      return res.status(404).json({ message: "Item not found" });
+
     }
 
     const purchases = await Purchase.find(
@@ -1342,6 +1377,16 @@ exports.getItemPurchaseHistory = asyncHandler(async (req, res) => {
 
     res.json(formattedPurchases);
   } catch (error) {
+    logger.log({
+      user,
+      page: "Item",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching all purchases`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     handleErrorResponse(res, error, `fetching purchase history for item ID: ${id}`, user);
   }
 });
@@ -1376,23 +1421,21 @@ exports.clearItemLogs = asyncHandler(async (req, res) => {
   const user = req.user;
 
   if (user.role !== "super-admin") {
-    logger.warn("item-log-clear", `Unauthorized attempt to clear logs for item ${itemId}`, user);
+   
     return res.status(403).json({ message: "Forbidden: You do not have permission to perform this action." });
   }
 
   try {
     const item = await Item.findById(itemId);
     if (!item) {
-      logger.warn("item-log-clear", `Item not found: ${itemId}`, user);
-      return res.status(404).json({ message: "Item not found." });
+
     }
 
     item.inventoryLog = [];
     item.excelImportHistory = [];
     await item.save();
 
-    logger.info("item-log-clear", `Logs cleared for item ${itemId}`, user);
-    res.status(200).json({ message: "All item logs have been cleared successfully." });
+  
   } catch (error) {
     handleErrorResponse(res, error, `clearing logs for item ${itemId}`, user);
   }
@@ -1403,15 +1446,13 @@ exports.getItemTicketUsageHistory = asyncHandler(async (req, res) => {
   const { id: itemId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(itemId)) {
-    logger.warn("item_ticket_usage", `Invalid item ID format: ${itemId}`, user);
-    return res.status(400).json({ message: "Invalid item ID format" });
+
   }
 
   try {
     const item = await Item.findById(itemId).lean();
     if (!item) {
-      logger.warn("item_ticket_usage", `Item not found: ${itemId}`, user);
-      return res.status(404).json({ message: "Item not found" });
+
     }
 
     const ticketsContainingItem = await Ticket.find({

@@ -241,7 +241,7 @@ export default function Quotations() {
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        unit: item.unit || "Nos", originalPrice: Number(item.originalPrice || item.price),
+        unit: item.unit || "nos", originalPrice: Number(item.originalPrice || item.price),
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],

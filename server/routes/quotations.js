@@ -21,14 +21,4 @@ router.get(
   quotationController.getQuotationByReferenceNumber
 );
 
-// // Report Routes (pointing to controller methods)
-// router.get("/report/summary", auth, quotationController.generateQuotationsReport);
-// router.get("/report/excel", auth, quotationController.exportQuotationsToExcel);
-
-router.get(
-  "/quotations/ref/:quotationNumber",
-  auth, // Assuming authentication is required to fetch quotations
-  ticketController.getQuotationByReference // New controller function
-);
-
 module.exports = router;

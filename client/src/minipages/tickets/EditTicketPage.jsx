@@ -232,7 +232,7 @@ const EditTicketPage = () => {
   const handleAddItemToTicket = useCallback((item) => {
     setTicketData(prev => {
       // Determine the default unit to use (e.g., the base unit)
-      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
       const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
       const newGoodsItem = {
@@ -372,13 +372,11 @@ const EditTicketPage = () => {
 
       if (responseData) {
         toast.success(`Ticket ${ticketData.ticketNumber} updated!`);
-        frontendLogger.info("ticketActivity", `Ticket ${ticketData.ticketNumber} updated`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_SUCCESS" });
         navigate("/tickets");
       } // Removed setFormValidated from here
     } catch (error) {
       const errorMsg = handleApiError(error, "Failed to update ticket", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
-      frontendLogger.error("ticketActivity", `Failed to update ticket ${ticketData.ticketNumber}`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_FAILURE" });
     } finally { setIsLoading(false); } // Removed setFormValidated from here
   }, [ticketData, originalStatus, statusChangeComment, ticketIdFromParams, navigate, authUser, roundOffAmount, roundedGrandTotal, setFormValidated, setIsLoading, setError, setStatusChangeComment]);
 
@@ -620,7 +618,7 @@ const EditTicketPage = () => {
                   <td style={{ minWidth: "100px" }}>
                     {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
                       <Form.Select
-                        value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                        value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
                         onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
                       >
                         {item.originalItem.units.map((unitOption) => (
@@ -628,7 +626,7 @@ const EditTicketPage = () => {
                         ))}
                       </Form.Select>
                     ) : (
-                      <Form.Control type="text" value={item.unit || "Nos"} readOnly />
+                      <Form.Control type="text" value={item.unit || "nos"} readOnly />
                     )}
                   </td>
                   <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>

@@ -4,6 +4,7 @@ const UniversalBackup = require("../models/universalBackup"); // Using Universal
 const Ticket = require("../models/opentickets");
 const logger = require("../logger"); // Use unified logger
 const mongoose = require("mongoose");
+const Item = require("../models/itemlist"); // Add this at the top if not already
 
 // --- Helper Functions ---
 const generateNextQuotationNumber = async (userId) => {
@@ -16,6 +17,16 @@ const generateNextQuotationNumber = async (userId) => {
   const seconds = String(now.getSeconds()).padStart(2, "0");
   return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
 };
+
+const allowedUnits = ["Nos", "Kg", "Mtr", "Ltr"]; // Add all allowed units here
+
+function normalizeUnit(unit) {
+  if (!unit) return unit;
+  const found = allowedUnits.find(
+    (u) => u.toLowerCase() === String(unit).toLowerCase()
+  );
+  return found || unit;
+}
 
 // --- Main Controller Functions ---
 
@@ -183,6 +194,26 @@ exports.handleQuotationUpsert = async (req, res) => {
         ? billingAddress
         : { address1: "", address2: "", city: "", state: "", pincode: "" };
 
+    const goodsWithPrices = [];
+    for (const g of quotationPayload.goods || []) {
+      let price = Number(g.price || 0);
+      // If g.originalItem or g.itemId exists, fetch price from Item master
+      if ((!price || price === 0) && g.originalItem) {
+        const itemDoc = await Item.findById(g.originalItem).lean();
+        if (itemDoc && itemDoc.pricing && itemDoc.pricing.sellingPrice) {
+          price = Number(itemDoc.pricing.sellingPrice);
+        }
+      }
+      goodsWithPrices.push({
+        ...g,
+        quantity: Number(g.quantity || 0),
+        price,
+        amount: Number(g.amount || 0),
+        gstRate: parseFloat(g.gstRate || 0),
+        unit: normalizeUnit(g.unit),
+      });
+    }
+
     const data = {
       ...quotationPayload,
       user: user._id,
@@ -190,13 +221,7 @@ exports.handleQuotationUpsert = async (req, res) => {
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
       billingAddress: processedBillingAddress,
-      goods: (quotationPayload.goods || []).map((g) => ({
-        ...g,
-        quantity: Number(g.quantity || 0),
-        price: Number(g.price || 0),
-        amount: Number(g.amount || 0),
-        gstRate: parseFloat(g.gstRate || 0),
-      })),
+      goods: goodsWithPrices,
     };
 
     let quotation;

@@ -19,11 +19,11 @@ import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; /
 const initialNewItemFormData = {
   name: "",
   pricing: {
-    baseUnit: "Nos",
+    baseUnit: "nos",
     sellingPrice: "",
     buyingPrice: "",
   },
-  units: [{ name: 'Nos', isBaseUnit: true, conversionFactor: 1 }],
+  units: [{ name: 'nos', isBaseUnit: true, conversionFactor: 1 }],
   category: "",
   hsnCode: "",
   gstRate: "0",
@@ -161,7 +161,7 @@ const GoodsTable = ({
                 {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
                   <Form.Control
                     as="select"
-                    value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                    value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
                     onChange={(e) =>
                       handleGoodsChange(index, "unit", e.target.value)
                     }
@@ -174,7 +174,7 @@ const GoodsTable = ({
                   </Form.Control>
                 ) : (
                   <Form.Control
-                    type="text" value={item.unit || "Nos"} readOnly
+                    type="text" value={item.unit || "nos"} readOnly
                   />
                 )}
               </td>
@@ -269,7 +269,7 @@ const GoodsTable = ({
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>Base Unit</Form.Label>
-                    <Form.Control type="text" placeholder="e.g., Nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
+                    <Form.Control type="text" placeholder="e.g., nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
@@ -334,24 +334,7 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const recalculateTotals = useCallback((goodsList) => {
-    const totalQuantity = goodsList.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0
-    );
-    const totalAmount = goodsList.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    );
-    const gstAmount = goodsList.reduce(
-      (sum, item) =>
-        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
-      0
-    );
-    const grandTotal = totalAmount + gstAmount;
-    return { totalQuantity, totalAmount, gstAmount, grandTotal };
-  }, []);
-
+  // Add roundOffTotal to initial quotation data
   const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
     referenceNumber: generateQuotationNumber(),
@@ -371,6 +354,7 @@ const QuotationFormPage = () => {
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
+    roundOffTotal: 0, // <-- Add this
     status: "open",
     client: {
       _id: null,
@@ -381,6 +365,26 @@ const QuotationFormPage = () => {
       phone: "",
     },
   }), []);
+
+  // Update recalculateTotals to include roundOffTotal
+  const recalculateTotals = useCallback((goodsList) => {
+    const totalQuantity = goodsList.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalAmount = goodsList.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
+    const gstAmount = goodsList.reduce(
+      (sum, item) =>
+        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
+      0
+    );
+    const grandTotal = totalAmount + gstAmount;
+    const roundOffTotal = Math.round(grandTotal); // <-- Always round off
+    return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
+  }, []);
 
   const [quotationData, setQuotationData] = useState(
     location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
@@ -443,7 +447,7 @@ const QuotationFormPage = () => {
               quantity: Number(item.quantity),
               price: Number(item.price),
               amount: Number(item.amount),
-              unit: item.unit || "Nos",
+              unit: item.unit || "nos",
               originalPrice: Number(item.originalPrice || item.price),
               maxDiscountPercentage: item.maxDiscountPercentage
                 ? Number(item.maxDiscountPercentage)
@@ -497,7 +501,7 @@ const QuotationFormPage = () => {
   const handleAddItem = useCallback(
     (item) => {
       setQuotationData((prevQuotationData) => {
-        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
         const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
         const newGoods = [
@@ -850,7 +854,7 @@ const QuotationFormPage = () => {
           description: item.description,
           hsnSacCode: item.hsnSacCode || "",
           quantity: Number(item.quantity || 1),
-          unit: item.unit || "Nos",
+          unit: item.unit || "nos",
           price: Number(item.price || 0),
           amount: Number(item.quantity || 1) * Number(item.price || 0),
           originalPrice: Number(item.originalPrice || item.price),
@@ -967,7 +971,7 @@ const QuotationFormPage = () => {
           description: item.description,
           hsnSacCode: item.hsnSacCode || "",
           quantity: Number(item.quantity),
-          unit: item.unit || "Nos",
+          unit: item.unit || "nos",
           price: Number(item.price),
           amount: Number(item.amount),
           originalPrice: Number(item.originalItem?.pricing?.sellingPrice || item.originalPrice),
@@ -982,6 +986,7 @@ const QuotationFormPage = () => {
         totalAmount: Number(quotationData.totalAmount),
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
+        roundOffTotal: Number(quotationData.roundOffTotal), // <-- Add this
         status: quotationData.status || "open",
         client: quotationData.client,
         billingAddress: quotationData.billingAddress,
@@ -1462,14 +1467,20 @@ const QuotationFormPage = () => {
                 </td>
               </tr>
               <tr>
+                <td>Grand Total</td>
+                <td className="text-end">
+                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                </td>
+              </tr>
+              <tr>
                 <td style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-                  Grand Total
+                  Round Off Total <span className="text-danger">*</span>
                 </td>
                 <td
                   className="text-end"
                   style={{ fontWeight: "bold", fontSize: "1.1rem" }}
                 >
-                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                  <strong>₹{quotationData.roundOffTotal}</strong>
                 </td>
               </tr>
             </tbody>

@@ -86,7 +86,16 @@ async function getUserReportDataInternal(userId, period) {
   );
 
   if (!user) {
-    logger.warn("report-internal", `User not found for ID: ${userId}`);
+    logger.log({
+      user: { id: userId },
+      page: "Report",
+      action: "Error",
+      api: "/api/reports/users/:userId",
+      req: null,
+      message: `User not found for ID: ${userId}`,
+      details: {},
+      level: "error"
+    });
     throw new Error("User not found");
   }
 
@@ -301,18 +310,9 @@ exports.getUserReport = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info(
-      "report-getUserReport",
-      `Received request for user report. UserId: ${userId}, Period: ${period}`,
-      req.user
-    );
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.warn(
-        "report-getUserReport",
-        `Invalid user ID: ${userId}`,
-        req.user
-      );
+    
       return res.status(400).json({ success: false, error: "Invalid user ID" });
     }
 
@@ -323,12 +323,16 @@ exports.getUserReport = async (req, res, next) => {
       data: reportPayload,
     });
   } catch (err) {
-    logger.error(
-      "report-getUserReport",
-      `Error fetching user report for UserId: ${req.params.userId}`,
-      err,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching user report for UserId: ${req.params.userId}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error"
+    });
     if (err.message === "User not found") {
       return res.status(404).json({ success: false, error: "User not found" });
     }
@@ -425,19 +429,9 @@ exports.generateUserReportPDF = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info(
-      "report-generatePDF",
-      `Received request to generate PDF. UserId: ${userId}, Period: ${period}`,
-      req.user
-    );
 
     // Add validation
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.error(
-        "report-generatePDF",
-        `Invalid user ID: ${userId}`,
-        req.user
-      );
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
@@ -539,18 +533,17 @@ exports.generateUserReportPDF = async (req, res, next) => {
 
     // Finalize PDF
     doc.end();
-    logger.info(
-      "report-generatePDF",
-      `PDF generation complete and sent for UserId: ${userId}`,
-      req.user
-    );
   } catch (err) {
-    logger.error(
-      "report-generatePDF",
-      `PDF Generation Error for UserId: ${req.params.userId}`,
-      err,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `PDF Generation Error for UserId: ${req.params.userId}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error"
+    });
     if (err.message === "User not found") {
       // Handle specific error from getUserReportDataInternal
       if (!res.headersSent) {
@@ -705,12 +698,16 @@ exports.generateQuotationsReport = async (req, res) => {
         });
     }
   } catch (error) {
-    logger.error(
-      "report-quotations",
-      `Failed to generate quotations report (period: ${period})`,
-      error,
-      user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to generate quotations report (period: ${period})`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res
       .status(500)
       .json({
@@ -852,7 +849,16 @@ exports.generateTicketsReport = async (req, res) => {
       return workbook.xlsx.write(res).then(() => res.status(200).end());
     }
   } catch (error) {
-    logger.error(`report-tickets: Failed to generate tickets report (period: ${period})`, error, user);
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to generate tickets report (period: ${period})`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ success: false, message: "Error generating tickets report", error: error.message });
   }
 };
