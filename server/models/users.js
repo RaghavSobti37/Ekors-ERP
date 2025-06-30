@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const logger = require("../utils/logger"); // Assuming logger is in utils
+const logger = require("../logger"); // Assuming logger is in utils
 
 const roleChangeHistorySchema = new mongoose.Schema(
   {

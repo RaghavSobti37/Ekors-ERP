@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUndo, FaEye } from "react-icons/fa";
+import { FaUndo, FaEye, FaTrash } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import { Button as BsButton, Alert, Form, Card, Modal } from "react-bootstrap";
 import Pagination from "../components/Pagination";
@@ -160,6 +160,31 @@ const BackupsPage = () => {
     }
   };
 
+  // Add this handler:
+  const handleClearAllBackups = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to permanently delete ALL backup entries? This action cannot be undone."
+      )
+    ) {
+      setDataLoading(true);
+      setError("");
+      try {
+        const response = await apiClient("/backups/clear-all", { method: "DELETE" });
+        toast.success(`All backups cleared (${response.deletedCount} deleted).`);
+        setBackups([]);
+        setTotalPages(1);
+        setCurrentPage(1);
+      } catch (err) {
+        const errorMsg = handleApiError(err, "Failed to clear backups");
+        setError(errorMsg);
+        toast.error(errorMsg);
+      } finally {
+        setDataLoading(false);
+      }
+    }
+  };
+
   if (authLoading) return <LoadingSpinner show={true} />;
   if (isUnauthorized) return <Unauthorized />;
 
@@ -248,6 +273,18 @@ const BackupsPage = () => {
                 // Removed explicit style={{ maxWidth: "300px" }} to allow flex-grow
               />
             </div>
+            {/* Add the Clear All Backups button here */}
+            <BsButton
+              variant="danger"
+              size="sm"
+              onClick={handleClearAllBackups}
+              disabled={dataLoading || backups.length === 0}
+              title="Clear All Backups"
+              className="ms-2"
+            >
+              <FaTrash className="me-1" />
+              Clear All Backups
+            </BsButton>
           </div>
         </div>
 

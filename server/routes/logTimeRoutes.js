@@ -3,7 +3,7 @@ const router = express.Router();
 const LogTime = require('../models/LogTime');
 const UniversalBackup = require('../models/universalBackup.js');
 const auth = require('../middleware/auth');
-const logger = require('../utils/logger'); // Assuming logger is setup
+const logger = require('../logger'); // Assuming logger is setup
 
 // Utility function for time overlap
 const hasTimeOverlap = (logs) => {

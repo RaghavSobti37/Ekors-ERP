@@ -1,6 +1,6 @@
 const { Item, Purchase } = require("../models/itemlist");
 const mongoose = require("mongoose");
-const logger = require("../utils/logger");
+const logger = require("../logger");
 const User = require("../models/users");
 
 // Helper function for unit conversion and base price calculation

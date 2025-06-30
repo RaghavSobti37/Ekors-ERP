@@ -1,5 +1,5 @@
 const Client = require('../models/client'); // Adjust path if your model is elsewhere
-const logger = require('../utils/logger'); // Assuming you have a logger utility
+const logger = require('../logger'); // Assuming you have a logger utility
 const Quotation = require('../models/quotation'); // Assuming model name
 const Ticket = require('../models/opentickets');     // Assuming model name
 const User = require('../models/users'); 

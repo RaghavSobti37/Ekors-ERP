@@ -7,7 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const ticketController = require("../controllers/ticketController");
-const logger = require("../utils/logger"); // Ensure logger is available
+const logger = require("../logger"); // Ensure logger is available
 
 // ... (multer setup remains the same) ...
 const storage = multer.diskStorage({

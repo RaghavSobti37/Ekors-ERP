@@ -2,7 +2,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const { check, validationResult } = require("express-validator");
 const userController = require("../controllers/userController");
-const logger = require("../utils/logger");
+const logger = require("../logger");
 const router = express.Router();
 
 // Middleware to check for super-admin role
