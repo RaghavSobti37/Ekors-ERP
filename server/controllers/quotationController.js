@@ -4,7 +4,7 @@ const UniversalBackup = require("../models/universalBackup"); // Using Universal
 const Ticket = require("../models/opentickets");
 const logger = require("../logger"); // Use unified logger
 const mongoose = require("mongoose");
-const Item = require("../models/itemlist"); // Add this at the top if not already
+const ItemModel = require("../models/itemlist").Item; // Use correct model
 
 // --- Helper Functions ---
 const generateNextQuotationNumber = async (userId) => {
@@ -197,20 +197,28 @@ exports.handleQuotationUpsert = async (req, res) => {
     const goodsWithPrices = [];
     for (const g of quotationPayload.goods || []) {
       let price = Number(g.price || 0);
-      // If g.originalItem or g.itemId exists, fetch price from Item master
-      if ((!price || price === 0) && g.originalItem) {
-        const itemDoc = await Item.findById(g.originalItem).lean();
-        if (itemDoc && itemDoc.pricing && itemDoc.pricing.sellingPrice) {
-          price = Number(itemDoc.pricing.sellingPrice);
+      let sellingPrice = price;
+      let originalItemId = g.originalItem?._id || g.originalItem || g.itemId;
+
+      // Fetch selling price from Item master if not present or outdated
+      if (originalItemId) {
+        const itemDoc = await ItemModel.findById(originalItemId).lean();
+        if (itemDoc && typeof itemDoc.sellingPrice === "number") {
+          sellingPrice = itemDoc.sellingPrice;
+          // Optionally, always use the latest selling price:
+          price = sellingPrice;
         }
       }
+
       goodsWithPrices.push({
         ...g,
         quantity: Number(g.quantity || 0),
         price,
+        sellingPrice, // Always include sellingPrice for frontend
         amount: Number(g.amount || 0),
         gstRate: parseFloat(g.gstRate || 0),
         unit: normalizeUnit(g.unit),
+        originalItem: originalItemId || undefined,
       });
     }
 

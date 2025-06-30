@@ -501,8 +501,8 @@ const QuotationFormPage = () => {
   const handleAddItem = useCallback(
     (item) => {
       setQuotationData((prevQuotationData) => {
-        const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
-        const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
+        const defaultUnit = item.units?.find(u => u.isBaseUnit)?.name || item.units?.[0]?.name || "nos";
+        const pricePerSelectedUnit = typeof item.sellingPrice === "number" ? item.sellingPrice : 0;
 
         const newGoods = [
           ...prevQuotationData.goods,
@@ -514,11 +514,12 @@ const QuotationFormPage = () => {
             unit: defaultUnit,
             price: pricePerSelectedUnit,
             amount: pricePerSelectedUnit,
-            originalPrice: parseFloat(item.sellingPrice) || 0, // Corrected
+            originalPrice: pricePerSelectedUnit,
+            sellingPrice: pricePerSelectedUnit, // <-- Always include
             maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
-            originalItem: item,
+            originalItem: item._id || item, // Store item ID for backend
           },
         ];
         const totals = recalculateTotals(newGoods);
@@ -974,13 +975,13 @@ const QuotationFormPage = () => {
           unit: item.unit || "nos",
           price: Number(item.price),
           amount: Number(item.amount),
-          originalPrice: Number(item.originalItem?.pricing?.sellingPrice || item.originalPrice),
+          sellingPrice: Number(item.sellingPrice), // <-- Always send
+          originalItem: item.originalItem?._id || item.originalItem, // <-- Always send item ID
           maxDiscountPercentage: item.maxDiscountPercentage
             ? Number(item.maxDiscountPercentage)
             : 0,
           gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
           subtexts: item.subtexts || [],
-          // originalItem: item.originalItem, 
         })),
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),

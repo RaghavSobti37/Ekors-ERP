@@ -207,8 +207,13 @@ export default function Quotations() {
         quantity: Number(item.quantity),
         price: Number(item.price),
         amount: Number(item.amount),
+        sellingPrice: Number(item.sellingPrice), // <-- Use sellingPrice
+        unit: item.unit || "nos",
+        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price), // Prefer sellingPrice
+        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],
+        originalItem: item.originalItem?._id || item.originalItem || item.itemId, // Always keep reference
       })),
       clientPhone: clientData.phone || "",
       clientGstNumber: clientData.gstNumber || "",
@@ -241,10 +246,13 @@ export default function Quotations() {
       goods: quotation.goods.map((item) => ({
         ...item,
         quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        unit: item.unit || "nos", originalPrice: Number(item.originalPrice || item.price),
+        sellingPrice: Number(item.sellingPrice), // <-- Use sellingPrice
+        unit: item.unit || "nos",
+        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price), // Prefer sellingPrice
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],
+        originalItem: item.originalItem?._id || item.originalItem || item.itemId, // Always keep reference
       })),
       totalQuantity: Number(quotation.totalQuantity), totalAmount: Number(quotation.totalAmount),
       gstAmount: Number(quotation.gstAmount), grandTotal: Number(quotation.grandTotal),
