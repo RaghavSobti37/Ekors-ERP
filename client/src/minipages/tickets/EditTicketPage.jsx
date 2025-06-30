@@ -82,12 +82,10 @@ const EditTicketPage = () => {
         deadline: data.deadline ? formatDateForInput(data.deadline) : null,
         validityDate: data.validityDate ? formatDateForInput(data.validityDate) : initialTicketData.validityDate,
         goods: (data.goods || []).map(g => ({
-            ...g, 
-            originalPrice: g.originalPrice || g.price,
-            maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
-            gstRate: parseFloat(g.gstRate || 0),
-            subtexts: g.subtexts || [],
-            originalItem: g.originalItem || g, // Ensure originalItem is preserved
+            ...g,
+            hsnCode: g.hsnCode || "",
+            originalItem: g.originalItem?._id || g.originalItem || undefined,
+            // ...other fields...
         })),
       });
       setOriginalStatus(data.status);
@@ -121,7 +119,9 @@ const EditTicketPage = () => {
             deadline: initialData.deadline ? formatDateForInput(initialData.deadline) : null,
             validityDate: initialData.validityDate ? formatDateForInput(initialData.validityDate) : initialTicketData.validityDate,
             goods: (initialData.goods || []).map(g => ({
-                ...g, 
+                ...g,
+                hsnCode: g.hsnCode || "",
+                originalItem: g.originalItem?._id || g.originalItem || undefined,
                 originalPrice: g.originalPrice || g.price,
                 maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
                 gstRate: parseFloat(g.gstRate || 0),
@@ -236,7 +236,7 @@ const EditTicketPage = () => {
       const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
       const newGoodsItem = {
-        srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
+        srNo: prev.goods.length + 1, description: item.name, hsnCode: item.hsnCode || "",
         quantity: 1, unit: defaultUnit, // Set default unit
         price: pricePerSelectedUnit, // Price per selected unit (already calculated based on base unit)
         amount: pricePerSelectedUnit, // Amount for 1 quantity
@@ -354,8 +354,11 @@ const EditTicketPage = () => {
               ticketData.shippingAddress.state || "", ticketData.shippingAddress.city || "",
               ticketData.shippingAddress.pincode || "" ],
         goods: ticketData.goods.map(g => ({
-          ...g, gstRate: parseFloat(g.gstRate || 0),
-          originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
+          ...g,
+          hsnCode: g.hsnCode || "",
+          originalItem: g.originalItem?._id || g.originalItem || undefined,
+          gstRate: parseFloat(g.gstRate || 0),
+          maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
         termsAndConditions: ticketData.termsAndConditions, // Ensure terms and conditions are sent
@@ -613,7 +616,7 @@ const EditTicketPage = () => {
                     ))}
                     <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
                   </td>
-                  <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
                     {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (

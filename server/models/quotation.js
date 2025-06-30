@@ -1,23 +1,25 @@
 const mongoose = require("mongoose");
+const { STANDARD_UNITS } = require("./itemlist");
 
 const goodsItemSchema = new mongoose.Schema(
   {
     srNo: { type: Number, required: true },
     description: { type: String, required: true },
     subtexts: { type: [String], default: [] },
-    hsnSacCode: { type: String, default: '' },
+    hsnCode: { type: String, default: '' }, 
     quantity: { type: Number, required: true, min: 1 },
     unit: { 
       type: String, 
       required: true, 
-      default: 'Nos',
-      enum: ['Nos', 'Mtr', 'PKT', 'Pair', 'Set', 'Bottle', 'KG']
+      default: 'nos',
+      enum: STANDARD_UNITS 
     },
     price: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
     gstRate: { type: Number, default: 0 },
     originalPrice: { type: Number },
-    maxDiscountPercentage: { type: Number, default: 0 }
+    maxDiscountPercentage: { type: Number, default: 0 },
+    originalItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Item' } 
   },
   { _id: false }
 );
@@ -60,6 +62,7 @@ const quotationSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true, min: 0 },
     gstAmount: { type: Number, required: true, min: 0 },
     grandTotal: { type: Number, required: true, min: 0 },
+    roundOffTotal: { type: Number, required: true, min: 0 }, // Added field
     status: {
       type: String,
       enum: ['open', 'closed', 'hold', 'running'], // Added 'running'

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // 1. Standard Unit Definitions
 const STANDARD_UNITS = [
-  'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag','set'
+  'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag', 'set'
 ];
 
 // 2. Unit Sub-schema
@@ -293,4 +293,5 @@ purchaseSchema.index({ 'items.itemId': 1 });
 const Item = mongoose.model('Item', itemSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
+// 10. Export STANDARD_UNITS for use in other schemas
 module.exports = { Item, Purchase, STANDARD_UNITS };

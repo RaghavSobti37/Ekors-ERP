@@ -204,16 +204,17 @@ export default function Quotations() {
       shippingSameAsBilling: false,
       goods: quotation.goods.map((item) => ({
         ...item,
+        hsnCode: item.hsnCode || item.hsnCode || "",
         quantity: Number(item.quantity),
         price: Number(item.price),
         amount: Number(item.amount),
-        sellingPrice: Number(item.sellingPrice), // <-- Use sellingPrice
+        sellingPrice: Number(item.sellingPrice),
         unit: item.unit || "nos",
-        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price), // Prefer sellingPrice
+        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price),
         maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
         gstRate: parseFloat(item.gstRate || 0),
         subtexts: item.subtexts || [],
-        originalItem: item.originalItem?._id || item.originalItem || item.itemId, // Always keep reference
+        originalItem: item.originalItem?._id || item.originalItem || item.itemId,
       })),
       clientPhone: clientData.phone || "",
       clientGstNumber: clientData.gstNumber || "",

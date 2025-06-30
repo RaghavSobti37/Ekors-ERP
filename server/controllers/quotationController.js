@@ -205,19 +205,19 @@ exports.handleQuotationUpsert = async (req, res) => {
         const itemDoc = await ItemModel.findById(originalItemId).lean();
         if (itemDoc && typeof itemDoc.sellingPrice === "number") {
           sellingPrice = itemDoc.sellingPrice;
-          // Optionally, always use the latest selling price:
           price = sellingPrice;
         }
       }
 
       goodsWithPrices.push({
         ...g,
+        hsnCode: g.hsnCode || g.hsnCode || "", // Accept both for backward compatibility
         quantity: Number(g.quantity || 0),
         price,
-        sellingPrice, // Always include sellingPrice for frontend
+        sellingPrice,
         amount: Number(g.amount || 0),
         gstRate: parseFloat(g.gstRate || 0),
-        unit: normalizeUnit(g.unit),
+        unit: g.unit,
         originalItem: originalItemId || undefined,
       });
     }
@@ -230,6 +230,7 @@ exports.handleQuotationUpsert = async (req, res) => {
       client: processedClient._id,
       billingAddress: processedBillingAddress,
       goods: goodsWithPrices,
+      roundOffTotal: Number(quotationPayload.roundOffTotal) || 0, // Ensure roundOffTotal is saved
     };
 
     let quotation;
