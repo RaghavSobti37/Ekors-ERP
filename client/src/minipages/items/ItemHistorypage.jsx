@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import ReusablePageStructure from "../components/ReusablePageStructure";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import ReusablePageStructure from "../../components/ReusablePageStructure";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 import { Spinner, Button, Alert } from "react-bootstrap";
-import apiClient from "../utils/apiClient";
-import { useAuth } from "../context/AuthContext";
-import { showToast, handleApiError } from "../utils/helpers";
+import apiClient from "../../utils/apiClient";
+import { useAuth } from "../../context/AuthContext";
+import { showToast, handleApiError } from "../../utils/helpers";
 import { EraserFill } from "react-bootstrap-icons";
-import ReusableTable from "../components/ReusableTable";
+import ReusableTable from "../../components/ReusableTable";
 
 const transformLogEntry = (log) => ({
   _id: log._id,

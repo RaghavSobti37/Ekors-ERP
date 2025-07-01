@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "../css/Navbar.css"; // Main Navbar styles
 import {
   FaUser,
@@ -8,8 +8,6 @@ import {
   FaClock,
   FaBoxOpen,
   FaUsers,
-  FaExclamationTriangle, // For restock alerts
-  FaExclamationCircle, // For low quantity warnings
   FaCogs, // For Management
   FaInfoCircle // For Static Info
 } from "react-icons/fa";
@@ -17,50 +15,16 @@ import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import apiClient from "../utils/apiClient"; // Assuming you have this
 
-const DEFAULT_LOW_QUANTITY_THRESHOLD = 3;
-const LOCAL_STORAGE_LOW_QUANTITY_KEY = "globalLowStockThresholdSetting";
-
 function NavbarComponent() {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showManagementDropdown, setShowManagementDropdown] = useState(false);
   const navigate = useNavigate();
-  const [restockAlertCount, setRestockAlertCount] = useState(0);
-  const [lowStockWarningCount, setLowStockWarningCount] = useState(0);
   const { user, logout } = useAuth();
 
   const timeoutRef = useRef(null);
   const dropdownTimeoutRef = useRef(null);
   const managementDropdownTimeoutRef = useRef(null);
-
-  const fetchRestockData = useCallback(async () => {
-    if (!user) return; // Don't fetch if not logged in or user context not yet available
-
-    const currentThreshold =
-      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) ||
-      DEFAULT_LOW_QUANTITY_THRESHOLD;
-    try {
-      // apiClient is expected to handle auth token injection.
-      const response = await apiClient(
-        `/items/restock-summary?lowGlobalThreshold=${currentThreshold}`
-      );
-      setRestockAlertCount(response.restockNeededCount || 0);
-      setLowStockWarningCount(response.lowStockWarningCount || 0);
-    } catch (error) {
-      console.error(
-        "Navbar: Failed to fetch restock summary:",
-        error.data?.message || error.message
-      );
-      // Not showing a UI error for this background check.
-    }
-  }, [user]); // Depends on user object to ensure it runs after user is available
-
-  useEffect(() => {
-    fetchRestockData();
-    // Optional: Set an interval to refresh periodically
-    const intervalId = setInterval(fetchRestockData, 300000); // every 5 minutes
-    return () => clearInterval(intervalId);
-  }, [fetchRestockData]);
 
   const handlePurchaseHistoryClick = () => {
     navigate("/purchasehistory");
@@ -106,16 +70,6 @@ function NavbarComponent() {
     managementDropdownTimeoutRef.current = setTimeout(() => {
       setShowManagementDropdown(false);
     }, 300);
-  };
-  
-  const handleStockAlertClick = () => {
-    const currentThreshold =
-      parseInt(localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY), 10) || DEFAULT_LOW_QUANTITY_THRESHOLD;
-    navigate(`/items?filter=stock_alerts`); 
-  };
-
-  const handleStaticInfoClick = () => {
-    navigate("/staticinfo");
   };
 
   return (
@@ -230,24 +184,6 @@ function NavbarComponent() {
                 )}
               </div>
             )}
-            
-            {/* Stock Alert Notification Area */}
-            {(restockAlertCount > 0 || lowStockWarningCount > 0) &&
-              user &&
-              user.role !== "user" && (
-                <div
-                  className="stock-alert-notification nav-link" // Added nav-link for consistent styling if desired
-                  onClick={handleStockAlertClick}
-                  title={`Restock Needed (Qty <= 0): ${restockAlertCount} items. Low Stock (Qty < global threshold ${                    localStorage.getItem(LOCAL_STORAGE_LOW_QUANTITY_KEY) ||
-                    DEFAULT_LOW_QUANTITY_THRESHOLD
-                  }): ${lowStockWarningCount} items. Click to view all items below their specific low stock thresholds.`}
-                >
-                  <FaExclamationTriangle className="icon-low-stock" />
-                  <span className="alert-count">{restockAlertCount}</span>
-                  <FaExclamationCircle className="icon-restock" />
-                  <span className="alert-count">{lowStockWarningCount}</span>
-                </div>
-              )}
           </div>
         </div>
 
