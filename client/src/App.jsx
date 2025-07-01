@@ -9,7 +9,7 @@ import Quotations from "./pages/Quotations.jsx";
 import History from "./pages/History";
 import Users from "./pages/Users";
 import Challan from "./pages/Challan";
-import Items from "./pages/Items.jsx";
+import Items from "./pages/Items.jsx"; // <-- Use this as your main items page
 import PurchaseHistory from "./pages/PurchaseHistory.jsx";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -37,8 +37,11 @@ import ViewClientPage from "./minipages/clients/ViewClientPage";
 import EditClientPage from "./minipages/clients/EditClientPage";
 import ClientsPage from "./pages/ClientsPage.jsx"; // ClientsPage is now used for the /clients route
 import BackupsPage from "./pages/BackupsPage.jsx"; // Import the new BackupsPage
-import ItemHistoryPage from "./pages/ItemHistorypage.jsx";
+import ItemHistoryPage from "./minipages/items/ItemHistorypage.jsx";
 import PurchaseFormPage from "./pages/PurchaseFormPage.jsx";
+import AddItemPage from "./minipages/items/AddItemPage.jsx";
+import EditItemPage from "./minipages/items/EditItemPage.jsx";
+import ViewItemPage from "./minipages/items/ViewItemPage.jsx";
 
 function App() {
   return (
@@ -254,18 +257,34 @@ function App() {
             }
           />
           <Route
-          //   path="/itemslist"
-          //   element={
-          //     <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
-          //       <Items />
-          //     </ProtectedRoute>
-          //   }
-          // />
-          // <Route
             path="/items"
             element={
               <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
-                <Items />
+                <Items /> {/* Use Items instead of ItemsListPage */}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/items/add"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <AddItemPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/items/edit/:id"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <EditItemPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/items/view/:id"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "super-admin"]}>
+                <ViewItemPage />
               </ProtectedRoute>
             }
           />

@@ -122,14 +122,6 @@ const itemSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  lowStockThreshold: {
-    type: Number,
-    default: 5
-  },
-  needsRestock: {
-    type: Boolean,
-    default: false
-  },
   
   // Taxonomy
   category: {
@@ -309,9 +301,6 @@ itemSchema.pre('save', function(next) {
     this.baseUnit = this.units[0].name;
     this.units[0].conversionFactor = 1;
   }
-  
-  // Calculate needsRestock
-  this.needsRestock = this.quantity < this.lowStockThreshold;
   
   next();
 });

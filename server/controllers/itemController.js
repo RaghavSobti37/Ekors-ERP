@@ -9,7 +9,6 @@ const Ticket = require("../models/opentickets");
 
 // Constants
 const MAX_CUSTOM_UNITS_TO_EXPORT = 1;
-const DEFAULT_LOW_STOCK_THRESHOLD = 5;
 const DEFAULT_PROFIT_MARGIN = 20;
 
 const STANDARD_UNITS = [
@@ -94,97 +93,41 @@ const validateItemData = (itemData) => {
 };
 
 exports.getAllItems = asyncHandler(async (req, res) => {
-  const user = req.user || null;
-  const {
-    page = 1,
-    limit = 10,
-    sortKey = "name",
-    sortDirection = "asc",
-    searchTerm,
-    category,
-    quantityThreshold,
-    status,
-    filter,
-    lowThreshold,
-  } = req.query;
+  const { page = 1, limit = 10, search = "", status, sortKey, sortDirection } = req.query;
+  const query = {};
 
-  try {
-    const query = { status: "approved" };
-
-    if (searchTerm) {
-      query.$or = [
-        { name: { $regex: searchTerm, $options: "i" } },
-        { hsnCode: { $regex: searchTerm, $options: "i" } },
-      ];
-    }
-    if (category && category !== "All" && category !== "undefined") query.category = category;
-
-    if (quantityThreshold !== undefined && quantityThreshold !== null && quantityThreshold !== "All" && quantityThreshold !== "null") {
-      query.quantity = { $lte: parseInt(quantityThreshold, 10) };
-    } else if (quantityThreshold === "0") {
-      query.quantity = { $lte: 0 };
-    }
-
-    if (status && status !== "undefined") query.status = status;
-
-    if (filter === "stock_alerts" && lowThreshold !== undefined && lowThreshold !== "undefined") {
-      const thresholdValue = parseInt(lowThreshold, 10);
-      if (Number.isFinite(thresholdValue)) {
-        query.quantity = { $lt: thresholdValue };
-      } else {
-        logger.log({
-          user,
-          page: "Item",
-          action: "Get All Items",
-          api: req.originalUrl,
-          req,
-          message: `Invalid lowThreshold value received for stock_alerts: ${lowThreshold}`,
-          details: {},
-          level: "warn"
-        });
-      }
-    }
-
-    const [totalItems, items] = await Promise.all([
-      Item.countDocuments(query),
-      Item.find(query)
-        .populate("createdBy reviewedBy", "firstname lastname email")
-        .sort({ [sortKey]: sortDirection === "desc" ? -1 : 1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-    ]);
-
-    logger.log({
-      user,
-      page: "Item",
-      action: "Get All Items",
-      api: req.originalUrl,
-      req,
-      message: "Items fetched successfully",
-      details: {
-        count: items.length,
-        totalItems,
-        currentPage: page,
-        totalPages: Math.ceil(totalItems / limit),
-      },
-      level: "info"
-    });
-
-    res.json({
-      data: items,
-      totalItems,
-      currentPage: page,
-      totalPages: Math.ceil(totalItems / limit),
-    });
-  } catch (error) {
-    handleErrorResponse(res, error, "fetching items", user, req);
+  // Add search filter
+  if (search && search.trim() !== "") {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { category: { $regex: search, $options: "i" } },
+      { hsnCode: { $regex: search, $options: "i" } }
+    ];
   }
+
+  if (status) query.status = status;
+
+  // Sorting
+  let sort = {};
+  if (sortKey && sortDirection) {
+    sort[sortKey] = sortDirection === "ascending" ? 1 : -1;
+  } else {
+    sort.createdAt = -1;
+  }
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const [data, totalItems] = await Promise.all([
+    Item.find(query).sort(sort).skip(skip).limit(parseInt(limit)),
+    Item.countDocuments(query)
+  ]);
+
+  res.json({ data, totalItems });
 });
 
 
 exports.exportItemsToExcel = asyncHandler(async (req, res) => {
   const user = req.user || null;
- 
 
   try {
     const items = await Item.find({ status: "approved" })
@@ -192,30 +135,25 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
       .lean();
 
     if (!items || items.length === 0) {
-    
       return res.status(404).json({ message: "No approved items found to export." });
     }
 
     const workbook = new exceljs.Workbook();
     const worksheet = workbook.addWorksheet("Items");
 
-    // Configure worksheet columns
+    // Configure worksheet columns (remove image column)
     worksheet.columns = [
       { header: "Category", key: "category", width: 25 },
       { header: "Name", key: "name", width: 40 },
       { header: "Quantity", key: "quantity", width: 15 },
       { header: "HSN Code", key: "hsnCode", width: 15 },
-      { header: "GST Rate", key: "gstRate", width: 12 },
-      { header: "Max Discount %", key: "maxDiscountPercentage", width: 18 },
-      { header: "Low Stock Threshold", key: "lowStockThreshold", width: 20 },
       { header: "Base Unit", key: "baseUnit", width: 15 },
-      { header: "Selling Price (per Base Unit)", key: "sellingPriceBaseUnit", width: 25 },
-      { header: "Buying Price (per Base Unit)", key: "buyingPriceBaseUnit", width: 25 },
+      { header: "Selling Price (per Base Unit)", key: "sellingPrice", width: 25 },
+      { header: "Buying Price (per Base Unit)", key: "buyingPrice", width: 25 },
       ...Array.from({ length: MAX_CUSTOM_UNITS_TO_EXPORT }).flatMap((_, i) => [
         { header: `Custom Unit ${i + 1} Name`, key: `customUnit${i + 1}Name`, width: 20 },
         { header: `Custom Unit ${i + 1} Conversion Factor`, key: `customUnit${i + 1}ConversionFactor`, width: 25 },
       ]),
-      { header: "Image", key: "image", width: 15 },
     ];
 
     // Apply header styling
@@ -228,49 +166,36 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
 
     let currentRow = 2;
     let currentCategory = null;
-    let imageMergeStartRow = -1;
-    let lastImageBase64 = null;
 
     for (const item of items) {
       if (item.category !== currentCategory) {
-        // Finalize previous category's image merge
-        if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
-          const imageColIndex = worksheet.columns.findIndex(col => col.key === "image");
-          const imageColLetter = String.fromCharCode("A".charCodeAt(0) + imageColIndex);
-          worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
-        }
-
-        // Reset for new category
-        imageMergeStartRow = -1;
-        lastImageBase64 = null;
-        currentCategory = item.category;
-
         // Add category header row
         const lastColumnLetter = String.fromCharCode("A".charCodeAt(0) + worksheet.columns.length - 1);
         worksheet.mergeCells(`A${currentRow}:${lastColumnLetter}${currentRow}`);
-        
+
         const categoryCell = worksheet.getCell(`A${currentRow}`);
-        categoryCell.value = `Category: ${currentCategory || "Other"}`;
+        categoryCell.value = `Category: ${item.category || "Other"}`;
         categoryCell.font = { bold: true, size: 12, color: { argb: "FF000000" } };
         categoryCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
         categoryCell.alignment = { vertical: "middle", horizontal: "left" };
+        currentCategory = item.category;
         currentRow++;
       }
 
-      // Prepare row data
+      // Prepare row data with defaults
       const nonBaseUnits = item.units?.filter(u => !u.isBaseUnit) || [];
+      const hsnCode = item.hsnCode && item.hsnCode !== "0" && item.hsnCode !== 0 ? item.hsnCode : "hsn123";
+      const sellingPrice = item.sellingPrice && item.sellingPrice !== 0 ? item.sellingPrice : 100;
+      const buyingPrice = item.buyingPrice && item.buyingPrice !== 0 ? item.buyingPrice : 10;
+
       const rowData = {
-        category: "",
+        category: item.category,
         name: item.name,
         quantity: item.quantity,
+        hsnCode,
         baseUnit: item.baseUnit || "N/A",
-        sellingPriceBaseUnit: item.sellingPrice || 0,
-        buyingPriceBaseUnit: item.buyingPrice || 0,
-        hsnCode: item.hsnCode,
-        gstRate: item.gstRate,
-        maxDiscountPercentage: item.maxDiscountPercentage,
-        lowStockThreshold: item.lowStockThreshold,
-        image: "",
+        sellingPrice,
+        buyingPrice,
       };
 
       // Add custom units
@@ -287,33 +212,8 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
       worksheet.addRow(rowData);
       const addedRow = worksheet.getRow(currentRow);
 
-      // Handle image placement
-      if (item.image) {
-        const imageColIndex = worksheet.columns.findIndex(col => col.key === "image");
-        const imageColLetter = String.fromCharCode("A".charCodeAt(0) + imageColIndex);
-
-        if (item.image !== lastImageBase64) {
-          // Finalize previous image merge
-          if (imageMergeStartRow !== -1 && currentRow - 1 >= imageMergeStartRow) {
-            worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
-          }
-
-          // Start new image sequence
-          imageMergeStartRow = currentRow;
-          lastImageBase64 = item.image;
-          
-          const imageId = workbook.addImage({
-            base64: item.image,
-            extension: item.image.split(";")[0].split("/")[1],
-          });
-          
-          worksheet.addImage(imageId, {
-            tl: { col: imageColIndex, row: currentRow - 1 },
-            ext: { width: 60, height: 60 },
-          });
-        }
-        worksheet.getRow(currentRow).height = 65;
-      }
+      // Set row height for all rows (no images now, but keep for consistency)
+      addedRow.height = 30;
 
       // Apply cell styling
       addedRow.eachCell((cell) => {
@@ -326,47 +226,55 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
         };
       });
 
+      // Helper to get column index by key
+      const getColIndex = (worksheet, key) => {
+        return worksheet.columns.findIndex(col => col.key === key) + 1;
+      };
+
       // Center align numeric columns
-      ["quantity", "gstRate", "maxDiscountPercentage", "lowStockThreshold"].forEach(key => {
-        addedRow.getCell(key).alignment = { vertical: "middle", horizontal: "center" };
+      ["quantity", "gstRate", "maxDiscountPercentage"].forEach(key => {
+        const colIdx = getColIndex(worksheet, key);
+        if (colIdx > 0) {
+          addedRow.getCell(colIdx).alignment = { vertical: "middle", horizontal: "center" };
+        }
       });
 
-      ["sellingPriceBaseUnit", "buyingPriceBaseUnit"].forEach(key => {
-        addedRow.getCell(key).alignment = { vertical: "middle", horizontal: "right" };
+      ["sellingPrice", "buyingPrice"].forEach(key => {
+        const colIdx = getColIndex(worksheet, key);
+        if (colIdx > 0) {
+          addedRow.getCell(colIdx).alignment = { vertical: "middle", horizontal: "right" };
+        }
       });
 
       for (let j = 0; j < MAX_CUSTOM_UNITS_TO_EXPORT; j++) {
-        addedRow.getCell(`customUnit${j + 1}ConversionFactor`).alignment = {
-          vertical: "middle",
-          horizontal: "center",
-        };
+        const cellKey = `customUnit${j + 1}ConversionFactor`;
+        const colIdx = getColIndex(worksheet, cellKey);
+        if (colIdx > 0) {
+          addedRow.getCell(colIdx).alignment = {
+            vertical: "middle",
+            horizontal: "center",
+          };
+        }
       }
 
       currentRow++;
-    }
-
-    // Finalize any pending image merge
-    if (imageMergeStartRow !== -1 && currentRow > imageMergeStartRow) {
-      const imageColIndex = worksheet.columns.findIndex(col => col.key === "image");
-      const imageColLetter = String.fromCharCode("A".charCodeAt(0) + imageColIndex);
-      worksheet.mergeCells(`${imageColLetter}${imageMergeStartRow}:${imageColLetter}${currentRow - 1}`);
     }
 
     const excelBuffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader("Content-Disposition", 'attachment; filename="items_export.xlsx"');
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    
- 
-    
     res.send(excelBuffer);
   } catch (error) {
     handleErrorResponse(res, error, "Excel export process", user);
   }
 });
 
-// Import functions
-async function parseExcelBufferForUpdate(fileBuffer) {
+// --- Excel Importer logic ---
+async function parseExcelBufferForUpdate(fileBuffer, logger) {
+  const itemsToUpsert = [];
+  const parsingErrors = [];
+
   try {
     const workbook = new exceljs.Workbook();
     await workbook.xlsx.load(fileBuffer);
@@ -376,402 +284,193 @@ async function parseExcelBufferForUpdate(fileBuffer) {
       throw new Error("No worksheet found in the Excel file.");
     }
 
-    const itemsToUpsert = [];
-    const parsingErrors = [];
-    let currentCategory = "Other";
+    worksheet.eachRow({ skipHeader: true }, (row, rowNumber) => {
+      // Skip category header rows
+      const firstCell = row.getCell(1).value;
+      if (typeof firstCell === "string" && firstCell.startsWith("Category:")) return;
 
-    // Collect all images first
-    const imageMap = new Map();
-    worksheet.getImages().forEach((image) => {
-      const row = image.range.tl.row + 1;
-      const excelImage = workbook.getImage(image.imageId);
-      if (excelImage) {
-        const base64Image = `data:image/${excelImage.extension || "png"};base64,${excelImage.buffer.toString("base64")}`;
-        imageMap.set(row, base64Image);
-      }
-    });
+      // Read columns by their correct index
+      const category = row.getCell(1).value || "Other";
+      const name = row.getCell(2).value;
+      const quantity = row.getCell(3).value;
+      const hsnCode = row.getCell(4).value || "hsn123";
+      // E: GST Rate (optional, not used in item below)
+      // F: Max Discount (optional, not used in item below)
+      const baseUnit = row.getCell(5).value; // Correct: 5th column is Base Unit
+      const sellingPrice = row.getCell(6).value || 100;
+      const buyingPrice = row.getCell(7).value || 10;
+      const customUnit1Name = row.getCell(8).value;
+      const customUnit1ConversionFactor = row.getCell(9).value;
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return; // Skip header
+      if (!name) return; // skip empty rows
 
-      const firstCell = row.getCell("A");
-      if (firstCell.isMerged && firstCell.value?.startsWith?.("Category:")) {
-        currentCategory = firstCell.value.replace("Category: ", "").trim();
-        return;
-      }
+      // Always use the correct base unit column
+      const units = [
+        { name: String(baseUnit || 'Nos').trim(), isBaseUnit: true, conversionFactor: 1 }
+      ];
 
-      const name = row.getCell("B").value;
-      if (!name) {
-        if (row.values.length > 1) {
-          parsingErrors.push({
-            row: rowNumber,
-            message: `Skipped: Item name is missing in row ${rowNumber}.`,
-          });
-        }
-        return;
+      if (customUnit1Name && customUnit1ConversionFactor) {
+        units.push({
+          name: String(customUnit1Name).trim(),
+          isBaseUnit: false,
+          conversionFactor: parseFloat(customUnit1ConversionFactor),
+        });
       }
 
       const item = {
         name: String(name).trim(),
-        quantity: parseFloat(row.getCell("C").value) || 0,
-        hsnCode: String(row.getCell("D").value || "").trim(),
-        gstRate: parseFloat(row.getCell("E").value) || 0,
-        maxDiscountPercentage: parseFloat(row.getCell("F").value) || 0,
-        lowStockThreshold: parseInt(row.getCell("G").value, 10) || DEFAULT_LOW_STOCK_THRESHOLD,
-        baseUnit: String(row.getCell("H").value || "Nos").trim(),
-        sellingPriceBaseUnit: parseFloat(row.getCell("I").value) || 0,
-        buyingPriceBaseUnit: parseFloat(row.getCell("J").value) || 0,
-        category: currentCategory,
-        image: imageMap.get(rowNumber) || "",
+        quantity: parseFloat(quantity) || 0,
+        baseUnit: String(baseUnit || 'Nos').trim(),
+        sellingPrice: parseFloat(sellingPrice) || 100,
+        buyingPrice: parseFloat(buyingPrice) || 10,
+        units,
+        category: category || "Other",
+        hsnCode: String(hsnCode || 'hsn123').trim(),
+        // gstRate, maxDiscountPercentage, etc. can be added if needed
       };
-
-      // Add custom units
-      for (let i = 1; i <= MAX_CUSTOM_UNITS_TO_EXPORT; i++) {
-        const unitNameKey = `customUnit${i}Name`;
-        const conversionFactorKey = `customUnit${i}ConversionFactor`;
-        if (row.getCell(10 + i * 2).value && row.getCell(11 + i * 2).value) {
-          item[unitNameKey] = String(row.getCell(10 + i * 2).value).trim();
-          item[conversionFactorKey] = parseFloat(row.getCell(11 + i * 2).value);
-        }
-      }
-
-      if (isNaN(item.sellingPriceBaseUnit)) {
-        parsingErrors.push({
-          row: rowNumber,
-          message: `Skipped: Invalid Selling Price for item "${item.name}" in row ${rowNumber}.`,
-        });
-        return;
-      }
 
       itemsToUpsert.push(item);
     });
 
     return { itemsToUpsert, parsingErrors };
+
   } catch (error) {
-    logger.log({
-      user: null,
-      page: "Item",
-      action: "Error",
-      api: req.originalUrl,
-      req,
-      message: `Error parsing Excel buffer: ${error.message}`,
-      details: { error: error.message, stack: error.stack },
-      level: "error"
-    });
-    return {
-      itemsToUpsert: [],
-      parsingErrors: [{ row: "general", message: `Fatal error during Excel parsing: ${error.message}` }],
-    };
-  }
-}
-
-async function syncItemsWithDatabase(req, excelItems, user, logContextPrefix) {
-  const session = await mongoose.startSession();
-  const importUserId = user?._id || null;
-  const importFileName = req?.file?.originalname || "unknown_excel_file.xlsx";
-
-  let itemsCreated = 0;
-  let itemsUpdated = 0;
-  let itemsDeleted = 0;
-  const operationResults = [];
-  const databaseProcessingErrors = [];
-
-  try {
-    await session.withTransaction(async () => {
-
-
-      // Fetch existing items and create a map
-      const existingDbItems = await Item.find().session(session).lean();
-      const dbItemsMap = new Map(existingDbItems.map(item => [item.name.toLowerCase(), item]));
-      const excelItemNamesLowerCase = new Set(excelItems.map(item => item.name.toLowerCase()));
-
-      // Process items for upsert
-      const itemUpsertOps = [];
-      for (const excelItemData of excelItems) {
-        const normalizedExcelItemName = excelItemData.name.toLowerCase();
-        const existingItem = dbItemsMap.get(normalizedExcelItemName);
-
-        // Prepare units array
-        const unitsPayload = [
-          {
-            name: excelItemData.baseUnit || "Nos",
-            isBaseUnit: true,
-            conversionFactor: 1,
-          },
-        ];
-
-        // Add custom units from Excel data
-        for (let i = 1; i <= MAX_CUSTOM_UNITS_TO_EXPORT; i++) {
-          const unitNameKey = `customUnit${i}Name`;
-          const conversionFactorKey = `customUnit${i}ConversionFactor`;
-          if (excelItemData[unitNameKey] && excelItemData[conversionFactorKey]) {
-            unitsPayload.push({
-              name: excelItemData[unitNameKey],
-              isBaseUnit: false,
-              conversionFactor: parseFloat(excelItemData[conversionFactorKey]),
-            });
-          }
-        }
-
-        // Create payload for item
-        const payload = {
-          name: excelItemData.name,
-          quantity: excelItemData.quantity !== undefined ? parseFloat(excelItemData.quantity) || 0 : existingItem?.quantity || 0,
-          baseUnit: excelItemData.baseUnit || "Nos",
-          sellingPrice: parseFloat(excelItemData.sellingPriceBaseUnit) || 0,
-          buyingPrice: parseFloat(excelItemData.buyingPriceBaseUnit) || 0,
-          profitMarginPercentage: excelItemData.profitMarginPercentage || DEFAULT_PROFIT_MARGIN,
-          units: unitsPayload,
-          category: excelItemData.category || "Other",
-          gstRate: excelItemData.gstRate || 0,
-          hsnCode: excelItemData.hsnCode || "",
-          maxDiscountPercentage: excelItemData.maxDiscountPercentage || 0,
-          lowStockThreshold: excelItemData.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD,
-          image: excelItemData.image !== undefined ? excelItemData.image : existingItem?.image || "",
-          status: excelItemData.status || (existingItem ? existingItem.status : importUserId && user?.role === "user" ? "pending_review" : "approved"),
-          createdBy: existingItem ? existingItem.createdBy : importUserId,
-          needsRestock: (excelItemData.quantity || existingItem?.quantity || 0) < (excelItemData.lowStockThreshold || existingItem?.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD),
-        };
-
-        if (payload.status === "approved" && (!existingItem || existingItem.status !== "approved")) {
-          payload.reviewedBy = importUserId;
-          payload.reviewedAt = new Date();
-        }
-
-        if (existingItem) {
-          // Check for changes and prepare update operation
-          const changes = [];
-          let itemActuallyModified = false;
-
-          // Compare simple fields
-          Object.keys(payload).forEach(key => {
-            if (key === "units" || key === "needsRestock") return;
-            if (String(existingItem[key]) !== String(payload[key])) {
-              changes.push({ field: key, oldValue: existingItem[key], newValue: payload[key] });
-              itemActuallyModified = true;
-            }
-          });
-
-          // Compare units array
-          const existingUnitsSorted = [...(existingItem.units || [])].sort((a, b) => a.name.localeCompare(b.name));
-          const newUnitsSorted = [...unitsPayload].sort((a, b) => a.name.localeCompare(b.name));
-          
-          if (JSON.stringify(existingUnitsSorted) !== JSON.stringify(newUnitsSorted)) {
-            changes.push({ field: "units", oldValue: existingItem.units, newValue: unitsPayload });
-            itemActuallyModified = true;
-          }
-
-          if (itemActuallyModified) {
-            const currentHistory = existingItem.excelImportHistory || [];
-            currentHistory.push({
-              action: "updated",
-              importedBy: importUserId,
-              importedAt: new Date(),
-              fileName: importFileName,
-              changes: changes,
-            });
-
-            itemUpsertOps.push({
-              updateOne: {
-                filter: { _id: existingItem._id },
-                update: { $set: { ...payload, excelImportHistory: currentHistory } },
-              },
-            });
-          }
-        } else {
-          // New item
-          payload.excelImportHistory = [{
-            action: "created",
-            importedBy: importUserId,
-            importedAt: new Date(),
-            fileName: importFileName,
-            snapshot: { ...payload },
-          }];
-
-          itemUpsertOps.push({
-            insertOne: { document: payload },
-          });
-        }
-      }
-
-      // Process items for deletion (those in DB but not in Excel)
-      const itemsToBeDeletedFromDb = existingDbItems.filter(
-        dbItem => !excelItemNamesLowerCase.has(dbItem.name.toLowerCase())
-      );
-
-      const backupInsertOps = itemsToBeDeletedFromDb.map(itemToDelete => ({
-        insertOne: {
-          document: {
-            originalId: itemToDelete._id,
-            originalModel: "Item",
-            data: itemToDelete,
-            deletedBy: importUserId,
-            deletedAt: new Date(),
-            originalCreatedAt: itemToDelete.createdAt,
-            originalUpdatedAt: itemToDelete.updatedAt,
-          },
-        },
-      }));
-
-      const itemDeleteOps = itemsToBeDeletedFromDb.map(itemToDelete => ({
-        deleteOne: { filter: { _id: itemToDelete._id } },
-      }));
-
-      // Execute operations in bulk
-      if (backupInsertOps.length > 0) {
-        const backupResult = await UniversalBackup.bulkWrite(backupInsertOps, { session });
-        if (backupResult.hasWriteErrors()) {
-          backupResult.getWriteErrors().forEach(err => {
-            const failedItemId = backupInsertOps[err.index]?.insertOne?.document?.originalId;
-            logger.log({
-              user: importUserId,
-              page: "Item",
-              action: "Error",
-              api: req.originalUrl,
-              req,
-              message: `UniversalBackup failed for item ID: ${failedItemId}`,
-              details: { error: err.errmsg },
-              level: "error"
-            });
-            databaseProcessingErrors.push({
-              name: `Backup for item ${failedItemId}`,
-              status: "backup_error",
-              message: err.errmsg,
-            });
-          });
-        }
-      }
-
-      if (itemUpsertOps.length > 0) {
-        const upsertResult = await Item.bulkWrite(itemUpsertOps, { session });
-        itemsCreated = upsertResult.insertedCount || 0;
-        itemsUpdated = upsertResult.modifiedCount || 0;
-
-        if (upsertResult.hasWriteErrors()) {
-          upsertResult.getWriteErrors().forEach(err => {
-            const opDescription = itemUpsertOps[err.index]?.insertOne
-              ? `Create item "${itemUpsertOps[err.index].insertOne.document.name}"`
-              : `Update item (filter: ${JSON.stringify(itemUpsertOps[err.index]?.updateOne?.filter)})`;
-            
-            logger.log({
-              user: importUserId,
-              page: "Item",
-              action: "Error",
-              api: req.originalUrl,
-              req,
-              message: `DB Bulk Write Error during upsert: ${opDescription}`,
-              details: { error: err.errmsg },
-              level: "error"
-            });
-            
-            databaseProcessingErrors.push({
-              name: opDescription,
-              status: "error",
-              message: err.errmsg,
-              details: err.op,
-            });
-          });
-        }
-      }
-
-      if (itemDeleteOps.length > 0) {
-        const deleteResult = await Item.bulkWrite(itemDeleteOps, { session });
-        itemsDeleted = deleteResult.deletedCount || 0;
-
-        if (deleteResult.hasWriteErrors()) {
-          deleteResult.getWriteErrors().forEach(err => {
-            logger.log({
-              user: importUserId,
-              page: "Item",
-              action: "Error",
-              api: req.originalUrl,
-              req,
-              message: `DB Bulk Write Error during delete`,
-              details: { error: err.errmsg },
-              level: "error"
-            });
-            databaseProcessingErrors.push({
-              name: "Delete operation",
-              status: "error",
-              message: err.errmsg,
-              details: err.op,
-            });
-          });
-        }
-      }
-
-      // Update purchases to remove references to deleted items
-      if (itemsDeleted > 0) {
-        await Purchase.updateMany(
-          { "items.itemId": { $in: itemsToBeDeletedFromDb.map(i => i._id) } },
-          { $set: { "items.$[elem].itemId": null } },
-          { arrayFilters: [{ "elem.itemId": { $in: itemsToBeDeletedFromDb.map(i => i._id) } }], session }
-        );
-      }
-
-     
-    });
-
-    return {
-      itemsCreated,
-      itemsUpdated,
-      itemsDeleted,
-      operationResults,
-      databaseProcessingErrors,
-    };
-  } catch (error) {
-    logger.log({
-      user: importUserId,
-      page: "Item",
-      action: "Error",
-      api: req.originalUrl,
-      req,
-      message: `Error during syncItemsWithDatabase: ${error.message}`,
-      details: { error: error.message, stack: error.stack },
-      level: "error"
-    });
-    throw error;
-  } finally {
-    session.endSession();
-  }
-}
-
-exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
-  const user = req.user || null;
- 
-  if (!req.file) {
-
-    return res.status(400).json({ message: "No Excel file uploaded." });
-  }
-
-  try {
-    const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(req.file.buffer);
-
-    if (!itemsToUpsert || itemsToUpsert.length === 0) {
-     
-      return res.status(200).json({
-        message: "No valid items found in the uploaded Excel to process or file is empty.",
-        itemsCreated: 0,
-        itemsUpdated: 0,
-        itemsDeleted: 0,
-        parsingErrors,
+    if (logger) {
+      logger.log({
+        user: null,
+        page: "Item",
+        action: "Excel Import",
+        api: "parseExcelBufferForUpdate",
+        message: `Error parsing Excel file: ${error.message}`,
+        details: { error: error.stack },
+        level: "error"
       });
     }
-
-    const result = await syncItemsWithDatabase(req, itemsToUpsert, user, "excel_upload_import");
-
-    res.status(200).json({
-      message: "Uploaded Excel data processed.",
-      itemsCreated: result.itemsCreated,
-      itemsUpdated: result.itemsUpdated,
-      itemsDeleted: result.itemsDeleted,
-      parsingErrors,
-      databaseProcessingDetails: result.operationResults,
-      databaseProcessingErrors: result.databaseProcessingErrors,
-    });
-  } catch (error) {
-    handleErrorResponse(res, error, "Excel import from upload", user);
+    return {
+      itemsToUpsert: [],
+      parsingErrors: [{ row: 'general', message: `Fatal error parsing Excel: ${error.message}` }],
+    };
   }
+}
+// --- End Excel Importer logic ---
+exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
+  logger.log({
+    user: req.user,
+    page: "Item",
+    action: "Excel Import",
+    api: req.originalUrl,
+    req,
+    message: "Excel import started",
+    level: "info"
+  });
+
+  if (!req.file || !req.file.buffer) {
+    logger.log({
+      user: req.user,
+      page: "Item",
+      action: "Excel Import",
+      api: req.originalUrl,
+      req,
+      message: "No file uploaded",
+      level: "warn"
+    });
+    return res.status(400).json({ message: "No file uploaded." });
+  }
+
+  const { itemsToUpsert, parsingErrors } = await parseExcelBufferForUpdate(req.file.buffer, logger);
+
+  logger.log({
+    user: req.user,
+    page: "Item",
+    action: "Excel Import",
+    api: req.originalUrl,
+    req,
+    message: `Parsed items: ${itemsToUpsert.length}, Errors: ${parsingErrors.length}`,
+    details: { parsingErrors },
+    level: "info"
+  });
+
+  if (!itemsToUpsert.length) {
+    logger.log({
+      user: req.user,
+      page: "Item",
+      action: "Excel Import",
+      api: req.originalUrl,
+      req,
+      message: "No valid items found in Excel",
+      details: { parsingErrors },
+      level: "warn"
+    });
+    return res.status(400).json({ message: "No valid items found in Excel.", parsingErrors });
+  }
+
+  let upserted = 0;
+  let created = 0;
+  let updated = 0;
+  let upsertErrors = [];
+
+  for (const item of itemsToUpsert) {
+    try {
+      const existing = await Item.findOne({ name: item.name });
+      if (existing) {
+        await Item.updateOne(
+          { _id: existing._id },
+          {
+            $set: {
+              ...item,
+              updatedAt: new Date(),
+            }
+          }
+        );
+        updated++;
+      } else {
+        await Item.create(item);
+        created++;
+      }
+      upserted++;
+    } catch (err) {
+      upsertErrors.push({ name: item.name, error: err.message });
+      logger.log({
+        user: req.user,
+        page: "Item",
+        action: "Excel Import",
+        api: req.originalUrl,
+        req,
+        message: `Failed to upsert item: ${item.name}`,
+        details: { error: err.message },
+        level: "error"
+      });
+    }
+  }
+
+  // Optionally, handle deletions (items in DB but not in Excel)
+  // Uncomment if you want to delete missing items:
+  /*
+  const excelNames = itemsToUpsert.map(i => i.name);
+  const deleteResult = await Item.deleteMany({ name: { $nin: excelNames } });
+  const deleted = deleteResult.deletedCount || 0;
+  */
+  const deleted = 0; // Set to actual deleted count if you implement deletion
+
+  logger.log({
+    user: req.user,
+    page: "Item",
+    action: "Excel Import",
+    api: req.originalUrl,
+    req,
+    message: `Import finished. Created: ${created}, Updated: ${updated}, Deleted: ${deleted}, Errors: ${upsertErrors.length}`,
+    details: { created, updated, deleted, upsertErrors },
+    level: "info"
+  });
+
+  res.json({
+    message: "Items imported successfully.",
+    created,
+    updated,
+    deleted,
+    parsingErrors,
+    upsertErrors,
+  });
 });
 
 exports.importItemsFromExcelViaAPI = asyncHandler(async (req, res) => {
@@ -1001,7 +700,6 @@ exports.createItem = asyncHandler(async (req, res) => {
     }
 
     const quantity = parseFloat(req.body.quantity) || 0;
-    const lowStockThreshold = req.body.lowStockThreshold ? parseInt(req.body.lowStockThreshold, 10) : DEFAULT_LOW_STOCK_THRESHOLD;
 
     const newItemData = {
       name: req.body.name,
@@ -1014,11 +712,9 @@ exports.createItem = asyncHandler(async (req, res) => {
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       category: req.body.category || "Other",
-      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-      lowStockThreshold: lowStockThreshold,
+      maxDiscountPercentage: req.body.maxDiscountPercentage !== undefined ? parseFloat(req.body.maxDiscountPercentage) : existingItem?.maxDiscountPercentage || 0,
       createdBy: user._id,
       image: req.body.image || "",
-      needsRestock: quantity < lowStockThreshold,
       status: user.role === "user" ? "pending_review" : "approved",
     };
 
@@ -1107,9 +803,6 @@ exports.updateItem = asyncHandler(async (req, res) => {
     }
 
     const quantity = req.body.quantity !== undefined ? parseFloat(req.body.quantity) || 0 : existingItem.quantity;
-    const lowStockThreshold = req.body.lowStockThreshold !== undefined && req.body.lowStockThreshold !== null
-      ? parseInt(String(req.body.lowStockThreshold), 10)
-      : existingItem.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
     
     const updatePayload = {
       name: req.body.name,
@@ -1122,9 +815,9 @@ exports.updateItem = asyncHandler(async (req, res) => {
       gstRate: req.body.gstRate || 0,
       hsnCode: req.body.hsnCode || "",
       category: req.body.category || "Other",
-      maxDiscountPercentage: req.body.maxDiscountPercentage ? parseFloat(req.body.maxDiscountPercentage) : 0,
-      lowStockThreshold: lowStockThreshold,
-      needsRestock: quantity < lowStockThreshold,
+      maxDiscountPercentage: req.body.maxDiscountPercentage !== undefined
+        ? parseFloat(req.body.maxDiscountPercentage)
+        : existingItem.maxDiscountPercentage, // <-- FIXED
       ...(req.body.image !== undefined && { image: req.body.image }),
     };
 

@@ -1,0 +1,103 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import apiClient from "../../utils/apiClient";
+import { Alert, Button, Spinner } from "react-bootstrap";
+import ReusablePageStructure from "../../components/ReusablePageStructure";
+import { useAuth } from "../../context/AuthContext";
+
+const STANDARD_UNITS = [
+  "nos", "pkt", "pcs", "kgs", "mtr", "sets", "kwp", "ltr", "bottle", "each", "bag", "set"
+];
+
+export default function AddItemPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    quantity: "",
+    sellingPrice: "",
+    buyingPrice: "",
+    profitMarginPercentage: "",
+    gstRate: "0",
+    hsnCode: "",
+    baseUnit: "nos",
+    units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
+    category: "",
+    maxDiscountPercentage: "",
+    image: "",
+  });
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await apiClient("/items", {
+        method: "POST",
+        body: {
+          ...formData,
+          quantity: parseFloat(formData.quantity) || 0,
+          sellingPrice: parseFloat(formData.sellingPrice) || 0,
+          buyingPrice: parseFloat(formData.buyingPrice) || 0,
+          gstRate: parseFloat(formData.gstRate) || 0,
+          maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
+        },
+      });
+      navigate("/items");
+    } catch (err) {
+      setError("Failed to add item.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ReusablePageStructure title="Add New Item">
+      <form onSubmit={handleSubmit}>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <div className="row">
+          <div className="col-md-6">
+            <label>Name*</label>
+            <input className="form-control mb-2" name="name" value={formData.name} onChange={handleChange} required />
+            <label>Quantity</label>
+            <input className="form-control mb-2" name="quantity" type="number" value={formData.quantity} onChange={handleChange} />
+            <label>GST Rate (%)</label>
+            <input className="form-control mb-2" name="gstRate" type="number" value={formData.gstRate} onChange={handleChange} />
+            <label>HSN Code</label>
+            <input className="form-control mb-2" name="hsnCode" value={formData.hsnCode} onChange={handleChange} />
+          </div>
+          <div className="col-md-6">
+            <label>Category</label>
+            <input className="form-control mb-2" name="category" value={formData.category} onChange={handleChange} />
+            <label>Max Discount (%)</label>
+            <input className="form-control mb-2" name="maxDiscountPercentage" type="number" value={formData.maxDiscountPercentage} onChange={handleChange} min="0" max="100" />
+            <label>Image</label>
+            <input className="form-control mb-2" type="file" accept="image/*" onChange={(e) => {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => setFormData((prev) => ({ ...prev, image: reader.result }));
+                reader.readAsDataURL(file);
+              }
+            }} />
+            {formData.image && (
+              <img src={formData.image} alt="Preview" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 4, border: "1px solid #ddd" }} />
+            )}
+          </div>
+        </div>
+        <Button type="submit" className="mt-3" disabled={isSubmitting}>
+          {isSubmitting ? <Spinner size="sm" animation="border" /> : "Add Item"}
+        </Button>
+      </form>
+    </ReusablePageStructure>
+  );
+}

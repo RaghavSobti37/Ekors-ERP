@@ -17,10 +17,10 @@ router.get("/export-excel", auth, itemController.exportItemsToExcel); // New rou
 router.post(
   "/import-uploaded-excel",
   auth,
-  itemController.uploadMiddleware,
+  itemController.uploadMiddleware, 
   itemController.importItemsFromUploadedExcel
-); // New route for uploaded excel import
-router.get("/restock-summary", auth, itemController.getRestockSummary); // Added route for restock summary
+); 
+// router.get("/restock-summary", auth, itemController.getRestockSummary); // COMMENTED OUT
 
 router.get("/:id/purchases", auth, purchaseController.getItemPurchaseHistory);
 router.delete("/:itemId/clear-logs", auth, itemController.clearItemLogs); 
