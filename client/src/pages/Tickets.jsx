@@ -412,7 +412,7 @@ export default function Dashboard() {
               { key: "ticketNumber", header: "Ticket Number", sortable: true },
               { key: "assignedTo", header: "Assigned To", sortable: true, renderCell: (ticket) => ticket.currentAssignee ? `${ticket.currentAssignee.firstname} ${ticket.currentAssignee.lastname}` : ticket.createdBy?.firstname ? `${ticket.createdBy.firstname} ${ticket.createdBy.lastname}` : "N/A" },
               { key: "companyName", header: "Company Name", sortable: true },
-              { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
+              // { key: "createdAt", header: "Date", sortable: true, renderCell: (ticket) => new Date(ticket.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) },
               {
                 key: "deadline",
                 header: "Deadline",

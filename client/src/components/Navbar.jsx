@@ -19,6 +19,8 @@ function NavbarComponent() {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showManagementDropdown, setShowManagementDropdown] = useState(false);
+  const [restockNeededCount, setRestockNeededCount] = useState(0); // New state for restock count
+  const [lowStockWarningCount, setLowStockWarningCount] = useState(0); // New state for low stock warning
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -71,6 +73,23 @@ function NavbarComponent() {
       setShowManagementDropdown(false);
     }, 300);
   };
+
+  // Fetch restock and low stock counts
+  useEffect(() => {
+    const fetchStockCounts = async () => {
+      try {
+        const response = await apiClient.get("/items/stock-summary"); // Adjust the endpoint as needed
+        setRestockNeededCount(response.data.restockNeededCount || 0);
+        setLowStockWarningCount(response.data.lowStockWarningCount || 0);
+      } catch (error) {
+        console.error("Error fetching stock summary:", error);
+      }
+    };
+
+    if (user) {
+      fetchStockCounts();
+    }
+  }, [user]);
 
   return (
     <React.Fragment>

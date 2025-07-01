@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/apiClient";
-import { Alert, Button, Spinner } from "react-bootstrap";
+import { Alert, Button, Spinner, Form } from "react-bootstrap";
 import ReusablePageStructure from "../../components/ReusablePageStructure";
 import { useAuth } from "../../context/AuthContext";
 
@@ -28,6 +28,13 @@ export default function AddItemPage() {
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    apiClient("/categories")
+      .then((res) => setCategories(res.data || []))
+      .catch(() => setCategories([]));
+  }, []);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -77,7 +84,19 @@ export default function AddItemPage() {
           </div>
           <div className="col-md-6">
             <label>Category</label>
-            <input className="form-control mb-2" name="category" value={formData.category} onChange={handleChange} />
+            <Form.Select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="mb-2"
+            >
+              <option value="">Select Category</option>
+              {categories.map((cat) => (
+                <option key={cat._id || cat} value={cat.name || cat}>
+                  {cat.name || cat}
+                </option>
+              ))}
+            </Form.Select>
             <label>Max Discount (%)</label>
             <input className="form-control mb-2" name="maxDiscountPercentage" type="number" value={formData.maxDiscountPercentage} onChange={handleChange} min="0" max="100" />
             <label>Image</label>

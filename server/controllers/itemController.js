@@ -404,53 +404,52 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "No valid items found in Excel.", parsingErrors });
   }
 
-  let upserted = 0;
-  let created = 0;
-  let updated = 0;
-  let upsertErrors = [];
-
-  for (const item of itemsToUpsert) {
-    try {
-      const existing = await Item.findOne({ name: item.name });
-      if (existing) {
-        await Item.updateOne(
-          { _id: existing._id },
-          {
-            $set: {
-              ...item,
-              updatedAt: new Date(),
-            }
+  // --- Optimized Bulk Import ---
+  const bulkOps = itemsToUpsert.map(item => {
+    // Ensure required fields for new items
+    return {
+      updateOne: {
+        filter: { name: item.name },
+        update: {
+          $set: {
+            ...item,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            createdAt: new Date(),
+            status: "approved", // or your default
           }
-        );
-        updated++;
-      } else {
-        await Item.create(item);
-        created++;
+        },
+        upsert: true
       }
-      upserted++;
-    } catch (err) {
-      upsertErrors.push({ name: item.name, error: err.message });
-      logger.log({
-        user: req.user,
-        page: "Item",
-        action: "Excel Import",
-        api: req.originalUrl,
-        req,
-        message: `Failed to upsert item: ${item.name}`,
-        details: { error: err.message },
-        level: "error"
-      });
+    };
+  });
+
+  let bulkResult = { upsertedCount: 0, modifiedCount: 0 };
+  let upsertErrors = [];
+  try {
+    if (bulkOps.length > 0) {
+      const result = await Item.bulkWrite(bulkOps, { ordered: false });
+      bulkResult = result;
     }
+  } catch (err) {
+    // Collect errors for reporting
+    upsertErrors.push({ error: err.message });
+    logger.log({
+      user: req.user,
+      page: "Item",
+      action: "Excel Import",
+      api: req.originalUrl,
+      req,
+      message: `Bulk import error`,
+      details: { error: err.message },
+      level: "error"
+    });
   }
 
-  // Optionally, handle deletions (items in DB but not in Excel)
-  // Uncomment if you want to delete missing items:
-  /*
-  const excelNames = itemsToUpsert.map(i => i.name);
-  const deleteResult = await Item.deleteMany({ name: { $nin: excelNames } });
-  const deleted = deleteResult.deletedCount || 0;
-  */
-  const deleted = 0; // Set to actual deleted count if you implement deletion
+  // Calculate created and updated counts
+  const created = bulkResult.upsertedCount || 0;
+  const updated = (bulkResult.modifiedCount || 0);
 
   logger.log({
     user: req.user,
@@ -458,8 +457,8 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     action: "Excel Import",
     api: req.originalUrl,
     req,
-    message: `Import finished. Created: ${created}, Updated: ${updated}, Deleted: ${deleted}, Errors: ${upsertErrors.length}`,
-    details: { created, updated, deleted, upsertErrors },
+    message: `Import finished. Created: ${created}, Updated: ${updated}, Errors: ${upsertErrors.length}`,
+    details: { created, updated, upsertErrors },
     level: "info"
   });
 
@@ -467,7 +466,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     message: "Items imported successfully.",
     created,
     updated,
-    deleted,
+    deleted: 0,
     parsingErrors,
     upsertErrors,
   });
@@ -596,7 +595,7 @@ exports.getItemById = asyncHandler(async (req, res) => {
         .populate({ path: "excelImportHistory.importedBy", select: "firstname lastname email" });
     }
 
-    const item = await query.lean();
+    const item = await query.lean(); // Make sure units is not excluded in projection
 
     if (!item) {
 
@@ -1088,21 +1087,21 @@ exports.getRestockSummary = asyncHandler(async (req, res) => {
   const user = req.user || null;
 
   try {
-    const [restockNeededCount, lowStockWarningCount] = await Promise.all([
-      Item.countDocuments({
-        quantity: { $lte: 0 },
-        status: "approved",
-      }),
-      Item.countDocuments({
-        quantity: { $gt: 0 },
-        $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
-        status: "approved",
-      }),
-    ]);
+    // Only restock needed logic is active
+    const restockNeededCount = await Item.countDocuments({
+      quantity: { $lte: 0 },
+      status: "approved",
+    });
+
+    // const lowStockWarningCount = await Item.countDocuments({
+    //   quantity: { $gt: 0 },
+    //   $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
+    //   status: "approved",
+    // });
 
     res.json({
       restockNeededCount,
-      lowStockWarningCount,
+      // lowStockWarningCount,
     });
   } catch (error) {
     handleErrorResponse(res, error, "fetching restock summary", user);

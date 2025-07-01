@@ -139,7 +139,29 @@ exports.createTicket = asyncHandler(async (req, res) => {
   // If creating from a quotation, prioritize sourceQuotationData
   if (sourceQuotationData && sourceQuotationData.referenceNumber) {
     const clientData = sourceQuotationData.client || {};
-    const quotationBillingAddress = sourceQuotationData.billingAddress || {};
+    let quotationBillingAddress = sourceQuotationData.billingAddress || {};
+    let quotationShippingAddress = sourceQuotationData.shippingAddress || {};
+
+    // Convert billingAddress to array if it's an object
+    if (!Array.isArray(quotationBillingAddress) && typeof quotationBillingAddress === "object") {
+      quotationBillingAddress = [
+        quotationBillingAddress.address1 || "",
+        quotationBillingAddress.address2 || "",
+        quotationBillingAddress.state || "",
+        quotationBillingAddress.city || "",
+        quotationBillingAddress.pincode || "",
+      ];
+    }
+    // Convert shippingAddress to array if it's an object
+    if (!Array.isArray(quotationShippingAddress) && typeof quotationShippingAddress === "object") {
+      quotationShippingAddress = [
+        quotationShippingAddress.address1 || "",
+        quotationShippingAddress.address2 || "",
+        quotationShippingAddress.state || "",
+        quotationShippingAddress.city || "",
+        quotationShippingAddress.pincode || "",
+      ];
+    }
 
     // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
     let determinedDeadline = newTicketDetails.deadline
@@ -149,20 +171,14 @@ exports.createTicket = asyncHandler(async (req, res) => {
       : null; // Will be validated later
 
     finalTicketData = {
-      ...newTicketDetails, // Keep any specific newTicketDetails not from quotation
+      ...finalTicketData,
       companyName: clientData.companyName || newTicketDetails.companyName,
-      quotationNumber: sourceQuotationData.referenceNumber, // This should be the defining link
+      quotationNumber: sourceQuotationData.referenceNumber,
       client: clientData._id || newTicketDetails.client?._id,
       clientPhone: clientData.phone || newTicketDetails.clientPhone,
       clientGstNumber: clientData.gstNumber || newTicketDetails.clientGstNumber,
-      billingAddress: [
-        // Transform quotation billing address to ticket format
-        quotationBillingAddress.address1 || "",
-        quotationBillingAddress.address2 || "",
-        quotationBillingAddress.state || "",
-        quotationBillingAddress.city || "",
-        quotationBillingAddress.pincode || "",
-      ],
+      billingAddress: quotationBillingAddress,
+      shippingAddress: quotationShippingAddress,
       goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map(
         (qGood, index) => ({
           srNo: qGood.srNo || index + 1,

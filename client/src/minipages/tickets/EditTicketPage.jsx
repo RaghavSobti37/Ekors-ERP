@@ -632,7 +632,16 @@ const EditTicketPage = () => {
                   <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
-                    {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
+                    {(item.units && item.units.length > 0) ? (
+                      <Form.Select
+                        value={item.unit || item.units[0]?.name || "nos"}
+                        onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
+                      >
+                        {item.units.map((unitOption) => (
+                          <option key={unitOption.name} value={unitOption.name}>{unitOption.name}</option>
+                        ))}
+                      </Form.Select>
+                    ) : (item.originalItem && item.originalItem.units && item.originalItem.units.length > 0) ? (
                       <Form.Select
                         value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
                         onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
@@ -642,7 +651,12 @@ const EditTicketPage = () => {
                         ))}
                       </Form.Select>
                     ) : (
-                      <Form.Control type="text" value={item.unit || "nos"} readOnly />
+                      <Form.Control
+                        type="text"
+                        value={item.unit || "nos"}
+                        readOnly={false}
+                        onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
+                      />
                     )}
                   </td>
                   <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>

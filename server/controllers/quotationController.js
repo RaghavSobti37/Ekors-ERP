@@ -536,7 +536,7 @@ exports.getQuotationById = async (req, res) => {
       findQuery.user = user._id;
     }
 
-    const quotation = await Quotation.findOne(findQuery)
+    let quotation = await Quotation.findOne(findQuery)
       .populate("client")
       .populate("user", "firstname lastname email")
       .populate("orderIssuedBy", "firstname lastname");
@@ -556,6 +556,35 @@ exports.getQuotationById = async (req, res) => {
         .status(404)
         .json({ message: "Quotation not found or access denied." });
     }
+
+    // Populate units for each good from Item master
+    const goodsWithUnits = await Promise.all(
+      (quotation.goods || []).map(async (good) => {
+        let units = [];
+        let originalItemDoc = good.originalItem;
+        if (originalItemDoc) {
+          try {
+            const itemDoc = await require("../models/itemlist").Item.findById(
+              originalItemDoc
+            ).lean();
+            units = itemDoc?.units || [];
+            originalItemDoc = itemDoc;
+          } catch {
+            units = good.units || [];
+          }
+        } else {
+          units = good.units || [];
+        }
+        return {
+          ...good.toObject(),
+          units,
+          originalItem: originalItemDoc,
+        };
+      })
+    );
+    quotation = quotation.toObject();
+    quotation.goods = goodsWithUnits;
+
     res.json(quotation);
   } catch (error) {
     logger.log({
