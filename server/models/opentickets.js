@@ -18,25 +18,16 @@ const goodsSchema = new mongoose.Schema({ // _id: false for embedded documents
   amount: { type: Number, required: true },
   originalPrice: { type: Number },
   maxDiscountPercentage: { type: Number, default: 0 },
-<<<<<<< HEAD
-  gstRate: { type: Number, required: true, min: 0, default: 0 } 
-}, { _id: false }); 
-=======
   gstRate: { type: Number, required: true, min: 0, default: 0 },
   originalItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Item' } // Add reference to Item
 }, { _id: false });
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
 const documentSubSchema = new mongoose.Schema({ // _id: false for embedded documents
   path: { type: String, required: true },
   originalName: { type: String, required: true },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   uploadedAt: { type: Date, default: Date.now }
-<<<<<<< HEAD
-  }, { _id: false }); 
-=======
 }, { _id: false });
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
 const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
@@ -74,15 +65,9 @@ const ticketSchema = new mongoose.Schema({
   totalCgstAmount: { type: Number, default: 0 },
   totalSgstAmount: { type: Number, default: 0 },
   totalIgstAmount: { type: Number, default: 0 },
-<<<<<<< HEAD
-  finalGstAmount: { type: Number, required: true, default: 0 }, // Total GST
-  grandTotal: { type: Number, required: true, default: 0 }, // Total Amount + Total GST
-   roundOff: { type: Number, default: 0 }, // To store the round off amount (can be positive or negative)
-=======
   finalGstAmount: { type: Number, required: true, default: 0 },
   grandTotal: { type: Number, required: true, default: 0 },
   roundOff: { type: Number, default: 0 },
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
   finalRoundedAmount: { type: Number },
   isBillingStateSameAsCompany: { type: Boolean, default: false },
 
@@ -120,13 +105,8 @@ const ticketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-<<<<<<< HEAD
-  }, // User who created the ticket
- currentAssignee: {
-=======
   },
   currentAssignee: {
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -135,12 +115,7 @@ const ticketSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-<<<<<<< HEAD
-  // assignedTo is redundant if currentAssignee is always used for the active assignee
-   assignedTo: {
-=======
   assignedTo: {
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
@@ -160,9 +135,6 @@ const ticketSchema = new mongoose.Schema({
   dispatchDays: { type: String, default: "7-10 working days" }
 }, { timestamps: true });
 
-<<<<<<< HEAD
-module.exports = mongoose.model('Ticket', ticketSchema);
-=======
 // Pre-save hook to set finalRoundedAmount if not explicitly provided by client
 ticketSchema.pre('save', function(next) {
   if (this.isNew || this.isModified('grandTotal') || this.isModified('roundOff')) {
@@ -177,4 +149,3 @@ ticketSchema.pre('save', function(next) {
 ticketSchema.index({ quotationNumber: 1 }, { unique: true });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a

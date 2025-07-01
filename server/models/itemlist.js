@@ -13,55 +13,9 @@ const unitSchema = new mongoose.Schema({
     enum: STANDARD_UNITS,
     trim: true
   },
-<<<<<<< HEAD
-  {
-    _id: true,
-    timestamps: false,
-  }
-);
-
-// Purchase schema for bulk purchases
-const purchaseSchema = new mongoose.Schema(
-  {
-    companyName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    gstNumber: { type: String, default: "" },
-    address: {
-      type: String,
-      default: "",
-    },
-    stateName: {
-      type: String,
-      default: "",
-    },
-    invoiceNumber: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
-    items: [purchaseItemSchema],
-    totalAmount: {
-      type: Number,
-      default: 0,
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Assuming your user model is named 'User'
-      required: false, // Make it not strictly required for existing data
-    },
-=======
   isBaseUnit: {
     type: Boolean,
     default: false
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
   },
   conversionFactor: {
     type: Number,
