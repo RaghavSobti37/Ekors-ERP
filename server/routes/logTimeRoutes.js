@@ -3,7 +3,7 @@ const router = express.Router();
 const LogTime = require('../models/LogTime');
 const UniversalBackup = require('../models/universalBackup.js');
 const auth = require('../middleware/auth');
-const logger = require('../utils/logger'); // Assuming logger is setup
+const logger = require('../logger'); // Assuming logger is setup
 
 // Utility function for time overlap
 const hasTimeOverlap = (logs) => {
@@ -72,6 +72,16 @@ router.post('/', auth, async (req, res) => {
       existingLogEntry.logs = logs;
       existingLogEntry.logs.sort((a, b) => a.start.localeCompare(b.start)); // Sort all logs
       await existingLogEntry.save();
+      logger.log({
+        user: req.user,
+        page: "LogTime",
+        action: "Add/Update Logs",
+        api: req.originalUrl,
+        req,
+        message: `Logs updated for date ${date}`,
+        details: { date, logsCount: logs.length },
+        level: "info"
+      });
       return res.json({ 
         message: 'Logs updated successfully', 
         logs: existingLogEntry.logs
@@ -84,13 +94,32 @@ router.post('/', auth, async (req, res) => {
         user: req.user._id 
       });
       await newLogTimeEntry.save();
+      logger.log({
+        user: req.user,
+        page: "LogTime",
+        action: "Add/Update Logs",
+        api: req.originalUrl,
+        req,
+        message: `Logs created for date ${date}`,
+        details: { date, logsCount: logs.length },
+        level: "info"
+      });
       res.status(201).json({ 
         message: 'Logs saved successfully for the new date', 
         logs: newLogTimeEntry.logs 
       });
     }
   } catch (err) {
-    console.error('Error saving/updating logs:', err);
+    logger.log({
+      user: req.user,
+      page: "LogTime",
+      action: "Add/Update Logs Error",
+      api: req.originalUrl,
+      req,
+      message: "Error saving/updating logs",
+      details: { error: err.message },
+      level: "error"
+    });
     res.status(500).json({ error: 'Server error while saving logs' });
   }
 });

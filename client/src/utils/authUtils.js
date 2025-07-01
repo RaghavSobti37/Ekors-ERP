@@ -1,5 +1,4 @@
 import { toast } from "react-toastify";
-import frontendLogger from "./frontendLogger"; // Assuming frontendLogger.js is in the same utils directory
 
 /**
  * Retrieves the authentication token from localStorage.
@@ -10,8 +9,6 @@ export const getAuthToken = (userForLogging = null) => {
   try {
     const storedValue = localStorage.getItem("erp-user");
     if (!storedValue) {
-
-      // frontendLogger.debug("getAuthToken", "Authentication data not found in local storage.", userForLogging);
       return null;
     }
 
@@ -25,12 +22,6 @@ export const getAuthToken = (userForLogging = null) => {
         toast.error(
           "Invalid authentication data format in local storage (JSON lacks token string)."
         );
-        frontendLogger.error(
-          "authDataFormat",
-          "Invalid auth data format in localStorage: JSON parsed, but 'token' property missing, not a string, or empty.",
-          userForLogging,
-          { storedDataPreview: storedValue.substring(0, 100) }
-        );
         return null;
       }
     } catch (e) {
@@ -38,24 +29,12 @@ export const getAuthToken = (userForLogging = null) => {
       // Basic check: JWTs are typically three dot-separated base64 strings and often start with "eyJ".
       if (typeof storedValue === 'string' && storedValue.includes('.') && storedValue.startsWith('eyJ')) {
         // Log a warning because this indicates an inconsistency in how 'erp-user' is stored.
-        frontendLogger.warn(
-          "authDataFormat",
-          "Raw token string found in 'erp-user' localStorage instead of JSON object. Using raw token.",
-          userForLogging,
-          { storedDataPreview: storedValue.substring(0, 30) } // Log only a preview
-        );
         return storedValue; // Return the raw string, assuming it's the token
       } else {
         // Not valid JSON and doesn't look like a raw token.
         // This means the original error (JSON.parse failed on something unexpected) is the issue.
         toast.error(
           "Authentication data in local storage is corrupted or not in a recognizable format."
-        );
-        frontendLogger.error(
-          "authDataParseError",
-          "Failed to parse 'erp-user' from localStorage as JSON, and it does not appear to be a raw token.",
-          userForLogging,
-          { errorMessage: e.message, storedDataPreview: storedValue.substring(0, 100) }
         );
         return null;
       }
@@ -70,12 +49,6 @@ export const getAuthToken = (userForLogging = null) => {
       stack: e.stack,
       context: "getAuthToken - localStorage access or JSON.parse error",
     };
-    frontendLogger.error(
-     "localStorageAccessCritical",
-      "Critical failure accessing localStorage for 'erp-user'",
-      userForLogging,
-      errorDetails
-    );
 
     return null;
   }

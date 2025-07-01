@@ -15,13 +15,13 @@ import SearchBar from "../components/Searchbar.jsx";
 import ActionButtons from "../components/ActionButtons";
 import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import LoadingSpinner
 import { toast } from "react-toastify";
-import frontendLogger from "../utils/frontendLogger.js";
+
 import "react-toastify/dist/ReactToastify.css";
 import {
   showToast,
   handleApiError,
-  formatDateForInput as formatDateForInputHelper, generateNextTicketNumber
-} from "../utils/helpers"; // Import helper function
+  formatDateForInput as formatDateForInputHelper,
+} from "../utils/helpers";
 import apiClient from "../utils/apiClient";
 import "../css/Style.css";
 import "../css/Items.css";
@@ -30,7 +30,6 @@ import { FaChartBar } from "react-icons/fa";
 export default function Quotations() {
   const [quotations, setQuotations] = useState([]); // Holds current page's quotations
   const [totalQuotations, setTotalQuotations] = useState(0); // Total quotations for pagination
-  const { generateNextQuotationNumber } = useAuth();
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -45,11 +44,23 @@ export default function Quotations() {
   const [isLoading, setIsLoading] = useState(false); // Local loading state for fetch
   const [sourceQuotationForTicket, setSourceQuotationForTicket] = useState(null); 
 
-  // Initial state for quotation data, will be populated from backend defaults
-  const initialQuotationData = useMemo(() => ({
-    date: formatDateForInputHelper(new Date()), // Placeholder, will be overwritten by backend default or current date
-    referenceNumber: "", // Placeholder, will be fetched from backend
-    validityDate: formatDateForInputHelper(new Date()), // Placeholder, will be fetched from backend
+  const generateQuotationNumber = useCallback(() => { 
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  }, []);
+
+  const initialQuotationData = useMemo(() => ({ 
+    date: formatDateForInputHelper(new Date()),
+    referenceNumber: generateQuotationNumber(),
+    validityDate: formatDateForInputHelper(
+      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    ),
     orderIssuedBy: "",
     billingAddress: {
       address1: "", address2: "", city: "", state: "", pincode: "",
@@ -57,10 +68,10 @@ export default function Quotations() {
     goods: [],
     totalQuantity: 0, totalAmount: 0, gstAmount: 0, grandTotal: 0,
     status: "open",
-    client: { _id: null, companyName: "", clientName: "", gstNumber: "", email: "", phone: "", },
-    dispatchDays: "", // Placeholder for backend default
-    termsAndConditions: "", // Placeholder for backend default
-  }), []);
+    client: {
+      _id: null, companyName: "", clientName: "", gstNumber: "", email: "", phone: "",
+    },
+  }), [generateQuotationNumber]);
 
 
   const fetchQuotations = useCallback(async (page = currentPage, limit = itemsPerPage) => {
@@ -91,18 +102,6 @@ export default function Quotations() {
       setQuotations([]);
       setTotalQuotations(0);
       showToast(errorMessage, false); 
-      if (authUserFromContext) { 
-        frontendLogger.error(
-          "quotationActivity",
-          "Failed to fetch quotations",
-          authUserFromContext,
-          {
-            errorMessage: error.response?.data?.message || error.message,
-            statusFilter,
-            action: "FETCH_QUOTATIONS_FAILURE",
-          }
-        );
-      }
       if (error.status === 401) {
         toast.error("Authentication failed. Please log in again.");
         navigate("/login", { state: { from: "/quotations" } });
@@ -169,97 +168,119 @@ export default function Quotations() {
     setError(null);
   }, []);
 
+  const generateTicketNumber = useCallback(async () => { 
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
+    return `EKORS/${year}${month}${day}${hours}${minutes}${seconds}`;
+  }, []);
+
   const handleCreateTicket = useCallback(async (quotation) => {
-setIsLoading(true); // Show loading spinner
-    try {
-      // Fetch the FULL quotation object to get all details, including 'goods'
-      const fullQuotation = await apiClient(`/quotations/${quotation._id}`);
-      setSourceQuotationForTicket(fullQuotation); // Set the full quotation for the ticket
+    setSourceQuotationForTicket(quotation);
+    const defaultDeadline = new Date();
+    defaultDeadline.setDate(defaultDeadline.getDate() + 10);
 
-      let defaultDeadline = new Date();
-      defaultDeadline.setDate(defaultDeadline.getDate() + 10); // Default fallback deadline
+    const ticketNumberToSet = await generateTicketNumber();
+    const quotationBillingAddressObject = quotation.billingAddress || {};
+    const ticketBillingAddressArrayFromQuotation = [
+      quotationBillingAddressObject.address1 || "",
+      quotationBillingAddressObject.address2 || "",
+      quotationBillingAddressObject.state || "",
+      quotationBillingAddressObject.city || "",
+      quotationBillingAddressObject.pincode || "",
+    ];
+    const clientData = quotation.client || {};
 
-      const quotationBillingAddressObject = fullQuotation.billingAddress || {};
-      const ticketBillingAddressArrayFromQuotation = [
-        quotationBillingAddressObject.address1 || "",
-        quotationBillingAddressObject.address2 || "",
-        quotationBillingAddressObject.state || "",
-        quotationBillingAddressObject.city || "",
-        quotationBillingAddressObject.pincode || "",
-      ];
-      const clientData = fullQuotation.client || {};
+    const ticketDataForForm = {
+      ticketNumber: ticketNumberToSet,
+      companyName: quotation.client?.companyName || "",
+      quotationNumber: quotation.referenceNumber,
+      billingAddress: ticketBillingAddressArrayFromQuotation, 
+      shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" }, 
+      shippingSameAsBilling: false,
+      goods: quotation.goods.map((item) => ({
+        ...item,
+        hsnCode: item.hsnCode || item.hsnCode || "",
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+        amount: Number(item.amount),
+        sellingPrice: Number(item.sellingPrice),
+        unit: item.unit || "nos",
+        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price),
+        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
+        gstRate: parseFloat(item.gstRate || 0),
+        subtexts: item.subtexts || [],
+        originalItem: item.originalItem?._id || item.originalItem || item.itemId,
+      })),
+      clientPhone: clientData.phone || "",
+      clientGstNumber: clientData.gstNumber || "",
+      totalQuantity: Number(quotation.totalQuantity),
+      totalAmount: Number(quotation.totalAmount),
+      dispatchDays: quotation.dispatchDays || "7-10 working days",
+      validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+      termsAndConditions: quotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
+      gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
+      finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
+      status: "Quotation Sent",
+      deadline: defaultDeadline.toISOString().split("T")[0],
+    };
+    navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
+  }, [navigate, generateTicketNumber, initialQuotationData]); 
 
-      const ticketNumberToSet = generateNextTicketNumber(); // Generate ticket number on frontend
-      const ticketDataForForm = {
-        ticketNumber: ticketNumberToSet,
-        companyName: fullQuotation.client?.companyName || "",
-        quotationNumber: fullQuotation.referenceNumber,
-        billingAddress: ticketBillingAddressArrayFromQuotation,
-        shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" },
-        shippingSameAsBilling: false,
-        goods: fullQuotation.goods.map((item) => ({ // Use fullQuotation.goods here
-          ...item,
-          quantity: Number(item.quantity),
-          price: Number(item.price),
-          amount: Number(item.amount),
-          gstRate: parseFloat(item.gstRate || 0),
-          subtexts: item.subtexts || [],
-        })),
-        clientPhone: clientData.phone || "",
-        clientGstNumber: clientData.gstNumber || "",
-        totalQuantity: Number(fullQuotation.totalQuantity),
-        totalAmount: Number(fullQuotation.totalAmount),
-        dispatchDays: fullQuotation.dispatchDays || "7-10 working days",
-        validityDate: fullQuotation.validityDate ? new Date(fullQuotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-        termsAndConditions: fullQuotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-        gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-        finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-        status: "Quotation Sent",
-        deadline: defaultDeadline.toISOString().split("T")[0],
-      };
-      navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: fullQuotation } });
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to load quotation details to create ticket.", authUserFromContext, "quotationActivity");
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false); // Hide loading spinner
+  const handleEdit = useCallback(async (quotation) => {
+    let orderIssuedByIdToSet =
+      quotation.orderIssuedBy?._id || quotation.orderIssuedBy ||
+      quotation.user?._id || quotation.user || user?.id;
+    if (typeof orderIssuedByIdToSet === "object" && orderIssuedByIdToSet !== null) {
+      orderIssuedByIdToSet = orderIssuedByIdToSet._id;
     }
-  }, [navigate, authUserFromContext]);
 
-  const handleEdit = useCallback((quotation) => {
-    // The form page is now responsible for fetching the full quotation details.
-    // We just need to navigate to the correct URL with the ID.
-    // The `isEditing` flag can be passed in state if the form is used for both create and edit.
-    navigate(`/quotations/form/${quotation._id}`, { state: { isEditing: true } });
-  }, [navigate]); 
+    const quotationDataForForm = {
+      date: formatDateForInputHelper(quotation.date),
+      referenceNumber: quotation.referenceNumber,
+      validityDate: formatDateForInputHelper(quotation.validityDate),
+      orderIssuedBy: orderIssuedByIdToSet,
+      goods: quotation.goods.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
+        sellingPrice: Number(item.sellingPrice), // <-- Use sellingPrice
+        unit: item.unit || "nos",
+        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price), // Prefer sellingPrice
+        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
+        gstRate: parseFloat(item.gstRate || 0),
+        subtexts: item.subtexts || [],
+        originalItem: item.originalItem?._id || item.originalItem || item.itemId, // Always keep reference
+      })),
+      totalQuantity: Number(quotation.totalQuantity), totalAmount: Number(quotation.totalAmount),
+      gstAmount: Number(quotation.gstAmount), grandTotal: Number(quotation.grandTotal),
+      billingAddress: quotation.billingAddress || initialQuotationData.billingAddress,
+      status: quotation.status || "open",
+      client: {
+        companyName: quotation.client?.companyName || "", gstNumber: quotation.client?.gstNumber || "",
+        clientName: quotation.client?.clientName || "", email: quotation.client?.email || "",
+        phone: quotation.client?.phone || "", _id: quotation.client?._id || null,
+      },
+    };
+    navigate(`/quotations/form/${quotation._id}`, { state: { quotationDataForForm, isEditing: true } });
+  }, [navigate, user, initialQuotationData]); 
 
   const openCreateModal = useCallback(async () => { 
-    if (!user) { toast.error("User data not available."); return; }
-    setIsLoading(true); // Show loading spinner while fetching defaults
-    let newQuotationData = { ...initialQuotationData };
-    try {
-      // Fetch defaults from backend
-      const defaults = await apiClient('/quotations/defaults');
-      newQuotationData = {
-        ...initialQuotationData,
-        date: formatDateForInputHelper(new Date()), // Current date for creation
-        referenceNumber: defaults.nextQuotationNumber,
-        validityDate: defaults.defaultValidityDate,
-        dispatchDays: defaults.defaultDispatchDays,
-        termsAndConditions: defaults.defaultTermsAndConditions,
-        orderIssuedBy: user.id,
-      };
-      setError(null);
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to fetch quotation defaults. Using fallback values.", authUserFromContext, "quotationActivity");
-      setError(errorMessage);
-      toast.error(errorMessage);
-      // Fallback to client-side defaults if API fails
-      newQuotationData.validityDate = formatDateForInputHelper(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)); // Fallback validity
-      newQuotationData.orderIssuedBy = user.id; // Corrected syntax: assign to newQuotationData
-  };
-    navigate("/quotations/form", { state: { isEditing: false } }); // No need to pass quotationDataForForm here
-  }, [navigate, user, initialQuotationData]); 
+    if (!user) {
+      toast.error("User data not available.");
+      return;
+    }
+    const newQuotationData = {
+      ...initialQuotationData, 
+      date: formatDateForInputHelper(new Date()),
+      referenceNumber: generateQuotationNumber(),
+      orderIssuedBy: user.id, 
+    };
+    navigate("/quotations/form", { state: { quotationDataForForm: newQuotationData, isEditing: false } });
+  }, [navigate, user, initialQuotationData, generateQuotationNumber]); 
 
   const handleDeleteQuotation = useCallback(async (quotation) => {
     if (!quotation || !quotation._id) {
@@ -279,16 +300,6 @@ setIsLoading(true); // Show loading spinner
         fetchQuotations(currentPage, itemsPerPage); 
       }
       toast.success(`Quotation ${quotation.referenceNumber} deleted.`);
-        frontendLogger.info(
-          "quotationActivity",
-          `Quotation ${quotation.referenceNumber} deleted`,
-          authUserFromContext,
-          {
-            quotationId: quotation._id,
-            referenceNumber: quotation.referenceNumber,
-            action: "DELETE_QUOTATION_SUCCESS",
-          }
-        );
     } catch (error) {
       const errorMessage = handleApiError(
         error, "Failed to delete quotation.", authUserFromContext, "quotationActivity"
@@ -299,15 +310,6 @@ setIsLoading(true); // Show loading spinner
       }
       setError(errorMessage); 
       toast.error(errorMessage);
-      if (authUserFromContext) {
-        frontendLogger.error(
-          "quotationActivity", "Failed to delete quotation", authUserFromContext,
-          {
-            quotationId: quotation._id, referenceNumber: quotation.referenceNumber,
-            action: "DELETE_QUOTATION_FAILURE",
-          }
-        );
-      }
     } finally {
       setIsLoading(false);
     }
@@ -386,7 +388,6 @@ setIsLoading(true); // Show loading spinner
                 onView={() => navigate(`/quotations/preview/${quotation._id}`, { state: { quotationToPreview: quotation } })}
                 onDelete={user?.role === "super-admin" ? handleDeleteQuotation : undefined}
                 isLoading={isLoading} 
-                user={user}
                 createTicketDisabled={isLoading || quotation.status === "closed" || quotation.status === "running" || quotation.status === "hold"}
               />
             )}

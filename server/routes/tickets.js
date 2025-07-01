@@ -7,7 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs-extra"); // Use fs-extra for ensureDirSync
 const ticketController = require("../controllers/ticketController");
-const logger = require("../utils/logger"); // Ensure logger is available
+const logger = require("../logger"); // Ensure logger is available
 
 // Multer storage configuration
 const storage = multer.diskStorage({
@@ -65,8 +65,123 @@ router.delete(
 // CRITICAL: This route MUST come BEFORE any general '/:id' route
 router.get("/transfer-candidates", auth, ticketController.getTransferCandidates);
 
+<<<<<<< HEAD
 // Get single ticket by ID
 router.get("/:id", auth, ticketController.getTicketById);
+=======
+router.get("/:id", auth, async (req, res) => {
+  try {
+    // Ensure this is not matching '/transfer-candidates'
+    if (req.params.id === "transfer-candidates") {
+      // This should not happen if routes are ordered correctly
+      logger.error(
+        "ticket-route-error",
+        "CRITICAL: /:id route incorrectly matched /transfer-candidates. Check route order.",
+        req.user,
+        { params: req.params }
+      );
+      return res
+        .status(500)
+        .json({ error: "Server routing configuration error." });
+    }
+
+    const ticket = await Ticket.findOne({
+      _id: req.params.id,
+      // Allow super-admin to view any ticket by ID, others are restricted
+      ...(req.user.role !== "super-admin" && {
+        $or: [{ currentAssignee: req.user.id }, { createdBy: req.user.id }],
+      }),
+    });
+    if (!ticket) {
+      logger.log({
+        user: req.user,
+        page: "Ticket",
+        action: "Get Ticket By ID",
+        api: req.originalUrl,
+        req,
+        message: `Ticket not found or access denied for ID: ${req.params.id}`,
+        details: {},
+        level: "warn"
+      });
+      return res
+        .status(404)
+        .json({ error: "Ticket not found or access denied" });
+    }
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID",
+      api: req.originalUrl,
+      req,
+      message: `Fetched ticket: ${req.params.id}`,
+      details: { ticketId: req.params.id },
+      level: "info"
+    });
+    // ... (rest of your population logic for GET /:id)
+    const populatedTicket = await Ticket.findById(ticket._id)
+      .populate({ path: "currentAssignee", select: "firstname lastname email" })
+      .populate({ path: "createdBy", select: "firstname lastname email" })
+      .populate({
+        path: "transferHistory.from",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "transferHistory.to",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "transferHistory.transferredBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.quotation.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.po.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.pi.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.challan.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.packingList.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.feedback.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "documents.other.uploadedBy",
+        select: "firstname lastname email",
+      })
+      .populate({
+        path: "statusHistory.changedBy",
+        select: "firstname lastname email",
+      });
+
+    res.json(populatedTicket);
+  } catch (error) {
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch ticket by ID: ${req.params.id}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
+    res.status(500).json({ error: "Failed to fetch ticket" });
+  }
+});
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
 // Update ticket by ID
 router.put("/:id", auth, ticketController.updateTicket);

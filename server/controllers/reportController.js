@@ -3,7 +3,7 @@ const Quotation = require("../models/quotation");
 const Ticket = require("../models/opentickets");
 const LogTime = require("../models/LogTime");
 const { formatDateRange } = require("../utils/helpers");
-const logger = require("../utils/logger"); // Import logger
+const logger = require("../logger"); // Import logger
 const PDFDocument = require("pdfkit");
 const mongoose = require("mongoose");
 const xlsx = require("xlsx"); // For Excel export
@@ -53,14 +53,6 @@ const getDateRange = (period) => {
   // For periods other than 'all', set time to start/end of day
   if (startDate) startDate.setHours(0, 0, 0, 0);
   if (endDate) endDate.setHours(23, 59, 59, 999);
-
-  logger.debug(
-    "report-getDateRange",
-    `Calculated date range for period: ${period}`,
-    null,
-    { start: startDate?.toISOString(), end: endDate?.toISOString() }
-  );
-
   return { startDate, endDate };
 };
 
@@ -71,31 +63,22 @@ const formatDateToYYYYMMDD = (dateObj) => {
 
 // Internal function to fetch and process report data
 async function getUserReportDataInternal(userId, period) {
-  logger.debug(
-    "report-internal",
-    `Fetching data for userId: ${userId}, period: ${period}`
-  );
-  const { startDate, endDate } = getDateRange(period);
-
-  logger.debug(
-    "report-internal",
-    `Date range - Start: ${startDate.toISOString()}, End: ${endDate.toISOString()}`
-  );
-  const user = await User.findById(userId).select(
-    "firstname lastname email role createdAt"
-  );
 
   if (!user) {
-    logger.warn("report-internal", `User not found for ID: ${userId}`);
+    logger.log({
+      user: { id: userId },
+      page: "Report",
+      action: "Error",
+      api: "/api/reports/users/:userId",
+      req: null,
+      message: `User not found for ID: ${userId}`,
+      details: {},
+      level: "error"
+    });
     throw new Error("User not found");
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
-  logger.debug(
-    "report-internal",
-    `User found: ${user._id}, Converted userId to ObjectId: ${userObjectId}`
-  );
-
   const quotations = await Quotation.aggregate([
     {
       $match: {
@@ -111,11 +94,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug(
-    "report-internal",
-    `Quotations aggregated: ${quotations.length}`
-  );
-
   const tickets = await Ticket.aggregate([
     {
       $match: {
@@ -131,7 +109,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug("report-internal", `Tickets aggregated: ${tickets.length}`);
 
   const startDateString = formatDateToYYYYMMDD(startDate);
   const endDateString = formatDateToYYYYMMDD(endDate);
@@ -236,12 +213,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug(
-    "report-internal",
-    `LogTimes aggregated: ${
-      logTimes.length > 0 ? logTimes[0].totalTasks : 0
-    } tasks, ${logTimes.length > 0 ? logTimes[0].totalTimeSpent : 0} minutes`
-  );
 
   const quotationStats = {
     total: 0,
@@ -301,18 +272,9 @@ exports.getUserReport = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info(
-      "report-getUserReport",
-      `Received request for user report. UserId: ${userId}, Period: ${period}`,
-      req.user
-    );
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.warn(
-        "report-getUserReport",
-        `Invalid user ID: ${userId}`,
-        req.user
-      );
+    
       return res.status(400).json({ success: false, error: "Invalid user ID" });
     }
 
@@ -323,12 +285,16 @@ exports.getUserReport = async (req, res, next) => {
       data: reportPayload,
     });
   } catch (err) {
-    logger.error(
-      "report-getUserReport",
-      `Error fetching user report for UserId: ${req.params.userId}`,
-      err,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching user report for UserId: ${req.params.userId}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error"
+    });
     if (err.message === "User not found") {
       return res.status(404).json({ success: false, error: "User not found" });
     }
@@ -425,28 +391,13 @@ exports.generateUserReportPDF = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { period = "7days" } = req.query;
-    logger.info(
-      "report-generatePDF",
-      `Received request to generate PDF. UserId: ${userId}, Period: ${period}`,
-      req.user
-    );
 
     // Add validation
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      logger.error(
-        "report-generatePDF",
-        `Invalid user ID: ${userId}`,
-        req.user
-      );
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
     const reportData = await getUserReportDataInternal(userId, period); // Use the internal function
-    logger.debug(
-      "report-generatePDF",
-      `Report data fetched for PDF for UserId: ${userId}`,
-      req.user
-    );
 
     // Before creating PDF, verify data exists
     if (!reportData || !reportData.user) {
@@ -475,12 +426,6 @@ exports.generateUserReportPDF = async (req, res, next) => {
 
     // Pipe to response
     doc.pipe(res);
-
-    logger.debug(
-      "report-generatePDF",
-      `Starting PDF content generation for UserId: ${userId}`,
-      req.user
-    );
     // Add content with error handling
     doc.fontSize(18).text("User Activity Report", { align: "center" });
     doc.moveDown();
@@ -539,18 +484,17 @@ exports.generateUserReportPDF = async (req, res, next) => {
 
     // Finalize PDF
     doc.end();
-    logger.info(
-      "report-generatePDF",
-      `PDF generation complete and sent for UserId: ${userId}`,
-      req.user
-    );
   } catch (err) {
-    logger.error(
-      "report-generatePDF",
-      `PDF Generation Error for UserId: ${req.params.userId}`,
-      err,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `PDF Generation Error for UserId: ${req.params.userId}`,
+      details: { error: err.message, stack: err.stack },
+      level: "error"
+    });
     if (err.message === "User not found") {
       // Handle specific error from getUserReportDataInternal
       if (!res.headersSent) {
@@ -705,12 +649,16 @@ exports.generateQuotationsReport = async (req, res) => {
         });
     }
   } catch (error) {
-    logger.error(
-      "report-quotations",
-      `Failed to generate quotations report (period: ${period})`,
-      error,
-      user
-    );
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to generate quotations report (period: ${period})`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res
       .status(500)
       .json({
@@ -852,7 +800,16 @@ exports.generateTicketsReport = async (req, res) => {
       return workbook.xlsx.write(res).then(() => res.status(200).end());
     }
   } catch (error) {
-    logger.error(`report-tickets: Failed to generate tickets report (period: ${period})`, error, user);
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to generate tickets report (period: ${period})`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ success: false, message: "Error generating tickets report", error: error.message });
   }
 };

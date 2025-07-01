@@ -1,18 +1,17 @@
 // server/controllers/ticketController.js
 const Ticket = require("../models/opentickets");
-const UniversalBackup = require("../models/universalBackup"); // Using UniversalBackup
-const Quotation = require("../models/quotation"); // Import Quotation model
-const OpenticketModel = require("../models/opentickets.js"); // Used by index.js logic
+const UniversalBackup = require("../models/universalBackup");
+const Quotation = require("../models/quotation");
+const OpenticketModel = require("../models/opentickets.js");
 const User = require("../models/users");
-const logger = require("../utils/logger"); // Import logger
-const { Item } = require("../models/itemlist"); // Import Item model for inventory
-const fs = require("fs-extra"); // fs-extra for recursive directory removal
+const logger = require("../logger");
+const { Item } = require("../models/itemlist");
+const fs = require("fs-extra");
 const path = require("path");
 const asyncHandler = require("express-async-handler");
-const mongoose = require("mongoose"); // Added mongoose for session
-const ReportController = require("./reportController"); // Import the report controller
+const mongoose = require("mongoose");
+const ReportController = require("./reportController");
 
-// Define COMPANY_REFERENCE_STATE at a scope accessible by tax calculation logic
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 
 // --- Helper Function for Ticket Calculations ---
@@ -103,10 +102,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const session = await mongoose.startSession(); // Start session for potential transaction
 
   if (!user || !user.id) {
-    logger.error(
-      "ticket-create",
-      "User not found in request. Auth middleware might not be working correctly."
-    );
+  logger.log({
+  user: req.user || user || initiator || null,
+  page: "Ticket",
+  action: "Error",
+  api: req.originalUrl,
+  req,
+  message: "User Not Found",
+  details: { error: error.message, stack: error.stack },
+  level: "error"
+});
     return res
       .status(401)
       .json({ error: "Unauthorized: User not authenticated." });
@@ -114,11 +119,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
   const { newTicketDetails, sourceQuotationData } = req.body;
 
   if (!newTicketDetails) {
-    logger.error(
-      "ticket-create",
-      "Missing newTicketDetails in request body.",
-      user
-    );
+    logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: "Missing newTicketDetails in request body",
+      details: { error: "newTicketDetails is required" },
+      level: "error"
+    });
     return res
       .status(400)
       .json({ error: "Missing newTicketDetails in request body." });
@@ -153,6 +163,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
         quotationBillingAddress.city || "",
         quotationBillingAddress.pincode || "",
       ],
+<<<<<<< HEAD
       goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map((qGood, index) => ({
         srNo: qGood.srNo || index + 1,
         description: qGood.description,
@@ -166,6 +177,24 @@ exports.createTicket = asyncHandler(async (req, res) => {
         gstRate: Number(qGood.gstRate || 0),
         subtexts: qGood.subtexts || [],
       })),
+=======
+      goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map(
+        (qGood, index) => ({
+          srNo: qGood.srNo || index + 1,
+          description: qGood.description,
+          hsnCode: qGood.hsnCode || "", // Use hsnCode
+          quantity: Number(qGood.quantity || 0),
+          unit: qGood.unit || "nos",
+          price: Number(qGood.price || 0),
+          amount: Number(qGood.amount || 0),
+          originalPrice: Number(qGood.originalPrice || qGood.price || 0),
+          maxDiscountPercentage: Number(qGood.maxDiscountPercentage || 0),
+          gstRate: Number(qGood.gstRate || 0),
+          subtexts: qGood.subtexts || [],
+          originalItem: qGood.originalItem?._id || qGood.originalItem || undefined, // Always ObjectId
+        })
+      ),
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
       termsAndConditions:
         sourceQuotationData.termsAndConditions ||
         newTicketDetails.termsAndConditions, // If terms are on quotation
@@ -214,12 +243,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Ticket must contain at least one item." });
   }
   if (!finalTicketData.deadline) {
-    logger.error(
-      "ticket-create",
-      "Deadline is required but not provided or derived.",
-      user,
-      { finalTicketData }
-    );
+    logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: "Ticket deadline is required but not provided or derived.",
+      details: { finalTicketData },
+      level: "error"
+    });
     return res.status(400).json({ error: "Ticket deadline is required." });
   }
   if (!finalTicketData.ticketNumber) {
@@ -344,25 +377,67 @@ exports.createTicket = asyncHandler(async (req, res) => {
     Math.abs(roundOff - frontendTotals.roundOff) > tolerance ||
     Math.abs(finalRoundedAmount - frontendTotals.finalRoundedAmount) > tolerance
   ) {
+<<<<<<< HEAD
     logger.warn("ticket-create", `Calculation mismatch for new ticket ${finalTicketData.ticketNumber}. Frontend vs Backend.`, user, { frontend: frontendTotals, backend: { totalQuantity, totalAmount, finalGstAmount, grandTotal, roundOff, finalRoundedAmount }, action: "CALCULATION_MISMATCH_CREATE" });
     await session.abortTransaction();
     return res.status(400).json({ message: "Calculation mismatch detected. Please re-check ticket details." });
+=======
+   logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Create Ticket",
+      api: req.originalUrl,
+      req,
+      message: "Billing address is not in the expected array format after construction.",
+      details: { billingAddress: finalTicketData.billingAddress },
+      level: "error",
+    });
+    return res.status(400).json({ error: "Invalid billing address format." });
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
   }
 
   if (
     !Array.isArray(finalTicketData.shippingAddress) ||
     finalTicketData.shippingAddress.length !== 5
   ) {
-    logger.error(
-      "ticket-create",
-      "Shipping address is not in the expected array format after construction.",
-      user,
-      { shippingAddress: finalTicketData.shippingAddress }
-    );
+    logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Create Ticket",
+      api: req.originalUrl,
+      req,
+      message: "Shipping address is not in the expected array format after construction.",
+      details: { shippingAddress: finalTicketData.shippingAddress },
+      level: "error",
+    });
     return res.status(400).json({ error: "Invalid shipping address format." });
   }
 
+<<<<<<< HEAD
   // Instantiate the ticket object here to get its _id for logging purposes before saving.
+=======
+  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
+    finalTicketData.goods = finalTicketData.goods.map((item) => ({
+      srNo: item.srNo,
+      description: item.description,
+      hsnCode: item.hsnCode,
+      quantity: Number(item.quantity || 0),
+      unit: item.unit || "Nos",
+      price: Number(item.price || 0),
+      amount: Number(
+        item.amount || Number(item.quantity || 0) * Number(item.price || 0)
+      ),
+      originalPrice: Number(item.originalPrice || item.price || 0),
+      maxDiscountPercentage: Number(item.maxDiscountPercentage || 0),
+      gstRate: Number(item.gstRate || 0),
+      subtexts: item.subtexts || [],
+    }));
+  }
+
+  
+
+    // Instantiate the ticket object here to get its _id for logging purposes before saving.
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
   const ticket = new Ticket(finalTicketData);
 
   try {
@@ -371,12 +446,17 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // --- Inventory Deduction Logic ---
     if (finalTicketData.goods && finalTicketData.goods.length > 0) {
       for (const good of finalTicketData.goods) {
+<<<<<<< HEAD
         if (!good.description || Number(good.quantity) <= 0) { // Ensure valid quantity
+=======
+        if (!good.description || !(Number(good.quantity) > 0)) {
+        
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
           continue;
         }
         const itemToUpdate = await Item.findOne({
           name: good.description,
-          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
+          ...(good.hsnCode && { hsnCode: good.hsnCode }),
         }).session(session);
 
         if (itemToUpdate) {
@@ -384,9 +464,24 @@ exports.createTicket = asyncHandler(async (req, res) => {
           const quantityToDecrementInBaseUnit = quantityInBaseUnit;
           const baseUnitName = itemToUpdate.baseUnit;
 
+<<<<<<< HEAD
           if (quantityToDecrementInBaseUnit === 0) {
             logger.warn("inventory", `Calculated quantity to decrement is zero for item ${good.description}. Skipping inventory update.`, user);
             continue;
+=======
+          if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+            quantityToDecrementInBaseUnit = Number(good.quantity);
+          } else {
+            const transactionalUnitInfo = itemToUpdate.units.find(
+              (u) => u.name.toLowerCase() === transactionalUnitName.toLowerCase()
+            );
+            if (transactionalUnitInfo) {
+              const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+              quantityToDecrementInBaseUnit = Number(good.quantity) * conversionFactor;
+            } else {
+              quantityToDecrementInBaseUnit = Number(good.quantity);
+            }
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
           }
 
           itemToUpdate.quantity -= quantityToDecrementInBaseUnit;
@@ -414,20 +509,17 @@ exports.createTicket = asyncHandler(async (req, res) => {
             itemToUpdate.needsRestock = false;
             itemToUpdate.restockAmount = 0;
           }
+<<<<<<< HEAD
           await itemToUpdate.save({ session }); // Save within the transaction
           logger.info(
             "inventory",
             `Updated inventory for ${itemToUpdate.name}: -${quantityToDecrementInBaseUnit.toFixed(2)} ${baseUnitName} (from ${good.quantity} ${unitNameUsed}), new qty: ${itemToUpdate.quantity.toFixed(2)}`,
             user
           );
+=======
+          await itemToUpdate.save({ session });
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
         } else {
-          logger.warn(
-            "inventory",
-            `Item "${good.description}" (HSN: ${
-              good.hsnSacCode || "N/A"
-            }) not found. Skipping stock update.`,
-            user
-          );
         }
       }
     }
@@ -435,16 +527,20 @@ exports.createTicket = asyncHandler(async (req, res) => {
     // --- Ticket Creation ---
     await ticket.save({ session }); // Save within the transaction
 
-    logger.info(
-      "ticket",
-      `Ticket ${ticket.ticketNumber} created successfully.`,
+    logger.log({
       user,
-      {
+      page: "Ticket",
+      action: "Create Ticket",
+      api: req.originalUrl,
+      req,
+      message: `Ticket ${ticket.ticketNumber} created successfully.`,
+      details: {
         ticketId: ticket._id,
         ticketNumber: ticket.ticketNumber,
         companyName: ticket.companyName,
-      }
-    );
+      },
+      level: "info"
+    });
 
     // --- Update Quotation Status if applicable ---
     if (finalTicketData.quotationNumber && sourceQuotationData && sourceQuotationData._id) { // Ensure quotation ID is present
@@ -452,12 +548,30 @@ exports.createTicket = asyncHandler(async (req, res) => {
         const quotationOwnerId =
           sourceQuotationData.user?._id || sourceQuotationData.user;
         if (!quotationOwnerId) {
+<<<<<<< HEAD
           logger.error(
             "quotation-update-error",
             "Source quotation user ID is missing.",
             user,
             { quotationNumber: ticket.quotationNumber }
           ); // Log error, but don't block ticket creation
+=======
+         logger.log({
+            user: req.user || user || null,
+            page: "Ticket",
+            action: "Create Ticket",
+            api: req.originalUrl,
+            req,
+            message: `Quotation ${finalTicketData.quotationNumber} not found. Ticket ${ticket.ticketNumber} created successfully.`,
+            details: {
+              ticketId: ticket._id,
+              ticketNumber: ticket.ticketNumber,
+              companyName: ticket.companyName,
+            },
+            level: "warn"
+          });
+          return res.status(200).json({ success: true, ticket });
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
         } else {
           const updatedQuotation = await Quotation.findOneAndUpdate(
             {
@@ -472,13 +586,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
           );
 
           if (updatedQuotation) {
-            logger.info(
-              "quotation",
-              `Quotation ${ticket.quotationNumber} status set to 'running' and linked to ticket ${ticket.ticketNumber}.`,
-              user,
-              { quotationId: updatedQuotation._id, ticketId: ticket._id }
-            );
           } else {
+<<<<<<< HEAD
             logger.warn(
               "quotation",
               `Could not find quotation ${ticket.quotationNumber} (User: ${quotationOwnerId}) to update status after ticket creation.`,
@@ -494,6 +603,40 @@ exports.createTicket = asyncHandler(async (req, res) => {
           user
         );
         // This error should ideally not abort the transaction if the ticket itself was created successfully.
+=======
+          }
+        }
+      } catch (quotationError) {
+       logger.log({
+          user: req.user || user || null,
+          page: "Ticket",
+          action: "Create Ticket",
+          api: req.originalUrl,
+          req,
+          message: `Failed to update quotation status for ticket ${ticket.ticketNumber}.`,
+          details: {
+            error: quotationError.message,
+            stack: quotationError.stack,
+            quotationNumber: ticket.quotationNumber,
+            ticketId: ticket._id,
+            ticketNumber: ticket.ticketNumber,
+            companyName: ticket.companyName,
+          },
+          level: "error"
+        });
+        if (quotationError.name === "ValidationError") {
+          return res.status(400).json({
+            error: "Validation failed",
+            details: quotationError.message,
+            errors: quotationError.errors,
+          });
+        } else {
+          return res
+            .status(500)
+            .json({ error: "Failed to update quotation status" });
+          }
+        // Decide if this error should abort the transaction. For now, it won't.
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
       }
     }
 
@@ -501,8 +644,15 @@ exports.createTicket = asyncHandler(async (req, res) => {
     return res.status(201).json(ticket);
   } catch (error) {
     await session.abortTransaction();
-    logger.error("ticket", `Failed to create ticket`, error, user, {
-      finalTicketDataAttempted: finalTicketData,
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: "Failed to create ticket",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
     });
     if (error.name === "ValidationError") {
       return res.status(400).json({
@@ -573,13 +723,6 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
   const finalQuery =
     queryConditions.length > 0 ? { $and: queryConditions } : {};
 
-  logger.debug(
-    "ticket-list-query",
-    "Constructed final query for tickets",
-    user,
-    { finalQuery: JSON.stringify(finalQuery) }
-  );
-
   const totalItems = await Ticket.countDocuments(finalQuery);
   let ticketsQuery = Ticket.find(finalQuery)
     .sort({ [sortKey]: sortDirection === "ascending" ? 1 : -1 })
@@ -602,12 +745,17 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
 
   const tickets = await ticketsQuery.exec();
 
-  logger.info(
-    "ticket-list",
-    `Fetched ${tickets.length} of ${totalItems} tickets.`,
+  logger.log({
     user,
-    { page: pageNum, limit: limitNum, query: finalQuery }
-  );
+    page: "Ticket",
+    action: "Get All Tickets",
+    api: req.originalUrl,
+    req,
+    message: `Fetched ${tickets.length} of ${totalItems} tickets.`,
+    details: { page: pageNum, limit: limitNum, query: finalQuery },
+    level: "info"
+  });
+
   res.json({
     data: tickets,
     totalItems,
@@ -626,7 +774,16 @@ exports.getUserTickets = async (req, res) => {
     });
     res.json(tickets);
   } catch (error) {
-    logger.error("ticket", `Failed to fetch user tickets`, error, user);
+logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Get User Tickets",
+      api: req.originalUrl,
+      req,
+      message: "Failed to fetch tickets",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ error: "Failed to fetch tickets" });
   }
 };
@@ -690,24 +847,42 @@ exports.getTicketById = async (req, res) => {
       });
 
     if (!ticket) {
-      logger.warn(
-        "ticket-fetch",
-        `Ticket not found or access denied for ID: ${req.params.id}`,
-        req.user
-      );
+      logger.log({
+        user: req.user,
+        page: "Ticket",
+        action: "Get Ticket By ID",
+        api: req.originalUrl,
+        req,
+        message: `Ticket not found or access denied for ID: ${req.params.id}`,
+        details: {},
+        level: "warn"
+      });
       return res
         .status(404)
         .json({ error: "Ticket not found or access denied" });
     }
-
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID",
+      api: req.originalUrl,
+      req,
+      message: `Fetched ticket: ${req.params.id}`,
+      details: { ticketId: req.params.id },
+      level: "info"
+    });
     res.json(ticket);
   } catch (error) {
-    logger.error(
-      "ticket",
-      `Failed to fetch single ticket by ID: ${req.params.id}`,
-      error,
-      user
-    );
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Get Ticket By ID Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch single ticket by ID: ${req.params.id}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ error: "Failed to fetch ticket" });
   }
 };
@@ -716,6 +891,7 @@ exports.updateTicket = async (req, res) => {
   const user = req.user || null;
   const ticketId = req.params.id;
   const session = await mongoose.startSession();
+<<<<<<< HEAD
   // The entire request body is our payload.
   const ticketDataForUpdate = req.body;
 
@@ -730,9 +906,18 @@ exports.updateTicket = async (req, res) => {
     roundOff: frontendRoundOff,
     finalRoundedAmount: frontendFinalRoundedAmount
   } = ticketDataForUpdate;
+=======
+  const {
+    shippingSameAsBilling,
+    statusChangeComment,
+    roundOff,
+    finalRoundedAmount,
+    totalQuantity, totalAmount, gstBreakdown, totalCgstAmount, totalSgstAmount, totalIgstAmount, finalGstAmount, grandTotal, isBillingStateSameAsCompany,
+    ...updatedTicketPayload
+  } = req.body;
+  let ticketDataForUpdate = { ...updatedTicketPayload };
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
-  // Ensure deadline is null if an empty string is passed.
-  // Frontend should send ISOString or null, but this is a safeguard.
   if (
     ticketDataForUpdate.hasOwnProperty("deadline") &&
     ticketDataForUpdate.deadline === ""
@@ -746,11 +931,11 @@ exports.updateTicket = async (req, res) => {
     );
 
     if (!originalTicket) {
-      logger.warn("ticket", `Ticket not found for update: ${ticketId}`, user);
       await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
 
+<<<<<<< HEAD
     // Ensure goods are properly formatted for calculation
     if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
       ticketDataForUpdate.goods = ticketDataForUpdate.goods.map(g => ({ ...g, quantity: Number(g.quantity || 0), price: Number(g.price || 0), amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))) }));
@@ -758,6 +943,8 @@ exports.updateTicket = async (req, res) => {
 
 
     // Handle status change and history
+=======
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
     if (
       ticketDataForUpdate.status &&
       ticketDataForUpdate.status !== originalTicket.status
@@ -766,12 +953,6 @@ exports.updateTicket = async (req, res) => {
         !statusChangeComment &&
         ticketDataForUpdate.status !== originalTicket.status
       ) {
-        // Only require comment if status actually changes
-        logger.warn(
-          "ticket",
-          `Status changed for ticket ${ticketId} but no statusChangeComment was provided.`,
-          user
-        );
         await session.abortTransaction();
         return res
           .status(400)
@@ -798,29 +979,38 @@ exports.updateTicket = async (req, res) => {
       user.role === "super-admin";
 
     if (!canUpdate) {
-      logger.warn(
-        "ticket",
-        `User ${user.id} not authorized to update ticket ${ticketId}. Creator: ${originalTicket.createdBy}, Assignee: ${originalTicket.currentAssignee}`,
-        user
-      );
       await session.abortTransaction();
       return res
         .status(403)
         .json({ error: "Not authorized to update this ticket" });
     }
 
+<<<<<<< HEAD
     // --- New Inventory Adjustment Logic based on Status Transitions ---
-    const oldStatus = originalTicket.status;
-    const newStatus = ticketDataForUpdate.status; // This is the incoming status from req.body
+=======
+    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
+      ticketDataForUpdate.goods = ticketDataForUpdate.goods.map((item) => ({
+        ...item,
+        subtexts: item.subtexts || [],
+      }));
+    }
 
-    // Scenario 1: Ticket is being put ON HOLD
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
+    const oldStatus = originalTicket.status;
+    const newStatus = ticketDataForUpdate.status;
+
     if (newStatus === "Hold" && oldStatus !== "Hold") {
+<<<<<<< HEAD
       logger.info("inventory", `Ticket ${ticketId} moved to HOLD. Rolling back item quantities.`, user);
       for (const good of originalTicket.goods) { // Use original goods for rollback
         if (!good.description || Number(good.quantity) <= 0) continue;
+=======
+      for (const good of originalTicket.goods) {
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
         try {
-          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
           if (itemToUpdate) {
+<<<<<<< HEAD
             const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
             const quantityToRollbackInBaseUnit = quantityInBaseUnit;
             const baseUnitName = itemToUpdate.baseUnit;
@@ -828,6 +1018,22 @@ exports.updateTicket = async (req, res) => {
             if (quantityToRollbackInBaseUnit === 0) { // Skip if conversion resulted in 0
               logger.warn("inventory", `Calculated quantity to rollback is zero for item ${good.description}. Skipping inventory update.`, user);
               continue;
+=======
+            let quantityToRollbackInBaseUnit = 0;
+            const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const baseUnitName = itemToUpdate.baseUnit;
+
+            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+              quantityToRollbackInBaseUnit = Number(good.quantity);
+            } else {
+              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+              if (transactionalUnitInfo) {
+                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
+              } else {
+                quantityToRollbackInBaseUnit = Number(good.quantity);
+              }
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
             }
 
             itemToUpdate.quantity += quantityToRollbackInBaseUnit;
@@ -835,9 +1041,14 @@ exports.updateTicket = async (req, res) => {
             const historyEntry = {
               type: "Temporary Rollback (Ticket Hold)",
               date: new Date(),
+<<<<<<< HEAD
               quantityChange: quantityToRollbackInBaseUnit, // Positive for addition
               details: `Ticket ${originalTicket.ticketNumber} put on hold. Rolled back ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
 
+=======
+              quantityChange: quantityToRollbackInBaseUnit,
+              details: `Ticket ${originalTicket.ticketNumber} put on hold. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
@@ -851,26 +1062,26 @@ exports.updateTicket = async (req, res) => {
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save({ session });
-            logger.info("inventory", `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} to Hold). New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
-
-          } else {
-            logger.warn("inventory", `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for Hold rollback (Ticket ${ticketId}).`, user);
           }
         } catch (invError) {
-          logger.error("inventory", `Error rolling back stock for item "${good.description}" (Ticket ${ticketId} to Hold): ${invError.message}`, user, { error: invError });
         }
       }
     }
-    // Scenario 2: Ticket is being taken OFF HOLD (and was previously Hold)
     else if (newStatus !== "Hold" && oldStatus === "Hold") {
+<<<<<<< HEAD
       logger.info("inventory", `Ticket ${ticketId} moved FROM HOLD. Re-deducting item quantities.`, user);
       // Use current/new goods for re-deduction. If goods were changed while on hold, this reflects the new state.
       const goodsToDeduct = ticketDataForUpdate.goods || originalTicket.goods; // Prefer updated goods if available
       for (const good of goodsToDeduct) { 
         if (!good.description || Number(good.quantity) <= 0) continue;
+=======
+      const goodsToDeduct = ticketDataForUpdate.goods || originalTicket.goods;
+      for (const good of goodsToDeduct) {
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
         try {
-          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
           if (itemToUpdate) {
+<<<<<<< HEAD
             const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
             const quantityToDeductInBaseUnit = quantityInBaseUnit;
             const baseUnitName = itemToUpdate.baseUnit;
@@ -878,6 +1089,22 @@ exports.updateTicket = async (req, res) => {
             if (quantityToDeductInBaseUnit === 0) { // Skip if conversion resulted in 0
               logger.warn("inventory", `Calculated quantity to re-deduct is zero for item ${good.description}. Skipping inventory update.`, user);
               continue;
+=======
+            let quantityToDeductInBaseUnit = 0;
+            const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const baseUnitName = itemToUpdate.baseUnit;
+
+            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+              quantityToDeductInBaseUnit = Number(good.quantity);
+            } else {
+              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+              if (transactionalUnitInfo) {
+                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                quantityToDeductInBaseUnit = Number(good.quantity) * conversionFactor;
+              } else {
+                quantityToDeductInBaseUnit = Number(good.quantity);
+              }
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
             }
 
             itemToUpdate.quantity -= quantityToDeductInBaseUnit;
@@ -900,19 +1127,110 @@ exports.updateTicket = async (req, res) => {
               itemToUpdate.restockAmount = 0;
             }
             await itemToUpdate.save({ session });
-            logger.info("inventory", `Re-deducted ${quantityToDeductInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} from Hold). New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
-          } else {
-            logger.warn("inventory", `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for re-deduction (Ticket ${ticketId} from Hold).`, user);
           }
         } catch (invError) {
-          logger.error("inventory", `Error re-deducting stock for item "${good.description}" (Ticket ${ticketId} from Hold): ${invError.message}`, user, { error: invError });
         }
       }
     }
-    // Scenario 3: General update (not a Hold status transition OR status remains the same but goods might have changed)
-    // This also covers if status changes but neither old nor new is "Hold"
     else if (newStatus !== "Hold" && oldStatus !== "Hold") {
+<<<<<<< HEAD
       await handleInventoryAdjustmentOnTicketUpdate(originalTicket, ticketDataForUpdate, user, session);
+=======
+      const itemBaseQtyChanges = new Map();
+
+      const getBaseQuantity = async (good, itemCache) => {
+        const itemKey = `${good.description}-${good.hsnCode || ""}`;
+        let itemDetails = itemCache.get(itemKey);
+        if (!itemDetails) {
+          itemDetails = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).lean();
+          if (itemDetails) itemCache.set(itemKey, itemDetails);
+        }
+
+        if (!itemDetails) {
+          return 0;
+        }
+
+        const transactionalUnitName = good.unit || itemDetails.baseUnit;
+        const baseUnitName = itemDetails.baseUnit;
+        if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+          return Number(good.quantity);
+        }
+
+        const unitInfo = itemDetails.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+        if (unitInfo) {
+          return Number(good.quantity) * Number(unitInfo.conversionFactor);
+        }
+
+        return Number(good.quantity);
+      };
+
+      const itemCache = new Map();
+
+      for (const good of originalTicket.goods || []) {
+        const key = `${good.description}-${good.hsnCode || ""}`;
+        const oldBaseQty = await getBaseQuantity(good, itemCache);
+        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+        itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
+      }
+
+      for (const good of ticketDataForUpdate.goods || []) {
+        const key = `${good.description}-${good.hsnCode || ""}`;
+        const newBaseQty = await getBaseQuantity(good, itemCache);
+        if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
+        itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
+      }
+
+      for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
+        const netChangeInBaseUnit = newBaseQty - oldBaseQty;
+        if (netChangeInBaseUnit === 0) continue;
+        const [description, hsnCode] = key.split("-");
+        try {
+          const itemToUpdate = await Item.findOne({ name: description, ...(hsnCode && { hsnCode: hsnCode }) }).session(session);
+          if (itemToUpdate) {
+            // We subtract the net change from the current inventory.
+            // If more items were added (netChange > 0), we deduct.
+            // If items were removed (netChange < 0), we add back (subtracting a negative).
+
+                        // Store the original quantity before applying the change
+            const originalQuantity = itemToUpdate.quantity;
+
+            if (itemToUpdate.quantity === undefined || itemToUpdate.quantity === null) {
+              itemToUpdate.quantity = 0;
+            }
+
+
+            itemToUpdate.quantity -= netChangeInBaseUnit;
+
+            const historyEntry = {
+              type: "Inventory Adjustment (Ticket Update)",
+              date: new Date(),
+              quantityChange: -netChangeInBaseUnit, // A positive netChange (more items used) results in a negative quantityChange (deduction).
+              details: `Ticket ${originalTicket.ticketNumber} updated. Base quantity changed from ${oldBaseQty.toFixed(2)} to ${newBaseQty.toFixed(2)}. Net stock change: ${(-netChangeInBaseUnit).toFixed(2)}. Action by: ${user.firstname || user.email}.`,
+              ticketReference: originalTicket._id,
+              userReference: user.id,
+            };
+            itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
+            itemToUpdate.inventoryLog.push(historyEntry);
+            if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
+              itemToUpdate.needsRestock = true;
+              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+            } else {
+              itemToUpdate.needsRestock = false;
+              itemToUpdate.restockAmount = 0;
+            }
+            await itemToUpdate.save({ session });
+          } else if (netChangeInBaseUnit > 0) { // Item was added to ticket but not found in DB
+          }
+        } catch (invError) {
+          logger.log({
+            user: req.user || user || null,
+            message: `Error adjusting stock for item "${description}" (Ticket ${ticketId} general update): ${invError.message}`,
+            error: invError,
+            level: "error",
+          });
+        }
+      }
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
     }
     // --- End New Inventory Adjustment Logic ---
 
@@ -921,13 +1239,12 @@ exports.updateTicket = async (req, res) => {
       ticketDataForUpdate.shippingSameAsBilling = shippingSameAsBilling;
       if (shippingSameAsBilling === true) {
         ticketDataForUpdate.shippingAddress =
-          ticketDataForUpdate.billingAddress || originalTicket.billingAddress; // Use updated billingAddress if available
+          ticketDataForUpdate.billingAddress || originalTicket.billingAddress;
       } else {
         if (
           Array.isArray(ticketDataForUpdate.shippingAddress) &&
           ticketDataForUpdate.shippingAddress.length === 5
         ) {
-          // Correct format
         } else if (
           typeof ticketDataForUpdate.shippingAddress === "object" &&
           ticketDataForUpdate.shippingAddress !== null
@@ -949,6 +1266,7 @@ exports.updateTicket = async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
     // --- Recalculate Totals and GST based on updated goods using helper ---
     const {
       processedGoods,
@@ -992,6 +1310,92 @@ exports.updateTicket = async (req, res) => {
       logger.warn("ticket-update", `Calculation mismatch for ticket update ${ticketId}. Frontend vs Backend.`, user, { frontend: { totalQuantity: frontendTotalQuantity, totalAmount: frontendTotalAmount, finalGstAmount: frontendFinalGstAmount, grandTotal: frontendGrandTotal, roundOff: frontendRoundOff, finalRoundedAmount: frontendFinalRoundedAmount }, backend: { totalQuantity, totalAmount, finalGstAmount, grandTotal, roundOff, finalRoundedAmount }, action: "CALCULATION_MISMATCH_UPDATE" });
       await session.abortTransaction();
       return res.status(400).json({ message: "Calculation mismatch detected. Please re-check ticket details." });
+=======
+    // --- Recalculate Totals and GST based on updated goods ---
+    // This block is crucial to ensure backend data integrity
+    if (ticketDataForUpdate.goods && Array.isArray(ticketDataForUpdate.goods)) {
+        ticketDataForUpdate.totalQuantity = ticketDataForUpdate.goods.reduce(
+            (sum, item) => sum + Number(item.quantity || 0),
+            0
+        );
+        ticketDataForUpdate.totalAmount = ticketDataForUpdate.goods.reduce(
+            (sum, item) => sum + Number(item.amount || 0),
+            0
+        );
+
+        const currentBillingAddress = Array.isArray(ticketDataForUpdate.billingAddress) && ticketDataForUpdate.billingAddress.length === 5
+            ? ticketDataForUpdate.billingAddress
+            : Array.isArray(originalTicket.billingAddress) && originalTicket.billingAddress.length === 5
+                ? originalTicket.billingAddress
+                : ["", "", "", "", ""];
+
+        const billingState = (currentBillingAddress[2] || "")
+            .toUpperCase()
+            .trim();
+        const isBillingStateSameAsCompany =
+            billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+        ticketDataForUpdate.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
+
+        const gstGroups = {};
+        ticketDataForUpdate.goods.forEach((item) => {
+            const itemGstRate = parseFloat(item.gstRate);
+            if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+                if (!gstGroups[itemGstRate])
+                    gstGroups[itemGstRate] = { taxableAmount: 0 };
+                gstGroups[itemGstRate].taxableAmount += item.amount || 0;
+            }
+        });
+
+        const newGstBreakdown = [];
+        let runningTotalCgst = 0,
+            runningTotalSgst = 0,
+            runningTotalIgst = 0;
+
+        for (const rateKey in gstGroups) {
+            const group = gstGroups[rateKey];
+            const itemGstRate = parseFloat(rateKey);
+            if (isNaN(itemGstRate) || itemGstRate < 0) continue;
+
+            const taxableAmount = group.taxableAmount;
+            let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
+            let cgstRate = 0, sgstRate = 0, igstRate = 0;
+
+            if (itemGstRate > 0) {
+                if (isBillingStateSameAsCompany) {
+                    cgstRate = itemGstRate / 2; sgstRate = itemGstRate / 2;
+                    cgstAmount = (taxableAmount * cgstRate) / 100; sgstAmount = (taxableAmount * sgstRate) / 100;
+                    runningTotalCgst += cgstAmount; runningTotalSgst += sgstAmount;
+                } else {
+                    igstRate = itemGstRate;
+                    igstAmount = (taxableAmount * igstRate) / 100;
+                    runningTotalIgst += igstAmount;
+                }
+            }
+            newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
+        }
+        ticketDataForUpdate.gstBreakdown = newGstBreakdown;
+        ticketDataForUpdate.totalCgstAmount = runningTotalCgst;
+        ticketDataForUpdate.totalSgstAmount = runningTotalSgst;
+        ticketDataForUpdate.totalIgstAmount = runningTotalIgst;
+        ticketDataForUpdate.finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
+        ticketDataForUpdate.grandTotal = (ticketDataForUpdate.totalAmount || 0) + (ticketDataForUpdate.finalGstAmount || 0);
+
+        ticketDataForUpdate.roundOff = roundOff || 0;
+        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+
+    } else {
+        ticketDataForUpdate.totalQuantity = 0;
+        ticketDataForUpdate.totalAmount = 0;
+        ticketDataForUpdate.gstBreakdown = [];
+        ticketDataForUpdate.totalCgstAmount = 0;
+        ticketDataForUpdate.totalSgstAmount = 0;
+        ticketDataForUpdate.totalIgstAmount = 0;
+        ticketDataForUpdate.finalGstAmount = 0;
+        ticketDataForUpdate.grandTotal = 0;
+        ticketDataForUpdate.isBillingStateSameAsCompany = false;
+        ticketDataForUpdate.roundOff = roundOff || 0;
+        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
     }
 
     const ticket = await Ticket.findOneAndUpdate(
@@ -1000,8 +1404,12 @@ exports.updateTicket = async (req, res) => {
       { new: true, runValidators: true, session: session }
     );
 
+<<<<<<< HEAD
     if (!ticket) { // Should not happen if originalTicket was found
       logger.error("ticket", `Ticket update failed unexpectedly for ID: ${ticketId}.`, user, { requestBody: ticketDataForUpdate });
+=======
+    if (!ticket) {
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
       await session.abortTransaction();
       return res.status(500).json({ error: "Failed to update ticket unexpectedly." });
     }
@@ -1013,23 +1421,16 @@ exports.updateTicket = async (req, res) => {
       ticket.quotationNumber
     ) {
       try {
-        const updatedQuotation = await Quotation.findOneAndUpdate(
+        await Quotation.findOneAndUpdate(
           {
             referenceNumber: ticket.quotationNumber,
-            user: originalTicket.createdBy, // Use original creator of the ticket to find the quotation
+            user: originalTicket.createdBy,
           },
-          { $set: { status: "closed" } }, // Use $set for clarity
+          { $set: { status: "closed" } },
           { new: true, session: session }
         );
-        if (updatedQuotation) {
-          logger.info(
-            "quotation",
-            `Quotation ${ticket.quotationNumber} status updated to 'closed' as ticket is closed.`,
-            user,
-            { quotationId: updatedQuotation._id }
-          );
-        }
       } catch (quotationError) {
+<<<<<<< HEAD
         logger.error(
           "quotation",
           `Failed to update quotation ${ticket.quotationNumber} status to 'closed'.`,
@@ -1037,29 +1438,15 @@ exports.updateTicket = async (req, res) => {
           user
         );
         // Decide if this error should abort the transaction. For now, it's not critical.
+=======
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
       }
     }
 
     await session.commitTransaction();
-    logger.info(
-      "ticket",
-      `Ticket ${ticket.ticketNumber} updated successfully by controller function.`,
-      user,
-      {
-        ticketId: ticket._id,
-        ticketNumber: ticket.ticketNumber,
-      }
-    );
     res.json(ticket);
   } catch (error) {
     await session.abortTransaction();
-    logger.error(
-      "ticket",
-      `Failed to update ticket ID: ${ticketId}`,
-      error,
-      user,
-      { requestBody: ticketDataForUpdate }
-    );
     res.status(500).json({ error: "Failed to update ticket" });
   } finally {
     session.endSession();
@@ -1184,12 +1571,16 @@ exports.deleteTicket = async (req, res) => {
   const logDetails = { userId, ticketId, model: "Ticket", userEmail };
   const session = await mongoose.startSession();
 
-  logger.info(
-    "delete",
-    `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}. Transaction started.`,
+  logger.log({
     user,
-    logDetails
-  );
+    page: "Ticket",
+    action: "Delete Ticket",
+    api: req.originalUrl,
+    req,
+    message: `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}. Transaction started.`,
+    details: logDetails,
+    level: "info"
+  });
 
   try {
     session.startTransaction();
@@ -1198,20 +1589,22 @@ exports.deleteTicket = async (req, res) => {
     );
 
     if (!ticketToBackup) {
-      logger.warn(
-        "delete",
-        `[NOT_FOUND] Ticket not found for deletion: ${ticketId}.`,
+      logger.log({
         user,
-        logDetails
-      );
+        page: "Ticket",
+        action: "Delete Ticket",
+        api: req.originalUrl,
+        req,
+        message: `[NOT_FOUND] Ticket not found for deletion: ${ticketId}.`,
+        details: logDetails,
+        level: "warn"
+      });
       await session.abortTransaction();
       return res.status(404).json({ error: "Ticket not found" });
     }
 
-    // If ticket status is not "Hold", "Closed", or any other status that implies items are already "logically" returned or consumed,
-    // then add quantities back to inventory.
-    // If it's "Hold", items were already returned. If "Closed", items are considered consumed/delivered.
     if (!["Hold", "Closed"].includes(ticketToBackup.status)) {
+<<<<<<< HEAD
         logger.info("inventory", `Ticket ${ticketId} being deleted (status: ${ticketToBackup.status}). Rolling back item quantities.`, user);
         for (const good of ticketToBackup.goods) {
             if (!good.description || Number(good.quantity) <= 0) continue;
@@ -1255,10 +1648,105 @@ exports.deleteTicket = async (req, res) => {
             } catch (invError) {
                 logger.error("inventory", `Error rolling back stock for item "${good.description}" (Ticket ${ticketId} deletion): ${invError.message}`, user, { error: invError });
                 // Decide if this should abort the transaction. For now, it won't to allow ticket deletion to proceed.
+=======
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Delete Ticket",
+        api: req.originalUrl,
+        req,
+        message: `Ticket ${ticketId} being deleted (status: ${ticketToBackup.status}). Rolling back item quantities.`,
+        details: logDetails,
+        level: "info"
+      });
+      for (const good of ticketToBackup.goods) {
+        try {
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
+          if (itemToUpdate) {
+            let quantityToRollbackInBaseUnit = 0;
+            const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
+            const baseUnitName = itemToUpdate.baseUnit;
+            if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
+              quantityToRollbackInBaseUnit = Number(good.quantity);
+            } else {
+              const transactionalUnitInfo = itemToUpdate.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
+              if (transactionalUnitInfo) {
+                const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
+                quantityToRollbackInBaseUnit = Number(good.quantity) * conversionFactor;
+              } else {
+                logger.log({
+                  user,
+                  page: "Ticket",
+                  action: "Delete Ticket",
+                  api: req.originalUrl,
+                  req,
+                  message: `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Ticket Deletion rollback. Assuming base unit.`,
+                  details: { item: itemToUpdate.name },
+                  level: "warn"
+                });
+                quantityToRollbackInBaseUnit = Number(good.quantity);
+              }
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
             }
-        }
-    }
 
+            itemToUpdate.quantity += quantityToRollbackInBaseUnit;
+
+            const historyEntry = {
+              type: "Rollback (Ticket Deletion)",
+              date: new Date(),
+              quantityChange: quantityToRollbackInBaseUnit,
+              details: `Ticket ${ticketToBackup.ticketNumber} deleted. Rolled back ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
+              ticketReference: ticketToBackup._id,
+              userReference: user.id,
+            };
+            itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
+            itemToUpdate.inventoryLog.push(historyEntry);
+
+            if (itemToUpdate.quantity < itemToUpdate.lowStockThreshold) {
+              itemToUpdate.needsRestock = true;
+              itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
+            } else {
+              itemToUpdate.needsRestock = false;
+              itemToUpdate.restockAmount = 0;
+            }
+            await itemToUpdate.save({ session });
+            logger.log({
+              user,
+              page: "Ticket",
+              action: "Delete Ticket",
+              api: req.originalUrl,
+              req,
+              message: `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} deletion). New Qty: ${itemToUpdate.quantity.toFixed(2)}`,
+              details: { item: itemToUpdate.name },
+              level: "info"
+            });
+
+          } else {
+            logger.log({
+              user,
+              page: "Ticket",
+              action: "Delete Ticket",
+              api: req.originalUrl,
+              req,
+              message: `Item "${good.description}" (HSN: ${good.hsnCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`,
+              details: {},
+              level: "warn"
+            });
+          }
+        } catch (invError) {
+          logger.log({
+            user,
+            page: "Ticket",
+            action: "Inventory Rollback Error",
+            api: req.originalUrl,
+            req,
+            message: "Inventory rollback error",
+            details: { error: invError.message, stack: invError.stack },
+            level: "error"
+          });
+        }
+      }
+    }
 
     if (ticketToBackup.quotationNumber) {
       try {
@@ -1267,33 +1755,43 @@ exports.deleteTicket = async (req, res) => {
             referenceNumber: ticketToBackup.quotationNumber,
             user: ticketToBackup.createdBy,
           },
-          { $set: { status: "hold" } }, // Use $set
+          { $set: { status: "hold" } },
           { new: true, session: session }
         );
         if (updatedQuotation) {
-          logger.info(
-            "quotation",
-            `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`,
+          logger.log({
             user,
-            { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id }
-          );
+            page: "Ticket",
+            action: "Delete Ticket",
+            api: req.originalUrl,
+            req,
+            message: `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`,
+            details: { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id },
+            level: "info"
+          });
         } else {
-          logger.warn(
-            "quotation",
-            `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`,
+          logger.log({
             user,
-            { ticketId: ticketToBackup._id }
-          );
+            page: "Ticket",
+            action: "Delete Ticket",
+            api: req.originalUrl,
+            req,
+            message: `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`,
+            details: { ticketId: ticketToBackup._id },
+            level: "warn"
+          });
         }
       } catch (quotationError) {
-        logger.error(
-          "quotation",
-          `Failed to update quotation ${ticketToBackup.quotationNumber} status to 'hold' during linked ticket deletion.`,
-          quotationError,
+        logger.log({
           user,
-          { ticketId: ticketToBackup._id }
-        );
-        // Decide if this error should abort the transaction. For now, it won't.
+          page: "Ticket",
+          action: "Quotation Rollback Error",
+          api: req.originalUrl,
+          req,
+          message: "Quotation rollback error",
+          details: { error: quotationError.message, stack: quotationError.stack },
+          level: "error"
+        });
       }
     }
 
@@ -1301,10 +1799,16 @@ exports.deleteTicket = async (req, res) => {
     const isSuperAdmin = req.user.role === "super-admin";
 
     if (!isCreator && !isSuperAdmin) {
-      logger.warn(
-        `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
-        { ...logDetails, createdBy: ticketToBackup.createdBy.toString() }
-      );
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Delete Ticket",
+        api: req.originalUrl,
+        req,
+        message: `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
+        details: { ...logDetails, createdBy: ticketToBackup.createdBy.toString() },
+        level: "warn"
+      });
       await session.abortTransaction();
       return res.status(403).json({
         error: "Forbidden: You do not have permission to delete this ticket.",
@@ -1313,64 +1817,75 @@ exports.deleteTicket = async (req, res) => {
 
     const backupData = {
       originalModel: "Ticket",
-      data: ticketToBackup.toObject(), // Store the full ticket object
+      data: ticketToBackup.toObject(),
       originalId: ticketToBackup._id,
       deletedBy: userId,
       deletedAt: new Date(),
       originalCreatedAt: ticketToBackup.createdAt,
       originalUpdatedAt: ticketToBackup.updatedAt,
-      // backupReason: `${
-      //   isSuperAdmin ? "Admin" : "User"
-      // }-initiated deletion via API`,
     };
-    // Remove fields that are specific to the live Ticket model but not needed or problematic in backup's generic 'data'
     delete backupData.data._id;
     delete backupData.data.__v;
 
     const newBackupEntry = new UniversalBackup(backupData);
     await newBackupEntry.save({ session });
-    logger.info(
-      "delete",
-      `[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`,
+    logger.log({
       user,
-      {
+      page: "Ticket",
+      action: "Delete Ticket",
+      api: req.originalUrl,
+      req,
+      message: `[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`,
+      details: {
         ...logDetails,
         originalId: ticketToBackup._id,
         backupId: newBackupEntry._id,
         backupModel: "UniversalBackup",
-      }
-    );
+      },
+      level: "info"
+    });
 
     await Ticket.findByIdAndDelete(ticketId, { session });
-    logger.info(
-      "delete",
-      `[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`,
+    logger.log({
       user,
-      { ...logDetails, originalId: ticketToBackup._id }
-    );
+      page: "Ticket",
+      action: "Delete Ticket",
+      api: req.originalUrl,
+      req,
+      message: `[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`,
+      details: { ...logDetails, originalId: ticketToBackup._id },
+      level: "info"
+    });
 
     const ticketDocumentsPath = path.join(
       process.cwd(),
       "uploads",
       ticketId.toString()
-    ); // Ensure ticketId is string
+    );
     if (fs.existsSync(ticketDocumentsPath)) {
       try {
         await fs.remove(ticketDocumentsPath);
-        logger.info(
-          "delete",
-          `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
+        logger.log({
           user,
-          logDetails
-        );
+          page: "Ticket",
+          action: "Delete Ticket",
+          api: req.originalUrl,
+          req,
+          message: `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
+          details: logDetails,
+          level: "info"
+        });
       } catch (folderError) {
-        logger.error(
-          "delete",
-          `[DOC_FOLDER_DELETE_ERROR] Error deleting documents folder ${ticketDocumentsPath}:`,
-          folderError,
+        logger.log({
           user,
-          logDetails
-        );
+          page: "Ticket",
+          action: "Document Folder Deletion Error",
+          api: req.originalUrl,
+          req,
+          message: "Document folder deletion error",
+          details: { error: folderError.message, stack: folderError.stack },
+          level: "error"
+        });
       }
     }
 
@@ -1387,18 +1902,27 @@ exports.deleteTicket = async (req, res) => {
           { $pull: { tickets: ticketToBackup._id } },
           { session }
         );
-        logger.info(
-          "delete",
-          `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
+        logger.log({
           user,
-          { ...logDetails, targetUserId: uid }
-        );
+          page: "Ticket",
+          action: "Delete Ticket",
+          api: req.originalUrl,
+          req,
+          message: `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
+          details: { ...logDetails, targetUserId: uid },
+          level: "info"
+        });
       } catch (userUpdateError) {
-        logger.error(
-          `[USER_TICKET_REF_REMOVE_ERROR] Failed to remove ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
-          userUpdateError,
-          { ...logDetails, targetUserId: uid }
-        );
+        logger.log({
+          user,
+          page: "Ticket",
+          action: "User Ticket Reference Removal Error",
+          api: req.originalUrl,
+          req,
+          message: `Failed to remove ticket reference from User ID: ${uid}`,
+          details: { error: userUpdateError.message, stack: userUpdateError.stack },
+          level: "error"
+        });
       }
     }
 
@@ -1410,13 +1934,16 @@ exports.deleteTicket = async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    logger.error(
-      "delete",
-      `[DELETE_ERROR] Error during Ticket deletion process for ID: ${ticketId} by ${userEmail}.`,
-      error,
+    logger.log({
       user,
-      logDetails
-    );
+      page: "Ticket",
+      action: "Delete Ticket Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to delete ticket ID: ${ticketId}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res
       .status(500)
       .json({ error: "Failed to delete ticket. Check server logs." });
@@ -1427,19 +1954,27 @@ exports.deleteTicket = async (req, res) => {
 
 exports.adminDeleteTicket = async (req, res) => {
   const user = req.user || null;
-  logger.debug(
-    "delete",
-    `[ADMIN_DELETE_TICKET_INVOKED] Admin delete initiated for Ticket ID: ${req.params.id}.`,
+  logger.log({
     user,
-    { ticketId: req.params.id, model: "Ticket" }
-  );
+    page: "Ticket",
+    action: "Admin Delete Ticket",
+    api: req.originalUrl,
+    req,
+    message: `[ADMIN_DELETE_TICKET_INVOKED] Admin delete initiated for Ticket ID: ${req.params.id}.`,
+    details: { ticketId: req.params.id, model: "Ticket" },
+    level: "debug"
+  });
   if (req.user.role !== "super-admin") {
-    logger.warn(
-      "delete",
-      `[AUTH_FAILURE] Non-admin attempt to use adminDeleteTicket for Ticket ID: ${req.params.id}.`,
+    logger.log({
       user,
-      { ticketId: req.params.id }
-    );
+      page: "Ticket",
+      action: "Admin Delete Ticket",
+      api: req.originalUrl,
+      req,
+      message: `[AUTH_FAILURE] Non-admin attempt to use adminDeleteTicket for Ticket ID: ${req.params.id}.`,
+      details: { ticketId: req.params.id },
+      level: "warn"
+    });
     return res.status(403).json({ error: "Forbidden" });
   }
   return exports.deleteTicket(req, res);
@@ -1453,12 +1988,16 @@ exports.checkExistingTicket = async (req, res) => {
     const ticket = await Ticket.findOne({ quotationNumber });
     res.status(200).json({ exists: !!ticket });
   } catch (error) {
-    logger.error(
-      "ticket",
-      `Failed to check existing ticket for quotation number: ${quotationNumber}`,
-      error,
-      req.user
-    );
+    logger.log({
+      user: req.user,
+      page: "Ticket",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: "Failed to check existing ticket",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({ message: "Failed to check existing ticket" });
   }
 };
@@ -1479,21 +2018,9 @@ exports.transferTicket = async (req, res) => {
 
   try {
     session.startTransaction();
-    logger.info(
-      "transfer",
-      `[TRANSFER_INITIATED] Ticket ID: ${ticketId} to User ID: ${newAssigneeId} by User: ${initiator.email}.`,
-      initiator,
-      logContext
-    );
 
     const ticket = await Ticket.findById(ticketId).session(session);
     if (!ticket) {
-      logger.warn(
-        "transfer",
-        `[NOT_FOUND] Ticket not found for transfer: ${ticketId}.`,
-        initiator,
-        logContext
-      );
       await session.abortTransaction();
       return res.status(404).json({ message: "Ticket not found" });
     }
@@ -1504,12 +2031,16 @@ exports.transferTicket = async (req, res) => {
       ticket.currentAssignee.toString() === initiator.id.toString();
 
     if (!isSuperAdmin && !isCurrentAssignee) {
-      logger.warn(
-        "transfer",
-        `[AUTH_FAILURE] Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`,
-        initiator,
-        { ...logContext, currentAssignee: ticket.currentAssignee?.toString() }
-      );
+      logger.log({
+        user: initiator,
+        page: "Ticket",
+        action: "Transfer Ticket Error",
+        api: req.originalUrl,
+        req,
+        message: `Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`,
+        details: { ...logContext, reason: "Not current assignee or super-admin" },
+        level: "warn"
+      });
       await session.abortTransaction();
       return res.status(403).json({
         message:
@@ -1519,12 +2050,7 @@ exports.transferTicket = async (req, res) => {
 
     const newAssigneeUser = await User.findById(newAssigneeId).session(session);
     if (!newAssigneeUser) {
-      logger.warn(
-        "transfer",
-        `[ASSIGNEE_NOT_FOUND] User to transfer to (ID: ${newAssigneeId}) not found.`,
-        initiator,
-        logContext
-      );
+     
       await session.abortTransaction();
       return res.status(404).json({ message: "User to transfer to not found" });
     }
@@ -1574,26 +2100,18 @@ exports.transferTicket = async (req, res) => {
         "firstname lastname email"
       )
       .populate("createdBy", "firstname lastname email");
-
-    logger.info(
-      "transfer",
-      `[TRANSFER_SUCCESS] Ticket ID: ${ticketId} successfully transferred to ${newAssigneeUser.email}.`,
-      initiator,
-      logContext
-    );
-    res.status(200).json({
-      message: "Ticket transferred successfully.",
-      ticket: populatedTicket,
-    });
   } catch (error) {
     await session.abortTransaction();
-    logger.error(
-      "transfer",
-      `[TRANSFER_ERROR] Error transferring Ticket ID: ${ticketId}.`,
-      error,
-      initiator,
-      logContext
-    );
+logger.log({
+      user: req.user || initiator || null,
+      page: "Ticket",
+      action: "Error",
+      api: req.originalUrl,
+      req,
+      message: "Server error during ticket transfer.",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({
       message: "Server error during ticket transfer.",
       details: error.message,
@@ -1607,17 +2125,6 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
   const requestingUser = req.user;
 
   if (!requestingUser || !requestingUser.id) {
-    logger.error(
-      "ticket-transfer-candidates",
-      "Authentication error: User or User ID not found in request for transfer candidates.",
-      null,
-      {
-        path: req.path,
-        ip: req.ip,
-        receivedUserId: requestingUser ? requestingUser.id : "N/A",
-        receivedUserEmail: requestingUser ? requestingUser.email : "N/A",
-      }
-    );
     return res
       .status(401)
       .json({ message: "Authentication required or user session invalid." });
@@ -1632,27 +2139,34 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
   try {
     const users = await User.find({
       _id: { $ne: requestingUser.id },
-      role: { $nin: ["client"] }, // Exclude 'client' role
+      role: { $nin: ["client"] },
       isActive: true,
     })
       .select("firstname lastname email role _id")
       .lean();
 
-    logger.info(
-      "ticket-transfer-candidates",
-      `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
-      requestingUser,
-      logContext
-    );
+    logger.log({
+      user: requestingUser,
+      page: "Ticket",
+      action: "Get Transfer Candidates",
+      api: req.originalUrl,
+      req,
+      message: `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
+      details: logContext,
+      level: "info"
+    });
     res.status(200).json(users);
   } catch (error) {
-    logger.error(
-      "ticket-transfer-candidates",
-      `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
-      error,
-      requestingUser,
-      { ...logContext, errorMessage: error.message, stack: error.stack }
-    );
+    logger.log({
+      user: requestingUser,
+      page: "Ticket",
+      action: "Get Transfer Candidates Error",
+      api: req.originalUrl,
+      req,
+      message: `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
+      details: { ...logContext, errorMessage: error.message, stack: error.stack },
+      level: "error"
+    });
     res.status(500).json({
       message: "Failed to load users for transfer.",
       details: error.message,
@@ -1666,14 +2180,28 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
   const user = req.user || null;
   try {
     const tickets = await OpenticketModel.find().sort({ createdAt: -1 });
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Get All Tickets (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Fetched all tickets (index.js logic)`,
+      details: { count: tickets.length },
+      level: "info"
+    });
     res.json(tickets);
   } catch (err) {
-    logger.error(
-      "ticket-controller",
-      "Error fetching all tickets (index.js logic)",
-      err,
-      user
-    );
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Get All Tickets (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Error fetching all tickets (index.js logic)`,
+      details: { error: err.message },
+      level: "error"
+    });
     res.status(500).json({ error: "Error fetching tickets" });
   }
 };
@@ -1716,25 +2244,35 @@ exports.createTicket_IndexLogic = async (req, res) => {
         other: [],
       },
     });
-    logger.info("ticket-controller", `Ticket created (index.js logic)`, user, {
-      ticketId: newTicket._id,
-      companyName: newTicket.companyName,
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Create Ticket (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Ticket created (index.js logic)`,
+      details: { ticketId: newTicket._id, companyName: newTicket.companyName },
+      level: "info"
     });
     res.status(201).json(newTicket);
   } catch (err) {
-    logger.error(
-      "ticket-controller",
-      "Error creating ticket (index.js logic)",
-      err,
+    logger.log({
       user,
-      { requestBody: req.body }
-    );
+      page: "Ticket",
+      action: "Create Ticket (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Error creating ticket (index.js logic)`,
+      details: { error: err.message, requestBody: req.body },
+      level: "error"
+    });
     res
       .status(500)
       .json({ error: "Error creating ticket", details: err.message });
   }
 };
 
+<<<<<<< HEAD
 
 exports.getQuotationByReference = asyncHandler(async (req, res) =>{
   const user = req.user;
@@ -1970,6 +2508,8 @@ const ticketId = req.params.id;     const { documentType, documentId, isOther } 
 };
 
 
+=======
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 exports.updateTicket_IndexLogic = async (req, res) => {
   const user = req.user || null;
   try {
@@ -1980,26 +2520,40 @@ exports.updateTicket_IndexLogic = async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!updatedTicket) {
-      logger.warn(
-        "ticket-controller",
-        "Ticket not found for update (index.js logic)",
+      logger.log({
         user,
-        { ticketId: req.params.id }
-      );
+        page: "Ticket",
+        action: "Update Ticket (Index Logic)",
+        api: req.originalUrl,
+        req,
+        message: "Ticket not found for update (index.js logic)",
+        details: { ticketId: req.params.id },
+        level: "warn"
+      });
       return res.status(404).json({ error: "Ticket not found" });
     }
-    logger.info("ticket-controller", `Ticket updated (index.js logic)`, user, {
-      ticketId: updatedTicket._id,
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Update Ticket (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Ticket updated (index.js logic)`,
+      details: { ticketId: updatedTicket._id },
+      level: "info"
     });
     res.json(updatedTicket);
   } catch (err) {
-    logger.error(
-      "ticket-controller",
-      `Error updating ticket ${req.params.id} (index.js logic)`,
-      err,
+    logger.log({
       user,
-      { requestBody: req.body }
-    );
+      page: "Ticket",
+      action: "Update Ticket (Index Logic)",
+      api: req.originalUrl,
+      req,
+      message: `Error updating ticket ${req.params.id} (index.js logic)`,
+      details: { error: err.message, requestBody: req.body },
+      level: "error"
+    });
     res
       .status(500)
       .json({ error: "Error updating ticket", message: err.message });
@@ -2017,12 +2571,7 @@ exports.serveFile_IndexLogic = (req, res) => {
     : path.join(process.cwd(), "uploads", filename); // Fallback for general uploads if any
 
   if (!fs.existsSync(filePath)) {
-    logger.warn(
-      "ticket-controller",
-      "File not found for serving (index.js logic)",
-      user,
-      { filename, ticketId, attemptedPath: filePath }
-    );
+   
     return res.status(404).send("File not found");
   }
 
@@ -2049,10 +2598,6 @@ exports.serveFile_IndexLogic = (req, res) => {
     );
   }
   res.setHeader("Content-Type", contentType);
-  logger.debug("ticket-controller", `Serving file (index.js logic)`, user, {
-    filename,
-    contentType,
-  });
   fs.createReadStream(filePath).pipe(res);
 };
 

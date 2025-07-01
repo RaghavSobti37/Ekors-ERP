@@ -18,4 +18,8 @@ const universalBackupSchema = new mongoose.Schema({
   // }]
 }, { timestamps: true });
 
+universalBackupSchema.statics.clearAll = function() {
+  return this.deleteMany({});
+};
+
 module.exports = mongoose.model("UniversalBackup", universalBackupSchema);

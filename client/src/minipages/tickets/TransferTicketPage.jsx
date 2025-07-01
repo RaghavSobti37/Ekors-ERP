@@ -8,7 +8,6 @@ import UserSearchComponent from "../../components/UserSearchComponent.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
 
 const TransferTicketPage = () => {
   const { id: ticketIdFromParams } = useParams();

@@ -22,10 +22,19 @@ import {
   formatDateForInput,
   formatDateTime,
 } from "../../utils/helpers";
+<<<<<<< HEAD
 import frontendLogger from "../../utils/frontendLogger.js";
 import ActionButtons from "../../components/ActionButtons.jsx";
 import { FaEye, FaUpload, FaTrash, FaFilePdf } from "react-icons/fa";
 import { useCompanyInfo } from "../../context/CompanyInfoContext.jsx";
+=======
+import { PDFViewer } from "@react-pdf/renderer";
+import PIPDF from "../../components/PIPDF.jsx";
+import QuotationPDF from "../../components/QuotationPDF.jsx";
+import { PIActions } from "../../pages/Tickets.jsx"; // Assuming PIActions is correctly defined and exported
+import { FaEye, FaUpload, FaTrash, FaFilePdf } from "react-icons/fa"; // Removed unused FaDownload, FaFileWord, FaPlus
+import { useCompanyInfo } from "../../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
+>>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
 const getStatusBadgeColor = (status) => {
   switch (status) {

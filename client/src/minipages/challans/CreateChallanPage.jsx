@@ -15,7 +15,6 @@ import ClientSearchComponent from "../../components/ClientSearchComponent.jsx"; 
 import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, showToast } from "../../utils/helpers";
-import frontendLogger from "../../utils/frontendLogger.js";
 
 const CreateChallanPageComponent = () => {
   const navigate = useNavigate();
@@ -86,12 +85,6 @@ const CreateChallanPageComponent = () => {
         });
 
         showToast("Challan created successfully!", true);
-        frontendLogger.info(
-          "challanActivity",
-          `Challan created for ${formData.companyName}`,
-          authUser,
-          { action: "CREATE_CHALLAN_SUCCESS" }
-        );
         navigate("/challans");
       } catch (err) {
         const errorMessage = handleApiError(
@@ -102,12 +95,6 @@ const CreateChallanPageComponent = () => {
         );
         setError(errorMessage);
         toast.error(errorMessage);
-        frontendLogger.error(
-          "challanActivity",
-          `Failed to create challan for ${formData.companyName}`,
-          authUser,
-          { action: "CREATE_CHALLAN_FAILURE", error: err }
-        );
       } finally {
         setIsLoading(false);
       }

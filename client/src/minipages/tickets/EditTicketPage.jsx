@@ -9,7 +9,6 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
-import frontendLogger from "../../utils/frontendLogger.js";
 import axios from "axios"; // For pincode API
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
@@ -83,12 +82,10 @@ const EditTicketPage = () => {
         deadline: data.deadline ? formatDateForInput(data.deadline) : null,
         validityDate: data.validityDate ? formatDateForInput(data.validityDate) : initialTicketData.validityDate,
         goods: (data.goods || []).map(g => ({
-            ...g, 
-            originalPrice: g.originalPrice || g.price,
-            maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
-            gstRate: parseFloat(g.gstRate || 0),
-            subtexts: g.subtexts || [],
-            originalItem: g.originalItem || g, // Ensure originalItem is preserved
+            ...g,
+            hsnCode: g.hsnCode || "",
+            originalItem: g.originalItem?._id || g.originalItem || undefined,
+            // ...other fields...
         })),
       });
       setOriginalStatus(data.status);
@@ -135,7 +132,9 @@ const EditTicketPage = () => {
             deadline: initialData.deadline ? formatDateForInput(initialData.deadline) : null,
             validityDate: initialData.validityDate ? formatDateForInput(initialData.validityDate) : initialTicketData.validityDate,
             goods: (initialData.goods || []).map(g => ({
-                ...g, 
+                ...g,
+                hsnCode: g.hsnCode || "",
+                originalItem: g.originalItem?._id || g.originalItem || undefined,
                 originalPrice: g.originalPrice || g.price,
                 maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
                 gstRate: parseFloat(g.gstRate || 0),
@@ -246,11 +245,11 @@ const EditTicketPage = () => {
   const handleAddItemToTicket = useCallback((item) => {
     setTicketData(prev => {
       // Determine the default unit to use (e.g., the base unit)
-      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "Nos";
+      const defaultUnit = item.units.find(u => u.isBaseUnit)?.name || item.units[0]?.name || "nos";
       const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
       const newGoodsItem = {
-        srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
+        srNo: prev.goods.length + 1, description: item.name, hsnCode: item.hsnCode || "",
         quantity: 1, unit: defaultUnit, // Set default unit
         price: pricePerSelectedUnit, // Price per selected unit (already calculated based on base unit)
         amount: pricePerSelectedUnit, // Amount for 1 quantity
@@ -368,8 +367,11 @@ const EditTicketPage = () => {
               ticketData.shippingAddress.state || "", ticketData.shippingAddress.city || "",
               ticketData.shippingAddress.pincode || "" ],
         goods: ticketData.goods.map(g => ({
-          ...g, gstRate: parseFloat(g.gstRate || 0),
-          originalPrice: g.originalPrice, maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
+          ...g,
+          hsnCode: g.hsnCode || "",
+          originalItem: g.originalItem?._id || g.originalItem || undefined,
+          gstRate: parseFloat(g.gstRate || 0),
+          maxDiscountPercentage: Number(g.maxDiscountPercentage || 0),
           subtexts: g.subtexts || [],
         })),
         termsAndConditions: ticketData.termsAndConditions, // Ensure terms and conditions are sent
@@ -386,13 +388,11 @@ const EditTicketPage = () => {
 
       if (responseData) {
         toast.success(`Ticket ${ticketData.ticketNumber} updated!`);
-        frontendLogger.info("ticketActivity", `Ticket ${ticketData.ticketNumber} updated`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_SUCCESS" });
         navigate("/tickets");
       } // Removed setFormValidated from here
     } catch (error) {
       const errorMsg = handleApiError(error, "Failed to update ticket", authUser, "ticketActivity");
       setError(errorMsg); toast.error(errorMsg);
-      frontendLogger.error("ticketActivity", `Failed to update ticket ${ticketData.ticketNumber}`, authUser, { ticketId: ticketIdFromParams, action: "UPDATE_TICKET_FAILURE" });
     } finally { setIsLoading(false); } // Removed setFormValidated from here
   }, [ticketData, originalStatus, statusChangeComment, ticketIdFromParams, navigate, authUser, roundOffAmount, roundedGrandTotal, setFormValidated, setIsLoading, setError, setStatusChangeComment]);
 
@@ -629,12 +629,12 @@ const EditTicketPage = () => {
                     ))}
                     <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
                   </td>
-                  <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
                     {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
                       <Form.Select
-                        value={item.unit || item.originalItem.pricing?.baseUnit || "Nos"}
+                        value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
                         onChange={(e) => handleTicketGoodsChange(index, "unit", e.target.value)}
                       >
                         {item.originalItem.units.map((unitOption) => (
@@ -642,7 +642,7 @@ const EditTicketPage = () => {
                         ))}
                       </Form.Select>
                     ) : (
-                      <Form.Control type="text" value={item.unit || "Nos"} readOnly />
+                      <Form.Control type="text" value={item.unit || "nos"} readOnly />
                     )}
                   </td>
                   <td><Form.Control required type="number" value={item.gstRate === null ? "" : item.gstRate} onChange={(e) => handleTicketGoodsChange(index, "gstRate", e.target.value)} placeholder="GST %" min="0" step="0.1" /></td>
