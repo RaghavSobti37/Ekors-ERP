@@ -37,6 +37,7 @@ const PurchaseFormPage = () => {
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
   const [isItemSearchDropdownOpen, setIsItemSearchDropdownOpen] =
     useState(false);
+  const [fieldErrors, setFieldErrors] = useState({}); // For tracking field-specific errors
 
   const handlePurchaseChange = useCallback((e) => {
     setPurchaseData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -202,10 +203,23 @@ const PurchaseFormPage = () => {
       await apiClient("/items/purchase", { method: "POST", body: payload });
       showToast("Purchase added successfully! Item quantities updated.", true);
       setPurchaseData(initialPurchaseData);
+      setFieldErrors({});
       navigate("/items");
     } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to add purchase.", user);
+      // Try to extract field-specific errors from backend
+      let errorMessage = "Failed to add purchase.";
+      let errors = {};
+      if (err?.response?.data) {
+        if (err.response.data.errors) {
+          // Mongoose validation error format
+          errors = err.response.data.errors;
+          errorMessage = "Please correct the highlighted fields.";
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        }
+      }
       setError(errorMessage);
+      setFieldErrors(errors);
     } finally {
       setIsSubmitting(false);
     }

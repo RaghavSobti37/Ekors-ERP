@@ -158,7 +158,7 @@ const GoodsTable = ({
                 />
               </td>
               <td>
-                {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (
+                {item.originalItem && typeof item.originalItem === "object" && Array.isArray(item.originalItem.units) && item.originalItem.units.length > 0 ? (
                   <Form.Control
                     as="select"
                     value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
@@ -174,7 +174,9 @@ const GoodsTable = ({
                   </Form.Control>
                 ) : (
                   <Form.Control
-                    type="text" value={item.unit || "nos"} readOnly
+                    type="text"
+                    value={item.unit || "nos"}
+                    readOnly
                   />
                 )}
               </td>
@@ -412,6 +414,7 @@ const QuotationFormPage = () => {
     initialNewItemFormData
   );
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({}); // 1. Add state for field errors
   const quotationFormId = "quotation-form-page";
 
   useEffect(() => {
@@ -907,91 +910,113 @@ const QuotationFormPage = () => {
     async (event) => {
       event.preventDefault();
       setFormValidated(true);
+      setFieldErrors({});
+      let errors = {};
       const form = event.currentTarget;
-      if (form.checkValidity() === false) {
-        event.stopPropagation();
-        setError("Please fill in all required fields.");
-        toast.error("Please fill in all required fields.");
-        return;
-      }
-      if (!quotationData.client._id) {
-        if (
-          quotationData.client.companyName ||
-          quotationData.client.gstNumber ||
-          quotationData.client.email ||
-          quotationData.client.phone
-        ) {
-          setError("Save new client details first.");
-          toast.warn("Save new client details first.");
-        } else {
-          setError("Select or save client details.");
-          toast.warn("Select or save client details.");
-        }
-        return;
-      }
-      if (!quotationData.goods || quotationData.goods.length === 0) {
-        setError("Add at least one item.");
-        toast.error("Add at least one item.");
-        return;
-      }
-      for (let i = 0; i < quotationData.goods.length; i++) {
-        const item = quotationData.goods[i]; // This is the item from the quotation's goods array
-        if (
-          !item.description ||
-          !(parseFloat(item.quantity) > 0) ||
-          !(parseFloat(item.price) >= 0) ||
-          !item.unit
-        ) {
-          const itemErrorMsg = `Item ${i + 1} incomplete.`;
-          setError(itemErrorMsg);
-          toast.error(itemErrorMsg);
-          return;
-        }
-        if (item.maxDiscountPercentage > 0) {
-          const selectedUnitInfo = item.originalItem?.units?.find(u => u.name === item.unit); // Added optional chaining for .units
-          const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
-          const originalBasePrice = parseFloat(item.originalItem?.pricing?.sellingPrice || item.originalPrice);
-          const minAllowedPrice = (originalBasePrice * (1 - (item.maxDiscountPercentage || 0) / 100)) * conversionFactor;
 
-          if (parseFloat(item.price) < minAllowedPrice) {
-            const priceErrorMsg = `Warning: Price for ${item.description} (₹${parseFloat(item.price).toFixed(2)}) is below minimum (₹${minAllowedPrice.toFixed(2)}) due to discount limit of ${item.maxDiscountPercentage}%.`;
-            setError(priceErrorMsg);
-            toast.warn(priceErrorMsg);
-          }
-        }
+      // Validate required fields
+      if (!quotationData.client.companyName) errors["client.companyName"] = "Company Name is required";
+      if (!quotationData.client.clientName) errors["client.clientName"] = "Client Name is required";
+      if (!quotationData.client.gstNumber) errors["client.gstNumber"] = "GST Number is required";
+      if (!quotationData.client.email) errors["client.email"] = "Email is required";
+      if (!quotationData.client.phone) errors["client.phone"] = "Phone is required";
+      if (!quotationData.billingAddress.address1) errors["billingAddress.address1"] = "Address Line 1 is required";
+      if (!quotationData.billingAddress.pincode) errors["billingAddress.pincode"] = "Pincode is required";
+      if (!quotationData.billingAddress.city) errors["billingAddress.city"] = "City is required";
+      if (!quotationData.billingAddress.state) errors["billingAddress.state"] = "State is required";
+      if (!quotationData.goods || quotationData.goods.length === 0) errors["goods"] = "Add at least one item.";
+
+      // Validate goods
+      quotationData.goods.forEach((item, i) => {
+        if (!item.description) errors[`goods.${i}.description`] = `Description required for item ${i + 1}`;
+        if (!item.hsnCode) errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
+        if (!(parseFloat(item.quantity) > 0)) errors[`goods.${i}.quantity`] = `Quantity required for item ${i + 1}`;
+        if (!(parseFloat(item.price) >= 0)) errors[`goods.${i}.price`] = `Price required for item ${i + 1}`;
+        if (!item.unit) errors[`goods.${i}.unit`] = `Unit required for item ${i + 1}`;
+      });
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setError("Please fix the highlighted errors.");
+        toast.error("Please fix the highlighted errors.");
+        return;
       }
+
       setIsLoading(true);
       setError(null);
+
+      let clientId = quotationData.client._id;
+
+      // 2. If client is new, save client first
+      if (!clientId) {
+        try {
+          const clientPayload = {
+            companyName: quotationData.client.companyName.trim(),
+            gstNumber: quotationData.client.gstNumber.trim().toUpperCase(),
+            clientName: quotationData.client.clientName.trim(),
+            phone: quotationData.client.phone.trim(),
+            email: quotationData.client.email.trim().toLowerCase(),
+          };
+          const responseData = await apiClient("/clients", {
+            method: "POST",
+            body: clientPayload,
+          });
+          if (responseData && responseData._id) {
+            clientId = responseData._id;
+          } else {
+            setError("Failed to save client: Unexpected response.");
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          const errorMessage = handleApiError(
+            error,
+            "Failed to save client details.",
+            user,
+            "clientActivity"
+          );
+          setError(errorMessage);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // 3. Prepare goods for submission (fix ObjectId error)
+      const goodsForSubmission = quotationData.goods.map((item) => ({
+        srNo: item.srNo,
+        description: item.description,
+        hsnCode: item.hsnCode || "",
+        quantity: Number(item.quantity),
+        unit: item.unit || "nos",
+        price: Number(item.price),
+        amount: Number(item.amount),
+        sellingPrice: Number(item.sellingPrice),
+        originalItem: typeof item.originalItem === "object"
+          ? item.originalItem?._id
+          : item.originalItem, // Only send ObjectId or undefined
+        maxDiscountPercentage: item.maxDiscountPercentage
+          ? Number(item.maxDiscountPercentage)
+          : 0,
+        gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
+        subtexts: item.subtexts || [],
+      }));
+
       const submissionData = {
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
         validityDate: new Date(quotationData.validityDate).toISOString(),
         orderIssuedBy: quotationData.orderIssuedBy,
-        goods: quotationData.goods.map((item) => ({
-          srNo: item.srNo,
-          description: item.description,
-          hsnCode: item.hsnCode || item.hsnCode || "",
-          quantity: Number(item.quantity),
-          unit: item.unit || "nos",
-          price: Number(item.price),
-          amount: Number(item.amount),
-          sellingPrice: Number(item.sellingPrice),
-          originalItem: item.originalItem?._id || item.originalItem,
-          maxDiscountPercentage: item.maxDiscountPercentage
-            ? Number(item.maxDiscountPercentage)
-            : 0,
-          gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
-          subtexts: item.subtexts || [],
-        })),
+        goods: goodsForSubmission,
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
         gstAmount: Number(quotationData.gstAmount),
         grandTotal: Number(quotationData.grandTotal),
-        roundOffTotal: Number(quotationData.roundOffTotal), // <-- Add this
+        roundOffTotal: Number(quotationData.roundOffTotal),
         status: quotationData.status || "open",
-        client: quotationData.client,
+        client: { ...quotationData.client, _id: clientId },
         billingAddress: quotationData.billingAddress,
       };
+
       try {
         const url =
           isEditing && quotationIdFromParams
@@ -1017,16 +1042,6 @@ const QuotationFormPage = () => {
           user,
           "quotationActivity"
         );
-        if (error.status === 401) {
-          navigate("/login", {
-            state: {
-              from: `/quotations/form${
-                quotationIdFromParams ? `/${quotationIdFromParams}` : ""
-              }`,
-            },
-          });
-          return;
-        }
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
@@ -1117,7 +1132,16 @@ const QuotationFormPage = () => {
             )}
           </>
         )}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && (
+          <Alert variant="danger">
+            {error}
+            <ul>
+              {Object.entries(fieldErrors).map(([field, msg]) => (
+                <li key={field}>{msg}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
         <div className="row">
           <Form.Group className="mb-3 col-md-4">
             <Form.Label>
@@ -1218,7 +1242,11 @@ const QuotationFormPage = () => {
               }
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
+              isInvalid={!!fieldErrors["client.companyName"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["client.companyName"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3 col-md-6">
             <Form.Label>
@@ -1236,7 +1264,11 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               placeholder="Enter contact person's name"
+              isInvalid={!!fieldErrors["client.clientName"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["client.clientName"]}
+            </Form.Control.Feedback>
           </Form.Group>
         </div>
         <div className="row">
@@ -1254,7 +1286,11 @@ const QuotationFormPage = () => {
               }
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
+              isInvalid={!!fieldErrors["client.gstNumber"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["client.gstNumber"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3 col-md-6">
             <Form.Label>
@@ -1269,7 +1305,11 @@ const QuotationFormPage = () => {
               }
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
+              isInvalid={!!fieldErrors["client.email"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["client.email"]}
+            </Form.Control.Feedback>
           </Form.Group>
         </div>
         <div className="row mb-3 align-items-end">
@@ -1286,7 +1326,11 @@ const QuotationFormPage = () => {
               }
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
+              isInvalid={!!fieldErrors["client.phone"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["client.phone"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <div className="col-md-6 d-flex gap-2 justify-content-start justify-content-md-end align-items-center mb-3 flex-wrap">
             <Button
@@ -1302,24 +1346,6 @@ const QuotationFormPage = () => {
               disabled={isLoadingReplicationDetails || !selectedClientIdForForm}
             >
               Clear/Edit Client
-            </Button>
-            <Button
-              variant="success"
-              size="sm"
-              onClick={handleSaveClientDetails}
-              disabled={
-                isSavingClient ||
-                isLoadingReplicationDetails ||
-                !!selectedClientIdForForm ||
-                !(
-                  quotationData.client.companyName &&
-                  quotationData.client.gstNumber &&
-                  quotationData.client.clientName &&
-                  quotationData.client.phone
-                )
-              }
-            >
-              {isSavingClient ? "Saving..." : "Save New Client"}
             </Button>
           </div>
         </div>
@@ -1347,7 +1373,11 @@ const QuotationFormPage = () => {
               value={quotationData.billingAddress.address1}
               onChange={handleInputChange}
               disabled={isLoadingReplicationDetails || isFetchingBillingAddress}
+              isInvalid={!!fieldErrors["billingAddress.address1"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["billingAddress.address1"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3 col-md-6">
             <Form.Label>Address Line 2</Form.Label>
@@ -1373,10 +1403,14 @@ const QuotationFormPage = () => {
               pattern="[0-9]{6}"
               onChange={handleInputChange}
               disabled={isLoadingReplicationDetails || isFetchingBillingAddress}
+              isInvalid={!!fieldErrors["billingAddress.pincode"]}
             />
             <Form.Text className="text-muted">
               6-digit pincode for City & State.
             </Form.Text>
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["billingAddress.pincode"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3 col-md-4">
             <Form.Label>
@@ -1393,7 +1427,11 @@ const QuotationFormPage = () => {
                 !(isLoadingReplicationDetails || isFetchingBillingAddress) &&
                 !!quotationData.billingAddress.city
               }
+              isInvalid={!!fieldErrors["billingAddress.city"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["billingAddress.city"]}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3 col-md-4">
             <Form.Label>
@@ -1410,7 +1448,11 @@ const QuotationFormPage = () => {
                 !(isLoadingReplicationDetails || isFetchingBillingAddress) &&
                 !!quotationData.billingAddress.state
               }
+              isInvalid={!!fieldErrors["billingAddress.state"]}
             />
+            <Form.Control.Feedback type="invalid">
+              {fieldErrors["billingAddress.state"]}
+            </Form.Control.Feedback>
           </Form.Group>
         </div>
         <h5

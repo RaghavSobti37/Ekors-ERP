@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../utils/apiClient";
-import { Spinner, Button, Alert } from "react-bootstrap";
+import { Spinner, Button, Alert, Form } from "react-bootstrap";
 import { PlusCircle, PencilSquare, Trash, Eye } from "react-bootstrap-icons";
 import { useAuth } from "../context/AuthContext";
 import Pagination from "../components/Pagination";
@@ -9,7 +9,7 @@ import ReusableTable from "../components/ReusableTable";
 import Navbar from "../components/Navbar";
 import SearchBar from "../components/Searchbar";
 import SortIndicator from "../components/SortIndicator";
-import ActionButtons from "../components/ActionButtons"; // Add this import
+import ActionButtons from "../components/ActionButtons";
 
 export default function Items() {
   const { user } = useAuth();
@@ -18,14 +18,24 @@ export default function Items() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null); // Add this at the top with other state
+  const [success, setSuccess] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortKey, setSortKey] = useState("createdAt");
-  const [sortDirection, setSortDirection] = useState("descending"); // or 'desc'
+  const [sortKey, setSortKey] = useState("name");
+  const [sortDirection, setSortDirection] = useState("ascending");
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Fetch categories on mount
+  useEffect(() => {
+    apiClient("/categories")
+      .then((res) => setCategories(res.data || []))
+      .catch(() => setCategories([]));
+  }, []);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -38,6 +48,7 @@ export default function Items() {
         search: searchTerm,
         sortKey: sortKey,
         sortDirection: sortDirection,
+        ...(selectedCategory && { category: selectedCategory }),
       };
       const res = await apiClient("/items", { params });
       setItems(res.data || []);
@@ -48,7 +59,7 @@ export default function Items() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection]);
+  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection, selectedCategory]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -56,7 +67,7 @@ export default function Items() {
       fetchItems();
     }, 400);
     return () => clearTimeout(timeout);
-  }, [searchTerm]);
+  }, [searchTerm, selectedCategory]);
 
   useEffect(() => {
     fetchItems();
@@ -241,11 +252,23 @@ export default function Items() {
     input.click();
   };
 
+  // You may have logic to fetch and display restock/low stock summary.
+  // Only use restockNeededCount, keep lowStockWarningCount commented out.
+
+  // Example (if you use this in your UI):
+  // const [restockSummary, setRestockSummary] = useState({ restockNeededCount: 0 /*, lowStockWarningCount: 0 */ });
+
+  // useEffect(() => {
+  //   apiClient("/items/restock-summary")
+  //     .then(res => setRestockSummary(res.data))
+  //     .catch(() => setRestockSummary({ restockNeededCount: 0 /*, lowStockWarningCount: 0 */ }));
+  // }, []);
+
   return (
     <div>
       <Navbar />
       <div className="container py-4 align-items-center">
-        {/* Flex row for heading, searchbar, and add button */}
+        {/* Flex row for heading, searchbar, category dropdown, and add button */}
         <div className="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
           <h2 className="mb-0 flex-shrink-0">Items List</h2>
           <div className="flex-grow-1 mx-3" style={{ minWidth: 250, maxWidth: 500 }}>
@@ -257,6 +280,19 @@ export default function Items() {
               showButton={false}
             />
           </div>
+          <Form.Select
+            className="flex-shrink-0"
+            style={{ width: 180 }}
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat._id || cat} value={cat.name || cat}>
+                {cat.name || cat}
+              </option>
+            ))}
+          </Form.Select>
           <Button
             variant="success"
             className="flex-shrink-0"

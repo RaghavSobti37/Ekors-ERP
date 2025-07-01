@@ -56,10 +56,10 @@ return res.status(403).json({ message: 'Access denied for your role.' });
 exports.createClient = async (req, res) => {
   try {
     const { email, companyName, clientName, gstNumber, phone } = req.body;
-    const userId = req.user._id; // From auth middleware
+    const userId = req.user._id;
 
-    if (!email || !companyName || !gstNumber || !phone) {
-      return res.status(400).json({ message: 'All client fields (Company Name, GST Number, Email, Phone) are required.' });
+    if (!email || !companyName || !gstNumber || !phone || !clientName) {
+      return res.status(400).json({ message: 'All client fields (Company Name, Client Name, GST Number, Email, Phone) are required.' });
     }
 
     const normalizedEmail = email.toLowerCase();
@@ -71,12 +71,8 @@ exports.createClient = async (req, res) => {
     });
 
     if (existingClient) {
-      if (existingClient.email === normalizedEmail) {
-        return res.status(400).json({ message: 'This email is already registered to one of your clients.', field: 'email' });
-      }
-      if (existingClient.gstNumber === normalizedGstNumber) {
-        return res.status(400).json({ message: 'This GST Number is already registered to one of your clients.', field: 'gstNumber' });
-      }    }
+      return res.status(409).json({ message: 'Client with this email or GST already exists.' });
+    }
 
     const newClient = new Client({
       email: normalizedEmail,
@@ -84,23 +80,15 @@ exports.createClient = async (req, res) => {
       clientName,
       gstNumber: normalizedGstNumber,
       phone,
-      user: userId // Link client to the user creating it
+      user: userId
     });
 
     await newClient.save();
-    logger.info('client_create', `New client created successfully by user ${userId}`, { clientId: newClient._id });
     res.status(201).json(newClient);
- } catch (error) {
-
+  } catch (error) {
+    console.error("Error creating client:", error); // <--- Add this for debugging
     if (error.code === 11000) {
-      // MongoDB unique index violation
-      if (error.message.includes('email_1_user_1')) { // Adjust index name if different
-        return res.status(400).json({ message: 'This email is already registered to one of your clients.', field: 'email' });
-      }
-      if (error.message.includes('gstNumber_1_user_1')) { // Adjust index name if different
-        return res.status(400).json({ message: 'This GST Number is already registered to one of your clients.', field: 'gstNumber' });
-      }
-     return res.status(400).json({ message: 'Client with this email or GST number already exists for you.', field: error.keyPattern.email ? 'email' : 'gstNumber' });
+      return res.status(409).json({ message: 'Duplicate client (email or GST number).' });
     }
     res.status(500).json({ message: 'Error creating client', error: error.message });
   }

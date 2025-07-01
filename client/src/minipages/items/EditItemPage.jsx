@@ -17,6 +17,7 @@ export default function EditItemPage() {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   // For adding a new unit
   const [newUnit, setNewUnit] = useState({ name: "", conversionFactor: "" });
@@ -38,6 +39,12 @@ export default function EditItemPage() {
       })
       .catch(() => setError("Failed to load item."));
   }, [id]);
+
+  useEffect(() => {
+    apiClient("/categories")
+      .then((res) => setCategories(res.data || []))
+      .catch(() => setCategories([]));
+  }, []);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -230,11 +237,18 @@ export default function EditItemPage() {
                 </Form.Group>
                 <Form.Group className="mb-2">
                   <Form.Label>Category</Form.Label>
-                  <Form.Control
+                  <Form.Select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                  />
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id || cat} value={cat.name || cat}>
+                        {cat.name || cat}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
                 <Form.Group className="mb-2">
                   <Form.Label>Max Discount (%)</Form.Label>

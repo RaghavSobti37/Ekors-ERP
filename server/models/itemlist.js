@@ -278,9 +278,21 @@ purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ companyName: 1 });
 purchaseSchema.index({ 'items.itemId': 1 });
 
+// --- Restock/LowStock logic (for reference, not used here) ---
+// To get restock items: quantity <= 0
+// To get low stock warning: quantity > 0 && quantity <= lowStockThreshold
+
 // 9. Models
 const Item = mongoose.model('Item', itemSchema);
 const Purchase = mongoose.model('Purchase', purchaseSchema);
 
-// 10. Export STANDARD_UNITS for use in other schemas
+// 10. Add this static method to itemSchema for fetching unique categories
+itemSchema.statics.getAllCategories = async function () {
+  // Only return unique, non-empty categories
+  const categories = await this.distinct("category", { category: { $ne: "" } });
+  // Remove null/undefined and sort alphabetically
+  return categories.filter(Boolean).sort();
+};
+
+// 11. Export STANDARD_UNITS for use in other schemas
 module.exports = { Item, Purchase, STANDARD_UNITS };

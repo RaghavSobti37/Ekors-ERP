@@ -49,7 +49,7 @@ const ItemSearchComponent = ({
         // apiClient is expected to handle auth.
     // Use the main items endpoint with a searchTerm parameter
         const response = await apiClient(
-          `/items?searchTerm=${encodeURIComponent(trimmedTerm)}&limit=10&status=approved`
+          `/items?search=${encodeURIComponent(trimmedTerm)}&limit=10&status=approved`
         );
         setSearchResults(response.data || []); // Assuming response is { data: [], ... }
         setShowDropdown(true); // Show results area

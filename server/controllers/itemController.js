@@ -1088,21 +1088,21 @@ exports.getRestockSummary = asyncHandler(async (req, res) => {
   const user = req.user || null;
 
   try {
-    const [restockNeededCount, lowStockWarningCount] = await Promise.all([
-      Item.countDocuments({
-        quantity: { $lte: 0 },
-        status: "approved",
-      }),
-      Item.countDocuments({
-        quantity: { $gt: 0 },
-        $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
-        status: "approved",
-      }),
-    ]);
+    // Only restock needed logic is active
+    const restockNeededCount = await Item.countDocuments({
+      quantity: { $lte: 0 },
+      status: "approved",
+    });
+
+    // const lowStockWarningCount = await Item.countDocuments({
+    //   quantity: { $gt: 0 },
+    //   $expr: { $lte: ["$quantity", "$lowStockThreshold"] },
+    //   status: "approved",
+    // });
 
     res.json({
       restockNeededCount,
-      lowStockWarningCount,
+      // lowStockWarningCount,
     });
   } catch (error) {
     handleErrorResponse(res, error, "fetching restock summary", user);

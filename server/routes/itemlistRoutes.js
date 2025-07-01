@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const itemController = require("../controllers/itemController");
 const purchaseController = require("../controllers/purchaseController");
 const auth = require("../middleware/auth"); // Import auth middleware
-const { Purchase } = require("../models/itemlist"); // Import Purchase model
+const { Purchase, Item } = require("../models/itemlist"); // Import Purchase and Item models
 
 // More specific routes first
 router.get("/purchases/new", auth, (req, res) => res.status(200).send("Purchase Form Page")); // This route is primarily for frontend navigation
