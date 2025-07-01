@@ -1946,10 +1946,6 @@ exports.serveFile_IndexLogic = (req, res) => {
     );
   }
   res.setHeader("Content-Type", contentType);
-  logger.debug("ticket-controller", `Serving file (index.js logic)`, user, {
-    filename,
-    contentType,
-  });
   fs.createReadStream(filePath).pipe(res);
 };
 

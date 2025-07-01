@@ -53,14 +53,6 @@ const getDateRange = (period) => {
   // For periods other than 'all', set time to start/end of day
   if (startDate) startDate.setHours(0, 0, 0, 0);
   if (endDate) endDate.setHours(23, 59, 59, 999);
-
-  logger.debug(
-    "report-getDateRange",
-    `Calculated date range for period: ${period}`,
-    null,
-    { start: startDate?.toISOString(), end: endDate?.toISOString() }
-  );
-
   return { startDate, endDate };
 };
 
@@ -71,19 +63,6 @@ const formatDateToYYYYMMDD = (dateObj) => {
 
 // Internal function to fetch and process report data
 async function getUserReportDataInternal(userId, period) {
-  logger.debug(
-    "report-internal",
-    `Fetching data for userId: ${userId}, period: ${period}`
-  );
-  const { startDate, endDate } = getDateRange(period);
-
-  logger.debug(
-    "report-internal",
-    `Date range - Start: ${startDate.toISOString()}, End: ${endDate.toISOString()}`
-  );
-  const user = await User.findById(userId).select(
-    "firstname lastname email role createdAt"
-  );
 
   if (!user) {
     logger.log({
@@ -100,11 +79,6 @@ async function getUserReportDataInternal(userId, period) {
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
-  logger.debug(
-    "report-internal",
-    `User found: ${user._id}, Converted userId to ObjectId: ${userObjectId}`
-  );
-
   const quotations = await Quotation.aggregate([
     {
       $match: {
@@ -120,11 +94,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug(
-    "report-internal",
-    `Quotations aggregated: ${quotations.length}`
-  );
-
   const tickets = await Ticket.aggregate([
     {
       $match: {
@@ -140,7 +109,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug("report-internal", `Tickets aggregated: ${tickets.length}`);
 
   const startDateString = formatDateToYYYYMMDD(startDate);
   const endDateString = formatDateToYYYYMMDD(endDate);
@@ -245,12 +213,6 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
-  logger.debug(
-    "report-internal",
-    `LogTimes aggregated: ${
-      logTimes.length > 0 ? logTimes[0].totalTasks : 0
-    } tasks, ${logTimes.length > 0 ? logTimes[0].totalTimeSpent : 0} minutes`
-  );
 
   const quotationStats = {
     total: 0,
@@ -436,11 +398,6 @@ exports.generateUserReportPDF = async (req, res, next) => {
     }
 
     const reportData = await getUserReportDataInternal(userId, period); // Use the internal function
-    logger.debug(
-      "report-generatePDF",
-      `Report data fetched for PDF for UserId: ${userId}`,
-      req.user
-    );
 
     // Before creating PDF, verify data exists
     if (!reportData || !reportData.user) {
@@ -469,12 +426,6 @@ exports.generateUserReportPDF = async (req, res, next) => {
 
     // Pipe to response
     doc.pipe(res);
-
-    logger.debug(
-      "report-generatePDF",
-      `Starting PDF content generation for UserId: ${userId}`,
-      req.user
-    );
     // Add content with error handling
     doc.fontSize(18).text("User Activity Report", { align: "center" });
     doc.moveDown();

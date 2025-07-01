@@ -312,11 +312,6 @@ exports.addBulkPurchase = async (req, res) => {
 
           // Update each item's quantity, buying price, and add inventory log
           for (const purchasedItem of savedPurchase.items) {
-            logger.debug(
-              "purchase_item_processing",
-              `Processing purchase line item: ${JSON.stringify(purchasedItem)}`,
-              user
-            );
             let itemToUpdate = null;
             if (purchasedItem.itemId) {
               itemToUpdate = await Item.findById(purchasedItem.itemId).session(session);
@@ -325,11 +320,7 @@ exports.addBulkPurchase = async (req, res) => {
             }
 
             if (itemToUpdate) {
-              logger.debug(
-                "purchase_stock_update",
-                `Found item in DB: ${itemToUpdate.name}, Current Qty: ${itemToUpdate.quantity}`,
-                user
-              );
+        
 
                const { quantityInBaseUnit, pricePerBaseUnit, baseUnitName } = await calculateBaseUnitDetails(itemToUpdate, purchasedItem.quantity, purchasedItem.price, purchasedItem.unit, session, user);
                await updateItemPricingOnPurchase(itemToUpdate, quantityInBaseUnit, pricePerBaseUnit, session, user);              itemToUpdate.lastPurchaseDate = savedPurchase.date;
@@ -429,12 +420,6 @@ exports.addBulkPurchase = async (req, res) => {
             .select("companyName invoiceNumber date items createdBy") // Select necessary fields
             .lean();
 
-          logger.debug(
-            "purchase_history_fetch",
-            `For item ID ${req.params.id}, found ${purchases.length} parent purchase documents.`,
-            { purchasesData: JSON.stringify(purchases) }
-          ); // Log fetched data
-
           // Transform the data to match frontend expectations
           const transformed = purchases
             .map((purchase) => {
@@ -466,12 +451,7 @@ exports.addBulkPurchase = async (req, res) => {
             .filter(Boolean); // Remove any null entries
 
           res.json(transformed);
-          logger.debug(
-            "purchase",
-            `Fetched item purchase history for item ID: ${req.params.id}`,
-            user,
-            { count: transformed.length }
-          );
+       
         } catch (err) {
           res.status(500).json({ message: "Server error fetching purchase history" });
         }
@@ -484,9 +464,7 @@ exports.addBulkPurchase = async (req, res) => {
           // Fetch all purchases and sort by date descending (newest first)
           const purchases = await Purchase.find().sort({ date: -1 }).lean();
           res.status(200).json(purchases);
-          logger.debug("purchase", `Fetched all purchases`, user, {
-            count: purchases.length,
-          });
+       
         } catch (error) {
           logger.log({
             user,
