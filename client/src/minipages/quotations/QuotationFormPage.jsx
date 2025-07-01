@@ -1,21 +1,20 @@
 // c:/Users/Raghav Raj Sobti/Desktop/fresh/client/src/minipages/quotations/QuotationFormPage.jsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Form, Button, Alert, Spinner, Table, Row, Col } from "react-bootstrap";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import ReusablePageStructure from "../../components/ReusablePageStructure.jsx";
 import ClientSearchComponent from "../../components/ClientSearchComponent.jsx";
 import ItemSearchComponent from "../../components/ItemSearch.jsx";
-
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
-
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
   handleApiError,
   formatDateForInput,
-} from "../../utils/helpers.js"; // Keep for formatting
-import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js"; // Keep for frontend display calculations
+} from "../../utils/helpers.js";
+import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
+
 const initialNewItemFormData = {
   name: "",
   pricing: {
@@ -23,11 +22,11 @@ const initialNewItemFormData = {
     sellingPrice: "",
     buyingPrice: "",
   },
-  units: [{ name: 'nos', isBaseUnit: true, conversionFactor: 1 }],
+  units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
   category: "",
   hsnCode: "",
   gstRate: "0",
-  quantity: 1, // This is for the item master, not the quotation line
+  quantity: 1,
   lowStockThreshold: "5",
 };
 
@@ -57,6 +56,25 @@ const GoodsTable = ({
   handleSaveAndAddNewItemToQuotation,
   isSavingNewItem,
 }) => {
+  // Helper to get all units for an item (from item.units, originalItem.units, or fallback)
+  const getAllUnits = (item) => {
+    // Prefer item.units if present and non-empty
+    if (item.units && Array.isArray(item.units) && item.units.length > 0) {
+      return item.units;
+    }
+    // Try originalItem.units if available
+    if (
+      item.originalItem &&
+      item.originalItem.units &&
+      Array.isArray(item.originalItem.units) &&
+      item.originalItem.units.length > 0
+    ) {
+      return item.originalItem.units;
+    }
+    // Fallback to base unit
+    return [{ name: item.unit || "nos", isBaseUnit: true, conversionFactor: 1 }];
+  };
+
   return (
     <div className="table-responsive">
       <Table bordered className="mb-3">
@@ -86,149 +104,132 @@ const GoodsTable = ({
           </tr>
         </thead>
         <tbody>
-          {goods.map((item, index) => (
-            <tr key={index}>
-              <td>{item.srNo}</td>
-              <td style={{ minWidth: "250px" }}>
-                <Form.Control
-                  required
-                  type="text"
-                  value={item.description || ""}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "description", e.target.value)
-                  }
-                  placeholder="Item Description"
-                />
-                {item.subtexts &&
-                  item.subtexts.map((subtext, subtextIndex) => (
-                    <div key={subtextIndex} className="d-flex mt-1">
-                      <Form.Control
-                        type="text"
-                        value={subtext}
-                        onChange={(e) =>
-                          handleGoodsChange(
-                            index,
-                            "subtexts",
-                            e.target.value,
-                            subtextIndex
-                          )
-                        }
-                        placeholder={`Subtext ${subtextIndex + 1}`}
-                        className="form-control-sm me-1"
-                        style={{ fontStyle: "italic" }}
-                      />
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => onDeleteSubtext(index, subtextIndex)}
-                      >
-                        &times;
-                      </Button>
-                    </div>
-                  ))}
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  className="mt-1"
-                  onClick={() => onAddSubtext(index)}
-                >
-                  + Subtext
-                </Button>
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="text"
-                  value={item.hsnCode || ""}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "hsnCode", e.target.value)
-                  }
-                  placeholder="HSN/SAC"
-                />
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="number"
-                  min="1"
-                  value={item.quantity || 1}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "quantity", e.target.value)
-                  }
-                />
-              </td>
-              <td>
-                {item.originalItem && typeof item.originalItem === "object" && Array.isArray(item.originalItem.units) && item.originalItem.units.length > 0 ? (
+          {goods.map((item, index) => {
+            const allUnits = getAllUnits(item);
+            return (
+              <tr key={index}>
+                <td>{item.srNo}</td>
+                <td style={{ minWidth: "250px" }}>
                   <Form.Control
-                    as="select"
-                    value={item.unit || item.originalItem.pricing?.baseUnit || "nos"}
+                    required
+                    type="text"
+                    value={item.description || ""}
                     onChange={(e) =>
-                      handleGoodsChange(index, "unit", e.target.value)
+                      handleGoodsChange(index, "description", e.target.value)
                     }
+                    placeholder="Item Description"
+                  />
+                  {item.subtexts &&
+                    item.subtexts.map((subtext, subtextIndex) => (
+                      <div key={subtextIndex} className="d-flex mt-1">
+                        <Form.Control
+                          type="text"
+                          value={subtext}
+                          onChange={(e) =>
+                            handleGoodsChange(
+                              index,
+                              "subtexts",
+                              e.target.value,
+                              subtextIndex
+                            )
+                          }
+                          placeholder={`Subtext ${subtextIndex + 1}`}
+                          className="form-control-sm me-1"
+                          style={{ fontStyle: "italic" }}
+                        />
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => onDeleteSubtext(index, subtextIndex)}
+                        >
+                          &times;
+                        </Button>
+                      </div>
+                    ))}
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="mt-1"
+                    onClick={() => onAddSubtext(index)}
                   >
-                    {item.originalItem.units.map((unitOption) => (
+                    + Subtext
+                  </Button>
+                </td>
+                <td>
+                  <Form.Control
+                    required
+                    type="text"
+                    value={item.hsnCode || ""}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "hsnCode", e.target.value)
+                    }
+                    placeholder="HSN/SAC"
+                  />
+                </td>
+                <td>
+                  <Form.Control
+                    required
+                    type="number"
+                    min="1"
+                    value={item.quantity || 1}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "quantity", e.target.value)
+                    }
+                  />
+                </td>
+                <td>
+                  <Form.Select
+                    value={item.unit || allUnits[0]?.name || "nos"}
+                    onChange={(e) => handleGoodsChange(index, "unit", e.target.value)}
+                  >
+                    {allUnits.map((unitOption) => (
                       <option key={unitOption.name} value={unitOption.name}>
                         {unitOption.name}
                       </option>
                     ))}
-                  </Form.Control>
-                ) : (
+                  </Form.Select>
+                </td>
+                <td>
                   <Form.Control
-                    type="text"
-                    value={item.unit || "nos"}
-                    readOnly
+                    required
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.price || 0}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "price", e.target.value)
+                    }
                   />
-                )}
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={item.price || 0}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "price", e.target.value)
-                  }
-                />
-              </td>
-              <td>
-                <Form.Control
-                  required
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={item.gstRate === null ? "" : item.gstRate}
-                  onChange={(e) =>
-                    handleGoodsChange(index, "gstRate", e.target.value)
-                  }
-                />
-              </td>
-              <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
-              <td className="align-middle">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => onDeleteItem(index)}
-                >
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td>
+                  <Form.Control
+                    required
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={item.gstRate === null ? "" : item.gstRate}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "gstRate", e.target.value)
+                    }
+                  />
+                </td>
+                <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+                <td className="align-middle">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => onDeleteItem(index)}
+                  >
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </Table>
       <div className="mb-3">
         <div className="d-flex gap-2 mb-2">
-          {/* <Button
-            variant={
-              itemCreationMode === "search" ? "primary" : "outline-primary"
-            }
-            onClick={() => setItemCreationMode("search")}
-            size="sm"
-          >
-            Search Existing Item
-          </Button> */}
           <Button
             variant={itemCreationMode === "new" ? "primary" : "outline-primary"}
             onClick={() => setItemCreationMode("new")}
@@ -237,7 +238,6 @@ const GoodsTable = ({
             Create New Item
           </Button>
         </div>
-
         {itemCreationMode === "search" && (
           <>
             <h6>Search and Add Existing Item</h6>
@@ -248,7 +248,6 @@ const GoodsTable = ({
             />
           </>
         )}
-
         {itemCreationMode === "new" && (
           <>
             <h6>Create and Add New Item</h6>
@@ -256,14 +255,43 @@ const GoodsTable = ({
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-2">
-                    <Form.Label>Item Name <span className="text-danger">*</span></Form.Label>
-                    <Form.Control type="text" placeholder="Enter item name" value={newItemFormData.name} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, name: e.target.value, }))} required />
+                    <Form.Label>
+                      Item Name <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter item name"
+                      value={newItemFormData.name}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      required
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-2">
-                    <Form.Label>Selling Price (per Base Unit) <span className="text-danger">*</span></Form.Label>
-                    <Form.Control type="number" placeholder="Enter selling price" value={newItemFormData.pricing.sellingPrice} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, sellingPrice: e.target.value } }))} required />
+                    <Form.Label>
+                      Selling Price (per Base Unit) <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      placeholder="Enter selling price"
+                      value={newItemFormData.pricing.sellingPrice}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          pricing: {
+                            ...prev.pricing,
+                            sellingPrice: e.target.value,
+                          },
+                        }))
+                      }
+                      required
+                    />
                   </Form.Group>
                 </Col>
               </Row>
@@ -271,19 +299,59 @@ const GoodsTable = ({
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>Base Unit</Form.Label>
-                    <Form.Control type="text" placeholder="e.g., nos, KG, Mtr" value={newItemFormData.pricing.baseUnit} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, pricing: { ...prev.pricing, baseUnit: e.target.value }, units: [{ name: e.target.value, isBaseUnit: true, conversionFactor: 1 }] }))} />
+                    <Form.Control
+                      type="text"
+                      placeholder="e.g., nos, KG, Mtr"
+                      value={newItemFormData.pricing.baseUnit}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          pricing: {
+                            ...prev.pricing,
+                            baseUnit: e.target.value,
+                          },
+                          units: [
+                            {
+                              name: e.target.value,
+                              isBaseUnit: true,
+                              conversionFactor: 1,
+                            },
+                          ],
+                        }))
+                      }
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>HSN/SAC Code</Form.Label>
-                    <Form.Control type="text" placeholder="HSN/SAC" value={newItemFormData.hsnCode} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, hsnCode: e.target.value, }))} />
+                    <Form.Control
+                      type="text"
+                      placeholder="HSN/SAC"
+                      value={newItemFormData.hsnCode}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          hsnCode: e.target.value,
+                        }))
+                      }
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-2">
                     <Form.Label>GST Rate (%)</Form.Label>
-                    <Form.Control type="number" placeholder="GST Rate" value={newItemFormData.gstRate} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, gstRate: e.target.value, }))} />
+                    <Form.Control
+                      type="number"
+                      placeholder="GST Rate"
+                      value={newItemFormData.gstRate}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          gstRate: e.target.value,
+                        }))
+                      }
+                    />
                   </Form.Group>
                 </Col>
               </Row>
@@ -291,13 +359,33 @@ const GoodsTable = ({
                 <Col md={6}>
                   <Form.Group className="mb-2">
                     <Form.Label>Category</Form.Label>
-                    <Form.Control type="text" placeholder="Item Category" value={newItemFormData.category} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, category: e.target.value, }))} />
+                    <Form.Control
+                      type="text"
+                      placeholder="Item Category"
+                      value={newItemFormData.category}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                        }))
+                      }
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-2">
                     <Form.Label>Low Stock Threshold</Form.Label>
-                    <Form.Control type="number" placeholder="Default: 5" value={newItemFormData.lowStockThreshold} onChange={(e) => setNewItemFormData((prev) => ({ ...prev, lowStockThreshold: e.target.value, }))} />
+                    <Form.Control
+                      type="number"
+                      placeholder="Default: 5"
+                      value={newItemFormData.lowStockThreshold}
+                      onChange={(e) =>
+                        setNewItemFormData((prev) => ({
+                          ...prev,
+                          lowStockThreshold: e.target.value,
+                        }))
+                      }
+                    />
                   </Form.Group>
                 </Col>
               </Row>
@@ -305,7 +393,10 @@ const GoodsTable = ({
                 variant="success"
                 size="sm"
                 className="mt-2"
-                onClick={() => {handleSaveAndAddNewItemToQuotation (newItemFormData) , setItemCreationMode("search")}}
+                onClick={() => {
+                  handleSaveAndAddNewItemToQuotation(newItemFormData);
+                  setItemCreationMode("search");
+                }}
                 disabled={
                   isSavingNewItem ||
                   !newItemFormData.name ||
@@ -336,7 +427,6 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  // Add roundOffTotal to initial quotation data
   const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
     referenceNumber: generateQuotationNumber(),
@@ -356,7 +446,7 @@ const QuotationFormPage = () => {
     totalAmount: 0,
     gstAmount: 0,
     grandTotal: 0,
-    roundOffTotal: 0, // <-- Add this
+    roundOffTotal: 0,
     status: "open",
     client: {
       _id: null,
@@ -368,7 +458,6 @@ const QuotationFormPage = () => {
     },
   }), []);
 
-  // Update recalculateTotals to include roundOffTotal
   const recalculateTotals = useCallback((goodsList) => {
     const totalQuantity = goodsList.reduce(
       (sum, item) => sum + Number(item.quantity || 0),
@@ -384,7 +473,7 @@ const QuotationFormPage = () => {
       0
     );
     const grandTotal = totalAmount + gstAmount;
-    const roundOffTotal = Math.round(grandTotal); // <-- Always round off
+    const roundOffTotal = Math.round(grandTotal);
     return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
   }, []);
 
@@ -401,20 +490,15 @@ const QuotationFormPage = () => {
     quotationData.client?._id || null
   );
   const [isSavingClient, setIsSavingClient] = useState(false);
-  const [isFetchingBillingAddress, setIsFetchingBillingAddress] =
-    useState(false);
-  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] =
-    useState(false);
+  const [isFetchingBillingAddress, setIsFetchingBillingAddress] = useState(false);
+  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] = useState(false);
   const [isReplicating, setIsReplicating] = useState(false);
-  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] =
-    useState(false);
+  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] = useState(false);
 
   const [itemCreationMode, setItemCreationMode] = useState("search");
-  const [newItemFormData, setNewItemFormData] = useState(
-    initialNewItemFormData
-  );
+  const [newItemFormData, setNewItemFormData] = useState(initialNewItemFormData);
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({}); // 1. Add state for field errors
+  const [fieldErrors, setFieldErrors] = useState({});
   const quotationFormId = "quotation-form-page";
 
   useEffect(() => {
@@ -436,6 +520,38 @@ const QuotationFormPage = () => {
             fetchedQuotation.user ||
             user?.id;
 
+          // Fetch units for each item from Item master
+          const goodsWithUnits = await Promise.all(
+            (fetchedQuotation.goods || []).map(async (item) => {
+              let units = [];
+              let originalItemDoc = item.originalItem || item;
+              try {
+                // Try to fetch the item from backend to get latest units
+                const itemId = originalItemDoc._id || originalItemDoc;
+                const itemDoc = await apiClient(`/items/${itemId}`);
+                units = itemDoc.units || [];
+                originalItemDoc = itemDoc;
+              } catch {
+                units = item.units || [];
+              }
+              return {
+                ...item,
+                quantity: Number(item.quantity),
+                price: Number(item.price),
+                amount: Number(item.amount),
+                unit: item.unit || "nos",
+                originalPrice: Number(item.originalPrice || item.price),
+                maxDiscountPercentage: item.maxDiscountPercentage
+                  ? Number(item.maxDiscountPercentage)
+                  : 0,
+                gstRate: parseFloat(item.gstRate || 0),
+                subtexts: item.subtexts || [],
+                originalItem: originalItemDoc,
+                units,
+              };
+            })
+          );
+
           setQuotationData({
             date: formatDateForInput(fetchedQuotation.date),
             referenceNumber: fetchedQuotation.referenceNumber,
@@ -445,20 +561,7 @@ const QuotationFormPage = () => {
               orderIssuedByIdToSet !== null
                 ? orderIssuedByIdToSet._id
                 : orderIssuedByIdToSet,
-            goods: fetchedQuotation.goods.map((item) => ({
-              ...item,
-              quantity: Number(item.quantity),
-              price: Number(item.price),
-              amount: Number(item.amount),
-              unit: item.unit || "nos",
-              originalPrice: Number(item.originalPrice || item.price),
-              maxDiscountPercentage: item.maxDiscountPercentage
-                ? Number(item.maxDiscountPercentage)
-                : 0,
-              gstRate: parseFloat(item.gstRate || 0),
-              subtexts: item.subtexts || [],
-              originalItem: item.originalItem || item,
-            })),
+            goods: goodsWithUnits,
             totalQuantity: Number(fetchedQuotation.totalQuantity),
             totalAmount: Number(fetchedQuotation.totalAmount),
             gstAmount: Number(fetchedQuotation.gstAmount),
@@ -512,7 +615,7 @@ const QuotationFormPage = () => {
           {
             srNo: prevQuotationData.goods.length + 1,
             description: item.name,
-            hsnCode: item.hsnCode || "", // Use hsnCode
+            hsnCode: item.hsnCode || "",
             quantity: 1,
             unit: defaultUnit,
             price: pricePerSelectedUnit,
@@ -523,6 +626,7 @@ const QuotationFormPage = () => {
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
             originalItem: item._id || item,
+            units: item.units || [{ name: defaultUnit, isBaseUnit: true, conversionFactor: 1 }], // always attach units
           },
         ];
         const totals = recalculateTotals(newGoods);
@@ -645,9 +749,11 @@ const QuotationFormPage = () => {
       setQuotationData((prevData) => {
         const updatedGoods = prevData.goods
           .filter((_, index) => index !== indexToDelete)
-          .map((item, index) => ({ ...item, srNo: index + 1 }));
-        const totals = recalculateTotals(updatedGoods);
-        return { ...prevData, goods: updatedGoods, ...totals };
+          .map((item, idx) => ({
+            ...item,
+            srNo: idx + 1,
+          }));
+        return { ...prevData, goods: updatedGoods, ...recalculateTotals(updatedGoods) };
       });
     },
     [recalculateTotals]
@@ -656,8 +762,7 @@ const QuotationFormPage = () => {
   const handleAddSubtext = useCallback((itemIndex) => {
     setQuotationData((prevData) => {
       const updatedGoods = [...prevData.goods];
-      if (!updatedGoods[itemIndex].subtexts)
-        updatedGoods[itemIndex].subtexts = [];
+      if (!updatedGoods[itemIndex].subtexts) updatedGoods[itemIndex].subtexts = [];
       updatedGoods[itemIndex].subtexts.push("");
       return { ...prevData, goods: updatedGoods };
     });
@@ -912,9 +1017,7 @@ const QuotationFormPage = () => {
       setFormValidated(true);
       setFieldErrors({});
       let errors = {};
-      const form = event.currentTarget;
 
-      // Validate required fields
       if (!quotationData.client.companyName) errors["client.companyName"] = "Company Name is required";
       if (!quotationData.client.clientName) errors["client.clientName"] = "Client Name is required";
       if (!quotationData.client.gstNumber) errors["client.gstNumber"] = "GST Number is required";
@@ -926,7 +1029,6 @@ const QuotationFormPage = () => {
       if (!quotationData.billingAddress.state) errors["billingAddress.state"] = "State is required";
       if (!quotationData.goods || quotationData.goods.length === 0) errors["goods"] = "Add at least one item.";
 
-      // Validate goods
       quotationData.goods.forEach((item, i) => {
         if (!item.description) errors[`goods.${i}.description`] = `Description required for item ${i + 1}`;
         if (!item.hsnCode) errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
@@ -947,7 +1049,6 @@ const QuotationFormPage = () => {
 
       let clientId = quotationData.client._id;
 
-      // 2. If client is new, save client first
       if (!clientId) {
         try {
           const clientPayload = {
@@ -981,7 +1082,6 @@ const QuotationFormPage = () => {
         }
       }
 
-      // 3. Prepare goods for submission (fix ObjectId error)
       const goodsForSubmission = quotationData.goods.map((item) => ({
         srNo: item.srNo,
         description: item.description,
@@ -993,7 +1093,7 @@ const QuotationFormPage = () => {
         sellingPrice: Number(item.sellingPrice),
         originalItem: typeof item.originalItem === "object"
           ? item.originalItem?._id
-          : item.originalItem, // Only send ObjectId or undefined
+          : item.originalItem,
         maxDiscountPercentage: item.maxDiscountPercentage
           ? Number(item.maxDiscountPercentage)
           : 0,
@@ -1119,11 +1219,9 @@ const QuotationFormPage = () => {
                 placeholder="Search quotation to replicate..."
               />
             )}
-            {
-              isReplicating && !isLoadingReplicationDetails && (
-                <div style={{ minHeight: "200px" }}></div>
-              )
-            }
+            {isReplicating && !isLoadingReplicationDetails && (
+              <div style={{ minHeight: "200px" }}></div>
+            )}
             {isLoadingReplicationDetails && (
               <div className="text-center my-3">
                 <Spinner animation="border" />{" "}
