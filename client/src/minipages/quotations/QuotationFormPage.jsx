@@ -9,10 +9,7 @@ import ItemSearchComponent from "../../components/ItemSearch.jsx";
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import {
-  handleApiError,
-  formatDateForInput,
-} from "../../utils/helpers.js";
+import { handleApiError, formatDateForInput } from "../../utils/helpers.js";
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 
 const initialNewItemFormData = {
@@ -55,6 +52,7 @@ const GoodsTable = ({
   setNewItemFormData,
   handleSaveAndAddNewItemToQuotation,
   isSavingNewItem,
+    fieldErrors,
 }) => {
   // Helper to get all units for an item (from item.units, originalItem.units, or fallback)
   const getAllUnits = (item) => {
@@ -72,7 +70,9 @@ const GoodsTable = ({
       return item.originalItem.units;
     }
     // Fallback to base unit
-    return [{ name: item.unit || "nos", isBaseUnit: true, conversionFactor: 1 }];
+    return [
+      { name: item.unit || "nos", isBaseUnit: true, conversionFactor: 1 },
+    ];
   };
 
   return (
@@ -164,7 +164,12 @@ const GoodsTable = ({
                       handleGoodsChange(index, "hsnCode", e.target.value)
                     }
                     placeholder="HSN/SAC"
+                    disabled={!!item.originalItem?.hsnCode} // Disable if it's from original item
+                    isInvalid={!!fieldErrors[`goods.${index}.hsnCode`]}
                   />
+                  <Form.Control.Feedback type="invalid">
+                    {fieldErrors[`goods.${index}.hsnCode`]}
+                  </Form.Control.Feedback>
                 </td>
                 <td>
                   <Form.Control
@@ -180,7 +185,9 @@ const GoodsTable = ({
                 <td>
                   <Form.Select
                     value={item.unit || allUnits[0]?.name || "nos"}
-                    onChange={(e) => handleGoodsChange(index, "unit", e.target.value)}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
                   >
                     {allUnits.map((unitOption) => (
                       <option key={unitOption.name} value={unitOption.name}>
@@ -213,7 +220,9 @@ const GoodsTable = ({
                     }
                   />
                 </td>
-                <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+                <td className="align-middle">
+                  ₹{(item.amount || 0).toFixed(2)}
+                </td>
                 <td className="align-middle">
                   <Button
                     variant="danger"
@@ -275,7 +284,8 @@ const GoodsTable = ({
                 <Col md={6}>
                   <Form.Group className="mb-2">
                     <Form.Label>
-                      Selling Price (per Base Unit) <span className="text-danger">*</span>
+                      Selling Price (per Base Unit){" "}
+                      <span className="text-danger">*</span>
                     </Form.Label>
                     <Form.Control
                       type="number"
@@ -406,7 +416,13 @@ const GoodsTable = ({
               >
                 {isSavingNewItem ? (
                   <>
-                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />{" "}
+                    <Spinner
+                      as="span"
+                      animation="border"
+                      size="sm"
+                      role="status"
+                      aria-hidden="true"
+                    />{" "}
                     Saving Item...
                   </>
                 ) : (
@@ -427,55 +443,58 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const getInitialQuotationData = useCallback((userId) => ({
-    date: formatDateForInput(new Date()),
-    referenceNumber: generateQuotationNumber(),
-    validityDate: formatDateForInput(
-      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-    ),
-    orderIssuedBy: userId || "",
-    billingAddress: {
-      address1: "",
-      address2: "",
-      city: "",
-      state: "",
-      pincode: "",
-    },
-    goods: [],
-    totalQuantity: 0,
-    totalAmount: 0,
-    gstAmount: 0,
-    grandTotal: 0,
-    roundOffTotal: 0,
-    status: "open",
-    client: {
-      _id: null,
-      companyName: "",
-      clientName: "",
-      gstNumber: "",
-      email: "",
-      phone: "",
-    },
-  }), []);
+  const getInitialQuotationData = useCallback(
+    (userId) => ({
+      date: formatDateForInput(new Date()),
+      referenceNumber: generateQuotationNumber(),
+      validityDate: formatDateForInput(
+        new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+      ),
+      orderIssuedBy: userId || "",
+      billingAddress: {
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: "",
+      },
+      goods: [],
+      totalQuantity: 0,
+      totalAmount: 0,
+      gstAmount: 0,
+      grandTotal: 0,
+      roundOffTotal: 0,
+      status: "open",
+      client: {
+        _id: null,
+        companyName: "",
+        clientName: "",
+        gstNumber: "",
+        email: "",
+        phone: "",
+      },
+    }),
+    []
+  );
 
-  const recalculateTotals = useCallback((goodsList) => {
-    const totalQuantity = goodsList.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0
-    );
-    const totalAmount = goodsList.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    );
-    const gstAmount = goodsList.reduce(
-      (sum, item) =>
-        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
-      0
-    );
-    const grandTotal = totalAmount + gstAmount;
-    const roundOffTotal = Math.round(grandTotal);
-    return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
-  }, []);
+const recalculateTotals = useCallback((goodsList) => {
+  const totalQuantity = goodsList.reduce(
+    (sum, item) => sum + Number(item.quantity || 0),
+    0
+  );
+  const totalAmount = goodsList.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+  const gstAmount = goodsList.reduce(
+    (sum, item) =>
+      sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
+    0
+  );
+  const grandTotal = totalAmount + gstAmount;
+  const roundOffTotal = Math.round(grandTotal * 100) / 100; // round to 2 decimals
+  return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
+}, []);
 
   const [quotationData, setQuotationData] = useState(
     location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
@@ -490,13 +509,18 @@ const QuotationFormPage = () => {
     quotationData.client?._id || null
   );
   const [isSavingClient, setIsSavingClient] = useState(false);
-  const [isFetchingBillingAddress, setIsFetchingBillingAddress] = useState(false);
-  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] = useState(false);
+  const [isFetchingBillingAddress, setIsFetchingBillingAddress] =
+    useState(false);
+  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] =
+    useState(false);
   const [isReplicating, setIsReplicating] = useState(false);
-  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] = useState(false);
+  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] =
+    useState(false);
 
   const [itemCreationMode, setItemCreationMode] = useState("search");
-  const [newItemFormData, setNewItemFormData] = useState(initialNewItemFormData);
+  const [newItemFormData, setNewItemFormData] = useState(
+    initialNewItemFormData
+  );
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const quotationFormId = "quotation-form-page";
@@ -602,13 +626,24 @@ const QuotationFormPage = () => {
     if (!isEditing && !location.state?.quotationDataForForm) {
       setQuotationData((prev) => ({ ...prev, orderIssuedBy: user?.id || "" }));
     }
-  }, [quotationIdFromParams, isEditing, location.state, navigate, user, getInitialQuotationData]);
+  }, [
+    quotationIdFromParams,
+    isEditing,
+    location.state,
+    navigate,
+    user,
+    getInitialQuotationData,
+  ]);
 
   const handleAddItem = useCallback(
     (item) => {
       setQuotationData((prevQuotationData) => {
-        const defaultUnit = item.units?.find(u => u.isBaseUnit)?.name || item.units?.[0]?.name || "nos";
-        const pricePerSelectedUnit = typeof item.sellingPrice === "number" ? item.sellingPrice : 0;
+        const defaultUnit =
+          item.units?.find((u) => u.isBaseUnit)?.name ||
+          item.units?.[0]?.name ||
+          "nos";
+        const pricePerSelectedUnit =
+          typeof item.sellingPrice === "number" ? item.sellingPrice : 0;
 
         const newGoods = [
           ...prevQuotationData.goods,
@@ -626,7 +661,9 @@ const QuotationFormPage = () => {
             gstRate: parseFloat(item.gstRate || 0),
             subtexts: [],
             originalItem: item._id || item,
-            units: item.units || [{ name: defaultUnit, isBaseUnit: true, conversionFactor: 1 }], // always attach units
+            units: item.units || [
+              { name: defaultUnit, isBaseUnit: true, conversionFactor: 1 },
+            ], // always attach units
           },
         ];
         const totals = recalculateTotals(newGoods);
@@ -637,41 +674,52 @@ const QuotationFormPage = () => {
     [recalculateTotals]
   );
 
-  const handleSaveAndAddNewItemToQuotation = useCallback(async (newItemData) => {
-    if (!newItemData.name || !newItemData.pricing.sellingPrice || !newItemData.pricing.baseUnit) {
-      toast.error("New item name, selling price, and base unit are required.");
-      return;
-    }
-    setIsSavingNewItem(true);
-    setError(null);
+  const handleSaveAndAddNewItemToQuotation = useCallback(
+    async (newItemData) => {
+      if (
+        !newItemData.name ||
+        !newItemData.pricing.sellingPrice ||
+        !newItemData.pricing.baseUnit
+      ) {
+        toast.error(
+          "New item name, selling price, and base unit are required."
+        );
+        return;
+      }
+      setIsSavingNewItem(true);
+      setError(null);
 
-    try {
-      const { pricing, ...restOfItemData } = newItemData;
-      const payload = {
-        ...restOfItemData,
-        ...pricing,
-      };
-      const savedItem = await apiClient("/items", {
-        method: "POST",
-        body: payload,
-      });
-      toast.success(`Item "${savedItem.name}" created and added to quotation.`);
-      handleAddItem(savedItem);
-      setNewItemFormData(initialNewItemFormData);
-      setItemCreationMode("search");
-    } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to save new item.",
-        user,
-        "itemCreationInQuotation"
-      );
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsSavingNewItem(false);
-    }
-  }, [handleAddItem, user]);
+      try {
+        const { pricing, ...restOfItemData } = newItemData;
+        const payload = {
+          ...restOfItemData,
+          ...pricing,
+        };
+        const savedItem = await apiClient("/items", {
+          method: "POST",
+          body: payload,
+        });
+        toast.success(
+          `Item "${savedItem.name}" created and added to quotation.`
+        );
+        handleAddItem(savedItem);
+        setNewItemFormData(initialNewItemFormData);
+        setItemCreationMode("search");
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to save new item.",
+          user,
+          "itemCreationInQuotation"
+        );
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsSavingNewItem(false);
+      }
+    },
+    [handleAddItem, user]
+  );
 
   const handleGoodsChange = useCallback(
     (index, field, value, subtextIndex = null) => {
@@ -686,7 +734,9 @@ const QuotationFormPage = () => {
         } else if (field === "gstRate") {
           itemToUpdate[field] = value === "" ? null : parseFloat(value);
         } else {
-          itemToUpdate[field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
+          itemToUpdate[field] = ["quantity", "price"].includes(field)
+            ? Number(value)
+            : value;
         }
 
         if (field === "quantity" || field === "unit") {
@@ -695,30 +745,48 @@ const QuotationFormPage = () => {
           const originalItem = itemToUpdate.originalItem;
 
           if (originalItem && selectedUnit) {
-            const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(originalItem, 1, selectedUnit);
+            const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(
+              originalItem,
+              1,
+              selectedUnit
+            );
             itemToUpdate.price = pricePerSelectedUnit;
             itemToUpdate.amount = pricePerSelectedUnit * currentQuantity;
           } else {
-            itemToUpdate.amount = (currentQuantity || 0) * (itemToUpdate.price || 0);
+            itemToUpdate.amount =
+              (currentQuantity || 0) * (itemToUpdate.price || 0);
           }
         } else if (field === "price") {
-          itemToUpdate.amount = (Number(itemToUpdate.quantity) || 0) * (Number(itemToUpdate.price) || 0);
+          itemToUpdate.amount =
+            (Number(itemToUpdate.quantity) || 0) *
+            (Number(itemToUpdate.price) || 0);
         }
 
         if (field === "price") {
           const currentItem = itemToUpdate;
           const newPrice = parseFloat(value);
-          const originalPrice = parseFloat(currentItem.originalItem?.pricing?.sellingPrice);
+          const originalPrice = parseFloat(
+            currentItem.originalItem?.pricing?.sellingPrice
+          );
           const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
 
           if (!isNaN(newPrice) && !isNaN(originalPrice)) {
-            const selectedUnitInfo = currentItem.originalItem?.units.find(u => u.name === currentItem.unit);
-            const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
-            const minAllowedPricePerSelectedUnit = (originalPrice * (1 - maxDiscountPerc / 100)) * conversionFactor;
+            const selectedUnitInfo = currentItem.originalItem?.units.find(
+              (u) => u.name === currentItem.unit
+            );
+            const conversionFactor = selectedUnitInfo
+              ? parseFloat(selectedUnitInfo.conversionFactor)
+              : 1;
+            const minAllowedPricePerSelectedUnit =
+              originalPrice * (1 - maxDiscountPerc / 100) * conversionFactor;
 
             if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
               if (newPrice < minAllowedPricePerSelectedUnit)
-                priceValidationError = `Discount for ${currentItem.description} exceeds ${maxDiscountPerc}%. Min price for ${currentItem.unit} is ₹${minAllowedPricePerSelectedUnit.toFixed(2)}.`;
+                priceValidationError = `Discount for ${
+                  currentItem.description
+                } exceeds ${maxDiscountPerc}%. Min price for ${
+                  currentItem.unit
+                } is ₹${minAllowedPricePerSelectedUnit.toFixed(2)}.`;
             }
           } else if (String(value).trim() !== "" && isNaN(newPrice)) {
             priceValidationError = `Invalid price for ${currentItem.description}.`;
@@ -753,7 +821,11 @@ const QuotationFormPage = () => {
             ...item,
             srNo: idx + 1,
           }));
-        return { ...prevData, goods: updatedGoods, ...recalculateTotals(updatedGoods) };
+        return {
+          ...prevData,
+          goods: updatedGoods,
+          ...recalculateTotals(updatedGoods),
+        };
       });
     },
     [recalculateTotals]
@@ -762,7 +834,8 @@ const QuotationFormPage = () => {
   const handleAddSubtext = useCallback((itemIndex) => {
     setQuotationData((prevData) => {
       const updatedGoods = [...prevData.goods];
-      if (!updatedGoods[itemIndex].subtexts) updatedGoods[itemIndex].subtexts = [];
+      if (!updatedGoods[itemIndex].subtexts)
+        updatedGoods[itemIndex].subtexts = [];
       updatedGoods[itemIndex].subtexts.push("");
       return { ...prevData, goods: updatedGoods };
     });
@@ -776,49 +849,46 @@ const QuotationFormPage = () => {
     });
   }, []);
 
-  const fetchBillingAddressFromPincode = useCallback(
-    async (pincode) => {
-      if (!pincode || pincode.length !== 6) return;
-      setIsFetchingBillingAddress(true);
-      setError(null);
-      try {
-        const response = await fetch(
-          `https://api.postalpincode.in/pincode/${pincode}`
-        );
-        const responseData = await response.json();
-        if (
-          responseData &&
-          responseData.length > 0 &&
-          responseData[0].Status === "Success"
-        ) {
-          const postOffice = responseData[0].PostOffice[0];
-          if (postOffice) {
-            setQuotationData((prev) => ({
-              ...prev,
-              billingAddress: {
-                ...prev.billingAddress,
-                city: postOffice.District || prev.billingAddress.city,
-                state: postOffice.State || prev.billingAddress.state,
-              },
-            }));
-            toast.success(`City and State auto-filled for pincode ${pincode}.`);
-          } else {
-            toast.warn(`No Post Office details found for pincode ${pincode}.`);
-          }
+  const fetchBillingAddressFromPincode = useCallback(async (pincode) => {
+    if (!pincode || pincode.length !== 6) return;
+    setIsFetchingBillingAddress(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://api.postalpincode.in/pincode/${pincode}`
+      );
+      const responseData = await response.json();
+      if (
+        responseData &&
+        responseData.length > 0 &&
+        responseData[0].Status === "Success"
+      ) {
+        const postOffice = responseData[0].PostOffice[0];
+        if (postOffice) {
+          setQuotationData((prev) => ({
+            ...prev,
+            billingAddress: {
+              ...prev.billingAddress,
+              city: postOffice.District || prev.billingAddress.city,
+              state: postOffice.State || prev.billingAddress.state,
+            },
+          }));
+          toast.success(`City and State auto-filled for pincode ${pincode}.`);
         } else {
-          toast.warn(
-            `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
-          );
+          toast.warn(`No Post Office details found for pincode ${pincode}.`);
         }
-      } catch (error) {
-        console.error("Error fetching billing address:", error);
-        toast.error("Error fetching address details.");
-      } finally {
-        setIsFetchingBillingAddress(false);
+      } else {
+        toast.warn(
+          `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
+        );
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("Error fetching billing address:", error);
+      toast.error("Error fetching address details.");
+    } finally {
+      setIsFetchingBillingAddress(false);
+    }
+  }, []);
 
   const handleInputChange = useCallback(
     (e) => {
@@ -855,24 +925,21 @@ const QuotationFormPage = () => {
     [fetchBillingAddressFromPincode]
   );
 
-  const handleClientSelect = useCallback(
-    (client) => {
-      setQuotationData((prev) => ({
-        ...prev,
-        client: {
-          _id: client._id,
-          companyName: client.companyName || "",
-          clientName: client.clientName || "",
-          gstNumber: client.gstNumber || "",
-          email: client.email || "",
-          phone: client.phone || "",
-        },
-      }));
-      setSelectedClientIdForForm(client._id);
-      setError(null);
-    },
-    []
-  );
+  const handleClientSelect = useCallback((client) => {
+    setQuotationData((prev) => ({
+      ...prev,
+      client: {
+        _id: client._id,
+        companyName: client.companyName || "",
+        clientName: client.clientName || "",
+        gstNumber: client.gstNumber || "",
+        email: client.email || "",
+        phone: client.phone || "",
+      },
+    }));
+    setSelectedClientIdForForm(client._id);
+    setError(null);
+  }, []);
 
   const handleSaveClientDetails = useCallback(async () => {
     const {
@@ -1018,23 +1085,40 @@ const QuotationFormPage = () => {
       setFieldErrors({});
       let errors = {};
 
-      if (!quotationData.client.companyName) errors["client.companyName"] = "Company Name is required";
-      if (!quotationData.client.clientName) errors["client.clientName"] = "Client Name is required";
-      if (!quotationData.client.gstNumber) errors["client.gstNumber"] = "GST Number is required";
-      if (!quotationData.client.email) errors["client.email"] = "Email is required";
-      if (!quotationData.client.phone) errors["client.phone"] = "Phone is required";
-      if (!quotationData.billingAddress.address1) errors["billingAddress.address1"] = "Address Line 1 is required";
-      if (!quotationData.billingAddress.pincode) errors["billingAddress.pincode"] = "Pincode is required";
-      if (!quotationData.billingAddress.city) errors["billingAddress.city"] = "City is required";
-      if (!quotationData.billingAddress.state) errors["billingAddress.state"] = "State is required";
-      if (!quotationData.goods || quotationData.goods.length === 0) errors["goods"] = "Add at least one item.";
+      if (!quotationData.client.companyName)
+        errors["client.companyName"] = "Company Name is required";
+      if (!quotationData.client.clientName)
+        errors["client.clientName"] = "Client Name is required";
+      if (!quotationData.client.gstNumber)
+        errors["client.gstNumber"] = "GST Number is required";
+      if (!quotationData.client.email)
+        errors["client.email"] = "Email is required";
+      if (!quotationData.client.phone)
+        errors["client.phone"] = "Phone is required";
+      if (!quotationData.billingAddress.address1)
+        errors["billingAddress.address1"] = "Address Line 1 is required";
+      if (!quotationData.billingAddress.pincode)
+        errors["billingAddress.pincode"] = "Pincode is required";
+      if (!quotationData.billingAddress.city)
+        errors["billingAddress.city"] = "City is required";
+      if (!quotationData.billingAddress.state)
+        errors["billingAddress.state"] = "State is required";
+      if (!quotationData.goods || quotationData.goods.length === 0)
+        errors["goods"] = "Add at least one item.";
 
       quotationData.goods.forEach((item, i) => {
-        if (!item.description) errors[`goods.${i}.description`] = `Description required for item ${i + 1}`;
-        if (!item.hsnCode) errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
-        if (!(parseFloat(item.quantity) > 0)) errors[`goods.${i}.quantity`] = `Quantity required for item ${i + 1}`;
-        if (!(parseFloat(item.price) >= 0)) errors[`goods.${i}.price`] = `Price required for item ${i + 1}`;
-        if (!item.unit) errors[`goods.${i}.unit`] = `Unit required for item ${i + 1}`;
+        if (!item.description)
+          errors[`goods.${i}.description`] = `Description required for item ${
+            i + 1
+          }`;
+        if (!item.hsnCode)
+          errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
+        if (!(parseFloat(item.quantity) > 0))
+          errors[`goods.${i}.quantity`] = `Quantity required for item ${i + 1}`;
+        if (!(parseFloat(item.price) >= 0))
+          errors[`goods.${i}.price`] = `Price required for item ${i + 1}`;
+        if (!item.unit)
+          errors[`goods.${i}.unit`] = `Unit required for item ${i + 1}`;
       });
 
       if (Object.keys(errors).length > 0) {
@@ -1091,9 +1175,10 @@ const QuotationFormPage = () => {
         price: Number(item.price),
         amount: Number(item.amount),
         sellingPrice: Number(item.sellingPrice),
-        originalItem: typeof item.originalItem === "object"
-          ? item.originalItem?._id
-          : item.originalItem,
+        originalItem:
+          typeof item.originalItem === "object"
+            ? item.originalItem?._id
+            : item.originalItem,
         maxDiscountPercentage: item.maxDiscountPercentage
           ? Number(item.maxDiscountPercentage)
           : 0,
@@ -1107,6 +1192,8 @@ const QuotationFormPage = () => {
         validityDate: new Date(quotationData.validityDate).toISOString(),
         orderIssuedBy: quotationData.orderIssuedBy,
         goods: goodsForSubmission,
+        billingAddress: quotationData.billingAddress,
+        shippingAddress: quotationData.billingAddress,
         totalQuantity: Number(quotationData.totalQuantity),
         totalAmount: Number(quotationData.totalAmount),
         gstAmount: Number(quotationData.gstAmount),
@@ -1114,7 +1201,6 @@ const QuotationFormPage = () => {
         roundOffTotal: Number(quotationData.roundOffTotal),
         status: quotationData.status || "open",
         client: { ...quotationData.client, _id: clientId },
-        billingAddress: quotationData.billingAddress,
       };
 
       try {
@@ -1581,6 +1667,7 @@ const QuotationFormPage = () => {
             handleSaveAndAddNewItemToQuotation
           }
           isSavingNewItem={isSavingNewItem}
+            fieldErrors={fieldErrors}
         />
         {isItemSearchDropdownOpenInModal && (
           <div style={{ height: "300px" }}></div>
@@ -1621,7 +1708,20 @@ const QuotationFormPage = () => {
                   className="text-end"
                   style={{ fontWeight: "bold", fontSize: "1.1rem" }}
                 >
-                  <strong>₹{quotationData.roundOffTotal}</strong>
+                  <Form.Control
+                    type="number"
+                    value={quotationData.roundOffTotal}
+                    readOnly
+                    plaintext
+                    style={{
+                      textAlign: "right",
+                      fontWeight: "bold",
+                      fontSize: "1.1rem",
+                      border: "none",
+                      backgroundColor: "transparent",
+                    }}
+                    tabIndex={-1}
+                  />
                 </td>
               </tr>
             </tbody>

@@ -42,7 +42,13 @@ const CreateTicketPage = () => {
     // Prepare newTicketDetails part of the payload
     const newTicketDetailsPayload = {
       ...ticketData,
-      billingAddress: ticketData.billingAddress,
+      billingAddress: [
+        ticketData.billingAddress[0] || "",
+        ticketData.billingAddress[1] || "",
+        ticketData.billingAddress[2] || "",
+        ticketData.billingAddress[3] || "",
+        ticketData.billingAddress[4] || "",
+      ],
       shippingAddress: ticketData.shippingSameAsBilling
         ? [...ticketData.billingAddress]
         : [
@@ -54,6 +60,7 @@ const CreateTicketPage = () => {
           ],
       goods: ticketData.goods.map((g) => ({
         ...g,
+        hsnCode: g.hsnCode || "", // Ensure hsnCode is present
         gstRate: parseFloat(g.gstRate || 0),
       })),
       deadline: ticketData.deadline
@@ -599,7 +606,7 @@ const CreateTicketPage = () => {
               <tr key={index}>
                 <td>{item.srNo}</td>
                 <td>{item.description}</td>
-                <td>{item.hsnSacCode}</td>
+                <td>{item.hsnCode}</td>
                 <td>{item.quantity}</td>
                 <td>₹{(item.price || 0).toFixed(2)}</td>
                 <td>₹{(item.amount || 0).toFixed(2)}</td>
@@ -610,30 +617,12 @@ const CreateTicketPage = () => {
       </div>
       <div className="bg-light p-3 rounded">
         <div className="row">
-          <div className="col-md-4">
-            <Table bordered size="sm">
-              <tbody>
-                <tr>
-                  <td>Total Quantity</td>
-                  <td className="text-end">
-                    <strong>{ticketData.totalQuantity || 0}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Total Amount (Pre-GST)</td>
-                  <td className="text-end">
-                    <strong>₹{(ticketData.totalAmount || 0).toFixed(2)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </Table>
-          </div>
           <div className="col-md-8">
             <Table bordered size="sm">
               <tbody>
                 {(ticketData.gstBreakdown || []).map((gstGroup, index) => (
                   <React.Fragment key={index}>
-                    {gstGroup.itemGstRate > 0 && // Only show rows if there's a GST rate > 0 for this group
+                    {gstGroup.itemGstRate > 0 &&
                       (ticketData.isBillingStateSameAsCompany ? (
                         <>
                           <tr>

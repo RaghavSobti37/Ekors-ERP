@@ -53,51 +53,68 @@ const EditTicketPage = () => {
   const [formValidated, setFormValidated] = useState(false);
   const [isFetchingQuotation, setIsFetchingQuotation] = useState(false);
 
-  const fetchTicketDetails = useCallback(async () => {
-    if (!ticketIdFromParams) return;
-    setIsLoading(true);
-    try {
-      const data = await apiClient(`/tickets/${ticketIdFromParams}`, {
-        params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-      });
-      const billingAddressObj = Array.isArray(data.billingAddress) && data.billingAddress.length === 5
-        ? { address1: data.billingAddress[0] || "", address2: data.billingAddress[1] || "", state: data.billingAddress[2] || "", city: data.billingAddress[3] || "", pincode: data.billingAddress[4] || "" }
-        : (typeof data.billingAddress === 'object' && data.billingAddress !== null)
-          ? data.billingAddress
-          : initialTicketData.billingAddress;
+// Modify the fetchTicketDetails function to better handle address formats
+const fetchTicketDetails = useCallback(async () => {
+  if (!ticketIdFromParams) return;
+  setIsLoading(true);
+  try {
+    const data = await apiClient(`/tickets/${ticketIdFromParams}`, {
+      params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+    });
 
-      const shippingAddressObj = Array.isArray(data.shippingAddress) && data.shippingAddress.length === 5
-        ? { address1: data.shippingAddress[0] || "", address2: data.shippingAddress[1] || "", state: data.shippingAddress[2] || "", city: data.shippingAddress[3] || "", pincode: data.shippingAddress[4] || "" }
-        : (typeof data.shippingAddress === 'object' && data.shippingAddress !== null)
-          ? data.shippingAddress
-          : initialTicketData.shippingAddress;
+    // Enhanced address handling
+    const billingAddressObj = Array.isArray(data.billingAddress)
+      ? {
+          address1: data.billingAddress[0] || "",
+          address2: data.billingAddress[1] || "",
+          state: data.billingAddress[2] || "",
+          city: data.billingAddress[3] || "",
+          pincode: data.billingAddress[4] || "",
+        }
+      : (typeof data.billingAddress === 'object' && data.billingAddress !== null)
+        ? data.billingAddress
+        : initialTicketData.billingAddress;
 
-      setTicketData({
-        ...initialTicketData, // Start with defaults to ensure all fields are present
-        ...data,
-        billingAddress: billingAddressObj,
-        shippingAddress: shippingAddressObj,
-        clientPhone: data.clientPhone || data.client?.phone || "", // Prioritize direct field, fallback to populated client
-        clientGstNumber: data.clientGstNumber || data.client?.gstNumber || "", // Prioritize direct field
-        deadline: data.deadline ? formatDateForInput(data.deadline) : null,
-        validityDate: data.validityDate ? formatDateForInput(data.validityDate) : initialTicketData.validityDate,
-        goods: (data.goods || []).map(g => ({
-            ...g,
-            hsnCode: g.hsnCode || "",
-            originalItem: g.originalItem?._id || g.originalItem || undefined,
-            // ...other fields...
-        })),
-      });
-      setOriginalStatus(data.status);
-       setRoundOffAmount(data.roundOff || 0);
-      setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null ? data.finalRoundedAmount : data.grandTotal + (data.roundOff || 0) );
-    } catch (err) {
-      handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
-      navigate("/tickets");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [ticketIdFromParams, navigate, authUser]);
+    const shippingAddressObj = Array.isArray(data.shippingAddress)
+      ? {
+          address1: data.shippingAddress[0] || "",
+          address2: data.shippingAddress[1] || "",
+          state: data.shippingAddress[2] || "",
+          city: data.shippingAddress[3] || "",
+          pincode: data.shippingAddress[4] || "",
+        }
+      : (typeof data.shippingAddress === 'object' && data.shippingAddress !== null)
+        ? data.shippingAddress
+        : initialTicketData.shippingAddress;
+
+    setTicketData({
+      ...initialTicketData,
+      ...data,
+      billingAddress: billingAddressObj,
+      shippingAddress: shippingAddressObj,
+      goods: (data.goods || []).map(g => ({
+        ...g,
+        hsnCode: g.hsnCode || "", // Defensive: always set hsnCode
+        originalItem: g.originalItem?._id || g.originalItem || undefined,
+        quantity: Number(g.quantity || 0),
+        price: Number(g.price || 0),
+        amount: Number(g.amount || 0),
+        gstRate: parseFloat(g.gstRate || 0),
+        subtexts: g.subtexts || [],
+      })),
+    });
+    setOriginalStatus(data.status);
+    setRoundOffAmount(data.roundOff || 0);
+    setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null 
+      ? data.finalRoundedAmount 
+      : data.grandTotal + (data.roundOff || 0));
+  } catch (err) {
+    handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
+    navigate("/tickets");
+  } finally {
+    setIsLoading(false);
+  }
+}, [ticketIdFromParams, navigate, authUser]);
 
   useEffect(() => {
     if (location.state?.ticketDataForForm) {
@@ -616,7 +633,7 @@ const EditTicketPage = () => {
                     ))}
                     <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
                   </td>
-                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN Code" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
                     {(item.units && item.units.length > 0) ? (

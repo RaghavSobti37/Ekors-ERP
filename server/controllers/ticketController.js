@@ -69,27 +69,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
     let quotationBillingAddress = sourceQuotationData.billingAddress || {};
     let quotationShippingAddress = sourceQuotationData.shippingAddress || {};
 
-    // Convert billingAddress to array if it's an object
-    if (!Array.isArray(quotationBillingAddress) && typeof quotationBillingAddress === "object") {
-      quotationBillingAddress = [
-        quotationBillingAddress.address1 || "",
-        quotationBillingAddress.address2 || "",
-        quotationBillingAddress.state || "",
-        quotationBillingAddress.city || "",
-        quotationBillingAddress.pincode || "",
-      ];
-    }
-    // Convert shippingAddress to array if it's an object
-    if (!Array.isArray(quotationShippingAddress) && typeof quotationShippingAddress === "object") {
-      quotationShippingAddress = [
-        quotationShippingAddress.address1 || "",
-        quotationShippingAddress.address2 || "",
-        quotationShippingAddress.state || "",
-        quotationShippingAddress.city || "",
-        quotationShippingAddress.pincode || "",
-      ];
-    }
-
     // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
     let determinedDeadline = newTicketDetails.deadline
       ? new Date(newTicketDetails.deadline)
@@ -110,7 +89,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
         (qGood, index) => ({
           srNo: qGood.srNo || index + 1,
           description: qGood.description,
-          hsnCode: qGood.hsnCode || "", // Use hsnCode
+          hsnCode: qGood.hsnCode || "",
           quantity: Number(qGood.quantity || 0),
           unit: qGood.unit || "nos",
           price: Number(qGood.price || 0),
@@ -204,23 +183,20 @@ exports.createTicket = asyncHandler(async (req, res) => {
 
   // Construct shippingAddress array
   if (finalTicketData.shippingSameAsBilling === true) {
-    finalTicketData.shippingAddress = [
-      ...(finalTicketData.billingAddress || ["", "", "", "", ""]),
-    ];
+    finalTicketData.shippingAddress = { ...finalTicketData.billingAddress };
   } else if (finalTicketData.shippingAddressObj) {
-    const saObj = finalTicketData.shippingAddressObj;
-    finalTicketData.shippingAddress = [
-      saObj.address1 || "",
-      saObj.address2 || "",
-      saObj.state || "",
-      saObj.city || "",
-      saObj.pincode || "",
-    ];
+    finalTicketData.shippingAddress = { ...finalTicketData.shippingAddressObj };
   } else if (
-    !Array.isArray(finalTicketData.shippingAddress) ||
-    finalTicketData.shippingAddress.length !== 5
+    typeof finalTicketData.shippingAddress !== "object" ||
+    finalTicketData.shippingAddress === null
   ) {
-    finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default if not properly provided
+    finalTicketData.shippingAddress = {
+      address1: "",
+      address2: "",
+      state: "",
+      city: "",
+      pincode: "",
+    };
   }
   delete finalTicketData.shippingAddressObj; // Remove if not part of schema
 
@@ -325,44 +301,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.finalRoundedAmount = 0;
   }
 
-  if (
-    !Array.isArray(finalTicketData.billingAddress) ||
-    finalTicketData.billingAddress.length !== 5
-  ) {
-   logger.log({
-      user: req.user || user || null,
-      page: "Ticket",
-      action: "Create Ticket",
-      api: req.originalUrl,
-      req,
-      message: "Billing address is not in the expected array format after construction.",
-      details: { billingAddress: finalTicketData.billingAddress },
-      level: "error",
-    });
-    return res.status(400).json({ error: "Invalid billing address format." });
-  }
-  if (
-    !Array.isArray(finalTicketData.shippingAddress) ||
-    finalTicketData.shippingAddress.length !== 5
-  ) {
-    logger.log({
-      user: req.user || user || null,
-      page: "Ticket",
-      action: "Create Ticket",
-      api: req.originalUrl,
-      req,
-      message: "Shipping address is not in the expected array format after construction.",
-      details: { shippingAddress: finalTicketData.shippingAddress },
-      level: "error",
-    });
-    return res.status(400).json({ error: "Invalid shipping address format." });
-  }
-
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
     finalTicketData.goods = finalTicketData.goods.map((item) => ({
       srNo: item.srNo,
       description: item.description,
-      hsnCode: item.hsnCode,
+      hsnCode: item.hsnCode || "", // Defensive: always set hsnCode
       quantity: Number(item.quantity || 0),
       unit: item.unit || "Nos",
       price: Number(item.price || 0),

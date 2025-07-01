@@ -28,6 +28,14 @@ const documentSubSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+const addressSchema = new mongoose.Schema({
+  address1: { type: String, default: '' },
+  address2: { type: String, default: '' },
+  city: { type: String, default: '' },
+  state: { type: String, default: '' },
+  pincode: { type: String, default: '' },
+}, { _id: false });
+
 const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
   companyName: { type: String, required: true },
@@ -36,21 +44,8 @@ const ticketSchema = new mongoose.Schema({
   clientPhone: { type: String },
   clientGstNumber: { type: String },
 
-  billingAddress: {
-    // Change to object for consistency
-    address1: { type: String, default: '' },
-    address2: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
-  shippingAddress: {
-    address1: { type: String, default: '' },
-    address2: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
+  billingAddress: addressSchema,
+  shippingAddress: addressSchema,
   shippingSameAsBilling: { type: Boolean, default: false },
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
