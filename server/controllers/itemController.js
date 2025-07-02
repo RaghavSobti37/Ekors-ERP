@@ -511,11 +511,11 @@ exports.importItemsFromExcelViaAPI = asyncHandler(async (req, res) => {
 exports.getCategories = asyncHandler(async (req, res) => {
   const user = req.user || null;
   try {
+    // Remove sorting by category
     const categories = await Item.aggregate([
       { $match: { status: "approved" } },
       { $group: { _id: "$category" } },
       { $project: { category: "$_id", _id: 0 } },
-      { $sort: { category: 1 } },
     ]);
 
     res.json(categories);

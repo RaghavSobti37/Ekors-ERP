@@ -568,7 +568,7 @@ const PIPDF = ({ ticketData, companyInfo }) => {
                 ))}
               </View>
               <Text style={[styles.goodsCell, styles.colHSN]}>
-                {String(item.hsnSacCode ?? '')} {/* Ensure string */}
+                {String(item.hsnCode ?? '')} {/* Ensure string */}
               </Text>
               <Text style={[styles.goodsCell, styles.colQty]}>
                 {item.quantity}

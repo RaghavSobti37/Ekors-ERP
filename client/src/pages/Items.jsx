@@ -32,7 +32,7 @@ export default function Items() {
 
   // Fetch categories on mount
   useEffect(() => {
-    apiClient("/categories")
+    apiClient("/items/categories")
       .then((res) => setCategories(res.data || []))
       .catch(() => setCategories([]));
   }, []);
@@ -48,7 +48,7 @@ export default function Items() {
         search: searchTerm,
         sortKey: sortKey,
         sortDirection: sortDirection,
-        ...(selectedCategory && { category: selectedCategory }),
+        // ...(selectedCategory && { category: selectedCategory }), // REMOVE category param
       };
       const res = await apiClient("/items", { params });
       setItems(res.data || []);
@@ -59,7 +59,7 @@ export default function Items() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection, selectedCategory]);
+  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection]); // REMOVE selectedCategory from deps
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -280,7 +280,7 @@ export default function Items() {
               showButton={false}
             />
           </div>
-          <Form.Select
+          {/* <Form.Select
             className="flex-shrink-0"
             style={{ width: 180 }}
             value={selectedCategory}
@@ -292,7 +292,7 @@ export default function Items() {
                 {cat.name || cat}
               </option>
             ))}
-          </Form.Select>
+          </Form.Select> */}
           <Button
             variant="success"
             className="flex-shrink-0"

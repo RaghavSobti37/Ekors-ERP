@@ -10,7 +10,7 @@ const { Purchase, Item } = require("../models/itemlist"); // Import Purchase and
 router.get("/purchases/new", auth, (req, res) => res.status(200).send("Purchase Form Page")); // This route is primarily for frontend navigation
 router.get("/purchases/all", auth, purchaseController.getAllPurchases); // Get all purchases (Protected)
 router.post("/purchase", auth, purchaseController.addBulkPurchase); // Add bulk purchase
-router.get("/categories", itemController.getCategories); // GET categories
+router.get("/categories", itemController.getCategories); // GET categories (no sort in controller)
 router.post("/categories", auth, itemController.createCategory); // POST new category (Protected)
 // router.post('/categories/subcategory', auth, itemController.createSubcategory); // POST new subcategory (Protected)
 router.get("/export-excel", auth, itemController.exportItemsToExcel); // New route for export

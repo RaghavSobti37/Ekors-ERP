@@ -739,6 +739,40 @@ exports.updateTicket = async (req, res) => {
   } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload };
 
+  // Always fetch the original ticket for reference
+  const originalTicket = await Ticket.findById(ticketId);
+  if (!originalTicket) {
+    return res.status(404).json({ error: "Ticket not found" });
+  }
+
+  // --- Address Handling Fix ---
+  // Always set billingAddress
+  if (typeof ticketDataForUpdate.billingAddress === "object" && ticketDataForUpdate.billingAddress !== null) {
+    // Use the provided billingAddress
+  } else if (originalTicket.billingAddress) {
+    ticketDataForUpdate.billingAddress = originalTicket.billingAddress;
+  }
+
+  // Always set shippingAddress
+  if (shippingSameAsBilling === true) {
+    ticketDataForUpdate.shippingAddress = ticketDataForUpdate.billingAddress;
+  } else if (typeof ticketDataForUpdate.shippingAddress === "object" && ticketDataForUpdate.shippingAddress !== null) {
+    // Use the provided shippingAddress
+  } else if (originalTicket.shippingAddress) {
+    ticketDataForUpdate.shippingAddress = originalTicket.shippingAddress;
+  }
+
+  // If your schema expects addresses as arrays, ensure conversion here
+  // (Uncomment and adjust if needed)
+  // if (ticketDataForUpdate.billingAddress && !Array.isArray(ticketDataForUpdate.billingAddress)) {
+  //   const ba = ticketDataForUpdate.billingAddress;
+  //   ticketDataForUpdate.billingAddress = [ba.address1 || "", ba.address2 || "", ba.state || "", ba.city || "", ba.pincode || ""];
+  // }
+  // if (ticketDataForUpdate.shippingAddress && !Array.isArray(ticketDataForUpdate.shippingAddress)) {
+  //   const sa = ticketDataForUpdate.shippingAddress;
+  //   ticketDataForUpdate.shippingAddress = [sa.address1 || "", sa.address2 || "", sa.state || "", sa.city || "", sa.pincode || ""];
+  // }
+
   if (
     ticketDataForUpdate.hasOwnProperty("deadline") &&
     ticketDataForUpdate.deadline === ""
