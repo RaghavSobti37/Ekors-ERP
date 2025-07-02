@@ -10,6 +10,7 @@ import Navbar from "../components/Navbar";
 import SearchBar from "../components/Searchbar";
 import SortIndicator from "../components/SortIndicator";
 import ActionButtons from "../components/ActionButtons";
+import { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } from "../utils/payloads";
 
 export default function Items() {
   const { user } = useAuth();
@@ -35,7 +36,7 @@ export default function Items() {
 
   // Fetch categories on mount
   useEffect(() => {
-    apiClient("/items/categories")
+    apiClient("/items/categories/all")
       .then((res) => setCategories(res.data || []))
       .catch(() => setCategories([]));
   }, []);

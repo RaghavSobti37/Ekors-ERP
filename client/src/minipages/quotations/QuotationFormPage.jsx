@@ -11,32 +11,8 @@ import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { handleApiError, formatDateForInput } from "../../utils/helpers.js";
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
-
-const initialNewItemFormData = {
-  name: "",
-  pricing: {
-    baseUnit: "nos",
-    sellingPrice: "",
-    buyingPrice: "",
-  },
-  units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
-  category: "",
-  hsnCode: "",
-  gstRate: "0",
-  quantity: 1,
-  lowStockThreshold: "5",
-};
-
-const generateQuotationNumber = () => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
-};
+import NewItemForm from "../../components/NewItemForm";
+import { getInitialQuotationPayload, recalculateQuotationTotals, normalizeItemForQuotation } from "../../utils/payloads";
 
 const GoodsTable = ({
   goods,
@@ -52,7 +28,12 @@ const GoodsTable = ({
   setNewItemFormData,
   handleSaveAndAddNewItemToQuotation,
   isSavingNewItem,
-    fieldErrors,
+  fieldErrors,
+  categories = [],
+  onAddCategory,
+  newCategory,
+  setNewCategory,
+  isAddingCategory,
 }) => {
   // Helper to get all units for an item (from item.units, originalItem.units, or fallback)
   const getAllUnits = (item) => {
@@ -238,13 +219,20 @@ const GoodsTable = ({
         </tbody>
       </Table>
       <div className="mb-3">
-        <div className="d-flex gap-2 mb-2">
+        <div className="d-flex gap-2 mb-2 align-items-center">
           <Button
             variant={itemCreationMode === "new" ? "primary" : "outline-primary"}
             onClick={() => setItemCreationMode("new")}
             size="sm"
           >
             Create New Item
+          </Button>
+          <Button
+            variant={itemCreationMode === "search" ? "primary" : "outline-primary"}
+            onClick={() => setItemCreationMode("search")}
+            size="sm"
+          >
+            Add Existing Item
           </Button>
         </div>
         {itemCreationMode === "search" && (
@@ -260,176 +248,19 @@ const GoodsTable = ({
         {itemCreationMode === "new" && (
           <>
             <h6>Create and Add New Item</h6>
-            <Form>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>
-                      Item Name <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter item name"
-                      value={newItemFormData.name}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>
-                      Selling Price (per Base Unit){" "}
-                      <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter selling price"
-                      value={newItemFormData.pricing.sellingPrice}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          pricing: {
-                            ...prev.pricing,
-                            sellingPrice: e.target.value,
-                          },
-                        }))
-                      }
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Base Unit</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="e.g., nos, KG, Mtr"
-                      value={newItemFormData.pricing.baseUnit}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          pricing: {
-                            ...prev.pricing,
-                            baseUnit: e.target.value,
-                          },
-                          units: [
-                            {
-                              name: e.target.value,
-                              isBaseUnit: true,
-                              conversionFactor: 1,
-                            },
-                          ],
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>HSN/SAC Code</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="HSN/SAC"
-                      value={newItemFormData.hsnCode}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          hsnCode: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>GST Rate (%)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="GST Rate"
-                      value={newItemFormData.gstRate}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          gstRate: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Category</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Item Category"
-                      value={newItemFormData.category}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          category: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Low Stock Threshold</Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="Default: 5"
-                      value={newItemFormData.lowStockThreshold}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          lowStockThreshold: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Button
-                variant="success"
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  handleSaveAndAddNewItemToQuotation(newItemFormData);
-                  setItemCreationMode("search");
-                }}
-                disabled={
-                  isSavingNewItem ||
-                  !newItemFormData.name ||
-                  !newItemFormData.pricing.sellingPrice ||
-                  !newItemFormData.pricing.baseUnit
-                }
-              >
-                {isSavingNewItem ? (
-                  <>
-                    <Spinner
-                      as="span"
-                      animation="border"
-                      size="sm"
-                      role="status"
-                      aria-hidden="true"
-                    />{" "}
-                    Saving Item...
-                  </>
-                ) : (
-                  "Save Item & Add to Quotation"
-                )}
-              </Button>
-            </Form>
+            <div className="p-3 border rounded bg-light">
+              <NewItemForm
+                onSubmit={handleSaveAndAddNewItemToQuotation}
+                isSaving={isSavingNewItem}
+                error={fieldErrors?.form}
+                success={fieldErrors?.success}
+                categories={categories}
+                onAddCategory={onAddCategory}
+                newCategory={newCategory}
+                setNewCategory={setNewCategory}
+                isAddingCategory={isAddingCategory}
+              />
+            </div>
           </>
         )}
       </div>
@@ -443,61 +274,9 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const getInitialQuotationData = useCallback(
-    (userId) => ({
-      date: formatDateForInput(new Date()),
-      referenceNumber: generateQuotationNumber(),
-      validityDate: formatDateForInput(
-        new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-      ),
-      orderIssuedBy: userId || "",
-      billingAddress: {
-        address1: "",
-        address2: "",
-        city: "",
-        state: "",
-        pincode: "",
-      },
-      goods: [],
-      totalQuantity: 0,
-      totalAmount: 0,
-      gstAmount: 0,
-      grandTotal: 0,
-      roundOffTotal: 0,
-      status: "open",
-      client: {
-        _id: null,
-        companyName: "",
-        clientName: "",
-        gstNumber: "",
-        email: "",
-        phone: "",
-      },
-    }),
-    []
-  );
-
-const recalculateTotals = useCallback((goodsList) => {
-  const totalQuantity = goodsList.reduce(
-    (sum, item) => sum + Number(item.quantity || 0),
-    0
-  );
-  const totalAmount = goodsList.reduce(
-    (sum, item) => sum + Number(item.amount || 0),
-    0
-  );
-  const gstAmount = goodsList.reduce(
-    (sum, item) =>
-      sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
-    0
-  );
-  const grandTotal = totalAmount + gstAmount;
-  const roundOffTotal = Math.round(grandTotal * 100) / 100; // round to 2 decimals
-  return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
-}, []);
-
+  // Use the shared payload for initial state
   const [quotationData, setQuotationData] = useState(
-    location.state?.quotationDataForForm || getInitialQuotationData(user?.id)
+    location.state?.quotationDataForForm || getInitialQuotationPayload(user?.id)
   );
   const [isEditing, setIsEditing] = useState(
     !!quotationIdFromParams || !!location.state?.isEditing
@@ -518,11 +297,25 @@ const recalculateTotals = useCallback((goodsList) => {
     useState(false);
 
   const [itemCreationMode, setItemCreationMode] = useState("search");
-  const [newItemFormData, setNewItemFormData] = useState(
-    initialNewItemFormData
-  );
+  const [newItemFormData, setNewItemFormData] = useState({
+    name: "",
+    pricing: {
+      baseUnit: "nos",
+      sellingPrice: "",
+      buyingPrice: "",
+    },
+    units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
+    category: "",
+    hsnCode: "",
+    gstRate: "0",
+    quantity: 1,
+    lowStockThreshold: "5",
+  });
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState("");
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const quotationFormId = "quotation-form-page";
 
   useEffect(() => {
@@ -592,7 +385,7 @@ const recalculateTotals = useCallback((goodsList) => {
             grandTotal: Number(fetchedQuotation.grandTotal),
             billingAddress:
               fetchedQuotation.billingAddress ||
-              getInitialQuotationData(user?.id).billingAddress,
+              getInitialQuotationPayload(user?.id).billingAddress,
             status: fetchedQuotation.status || "open",
             client: {
               companyName: fetchedQuotation.client?.companyName || "",
@@ -632,46 +425,21 @@ const recalculateTotals = useCallback((goodsList) => {
     location.state,
     navigate,
     user,
-    getInitialQuotationData,
+    getInitialQuotationPayload,
   ]);
 
   const handleAddItem = useCallback(
     (item) => {
-      setQuotationData((prevQuotationData) => {
-        const defaultUnit =
-          item.units?.find((u) => u.isBaseUnit)?.name ||
-          item.units?.[0]?.name ||
-          "nos";
-        const pricePerSelectedUnit =
-          typeof item.sellingPrice === "number" ? item.sellingPrice : 0;
-
-        const newGoods = [
-          ...prevQuotationData.goods,
-          {
-            srNo: prevQuotationData.goods.length + 1,
-            description: item.name,
-            hsnCode: item.hsnCode || "",
-            quantity: 1,
-            unit: defaultUnit,
-            price: pricePerSelectedUnit,
-            amount: pricePerSelectedUnit,
-            originalPrice: pricePerSelectedUnit,
-            sellingPrice: pricePerSelectedUnit,
-            maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
-            gstRate: parseFloat(item.gstRate || 0),
-            subtexts: [],
-            originalItem: item._id || item,
-            units: item.units || [
-              { name: defaultUnit, isBaseUnit: true, conversionFactor: 1 },
-            ], // always attach units
-          },
-        ];
-        const totals = recalculateTotals(newGoods);
-        return { ...prevQuotationData, goods: newGoods, ...totals };
+      setQuotationData((prev) => {
+        const normalized = normalizeItemForQuotation(item);
+        normalized.srNo = prev.goods.length + 1;
+        const newGoods = [...prev.goods, normalized];
+        const totals = recalculateQuotationTotals(newGoods);
+        return { ...prev, goods: newGoods, ...totals };
       });
       setError(null);
     },
-    [recalculateTotals]
+    [recalculateQuotationTotals]
   );
 
   const handleSaveAndAddNewItemToQuotation = useCallback(
@@ -703,7 +471,7 @@ const recalculateTotals = useCallback((goodsList) => {
           `Item "${savedItem.name}" created and added to quotation.`
         );
         handleAddItem(savedItem);
-        setNewItemFormData(initialNewItemFormData);
+        setNewItemFormData(getInitialQuotationPayload().goods);
         setItemCreationMode("search");
       } catch (err) {
         const errorMessage = handleApiError(
@@ -721,95 +489,24 @@ const recalculateTotals = useCallback((goodsList) => {
     [handleAddItem, user]
   );
 
+  // Use recalculateTotals everywhere for goods changes
   const handleGoodsChange = useCallback(
     (index, field, value, subtextIndex = null) => {
       setQuotationData((prevData) => {
-        const updatedGoods = [...prevData.goods];
-        let itemToUpdate = { ...updatedGoods[index] };
-        let priceValidationError = null;
-
-        if (field === "subtexts" && subtextIndex !== null) {
-          if (!itemToUpdate.subtexts) itemToUpdate.subtexts = [];
-          itemToUpdate.subtexts[subtextIndex] = value;
-        } else if (field === "gstRate") {
-          itemToUpdate[field] = value === "" ? null : parseFloat(value);
-        } else {
-          itemToUpdate[field] = ["quantity", "price"].includes(field)
-            ? Number(value)
-            : value;
-        }
-
-        if (field === "quantity" || field === "unit") {
-          const currentQuantity = Number(itemToUpdate.quantity) || 0;
-          const selectedUnit = itemToUpdate.unit;
-          const originalItem = itemToUpdate.originalItem;
-
-          if (originalItem && selectedUnit) {
-            const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(
-              originalItem,
-              1,
-              selectedUnit
-            );
-            itemToUpdate.price = pricePerSelectedUnit;
-            itemToUpdate.amount = pricePerSelectedUnit * currentQuantity;
-          } else {
-            itemToUpdate.amount =
-              (currentQuantity || 0) * (itemToUpdate.price || 0);
+        const goods = prevData.goods.map((item, idx) => {
+          if (idx !== index) return item;
+          if (field === "subtexts") {
+            const subtexts = [...(item.subtexts || [])];
+            subtexts[subtextIndex] = value;
+            return { ...item, subtexts };
           }
-        } else if (field === "price") {
-          itemToUpdate.amount =
-            (Number(itemToUpdate.quantity) || 0) *
-            (Number(itemToUpdate.price) || 0);
-        }
-
-        if (field === "price") {
-          const currentItem = itemToUpdate;
-          const newPrice = parseFloat(value);
-          const originalPrice = parseFloat(
-            currentItem.originalItem?.pricing?.sellingPrice
-          );
-          const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
-
-          if (!isNaN(newPrice) && !isNaN(originalPrice)) {
-            const selectedUnitInfo = currentItem.originalItem?.units.find(
-              (u) => u.name === currentItem.unit
-            );
-            const conversionFactor = selectedUnitInfo
-              ? parseFloat(selectedUnitInfo.conversionFactor)
-              : 1;
-            const minAllowedPricePerSelectedUnit =
-              originalPrice * (1 - maxDiscountPerc / 100) * conversionFactor;
-
-            if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
-              if (newPrice < minAllowedPricePerSelectedUnit)
-                priceValidationError = `Discount for ${
-                  currentItem.description
-                } exceeds ${maxDiscountPerc}%. Min price for ${
-                  currentItem.unit
-                } is ₹${minAllowedPricePerSelectedUnit.toFixed(2)}.`;
-            }
-          } else if (String(value).trim() !== "" && isNaN(newPrice)) {
-            priceValidationError = `Invalid price for ${currentItem.description}.`;
-          }
-        }
-
-        updatedGoods[index] = itemToUpdate;
-        const totals = recalculateTotals(updatedGoods);
-
-        if (priceValidationError) {
-          setError(priceValidationError);
-          toast.warn(priceValidationError);
-        } else if (
-          error &&
-          (error.includes(`Discount for ${updatedGoods[index].description}`) ||
-            error.includes(`Price for ${updatedGoods[index].description}`))
-        ) {
-          setError(null);
-        }
-        return { ...prevData, goods: updatedGoods, ...totals };
+          return { ...item, [field]: value };
+        });
+        const totals = recalculateQuotationTotals(goods);
+        return { ...prevData, goods, ...totals };
       });
     },
-    [recalculateTotals, error]
+    [recalculateQuotationTotals]
   );
 
   const handleDeleteItem = useCallback(
@@ -824,11 +521,11 @@ const recalculateTotals = useCallback((goodsList) => {
         return {
           ...prevData,
           goods: updatedGoods,
-          ...recalculateTotals(updatedGoods),
+          ...recalculateQuotationTotals(updatedGoods),
         };
       });
     },
-    [recalculateTotals]
+    [recalculateQuotationTotals]
   );
 
   const handleAddSubtext = useCallback((itemIndex) => {
@@ -1042,7 +739,7 @@ const recalculateTotals = useCallback((goodsList) => {
           subtexts: item.subtexts || [],
           originalItem: item.originalItem || item,
         }));
-        const totals = recalculateTotals(replicatedGoods);
+        const totals = recalculateQuotationTotals(replicatedGoods);
         setQuotationData((prevData) => ({
           ...prevData,
           client: {
@@ -1055,7 +752,7 @@ const recalculateTotals = useCallback((goodsList) => {
           },
           billingAddress:
             fullQuotation.billingAddress ||
-            getInitialQuotationData(user?.id).billingAddress,
+            getInitialQuotationPayload(user?.id).billingAddress,
           goods: replicatedGoods,
           ...totals,
           referenceNumber: generateQuotationNumber(),
@@ -1075,7 +772,7 @@ const recalculateTotals = useCallback((goodsList) => {
         setIsLoadingReplicationDetails(false);
       }
     },
-    [recalculateTotals, user, getInitialQuotationData]
+    [recalculateQuotationTotals, user, getInitialQuotationPayload]
   );
 
   const handleSubmit = useCallback(
@@ -1265,6 +962,31 @@ const recalculateTotals = useCallback((goodsList) => {
       </Button>
     </>
   );
+
+  useEffect(() => {
+    // Fetch categories from backend or set static list
+    async function fetchCategories() {
+      try {
+        const res = await apiClient("/items/categories/all");
+        setCategories(res.data || []);
+      } catch {
+        setCategories([]);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
+    setIsAddingCategory(true);
+    try {
+      // Optionally, call backend to add category
+      setCategories((prev) => [...prev, newCategory.trim()]);
+      setNewCategory("");
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
 
   if (
     authLoading ||
@@ -1524,7 +1246,7 @@ const recalculateTotals = useCallback((goodsList) => {
                 setSelectedClientIdForForm(null);
                 setQuotationData((prev) => ({
                   ...prev,
-                  client: { ...getInitialQuotationData().client, _id: null },
+                  client: { ...getInitialQuotationPayload().client, _id: null },
                 }));
               }}
               disabled={isLoadingReplicationDetails || !selectedClientIdForForm}
@@ -1663,11 +1385,14 @@ const recalculateTotals = useCallback((goodsList) => {
           setItemCreationMode={setItemCreationMode}
           newItemFormData={newItemFormData}
           setNewItemFormData={setNewItemFormData}
-          handleSaveAndAddNewItemToQuotation={
-            handleSaveAndAddNewItemToQuotation
-          }
+          handleSaveAndAddNewItemToQuotation={handleSaveAndAddNewItemToQuotation}
           isSavingNewItem={isSavingNewItem}
-            fieldErrors={fieldErrors}
+          fieldErrors={fieldErrors}
+          categories={categories}
+          onAddCategory={handleAddCategory}
+          newCategory={newCategory}
+          setNewCategory={setNewCategory}
+          isAddingCategory={isAddingCategory}
         />
         {isItemSearchDropdownOpenInModal && (
           <div style={{ height: "300px" }}></div>

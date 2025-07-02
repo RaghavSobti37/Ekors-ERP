@@ -75,8 +75,6 @@ const quotationSchema = new mongoose.Schema(
     },
     documents: { // Added documents field for quotations
       quotationPdf: documentSubSchema, // For the generated PDF of this quotation
-      clientApproval: documentSubSchema, // Example: If client sends back a signed copy
-      other: [documentSubSchema]
     },
   },
   {

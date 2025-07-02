@@ -28,6 +28,7 @@ import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import Loading
 import { generatePIDocx } from "../utils/generatePIDocx";
 import { Button } from "react-bootstrap";
 import { useCompanyInfo } from "../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
+import { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } from "../utils/payloads";
 
 // UserSearchComponent remains as it might be used by other pages (e.g., TransferTicketPage)
 export const UserSearchComponent = ({ onUserSelect, authContext }) => {

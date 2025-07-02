@@ -6,14 +6,11 @@ const multer = require("multer");
 const exceljs = require("exceljs");
 const asyncHandler = require("express-async-handler");
 const Ticket = require("../models/opentickets");
+const { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } = require("../utils/payloads");
 
 // Constants
 const MAX_CUSTOM_UNITS_TO_EXPORT = 1;
 const DEFAULT_PROFIT_MARGIN = 20;
-
-const STANDARD_UNITS = [
-  'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag',  'set'
-];
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -54,7 +51,7 @@ const handleErrorResponse = (res, error, context, user, req = null) => {
 };
 
 const validateItemData = (itemData) => {
-  if (!itemData.name) {
+  if (!itemData.name || typeof itemData.name !== 'string' || itemData.name.trim() === "") {
     throw new Error("Item name is required");
   }
 
@@ -65,28 +62,28 @@ const validateItemData = (itemData) => {
     throw new Error("Buying price cannot be greater than selling price");
   }
 
-  if (!itemData.units || !itemData.units.some(u => u.isBaseUnit)) {
+  if (!Array.isArray(itemData.units) || !itemData.units.some(u => u && u.isBaseUnit)) {
     throw new Error("A base unit must be selected");
   }
 
   // Validate units structure
-  if (itemData.units) {
-    const baseUnits = itemData.units.filter(u => u.isBaseUnit);
+  if (Array.isArray(itemData.units)) {
+    const baseUnits = itemData.units.filter(u => u && u.isBaseUnit);
     if (baseUnits.length !== 1) {
-      throw new Error("Exactly one base unit must be specified");
+      throw new Error("Exactly one base unit must be selected");
     }
-    
-    if (!STANDARD_UNITS.includes(baseUnits[0].name)) {
-      throw new Error(`Base unit must be one of: ${STANDARD_UNITS.join(', ')}`);
+    // Defensive: Only check includes if STANDARD_UNITS is defined and baseUnits[0].name is a string
+    if (typeof baseUnits[0].name === 'string' && Array.isArray(STANDARD_UNITS) && STANDARD_UNITS.includes(baseUnits[0].name)) {
+      // ok
+    } else if (typeof baseUnits[0].name === 'string' && Array.isArray(STANDARD_UNITS) && !STANDARD_UNITS.includes(baseUnits[0].name)) {
+      throw new Error("Base unit must be a standard unit");
     }
-
     for (const unit of itemData.units) {
-      if (!STANDARD_UNITS.includes(unit.name)) {
-        throw new Error(`Invalid unit name: ${unit.name}. Must be one of: ${STANDARD_UNITS.join(', ')}`);
+      if (!unit || typeof unit.name !== 'string' || unit.name.trim() === "") {
+        throw new Error("All units must have a name");
       }
-      
-      if (unit.isBaseUnit && unit.conversionFactor !== 1) {
-        throw new Error("Base unit must have conversion factor of 1");
+      if (unit.conversionFactor === undefined || unit.conversionFactor === null || isNaN(Number(unit.conversionFactor))) {
+        throw new Error("All units must have a valid conversion factor");
       }
     }
   }
@@ -150,6 +147,7 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
       { header: "Base Unit", key: "baseUnit", width: 15 },
       { header: "Selling Price (per Base Unit)", key: "sellingPrice", width: 25 },
       { header: "Buying Price (per Base Unit)", key: "buyingPrice", width: 25 },
+      { header: "GST (%)", key: "gstRate", width: 12 }, // <-- Added GST column
       ...Array.from({ length: MAX_CUSTOM_UNITS_TO_EXPORT }).flatMap((_, i) => [
         { header: `Custom Unit ${i + 1} Name`, key: `customUnit${i + 1}Name`, width: 20 },
         { header: `Custom Unit ${i + 1} Conversion Factor`, key: `customUnit${i + 1}ConversionFactor`, width: 25 },
@@ -196,6 +194,7 @@ exports.exportItemsToExcel = asyncHandler(async (req, res) => {
         baseUnit: item.baseUnit || "N/A",
         sellingPrice,
         buyingPrice,
+        gstRate: item.gstRate, // <-- Add GST value
       };
 
       // Add custom units
@@ -281,68 +280,67 @@ async function parseExcelBufferForUpdate(fileBuffer, logger) {
     const worksheet = workbook.getWorksheet(1);
 
     if (!worksheet) {
-      throw new Error("No worksheet found in the Excel file.");
+      parsingErrors.push({ row: 'general', message: 'No worksheet found in Excel file.' });
+      return { itemsToUpsert, parsingErrors };
     }
 
-    worksheet.eachRow({ skipHeader: true }, (row, rowNumber) => {
-      // Skip category header rows
-      const firstCell = row.getCell(1).value;
-      if (typeof firstCell === "string" && firstCell.startsWith("Category:")) return;
-
-      // Read columns by their correct index
-      const category = row.getCell(1).value || "Other";
-      const name = row.getCell(2).value;
-      const quantity = row.getCell(3).value;
-      const hsnCode = row.getCell(4).value || "hsn123";
-      // E: GST Rate (optional, not used in item below)
-      // F: Max Discount (optional, not used in item below)
-      const baseUnit = row.getCell(5).value; // Correct: 5th column is Base Unit
-      const sellingPrice = row.getCell(6).value || 100;
-      const buyingPrice = row.getCell(7).value || 10;
-      const customUnit1Name = row.getCell(8).value;
-      const customUnit1ConversionFactor = row.getCell(9).value;
-
-      if (!name) return; // skip empty rows
-
-      // Always use the correct base unit column
-      const units = [
-        { name: String(baseUnit || 'Nos').trim(), isBaseUnit: true, conversionFactor: 1 }
-      ];
-
-      if (customUnit1Name && customUnit1ConversionFactor) {
-        units.push({
-          name: String(customUnit1Name).trim(),
-          isBaseUnit: false,
-          conversionFactor: parseFloat(customUnit1ConversionFactor),
-        });
+    // Find the GST column index by header
+    let gstColIdx = null;
+    worksheet.getRow(1).eachCell((cell, colNumber) => {
+      if (typeof cell.value === 'string' && cell.value.toLowerCase().includes('gst')) {
+        gstColIdx = colNumber;
       }
+    });
 
-      const item = {
-        name: String(name).trim(),
-        quantity: parseFloat(quantity) || 0,
-        baseUnit: String(baseUnit || 'Nos').trim(),
-        sellingPrice: parseFloat(sellingPrice) || 100,
-        buyingPrice: parseFloat(buyingPrice) || 10,
-        units,
-        category: category || "Other",
-        hsnCode: String(hsnCode || 'hsn123').trim(),
-        // gstRate, maxDiscountPercentage, etc. can be added if needed
-      };
-
-      itemsToUpsert.push(item);
+    worksheet.eachRow({ skipHeader: true }, (row, rowNumber) => {
+      try {
+        // Use header row to map columns robustly
+        const headerMap = {};
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+          if (cell.value && typeof cell.value === 'string') {
+            headerMap[cell.value.trim().toLowerCase()] = colNumber;
+          }
+        });
+        // Defensive: get values by header name or fallback to index
+        const getCellByHeader = (header, fallbackIdx) => {
+          const idx = headerMap[header.toLowerCase()];
+          return row.getCell(idx || fallbackIdx).value;
+        };
+        const name = getCellByHeader('name', 2);
+        if (!name || typeof name !== 'string' || name.trim() === '') return; // skip invalid rows
+        const baseUnit = getCellByHeader('base unit', 5) || 'nos';
+        const item = {
+          category: getCellByHeader('category', 1) || '',
+          name,
+          quantity: getCellByHeader('quantity', 3) || 0,
+          hsnCode: getCellByHeader('hsn code', 4) || '',
+          baseUnit,
+          sellingPrice: getCellByHeader('selling price (per base unit)', 6) || 0,
+          buyingPrice: getCellByHeader('buying price (per base unit)', 7) || 0,
+          gstRate: getCellByHeader('gst (%)', 8) || 0,
+          units: [
+            { name: baseUnit, isBaseUnit: true, conversionFactor: 1 },
+            // Optionally add custom units if present
+            getCellByHeader('custom unit 1 name', 9) ? {
+              name: getCellByHeader('custom unit 1 name', 9),
+              isBaseUnit: false,
+              conversionFactor: parseFloat(getCellByHeader('custom unit 1 conversion factor', 10)) || 1
+            } : null
+          ].filter(Boolean),
+        };
+        itemsToUpsert.push(item);
+      } catch (err) {
+        parsingErrors.push({ row: rowNumber, message: err.message });
+      }
     });
 
     return { itemsToUpsert, parsingErrors };
-
   } catch (error) {
     if (logger) {
       logger.log({
-        user: null,
-        page: "Item",
-        action: "Excel Import",
-        api: "parseExcelBufferForUpdate",
-        message: `Error parsing Excel file: ${error.message}`,
-        details: { error: error.stack },
+        page: "Item Import",
+        action: "Excel Import Parse Error",
+        message: error.message,
         level: "error"
       });
     }
@@ -508,21 +506,22 @@ exports.importItemsFromExcelViaAPI = asyncHandler(async (req, res) => {
   }
 });
 
-exports.getCategories = asyncHandler(async (req, res) => {
-  const user = req.user || null;
-  try {
-    // Remove sorting by category
-    const categories = await Item.aggregate([
-      { $match: { status: "approved" } },
-      { $group: { _id: "$category" } },
-      { $project: { category: "$_id", _id: 0 } },
-    ]);
+// Legacy getCategories endpoint removed. Use getAllCategories instead.
+// exports.getCategories = asyncHandler(async (req, res) => {
+//   const user = req.user || null;
+//   try {
+//     // Remove sorting by category
+//     const categories = await Item.aggregate([
+//       { $match: { status: "approved" } },
+//       { $group: { _id: "$category" } },
+//       { $project: { category: "$_id", _id: 0 } },
+//     ]);
 
-    res.json(categories);
-  } catch (error) {
-    handleErrorResponse(res, error, "fetching categories", user);
-  }
-});
+//     res.json(categories);
+//   } catch (error) {
+//     handleErrorResponse(res, error, "fetching categories", user);
+//   }
+// });
 
 exports.createCategory = asyncHandler(async (req, res) => {
   const user = req.user || null;
@@ -763,7 +762,6 @@ exports.createItem = asyncHandler(async (req, res) => {
 exports.updateItem = asyncHandler(async (req, res) => {
   const user = req.user;
   if (!user) {
-   
     return res.status(401).json({ message: "Authentication required." });
   }
 
@@ -772,20 +770,36 @@ exports.updateItem = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Invalid item ID format" });
   }
 
-  // Add this debug log:
-  console.log("DEBUG: updateItem req.body.units received:", req.body.units);
+  // Defensive normalization for all fields
+  req.body = normalizeItemPayload(req.body);
+
+  // Defensive: ensure units is always an array of objects with name
+  req.body.units = req.body.units.filter(u => u && typeof u.name === 'string');
+
+  // Defensive: ensure only one base unit
+  if (req.body.units.length > 0) {
+    let baseUnitFound = false;
+    req.body.units = req.body.units.map(u => {
+      if (u.name.toLowerCase() === req.body.baseUnit) {
+        if (!baseUnitFound) {
+          baseUnitFound = true;
+          return { ...u, isBaseUnit: true, conversionFactor: 1 };
+        } else {
+          return { ...u, isBaseUnit: false };
+        }
+      }
+      return { ...u, isBaseUnit: false };
+    });
+    if (!baseUnitFound && req.body.baseUnit) {
+      req.body.units.unshift({ name: req.body.baseUnit, isBaseUnit: true, conversionFactor: 1 });
+    }
+  }
 
   try {
-    req.body.baseUnit = req.body.baseUnit?.toLowerCase();
-    if (Array.isArray(req.body.units)) {
-      req.body.units = normalizeUnitsToLowercaseAndBase(req.body.units, req.body.baseUnit);
-    }
-
     validateItemData(req.body);
 
     const existingItem = await Item.findById(itemId);
     if (!existingItem) {
-
       return res.status(404).json({ message: "Item not found" });
     }
 
@@ -798,25 +812,25 @@ exports.updateItem = asyncHandler(async (req, res) => {
 
     const baseUnit = units.find(u => u.isBaseUnit);
     if (!baseUnit) {
-      throw new Error("A base unit must be specified");
+      return res.status(400).json({ message: "A base unit must be selected." });
     }
 
-    const quantity = req.body.quantity !== undefined ? parseFloat(req.body.quantity) || 0 : existingItem.quantity;
-    
+    const quantity = req.body.quantity !== undefined ? req.body.quantity : existingItem.quantity;
+
     const updatePayload = {
       name: req.body.name,
       quantity: quantity,
       baseUnit: baseUnit.name,
-      sellingPrice: req.body.sellingPrice !== undefined ? parseFloat(req.body.sellingPrice) : existingItem.sellingPrice,
-      buyingPrice: req.body.buyingPrice !== undefined ? parseFloat(req.body.buyingPrice) : existingItem.buyingPrice,
-      profitMarginPercentage: req.body.profitMarginPercentage || DEFAULT_PROFIT_MARGIN,
+      sellingPrice: req.body.sellingPrice !== undefined ? req.body.sellingPrice : existingItem.sellingPrice,
+      buyingPrice: req.body.buyingPrice !== undefined ? req.body.buyingPrice : existingItem.buyingPrice,
+      profitMarginPercentage: req.body.profitMarginPercentage,
       units: units,
-      gstRate: req.body.gstRate || 0,
-      hsnCode: req.body.hsnCode || "",
-      category: req.body.category || "Other",
+      gstRate: req.body.gstRate,
+      hsnCode: req.body.hsnCode,
+      category: req.body.category,
       maxDiscountPercentage: req.body.maxDiscountPercentage !== undefined
-        ? parseFloat(req.body.maxDiscountPercentage)
-        : existingItem.maxDiscountPercentage, // <-- FIXED
+        ? req.body.maxDiscountPercentage
+        : existingItem.maxDiscountPercentage,
       ...(req.body.image !== undefined && { image: req.body.image }),
     };
 
@@ -1102,7 +1116,7 @@ exports.getRestockSummary = asyncHandler(async (req, res) => {
 
     res.json({
       restockNeededCount,
-      restockItems, // List of items needing restock
+      restockItems: restockItems, // List of items needing restock
       // lowStockWarningCount,
     });
   } catch (error) {
@@ -1189,5 +1203,14 @@ exports.getItemTicketUsageHistory = asyncHandler(async (req, res) => {
     res.json(ticketUsageHistory);
   } catch (error) {
     handleErrorResponse(res, error, `fetching ticket usage history for item ID: ${itemId}`, user);
+  }
+});
+
+exports.getAllCategories = asyncHandler(async (req, res) => {
+  try {
+    const categories = await Item.getAllCategories();
+    res.json({ categories });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch categories', error: error.message });
   }
 });

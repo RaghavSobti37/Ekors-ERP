@@ -5,6 +5,7 @@ const Ticket = require("../models/opentickets");
 const logger = require("../logger"); // Use unified logger
 const mongoose = require("mongoose");
 const ItemModel = require("../models/itemlist").Item; // Use correct model
+const { getInitialQuotationPayload, recalculateQuotationTotals } = require("../utils/payloads");
 
 // --- Helper Functions ---
 const generateNextQuotationNumber = async (userId) => {
@@ -222,15 +223,17 @@ exports.handleQuotationUpsert = async (req, res) => {
       });
     }
 
+    // Always recalculate totals before saving
+    const totals = recalculateQuotationTotals(quotationPayload.goods || []);
     const data = {
       ...quotationPayload,
+      ...totals,
       user: user._id,
       date: new Date(quotationPayload.date),
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
       billingAddress: processedBillingAddress,
       goods: goodsWithPrices,
-      roundOffTotal: Number(quotationPayload.roundOffTotal) || 0, // Ensure roundOffTotal is saved
     };
 
     let quotation;

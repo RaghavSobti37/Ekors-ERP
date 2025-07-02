@@ -10,6 +10,7 @@ import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 import axios from "axios"; // For pincode API
+import { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } from "../../utils/payloads";
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 const statusStages = ["Quotation Sent", "PO Received", "Payment Pending", "Inspection", "Packing List", "Invoice Sent", "Hold", "Closed"];
@@ -21,24 +22,7 @@ const EditTicketPage = () => {
   const navigate = useNavigate();
   const { user: authUser, loading: authLoading } = useAuth();
 
-  const initialTicketData = {
-    companyName: "", quotationNumber: "",
-    ticketNumber: generateNextTicketNumber(), // Generate on frontend
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Initial empty object
-    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
-    shippingSameAsBilling: false,
-    goods: [], totalQuantity: 0, totalAmount: 0,
-    gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-    finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-    status: "Quotation Sent", deadline: null,
-    documents: { quotation: null, po: null, pi: null, challan: null, packingList: null, feedback: null, other: [] },
-    dispatchDays: "7-10 working", validityDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-    clientPhone: "", clientGstNumber: "",
-    termsAndConditions: "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-    statusHistory: [],
-    currentAssignee: null,
-    createdAt: null,
-  };
+  const initialTicketData = getInitialTicketPayload(); // Use getInitialTicketPayload for initial state
 
   const [ticketData, setTicketData] = useState(location.state?.ticketDataForForm || initialTicketData);
   const [originalStatus, setOriginalStatus] = useState("");

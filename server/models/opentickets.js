@@ -142,4 +142,7 @@ ticketSchema.pre('save', function(next) {
 // Create a unique compound index to ensure one ticket per quotation
 ticketSchema.index({ quotationNumber: 1 }, { unique: true });
 
+// Ticket payloads/utilities are now managed in payloads.js, and should be used for all CRUD and mapping logic.
+// Use getInitialTicketPayload and recalculateTicketTotals for ticket schema defaults and calculations if needed.
+
 module.exports = mongoose.model('Ticket', ticketSchema);

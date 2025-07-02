@@ -8,6 +8,7 @@ const path = require("path");
 const fs = require("fs-extra");
 const ticketController = require("../controllers/ticketController");
 const logger = require("../logger"); // Ensure logger is available
+const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloads"); // Adjust the path as necessary
 
 // ... (multer setup remains the same) ...
 const storage = multer.diskStorage({
