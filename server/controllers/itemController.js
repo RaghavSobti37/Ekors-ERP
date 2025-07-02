@@ -358,7 +358,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     user: req.user,
     page: "Item",
     action: "Excel Import",
-    api: req.originalUrl,
+   
     req,
     message: "Excel import started",
     level: "info"
@@ -369,7 +369,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
       user: req.user,
       page: "Item",
       action: "Excel Import",
-      api: req.originalUrl,
+     
       req,
       message: "No file uploaded",
       level: "warn"
@@ -383,7 +383,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     user: req.user,
     page: "Item",
     action: "Excel Import",
-    api: req.originalUrl,
+   
     req,
     message: `Parsed items: ${itemsToUpsert.length}, Errors: ${parsingErrors.length}`,
     details: { parsingErrors },
@@ -395,7 +395,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
       user: req.user,
       page: "Item",
       action: "Excel Import",
-      api: req.originalUrl,
+     
       req,
       message: "No valid items found in Excel",
       details: { parsingErrors },
@@ -439,7 +439,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
       user: req.user,
       page: "Item",
       action: "Excel Import",
-      api: req.originalUrl,
+     
       req,
       message: `Bulk import error`,
       details: { error: err.message },
@@ -455,7 +455,7 @@ exports.importItemsFromUploadedExcel = asyncHandler(async (req, res) => {
     user: req.user,
     page: "Item",
     action: "Excel Import",
-    api: req.originalUrl,
+   
     req,
     message: `Import finished. Created: ${created}, Updated: ${updated}, Errors: ${upsertErrors.length}`,
     details: { created, updated, upsertErrors },
@@ -608,7 +608,7 @@ exports.getItemById = asyncHandler(async (req, res) => {
       user,
       page: "Item",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching item details for ID: ${id}`,
       details: { error: error.message, stack: error.stack },
@@ -669,7 +669,7 @@ exports.createItem = asyncHandler(async (req, res) => {
       user: null,
       page: "Item",
       action: "Create Item",
-      api: req.originalUrl,
+     
       req,
       message: "Create item attempt without authenticated user.",
       details: {},
@@ -729,7 +729,7 @@ exports.createItem = asyncHandler(async (req, res) => {
       user,
       page: "Item",
       action: "Create Item",
-      api: req.originalUrl,
+     
       req,
       message: `Item created successfully by ${user.email}`,
       details: {
@@ -1001,7 +1001,7 @@ exports.deleteItem = asyncHandler(async (req, res) => {
       user,
       page: "Item",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error deleting item ${itemId}: ${error.message}`,
       details: { error: error.message, stack: error.stack },
@@ -1073,7 +1073,7 @@ exports.getItemPurchaseHistory = asyncHandler(async (req, res) => {
       user,
       page: "Item",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching all purchases`,
       details: { error: error.message, stack: error.stack },

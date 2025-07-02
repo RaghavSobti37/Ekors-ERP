@@ -289,7 +289,7 @@ exports.getUserReport = async (req, res, next) => {
       user: req.user,
       page: "Report",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching user report for UserId: ${req.params.userId}`,
       details: { error: err.message, stack: err.stack },
@@ -489,7 +489,7 @@ exports.generateUserReportPDF = async (req, res, next) => {
       user: req.user,
       page: "Report",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `PDF Generation Error for UserId: ${req.params.userId}`,
       details: { error: err.message, stack: err.stack },
@@ -653,7 +653,7 @@ exports.generateQuotationsReport = async (req, res) => {
       user: req.user,
       page: "Report",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to generate quotations report (period: ${period})`,
       details: { error: error.message, stack: error.stack },
@@ -804,7 +804,7 @@ exports.generateTicketsReport = async (req, res) => {
       user: req.user,
       page: "Report",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to generate tickets report (period: ${period})`,
       details: { error: error.message, stack: error.stack },

@@ -22,7 +22,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
   user: req.user || user || initiator || null,
   page: "Ticket",
   action: "Error",
-  api: req.originalUrl,
+ 
   req,
   message: "User Not Found",
   details: { error: error.message, stack: error.stack },
@@ -39,7 +39,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user: req.user || user || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Missing newTicketDetails in request body",
       details: { error: "newTicketDetails is required" },
@@ -127,7 +127,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user: req.user || user || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Ticket deadline is required but not provided or derived.",
       details: { finalTicketData },
@@ -396,7 +396,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user,
       page: "Ticket",
       action: "Create Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket ${ticket.ticketNumber} created successfully.`,
       details: {
@@ -417,7 +417,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
             user: req.user || user || null,
             page: "Ticket",
             action: "Create Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${finalTicketData.quotationNumber} not found. Ticket ${ticket.ticketNumber} created successfully.`,
             details: {
@@ -450,7 +450,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
           user: req.user || user || null,
           page: "Ticket",
           action: "Create Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `Failed to update quotation status for ticket ${ticket.ticketNumber}.`,
           details: {
@@ -486,7 +486,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to create ticket",
       details: { error: error.message, stack: error.stack },
@@ -587,7 +587,7 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
     user,
     page: "Ticket",
     action: "Get All Tickets",
-    api: req.originalUrl,
+   
     req,
     message: `Fetched ${tickets.length} of ${totalItems} tickets.`,
     details: { page: pageNum, limit: limitNum, query: finalQuery },
@@ -616,7 +616,7 @@ logger.log({
       user: req.user || user || null,
       page: "Ticket",
       action: "Get User Tickets",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to fetch tickets",
       details: { error: error.message, stack: error.stack },
@@ -689,7 +689,7 @@ exports.getTicketById = async (req, res) => {
         user: req.user,
         page: "Ticket",
         action: "Get Ticket By ID",
-        api: req.originalUrl,
+       
         req,
         message: `Ticket not found or access denied for ID: ${req.params.id}`,
         details: {},
@@ -703,7 +703,7 @@ exports.getTicketById = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Get Ticket By ID",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched ticket: ${req.params.id}`,
       details: { ticketId: req.params.id },
@@ -715,7 +715,7 @@ exports.getTicketById = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Get Ticket By ID Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch single ticket by ID: ${req.params.id}`,
       details: { error: error.message, stack: error.stack },
@@ -1200,7 +1200,7 @@ exports.deleteTicket = async (req, res) => {
     user,
     page: "Ticket",
     action: "Delete Ticket",
-    api: req.originalUrl,
+   
     req,
     message: `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}. Transaction started.`,
     details: logDetails,
@@ -1218,7 +1218,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `[NOT_FOUND] Ticket not found for deletion: ${ticketId}.`,
         details: logDetails,
@@ -1233,7 +1233,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `Ticket ${ticketId} being deleted (status: ${ticketToBackup.status}). Rolling back item quantities.`,
         details: logDetails,
@@ -1258,7 +1258,7 @@ exports.deleteTicket = async (req, res) => {
                   user,
                   page: "Ticket",
                   action: "Delete Ticket",
-                  api: req.originalUrl,
+                 
                   req,
                   message: `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Ticket Deletion rollback. Assuming base unit.`,
                   details: { item: itemToUpdate.name },
@@ -1293,7 +1293,7 @@ exports.deleteTicket = async (req, res) => {
               user,
               page: "Ticket",
               action: "Delete Ticket",
-              api: req.originalUrl,
+             
               req,
               message: `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} deletion). New Qty: ${itemToUpdate.quantity.toFixed(2)}`,
               details: { item: itemToUpdate.name },
@@ -1305,7 +1305,7 @@ exports.deleteTicket = async (req, res) => {
               user,
               page: "Ticket",
               action: "Delete Ticket",
-              api: req.originalUrl,
+             
               req,
               message: `Item "${good.description}" (HSN: ${good.hsnCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`,
               details: {},
@@ -1317,7 +1317,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Inventory Rollback Error",
-            api: req.originalUrl,
+           
             req,
             message: "Inventory rollback error",
             details: { error: invError.message, stack: invError.stack },
@@ -1342,7 +1342,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Delete Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`,
             details: { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id },
@@ -1353,7 +1353,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Delete Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`,
             details: { ticketId: ticketToBackup._id },
@@ -1365,7 +1365,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Quotation Rollback Error",
-          api: req.originalUrl,
+         
           req,
           message: "Quotation rollback error",
           details: { error: quotationError.message, stack: quotationError.stack },
@@ -1382,7 +1382,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
         details: { ...logDetails, createdBy: ticketToBackup.createdBy.toString() },
@@ -1412,7 +1412,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`,
       details: {
@@ -1429,7 +1429,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`,
       details: { ...logDetails, originalId: ticketToBackup._id },
@@ -1448,7 +1448,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Delete Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
           details: logDetails,
@@ -1459,7 +1459,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Document Folder Deletion Error",
-          api: req.originalUrl,
+         
           req,
           message: "Document folder deletion error",
           details: { error: folderError.message, stack: folderError.stack },
@@ -1485,7 +1485,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Delete Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
           details: { ...logDetails, targetUserId: uid },
@@ -1496,7 +1496,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "User Ticket Reference Removal Error",
-          api: req.originalUrl,
+         
           req,
           message: `Failed to remove ticket reference from User ID: ${uid}`,
           details: { error: userUpdateError.message, stack: userUpdateError.stack },
@@ -1517,7 +1517,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to delete ticket ID: ${ticketId}`,
       details: { error: error.message, stack: error.stack },
@@ -1537,7 +1537,7 @@ exports.adminDeleteTicket = async (req, res) => {
     user,
     page: "Ticket",
     action: "Admin Delete Ticket",
-    api: req.originalUrl,
+   
     req,
     message: `[ADMIN_DELETE_TICKET_INVOKED] Admin delete initiated for Ticket ID: ${req.params.id}.`,
     details: { ticketId: req.params.id, model: "Ticket" },
@@ -1548,7 +1548,7 @@ exports.adminDeleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Admin Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[AUTH_FAILURE] Non-admin attempt to use adminDeleteTicket for Ticket ID: ${req.params.id}.`,
       details: { ticketId: req.params.id },
@@ -1571,7 +1571,7 @@ exports.checkExistingTicket = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to check existing ticket",
       details: { error: error.message, stack: error.stack },
@@ -1614,7 +1614,7 @@ exports.transferTicket = async (req, res) => {
         user: initiator,
         page: "Ticket",
         action: "Transfer Ticket Error",
-        api: req.originalUrl,
+       
         req,
         message: `Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`,
         details: { ...logContext, reason: "Not current assignee or super-admin" },
@@ -1685,7 +1685,7 @@ logger.log({
       user: req.user || initiator || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Server error during ticket transfer.",
       details: { error: error.message, stack: error.stack },
@@ -1728,7 +1728,7 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       user: requestingUser,
       page: "Ticket",
       action: "Get Transfer Candidates",
-      api: req.originalUrl,
+     
       req,
       message: `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
       details: logContext,
@@ -1740,7 +1740,7 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       user: requestingUser,
       page: "Ticket",
       action: "Get Transfer Candidates Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
       details: { ...logContext, errorMessage: error.message, stack: error.stack },
@@ -1763,7 +1763,7 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Get All Tickets (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched all tickets (index.js logic)`,
       details: { count: tickets.length },
@@ -1775,7 +1775,7 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Get All Tickets (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching all tickets (index.js logic)`,
       details: { error: err.message },
@@ -1827,7 +1827,7 @@ exports.createTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Create Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket created (index.js logic)`,
       details: { ticketId: newTicket._id, companyName: newTicket.companyName },
@@ -1839,7 +1839,7 @@ exports.createTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Create Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error creating ticket (index.js logic)`,
       details: { error: err.message, requestBody: req.body },
@@ -1865,7 +1865,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
         user,
         page: "Ticket",
         action: "Update Ticket (Index Logic)",
-        api: req.originalUrl,
+       
         req,
         message: "Ticket not found for update (index.js logic)",
         details: { ticketId: req.params.id },
@@ -1877,7 +1877,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Update Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket updated (index.js logic)`,
       details: { ticketId: updatedTicket._id },
@@ -1889,7 +1889,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Update Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error updating ticket ${req.params.id} (index.js logic)`,
       details: { error: err.message, requestBody: req.body },

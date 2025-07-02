@@ -12,7 +12,7 @@ exports.loginUser = async (req, res) => {
         user: { email },
         page: "Login",
         action: "Login Attempt",
-        api: req.originalUrl,
+       
         req,
         message: "Missing email or password",
         details: {},
@@ -29,7 +29,7 @@ exports.loginUser = async (req, res) => {
         user: { email },
         page: "Login",
         action: "Login Attempt",
-        api: req.originalUrl,
+       
         req,
         message: "Invalid email",
         details: {},
@@ -43,7 +43,7 @@ exports.loginUser = async (req, res) => {
         user: { email },
         page: "Login",
         action: "Login Attempt",
-        api: req.originalUrl,
+       
         req,
         message: "Account is disabled",
         details: {},
@@ -60,7 +60,7 @@ exports.loginUser = async (req, res) => {
         user: { email },
         page: "Login",
         action: "Login Attempt",
-        api: req.originalUrl,
+       
         req,
         message: "Invalid password",
         details: {},
@@ -83,7 +83,7 @@ exports.loginUser = async (req, res) => {
       user: { email: user.email, id: user._id },
       page: "Login",
       action: "Login Success",
-      api: req.originalUrl,
+     
       req,
       message: "User logged in successfully",
       details: {},
@@ -106,7 +106,7 @@ exports.loginUser = async (req, res) => {
       user: { email: req.body?.email },
       page: "Login",
       action: "Login Error",
-      api: req.originalUrl,
+     
       req,
       message: "Login process failed",
       details: { error: err.message },

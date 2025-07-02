@@ -106,8 +106,12 @@ export default function Login() {
               </button>
             </div>
 
-            <button type="submit" className="login-submit-btn">
-              Sign In
+            <button
+              type="submit"
+              className="login-submit-btn"
+              disabled={isSubmitting} // Disable while submitting
+            >
+              {isSubmitting ? <LoadingSpinner size={20} /> : "Sign In"}
             </button>
           </form>
         </div>

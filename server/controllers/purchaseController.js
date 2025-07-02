@@ -171,7 +171,7 @@ exports.addSinglePurchase = async (req, res) => {
       user,
       page: "Purchase",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error adding single purchase for item ID: ${itemId}`,
       details: { error: error.message, stack: error.stack },
@@ -379,7 +379,7 @@ exports.addBulkPurchase = async (req, res) => {
             user,
             page: "Purchase",
             action: "Error",
-            api: req.originalUrl,
+           
             req,
             message: `Error adding bulk purchase. Invoice: ${req.body.invoiceNumber}`,
             details: { error: error.message, stack: error.stack },
@@ -470,7 +470,7 @@ exports.addBulkPurchase = async (req, res) => {
             user,
             page: "Purchase",
             action: "Error",
-            api: req.originalUrl,
+           
             req,
             message: `Error fetching all purchases`,
             details: { error: error.message, stack: error.stack },
@@ -502,7 +502,7 @@ exports.addBulkPurchase = async (req, res) => {
             user,
             page: "Purchase",
             action: "Error",
-            api: req.originalUrl,
+           
             req,
             message: `Error fetching purchase by ID: ${req.params.id}`,
             details: { error: error.message, stack: error.stack },
