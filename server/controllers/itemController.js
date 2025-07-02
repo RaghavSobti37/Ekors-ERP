@@ -1088,10 +1088,11 @@ exports.getRestockSummary = asyncHandler(async (req, res) => {
 
   try {
     // Only restock needed logic is active
-    const restockNeededCount = await Item.countDocuments({
+    const restockItems = await Item.find({
       quantity: { $lte: 0 },
       status: "approved",
-    });
+    }).select("_id name category quantity baseUnit");
+    const restockNeededCount = restockItems.length;
 
     // const lowStockWarningCount = await Item.countDocuments({
     //   quantity: { $gt: 0 },
@@ -1101,6 +1102,7 @@ exports.getRestockSummary = asyncHandler(async (req, res) => {
 
     res.json({
       restockNeededCount,
+      restockItems, // List of items needing restock
       // lowStockWarningCount,
     });
   } catch (error) {

@@ -20,7 +20,7 @@ function NavbarComponent() {
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showManagementDropdown, setShowManagementDropdown] = useState(false);
   const [restockNeededCount, setRestockNeededCount] = useState(0); // New state for restock count
-  const [lowStockWarningCount, setLowStockWarningCount] = useState(0); // New state for low stock warning
+  const [restockItems, setRestockItems] = useState([]); // Store items needing restock
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -78,9 +78,9 @@ function NavbarComponent() {
   useEffect(() => {
     const fetchStockCounts = async () => {
       try {
-        const response = await apiClient.get("/items/stock-summary"); // Adjust the endpoint as needed
-        setRestockNeededCount(response.data.restockNeededCount || 0);
-        setLowStockWarningCount(response.data.lowStockWarningCount || 0);
+        const response = await apiClient("/items/restock-summary");
+        setRestockNeededCount(response.restockNeededCount || 0);
+        setRestockItems(response.restockItems || []);
       } catch (error) {
         console.error("Error fetching stock summary:", error);
       }
@@ -139,15 +139,35 @@ function NavbarComponent() {
                 className="dropdown-wrapper"
                 onMouseEnter={handleMouseEnterDropdown}
                 onMouseLeave={handleMouseLeaveDropdown}
+                style={{ position: "relative" }}
               >
                 <span
                   className="nav-link"
-                   style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", position: "relative" }}
                 >
                   <FaBoxOpen /> Items List
+                  {restockNeededCount > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -18,
+                        background: "red",
+                        color: "white",
+                        borderRadius: "50%",
+                        padding: "2px 7px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        zIndex: 2,
+                      }}
+                      title={`${restockNeededCount} item(s) need restocking`}
+                    >
+                      {restockNeededCount}
+                    </span>
+                  )}
                 </span>
-              {showItemsDropdown && (
-                  <div className="dropdown-menu">
+                {showItemsDropdown && (
+                  <div className="dropdown-menu" style={{ minWidth: 220 }}>
                     <div
                       onClick={handleViewAllItems}
                       style={{ cursor: "pointer", padding: "10px 15px" }}
@@ -166,6 +186,8 @@ function NavbarComponent() {
                     >
                       Purchase History
                     </div>
+                    {/* Restock Alert Dropdown */}
+                    
                   </div>
                 )}
               </div>

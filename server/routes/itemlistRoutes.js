@@ -20,7 +20,7 @@ router.post(
   itemController.uploadMiddleware, 
   itemController.importItemsFromUploadedExcel
 ); 
-// router.get("/restock-summary", auth, itemController.getRestockSummary); // COMMENTED OUT
+router.get("/restock-summary", auth, itemController.getRestockSummary);
 
 router.get("/:id/purchases", auth, purchaseController.getItemPurchaseHistory);
 router.delete("/:itemId/clear-logs", auth, itemController.clearItemLogs); 

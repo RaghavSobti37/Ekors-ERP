@@ -5,7 +5,7 @@ const Ticket = require("../models/opentickets");
 const auth = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs-extra");
 const ticketController = require("../controllers/ticketController");
 const logger = require("../logger"); // Ensure logger is available
 
@@ -75,12 +75,6 @@ router.get("/:id", auth, async (req, res) => {
     // Ensure this is not matching '/transfer-candidates'
     if (req.params.id === "transfer-candidates") {
       // This should not happen if routes are ordered correctly
-      logger.error(
-        "ticket-route-error",
-        "CRITICAL: /:id route incorrectly matched /transfer-candidates. Check route order.",
-        req.user,
-        { params: req.params }
-      );
       return res
         .status(500)
         .json({ error: "Server routing configuration error." });
@@ -196,10 +190,10 @@ router.post(
     // Add Multer error handling middleware
   (err, req, res, next) => {
     if (err instanceof multer.MulterError) {
-      logger.error("ticket-doc-upload-multer-error", `Multer error during upload for Ticket ID: ${req.params.id}`, err, req.user);
+    
       return res.status(400).json({ error: "File upload failed", details: err.message });
     } else if (err) {
-      logger.error("ticket-doc-upload-general-error", `General error during upload for Ticket ID: ${req.params.id}`, err, req.user);
+    
       return res.status(500).json({ error: "Error uploading document", details: err.message });
     } next();
   },
@@ -314,12 +308,6 @@ router.post(
 
       res.json(finalTicket);
     } catch (error) {
-      logger.error(
-        "ticket-doc-upload-error",
-        `Failed to upload document for Ticket ID: ${req.params.id}`,
-        error,
-        req.user
-      );
       res
         .status(500)
         .json({ error: "Error uploading document", details: error.message });
@@ -446,12 +434,6 @@ router.delete(
         fileRemoved,
       });
     } catch (error) {
-      logger.error(
-        "ticket-doc-delete-error",
-        `Error deleting document for ticket ${ticketId}`,
-        error,
-        req.user
-      );
       res.status(500).json({
         message: "Server error while deleting document.",
         details: error.message,
