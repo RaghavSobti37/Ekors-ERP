@@ -1,27 +1,17 @@
 import { getAuthToken } from "./authUtils";
 
-// Set API base URL from environment variables
 const API_BASE_URL =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
-    import.meta.env.VITE_API_BASE_URL) ||
-  (typeof process !== "undefined" &&
-    process.env &&
-    process.env.REACT_APP_API_BASE_URL) ||
-  (typeof process !== "undefined" &&
-    process.env &&
-    process.env.NEXT_PUBLIC_API_BASE_URL) ||
-  "http://localhost:3000/api"; // Fallback
+    import.meta.env.VITE_API_BASE_URL) 
 
 if (
   API_BASE_URL === "http://localhost:3000/api" &&
-  ((typeof import.meta !== "undefined" && !import.meta.env?.VITE_API_BASE_URL) &&
-    (typeof process !== "undefined" && !process.env?.REACT_APP_API_BASE_URL) &&
-    (typeof process !== "undefined" && !process.env?.NEXT_PUBLIC_API_BASE_URL))
+  ((typeof import.meta !== "undefined" && !import.meta.env?.VITE_API_BASE_URL))
 ) {
   console.warn(
     "apiClient.js: API_BASE_URL is using fallback 'http://localhost:3000/api'. " +
-      "Ensure VITE_API_BASE_URL, REACT_APP_API_BASE_URL, or NEXT_PUBLIC_API_BASE_URL is set in your .env file."
+      "Ensure VITE_API_BASE_URL is set in your .env file."
   );
 }
 

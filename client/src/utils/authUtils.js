@@ -2,7 +2,7 @@ import { toast } from "react-toastify";
 
 /**
  * Retrieves the authentication token from localStorage.
- * @param {object} [userForLogging=null] - Optional user object for enriching logs in case of an error.
+ * @param {object} 
  * @returns {string|null} The token or null if not found or an error occurs.
  */
 export const getAuthToken = (userForLogging = null) => {

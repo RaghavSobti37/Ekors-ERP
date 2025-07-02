@@ -14,7 +14,6 @@ const ItemSearchComponent = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
@@ -33,46 +32,37 @@ const ItemSearchComponent = ({
     }
   }, [showDropdown, onDropdownToggle]);
 
+  // Search items immediately on searchTerm change (no debounce)
   const searchItems = useCallback(
     async (termToSearch) => {
       const trimmedTerm = termToSearch.trim();
       if (!trimmedTerm || trimmedTerm.length < 1) {
-        // Allow search with 1 char if desired, or adjust
         setSearchResults([]);
         setShowDropdown(false);
         setError(null);
         return;
       }
-      setLoading(true);
       setError(null);
       try {
-        // apiClient is expected to handle auth.
-    // Use the main items endpoint with a searchTerm parameter
         const response = await apiClient(
           `/items?search=${encodeURIComponent(trimmedTerm)}&limit=10&status=approved`
         );
-        setSearchResults(response.data || []); // Assuming response is { data: [], ... }
-        setShowDropdown(true); // Show results area
-        updateDropdownPosition(); // Update position as results are now available
+        setSearchResults(response.data || []);
+        setShowDropdown(true);
+        updateDropdownPosition();
       } catch (err) {
         setError(handleApiError(err, "Failed to search items."));
         setSearchResults([]);
         setShowDropdown(false);
-      } finally {
-        setLoading(false);
       }
     },
-    [handleApiError]
-  ); // handleApiError should be stable
+    []
+  );
 
   useEffect(() => {
-    const trimmedSearchTerm = searchTerm.trim();
-    const timerId = setTimeout(() => {
-      searchItems(trimmedSearchTerm);
-    }, 300); // 300ms debounce
-
-    return () => clearTimeout(timerId);
-  }, [searchTerm, searchItems]);
+    searchItems(searchTerm);
+    // eslint-disable-next-line
+  }, [searchTerm]);
 
   // Update dropdown position when it becomes visible
   useEffect(() => {
@@ -99,7 +89,6 @@ const ItemSearchComponent = ({
         updateDropdownPosition();
       }
     };
-
     window.addEventListener("resize", handleReposition);
     window.addEventListener("scroll", handleReposition, true);
     return () => {
@@ -119,15 +108,9 @@ const ItemSearchComponent = ({
     setSearchTerm(e.target.value);
   };
 
-  const handleBlur = () => {
-    // Increased timeout to give more time for selection
-    setTimeout(() => setShowDropdown(false), 300);
-  };
-
   return (
     <div className={`item-search-component ${className}`}>
       {error && <div className="search-error text-danger small">{error}</div>}
-
       <div className="search-input-container">
         <input
           ref={inputRef}
@@ -141,17 +124,8 @@ const ItemSearchComponent = ({
             if (searchTerm.trim().length > 0 || searchResults.length > 0)
               setShowDropdown(true);
           }}
-          onBlur={handleBlur}
-          disabled={disabled || loading}
+          disabled={disabled}
         />
-        {loading && (
-          <div
-            className="search-loading spinner-border spinner-border-sm text-primary"
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        )}
         {/* Portal for suggestions dropdown */}
         {showDropdown &&
           searchResults.length > 0 &&
@@ -173,7 +147,6 @@ const ItemSearchComponent = ({
                   key={item._id}
                   className="search-suggestion-item"
                   onClick={() => handleItemClick(item)}
-                  onMouseDown={(e) => e.preventDefault()} // Prevent blur event
                 >
                   <strong>{item.name}</strong>
                   <br />
@@ -194,11 +167,9 @@ const ItemSearchComponent = ({
             </div>,
             document.body // Target for the portal
           )}
-
         {showDropdown &&
           searchTerm &&
           searchResults.length === 0 &&
-          !loading &&
           ReactDOM.createPortal(
             <div
               className="search-no-results"
