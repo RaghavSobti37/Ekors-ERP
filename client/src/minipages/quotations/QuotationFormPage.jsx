@@ -653,6 +653,18 @@ const QuotationFormPage = () => {
         });
         
         const totals = recalculateQuotationTotals(goods);
+        
+        // Log for debugging the rounding calculations
+        console.log("Goods changed, recalculated totals:", {
+          totalQuantity: totals.totalQuantity,
+          totalAmount: totals.totalAmount,
+          gstAmount: totals.gstAmount,
+          grandTotal: totals.grandTotal,
+          roundOffTotal: totals.roundOffTotal,
+          roundingDifference: totals.roundingDifference,
+          roundingDirection: totals.roundingDirection
+        });
+        
         return { ...prevData, goods, ...totals };
       });
     },
@@ -1267,6 +1279,29 @@ const QuotationFormPage = () => {
   };
 
   // Removed handleCreateTicket function as it's now handled through the original route
+
+  useEffect(() => {
+    if (isEditing && quotationIdFromParams && !location.state?.quotationDataForForm) {
+      const fetchQuotation = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedQuotation = await apiClient(`/quotations/${quotationIdFromParams}`);
+          setQuotationData((prev) => ({
+            ...prev,
+            ...fetchedQuotation,
+            roundOffTotal: fetchedQuotation.roundOffTotal,
+            roundingDifference: fetchedQuotation.roundingDifference,
+            roundingDirection: fetchedQuotation.roundingDirection,
+          }));
+        } catch (err) {
+          setError("Failed to fetch quotation data.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchQuotation();
+    }
+  }, [isEditing, quotationIdFromParams, location.state]);
 
   if (
     authLoading ||

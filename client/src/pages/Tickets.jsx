@@ -260,31 +260,34 @@ export default function Dashboard() {
   }, [sortConfig]);
 
   const fetchTickets = useCallback(async (page = currentPage, limit = itemsPerPage) => {
-    if (!authUser) return;
-    setIsLoading(true); setError(null);
+    if (authLoading || !authUser) return;
+    setIsLoading(true);
     try {
-      const params = {
-        page,
-        limit,
-        sortKey: sortConfig.key,
-        sortDirection: sortConfig.direction,
-        searchTerm,
-        status: statusFilter === "all" ? undefined : statusFilter,
-        populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"
-              };
-      if (params.status === undefined) {
-        delete params.status;
-      };
-      const response = await apiClient("/tickets", { params });
-      setTickets(response.data || []);
-      setTotalTickets(response.totalItems || 0);
+      const params = new URLSearchParams();
+      params.append("page", page.toString());
+      params.append("limit", limit.toString());
+      params.append("sortKey", sortConfig.key);
+      params.append("sortDirection", sortConfig.direction);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (searchTerm) params.append("search", searchTerm);
+
+      const endpoint = `/tickets${params.toString() ? `?${params.toString()}` : ""}`;
+      const data = await apiClient(endpoint);
+      setTickets(data.data || []);
+      setTotalTickets(data.totalItems || 0);
+      setError(null);
     } catch (error) {
-      const errorMsg = handleApiError(error, "Failed to load tickets", authUser, "ticketActivity");
-      setError(errorMsg); toast.error(errorMsg);
-      setTickets([]); setTotalTickets(0);
-      if (error.status === 401) { toast.error("Authentication failed."); navigate("/login", { state: { from: "/tickets" } }); }
-    } finally { setIsLoading(false); }
-  }, [authUser, navigate, sortConfig, statusFilter, currentPage, itemsPerPage]);
+      const errorMessage = handleApiError(error, "Failed to load tickets", authUser);
+      setError(errorMessage);
+      setTickets([]);
+      setTotalTickets(0);
+      if (error.status === 401) {
+        navigate("/login", { state: { from: "/tickets" } });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authUser, authLoading, navigate, sortConfig, statusFilter, currentPage, itemsPerPage, searchTerm]);
 
   useEffect(() => {
     if (!authLoading && !authUser && !isCompanyInfoLoading) {      if (window.location.pathname !== "/login") { toast.info("Redirecting to login."); navigate("/login", { state: { from: "/tickets" } }); }
@@ -302,10 +305,10 @@ export default function Dashboard() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setCurrentPage(1);
-      fetchTickets(1, itemsPerPage);
-    }, 400); // 400ms delay
+      fetchTickets();
+    }, 400); // Debounce delay
     return () => clearTimeout(timeout);
-  }, [searchTerm, itemsPerPage, fetchTickets]);
+  }, [searchTerm]);
 
   const handleDelete = useCallback(async (ticketToDelete) => {
     if (!authUser || authUser.role !== "super-admin") {
