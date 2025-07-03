@@ -168,7 +168,7 @@ export default function History() {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h2 style={{ color: "black" }}>Time Log History</h2>
               <Button variant="success" onClick={handleAddNewEntry} disabled={isLoading || authLoading}>
-                <PlusCircle size={18} className="me-1" />  Add New Entry
+                <PlusCircle size={18} className="me-1" />  New Log Entry
               </Button>
             </div>
 
