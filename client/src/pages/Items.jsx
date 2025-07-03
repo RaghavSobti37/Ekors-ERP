@@ -297,14 +297,14 @@ export default function Items() {
               showButton={false}
             />
           </div>
-          <Form.Check
+          {/* <Form.Check
             type="checkbox"
             id="show-restock-only"
             label="Restock Items"
             checked={showRestockOnly}
             onChange={e => setShowRestockOnly(e.target.checked)}
             className="flex-shrink-0"
-          />
+          /> */}
           <Button
             variant="success"
             className="flex-shrink-0"

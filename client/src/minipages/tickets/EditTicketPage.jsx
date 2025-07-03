@@ -46,30 +46,57 @@ const fetchTicketDetails = useCallback(async () => {
       params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
     });
 
-    // Enhanced address handling
-    const billingAddressObj = Array.isArray(data.billingAddress)
-      ? {
+    // Enhanced address handling - ensure addresses are always objects with expected properties
+    let billingAddressObj = initialTicketData.billingAddress;
+    if (data.billingAddress) {
+      if (Array.isArray(data.billingAddress)) {
+        // Handle legacy array format if it exists
+        billingAddressObj = {
           address1: data.billingAddress[0] || "",
           address2: data.billingAddress[1] || "",
           state: data.billingAddress[2] || "",
           city: data.billingAddress[3] || "",
           pincode: data.billingAddress[4] || "",
-        }
-      : (typeof data.billingAddress === 'object' && data.billingAddress !== null)
-        ? data.billingAddress
-        : initialTicketData.billingAddress;
+        };
+      } else if (typeof data.billingAddress === 'object') {
+        // Handle object format (current schema)
+        billingAddressObj = {
+          address1: data.billingAddress.address1 || "",
+          address2: data.billingAddress.address2 || "",
+          city: data.billingAddress.city || "",
+          state: data.billingAddress.state || "",
+          pincode: data.billingAddress.pincode || "",
+        };
+      }
+    }
 
-    const shippingAddressObj = Array.isArray(data.shippingAddress)
-      ? {
+    let shippingAddressObj = initialTicketData.shippingAddress;
+    if (data.shippingAddress) {
+      if (Array.isArray(data.shippingAddress)) {
+        // Handle legacy array format if it exists
+        shippingAddressObj = {
           address1: data.shippingAddress[0] || "",
           address2: data.shippingAddress[1] || "",
           state: data.shippingAddress[2] || "",
           city: data.shippingAddress[3] || "",
           pincode: data.shippingAddress[4] || "",
-        }
-      : (typeof data.shippingAddress === 'object' && data.shippingAddress !== null)
-        ? data.shippingAddress
-        : initialTicketData.shippingAddress;
+        };
+      } else if (typeof data.shippingAddress === 'object') {
+        // Handle object format (current schema)
+        shippingAddressObj = {
+          address1: data.shippingAddress.address1 || "",
+          address2: data.shippingAddress.address2 || "",
+          city: data.shippingAddress.city || "",
+          state: data.shippingAddress.state || "",
+          pincode: data.shippingAddress.pincode || "",
+        };
+      }
+    }
+    
+    // If shippingSameAsBilling is true but no shipping address, use billing address
+    if (data.shippingSameAsBilling && (!data.shippingAddress || Object.values(shippingAddressObj).every(v => !v))) {
+      shippingAddressObj = { ...billingAddressObj };
+    }
 
     setTicketData({
       ...initialTicketData,
@@ -342,18 +369,30 @@ const fetchTicketDetails = useCallback(async () => {
         deadline: ticketData.deadline ? new Date(ticketData.deadline).toISOString() : null,
         validityDate: ticketData.validityDate ? new Date(ticketData.validityDate).toISOString() : null,
         statusChangeComment: ticketData.status !== originalStatus ? statusChangeComment : undefined,
-        billingAddress: [ // Convert back to array for backend
-          ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
-          ticketData.billingAddress.state || "", ticketData.billingAddress.city || "",
-          ticketData.billingAddress.pincode || ""
-        ],
+        // Send billing address as an object (not an array)
+        billingAddress: {
+          address1: ticketData.billingAddress.address1 || "",
+          address2: ticketData.billingAddress.address2 || "",
+          city: ticketData.billingAddress.city || "",
+          state: ticketData.billingAddress.state || "",
+          pincode: ticketData.billingAddress.pincode || ""
+        },
+        // Handle shipping address as an object too, respecting shippingSameAsBilling flag
         shippingAddress: ticketData.shippingSameAsBilling
-          ? [ ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
-              ticketData.billingAddress.state || "", ticketData.billingAddress.city || "",
-              ticketData.billingAddress.pincode || "" ]
-          : [ ticketData.shippingAddress.address1 || "", ticketData.shippingAddress.address2 || "",
-              ticketData.shippingAddress.state || "", ticketData.shippingAddress.city || "",
-              ticketData.shippingAddress.pincode || "" ],
+          ? {
+              address1: ticketData.billingAddress.address1 || "",
+              address2: ticketData.billingAddress.address2 || "",
+              city: ticketData.billingAddress.city || "",
+              state: ticketData.billingAddress.state || "",
+              pincode: ticketData.billingAddress.pincode || ""
+            }
+          : {
+              address1: ticketData.shippingAddress.address1 || "",
+              address2: ticketData.shippingAddress.address2 || "",
+              city: ticketData.shippingAddress.city || "",
+              state: ticketData.shippingAddress.state || "",
+              pincode: ticketData.shippingAddress.pincode || ""
+            },
         goods: ticketData.goods.map(g => ({
           ...g,
           hsnCode: g.hsnCode || "",

@@ -45,7 +45,7 @@ const ItemSearchComponent = ({
       setError(null);
       try {
         const response = await apiClient(
-          `/items?search=${encodeURIComponent(trimmedTerm)}&limit=10&status=approved`
+          `/items?search=${encodeURIComponent(trimmedTerm)}&status=approved`
         );
         setSearchResults(response.data || []);
         setShowDropdown(true);

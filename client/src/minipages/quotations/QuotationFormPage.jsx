@@ -9,10 +9,28 @@ import ItemSearchComponent from "../../components/ItemSearch.jsx";
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { handleApiError, formatDateForInput } from "../../utils/helpers.js";
+import { handleApiError, formatDateForInput, getReadOnlyFieldStyle } from "../../utils/helpers.js";
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 import NewItemForm from "../../components/NewItemForm";
 import { getInitialQuotationPayload, recalculateQuotationTotals, normalizeItemForQuotation } from "../../utils/payloads";
+
+// Use the utility function for read-only fields
+const readOnlyFieldStyle = getReadOnlyFieldStyle();
+
+// Utility to generate a unique quotation number (customize as needed)
+function generateQuotationNumber() {
+  const now = new Date();
+  return (
+    "Q-" +
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "-" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0")
+  );
+}
 
 const GoodsTable = ({
   goods,
@@ -156,10 +174,10 @@ const GoodsTable = ({
                   <Form.Control
                     required
                     type="number"
-                    min="1"
-                    value={item.quantity || 1}
+                    min="0"
+                    value={item.quantity}
                     onChange={(e) =>
-                      handleGoodsChange(index, "quantity", e.target.value)
+                      handleGoodsChange(index, "quantity", Number(e.target.value))
                     }
                   />
                 </td>
@@ -185,7 +203,7 @@ const GoodsTable = ({
                     step="0.01"
                     value={item.price || 0}
                     onChange={(e) =>
-                      handleGoodsChange(index, "price", e.target.value)
+                      handleGoodsChange(index, "price", Number(e.target.value))
                     }
                   />
                 </td>
@@ -197,7 +215,7 @@ const GoodsTable = ({
                     step="0.1"
                     value={item.gstRate === null ? "" : item.gstRate}
                     onChange={(e) =>
-                      handleGoodsChange(index, "gstRate", e.target.value)
+                      handleGoodsChange(index, "gstRate", Number(e.target.value))
                     }
                   />
                 </td>
@@ -275,9 +293,22 @@ const QuotationFormPage = () => {
   const { user, loading: authLoading } = useAuth();
 
   // Use the shared payload for initial state
-  const [quotationData, setQuotationData] = useState(
-    location.state?.quotationDataForForm || getInitialQuotationPayload(user?.id)
-  );
+  const [quotationData, setQuotationData] = useState(() => {
+    const initialData = location.state?.quotationDataForForm || getInitialQuotationPayload(user?.id);
+    
+    // Ensure shippingAddress is always initialized
+    if (!initialData.shippingAddress) {
+      initialData.shippingAddress = {
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: ""
+      };
+    }
+    
+    return initialData;
+  });
   const [isEditing, setIsEditing] = useState(
     !!quotationIdFromParams || !!location.state?.isEditing
   );
@@ -288,8 +319,8 @@ const QuotationFormPage = () => {
     quotationData.client?._id || null
   );
   const [isSavingClient, setIsSavingClient] = useState(false);
-  const [isFetchingBillingAddress, setIsFetchingBillingAddress] =
-    useState(false);
+  const [isFetchingBillingAddress, setIsFetchingBillingAddress] = useState(false);
+  const [isFetchingShippingAddress, setIsFetchingShippingAddress] = useState(false);
   const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] =
     useState(false);
   const [isReplicating, setIsReplicating] = useState(false);
@@ -308,7 +339,7 @@ const QuotationFormPage = () => {
     category: "",
     hsnCode: "",
     gstRate: "0",
-    quantity: 1,
+    quantity: 0, // default to 0
     lowStockThreshold: "5",
   });
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
@@ -369,6 +400,9 @@ const QuotationFormPage = () => {
             })
           );
 
+          // Recalculate totals to ensure round-off is always correct
+          const recalculatedTotals = recalculateQuotationTotals(goodsWithUnits);
+
           setQuotationData({
             date: formatDateForInput(fetchedQuotation.date),
             referenceNumber: fetchedQuotation.referenceNumber,
@@ -379,13 +413,14 @@ const QuotationFormPage = () => {
                 ? orderIssuedByIdToSet._id
                 : orderIssuedByIdToSet,
             goods: goodsWithUnits,
-            totalQuantity: Number(fetchedQuotation.totalQuantity),
-            totalAmount: Number(fetchedQuotation.totalAmount),
-            gstAmount: Number(fetchedQuotation.gstAmount),
-            grandTotal: Number(fetchedQuotation.grandTotal),
+            ...recalculatedTotals,
             billingAddress:
               fetchedQuotation.billingAddress ||
               getInitialQuotationPayload(user?.id).billingAddress,
+            shippingAddress:
+              fetchedQuotation.shippingAddress ||
+              getInitialQuotationPayload(user?.id).shippingAddress,
+            shippingSameAsBilling: fetchedQuotation.shippingSameAsBilling || false,
             status: fetchedQuotation.status || "open",
             client: {
               companyName: fetchedQuotation.client?.companyName || "",
@@ -433,13 +468,21 @@ const QuotationFormPage = () => {
       setQuotationData((prev) => {
         const normalized = normalizeItemForQuotation(item);
         normalized.srNo = prev.goods.length + 1;
+        
+        // Ensure amount is properly calculated based on quantity and price
+        const quantity = Number(normalized.quantity || 1);
+        const price = Number(normalized.price || 0);
+        normalized.quantity = quantity;
+        normalized.price = price;
+        normalized.amount = quantity * price;
+        
         const newGoods = [...prev.goods, normalized];
         const totals = recalculateQuotationTotals(newGoods);
         return { ...prev, goods: newGoods, ...totals };
       });
       setError(null);
     },
-    [recalculateQuotationTotals]
+    []
   );
 
   const handleSaveAndAddNewItemToQuotation = useCallback(
@@ -495,18 +538,31 @@ const QuotationFormPage = () => {
       setQuotationData((prevData) => {
         const goods = prevData.goods.map((item, idx) => {
           if (idx !== index) return item;
+          
           if (field === "subtexts") {
             const subtexts = [...(item.subtexts || [])];
             subtexts[subtextIndex] = value;
             return { ...item, subtexts };
           }
-          return { ...item, [field]: value };
+          
+          // Create the updated item with the new field value
+          const updatedItem = { ...item, [field]: value };
+          
+          // Recalculate amount when quantity or price changes
+          if (field === 'quantity' || field === 'price') {
+            const quantity = Number(field === 'quantity' ? value : item.quantity || 0);
+            const price = Number(field === 'price' ? value : item.price || 0);
+            updatedItem.amount = quantity * price;
+          }
+          
+          return updatedItem;
         });
+        
         const totals = recalculateQuotationTotals(goods);
         return { ...prevData, goods, ...totals };
       });
     },
-    [recalculateQuotationTotals]
+    []
   );
 
   const handleDeleteItem = useCallback(
@@ -525,7 +581,7 @@ const QuotationFormPage = () => {
         };
       });
     },
-    [recalculateQuotationTotals]
+    []
   );
 
   const handleAddSubtext = useCallback((itemIndex) => {
@@ -562,14 +618,30 @@ const QuotationFormPage = () => {
       ) {
         const postOffice = responseData[0].PostOffice[0];
         if (postOffice) {
-          setQuotationData((prev) => ({
-            ...prev,
-            billingAddress: {
+          setQuotationData((prev) => {
+            const updatedBillingAddress = {
               ...prev.billingAddress,
               city: postOffice.District || prev.billingAddress.city,
               state: postOffice.State || prev.billingAddress.state,
-            },
-          }));
+            };
+            
+            // Update shipping address if same as billing
+            let updatedShippingAddress = { ...prev.shippingAddress };
+            if (prev.shippingSameAsBilling) {
+              updatedShippingAddress = {
+                ...updatedShippingAddress,
+                city: updatedBillingAddress.city,
+                state: updatedBillingAddress.state,
+                pincode: pincode
+              };
+            }
+            
+            return {
+              ...prev,
+              billingAddress: updatedBillingAddress,
+              shippingAddress: prev.shippingSameAsBilling ? updatedShippingAddress : prev.shippingAddress,
+            };
+          });
           toast.success(`City and State auto-filled for pincode ${pincode}.`);
         } else {
           toast.warn(`No Post Office details found for pincode ${pincode}.`);
@@ -586,6 +658,63 @@ const QuotationFormPage = () => {
       setIsFetchingBillingAddress(false);
     }
   }, []);
+  
+  const fetchShippingAddressFromPincode = useCallback(async (pincode) => {
+    if (!pincode || pincode.length !== 6) return;
+    setIsFetchingShippingAddress(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://api.postalpincode.in/pincode/${pincode}`
+      );
+      const responseData = await response.json();
+      if (
+        responseData &&
+        responseData.length > 0 &&
+        responseData[0].Status === "Success"
+      ) {
+        const postOffice = responseData[0].PostOffice[0];
+        if (postOffice) {
+          setQuotationData((prev) => ({
+            ...prev,
+            shippingAddress: {
+              ...prev.shippingAddress,
+              city: postOffice.District || prev.shippingAddress.city,
+              state: postOffice.State || prev.shippingAddress.state,
+            },
+          }));
+          toast.success(`City and State auto-filled for shipping pincode ${pincode}.`);
+        } else {
+          toast.warn(`No Post Office details found for pincode ${pincode}.`);
+        }
+      } else {
+        toast.warn(
+          `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching shipping address:", error);
+      toast.error("Error fetching address details.");
+    } finally {
+      setIsFetchingShippingAddress(false);
+    }
+  }, []);
+
+  // Safe value accessor function to prevent 'undefined' errors
+  const safeGet = (obj, path, defaultValue = "") => {
+    if (!obj) return defaultValue;
+    const keys = path.split('.');
+    let result = obj;
+    
+    for (const key of keys) {
+      if (result === null || result === undefined || typeof result !== 'object') {
+        return defaultValue;
+      }
+      result = result[key];
+    }
+    
+    return result === undefined || result === null ? defaultValue : result;
+  };
 
   const handleInputChange = useCallback(
     (e) => {
@@ -593,6 +722,7 @@ const QuotationFormPage = () => {
       setQuotationData((prev) => {
         let newClientData = { ...prev.client };
         let newBillingAddress = { ...prev.billingAddress };
+        let newShippingAddress = { ...prev.shippingAddress };
         let otherChanges = {};
 
         if (name.startsWith("client.")) {
@@ -605,21 +735,43 @@ const QuotationFormPage = () => {
         } else if (name.startsWith("billingAddress.")) {
           const addressField = name.split(".")[1];
           newBillingAddress = { ...newBillingAddress, [addressField]: value };
+          
+          // If shipping same as billing, update shipping too
+          if (prev.shippingSameAsBilling) {
+            newShippingAddress = { ...newShippingAddress, [addressField]: value };
+          }
+          
           if (addressField === "pincode" && value.length === 6) {
             fetchBillingAddressFromPincode(value);
+          }
+        } else if (name.startsWith("shippingAddress.")) {
+          const addressField = name.split(".")[1];
+          newShippingAddress = { ...newShippingAddress, [addressField]: value };
+          
+          if (addressField === "pincode" && value.length === 6) {
+            fetchShippingAddressFromPincode(value);
+          }
+        } else if (name === "shippingSameAsBilling") {
+          // If toggling same as billing checkbox
+          otherChanges = { shippingSameAsBilling: value === "true" || value === true };
+          if (otherChanges.shippingSameAsBilling) {
+            // Copy billing address to shipping address
+            newShippingAddress = { ...newBillingAddress };
           }
         } else {
           otherChanges = { [name]: value };
         }
+        
         return {
           ...prev,
           client: newClientData,
           billingAddress: newBillingAddress,
+          shippingAddress: newShippingAddress,
           ...otherChanges,
         };
       });
     },
-    [fetchBillingAddressFromPincode]
+    [fetchBillingAddressFromPincode, fetchShippingAddressFromPincode]
   );
 
   const handleClientSelect = useCallback((client) => {
@@ -757,10 +909,12 @@ const QuotationFormPage = () => {
           ...totals,
           referenceNumber: generateQuotationNumber(),
           date: formatDateForInput(new Date()),
+          // Store the original quotation ID to track that it was replicated
+          replicatedFromQuotationId: selectedQuotationStub._id
         }));
         setSelectedClientIdForForm(fullQuotation.client._id);
-        setIsReplicating(false);
-        toast.info("Quotation data replicated. Review and save as new.");
+        setIsReplicating(false); // Hide the replication UI
+        toast.success("Quotation data replicated. Review and save as new.");
       } catch (err) {
         const errorMessage = handleApiError(
           err,
@@ -772,7 +926,7 @@ const QuotationFormPage = () => {
         setIsLoadingReplicationDetails(false);
       }
     },
-    [recalculateQuotationTotals, user, getInitialQuotationPayload]
+    [user, getInitialQuotationPayload]
   );
 
   const handleSubmit = useCallback(
@@ -863,26 +1017,40 @@ const QuotationFormPage = () => {
         }
       }
 
-      const goodsForSubmission = quotationData.goods.map((item) => ({
-        srNo: item.srNo,
-        description: item.description,
-        hsnCode: item.hsnCode || "",
-        quantity: Number(item.quantity),
-        unit: item.unit || "nos",
-        price: Number(item.price),
-        amount: Number(item.amount),
-        sellingPrice: Number(item.sellingPrice),
-        originalItem:
-          typeof item.originalItem === "object"
-            ? item.originalItem?._id
-            : item.originalItem,
-        maxDiscountPercentage: item.maxDiscountPercentage
-          ? Number(item.maxDiscountPercentage)
-          : 0,
-        gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      }));
+      // Process goods items to ensure all values are properly converted to numbers
+      const goodsForSubmission = quotationData.goods.map((item) => {
+        const quantity = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        // Recalculate amount to ensure consistency
+        const amount = quantity * price;
+        
+        return {
+          srNo: item.srNo,
+          description: item.description,
+          hsnCode: item.hsnCode || "",
+          quantity: quantity,
+          unit: item.unit || "nos",
+          price: price,
+          amount: amount,
+          sellingPrice: Number(item.sellingPrice || price),
+          originalItem:
+            typeof item.originalItem === "object"
+              ? item.originalItem?._id
+              : item.originalItem,
+          maxDiscountPercentage: item.maxDiscountPercentage
+            ? Number(item.maxDiscountPercentage)
+            : 0,
+          gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
+          subtexts: item.subtexts || [],
+        };
+      });
 
+      // Recalculate totals from the processed goods to ensure consistency
+      const recalculatedTotals = recalculateQuotationTotals(goodsForSubmission);
+      
+      // Log calculated values for debugging
+      console.log("Recalculated totals:", recalculatedTotals);
+      
       const submissionData = {
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
@@ -890,14 +1058,21 @@ const QuotationFormPage = () => {
         orderIssuedBy: quotationData.orderIssuedBy,
         goods: goodsForSubmission,
         billingAddress: quotationData.billingAddress,
-        shippingAddress: quotationData.billingAddress,
-        totalQuantity: Number(quotationData.totalQuantity),
-        totalAmount: Number(quotationData.totalAmount),
-        gstAmount: Number(quotationData.gstAmount),
-        grandTotal: Number(quotationData.grandTotal),
-        roundOffTotal: Number(quotationData.roundOffTotal),
+        shippingAddress: quotationData.shippingSameAsBilling ? quotationData.billingAddress : quotationData.shippingAddress,
+        shippingSameAsBilling: quotationData.shippingSameAsBilling || false,
+        totalQuantity: recalculatedTotals.totalQuantity,
+        totalAmount: recalculatedTotals.totalAmount,
+        gstAmount: recalculatedTotals.gstAmount,
+        grandTotal: recalculatedTotals.grandTotal,
+        roundOffTotal: recalculatedTotals.roundOffTotal,
+        roundingDifference: recalculatedTotals.roundingDifference,
+        roundingDirection: recalculatedTotals.roundingDirection,
         status: quotationData.status || "open",
         client: { ...quotationData.client, _id: clientId },
+        // Include the replication source if applicable
+        ...(quotationData.replicatedFromQuotationId && { 
+          replicatedFromQuotationId: quotationData.replicatedFromQuotationId 
+        }),
       };
 
       try {
@@ -988,6 +1163,8 @@ const QuotationFormPage = () => {
     }
   };
 
+  // Removed handleCreateTicket function as it's now handled through the original route
+
   if (
     authLoading ||
     (isEditing && isLoading && !quotationData.referenceNumber)
@@ -1011,32 +1188,55 @@ const QuotationFormPage = () => {
         validated={formValidated}
         onSubmit={handleSubmit}
       >
-        {!isEditing && (
-          <>
+        {!isEditing && !location.state?.quotationDataForForm && !quotationData.replicatedFromQuotationId && (
+          <div className="bg-light p-4 mb-4 rounded text-center shadow-sm" style={{ backgroundColor: '#f0f2f5' }}>
             <Form.Group className="mb-3">
               <Form.Check
                 type="checkbox"
-                label="Replicate Existing Quotation?"
+                label={
+                  <span style={{ fontSize: '1.1rem', fontWeight: '500' }}>
+                    Replicate Existing Quotation?
+                  </span>
+                }
                 checked={isReplicating}
                 onChange={(e) => setIsReplicating(e.target.checked)}
+                id="replicateCheckbox"
+                className="d-inline-block"
               />
+              {isReplicating && (
+                <span className="ms-2 badge bg-success">
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Replication Mode Active
+                </span>
+              )}
             </Form.Group>
             {isReplicating && !isLoadingReplicationDetails && (
-              <QuotationSearchComponent
-                onQuotationSelect={handleReplicationSelect}
-                placeholder="Search quotation to replicate..."
-              />
+              <div className="mx-auto" style={{ maxWidth: '600px' }}>
+                <QuotationSearchComponent
+                  onQuotationSelect={handleReplicationSelect}
+                  placeholder="Search quotation to replicate..."
+                />
+                <div className="text-muted mt-2">
+                  <small>Select a quotation to replicate its content with a new reference number</small>
+                </div>
+              </div>
             )}
             {isReplicating && !isLoadingReplicationDetails && (
-              <div style={{ minHeight: "200px" }}></div>
+              <div style={{ minHeight: "100px" }}></div>
             )}
             {isLoadingReplicationDetails && (
               <div className="text-center my-3">
-                <Spinner animation="border" />{" "}
-                <p>Loading quotation details...</p>
+                <Spinner animation="border" className="me-2" />
+                <p className="mt-2">Loading quotation details...</p>
               </div>
             )}
-          </>
+          </div>
+        )}
+        {!isEditing && !location.state?.quotationDataForForm && quotationData.replicatedFromQuotationId && (
+          <div className="alert alert-success text-center mb-4">
+            <i className="bi bi-check-circle-fill me-2"></i>
+            Quotation has been replicated successfully. Review and save as new.
+          </div>
         )}
         {error && (
           <Alert variant="danger">
@@ -1149,6 +1349,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.companyName"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.companyName"]}
@@ -1171,6 +1372,7 @@ const QuotationFormPage = () => {
               disabled={isLoadingReplicationDetails}
               placeholder="Enter contact person's name"
               isInvalid={!!fieldErrors["client.clientName"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.clientName"]}
@@ -1193,6 +1395,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.gstNumber"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.gstNumber"]}
@@ -1212,6 +1415,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.email"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.email"]}
@@ -1233,6 +1437,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.phone"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.phone"]}
@@ -1334,6 +1539,8 @@ const QuotationFormPage = () => {
                 !!quotationData.billingAddress.city
               }
               isInvalid={!!fieldErrors["billingAddress.city"]}
+              style={!(isLoadingReplicationDetails || isFetchingBillingAddress) && 
+                !!quotationData.billingAddress.city ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["billingAddress.city"]}
@@ -1355,12 +1562,115 @@ const QuotationFormPage = () => {
                 !!quotationData.billingAddress.state
               }
               isInvalid={!!fieldErrors["billingAddress.state"]}
+              style={!(isLoadingReplicationDetails || isFetchingBillingAddress) && 
+                !!quotationData.billingAddress.state ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["billingAddress.state"]}
             </Form.Control.Feedback>
           </Form.Group>
         </div>
+
+        <h5
+          style={{
+            fontWeight: "bold",
+            textAlign: "center",
+            backgroundColor: "#f0f2f5",
+            padding: "0.5rem",
+            borderRadius: "0.25rem",
+            marginBottom: "1rem",
+          }}
+        >
+          Shipping Address
+        </h5>
+
+        <div className="mb-3">
+          <Form.Check
+            type="checkbox"
+            id="shippingSameAsBilling"
+            name="shippingSameAsBilling"
+            label="Same as Billing Address"
+            checked={quotationData.shippingSameAsBilling || false}
+            onChange={(e) => handleInputChange({ target: { name: 'shippingSameAsBilling', value: e.target.checked }})}
+            disabled={isLoadingReplicationDetails}
+          />
+        </div>
+
+        {!quotationData.shippingSameAsBilling && (
+          <>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Address Line 1</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.address1"
+                  value={safeGet(quotationData, 'shippingAddress.address1', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Address Line 2</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.address2"
+                  value={safeGet(quotationData, 'shippingAddress.address2', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+              </Form.Group>
+            </div>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>Pincode</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.pincode"
+                  value={safeGet(quotationData, 'shippingAddress.pincode', '')}
+                  pattern="[0-9]{6}"
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+                <Form.Text className="text-muted">
+                  6-digit pincode for City & State.
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>City</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.city"
+                  value={safeGet(quotationData, 'shippingAddress.city', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                  readOnly={
+                    !(isLoadingReplicationDetails || isFetchingShippingAddress) &&
+                    !!safeGet(quotationData, 'shippingAddress.city', '')
+                  }
+                  style={!(isLoadingReplicationDetails || isFetchingShippingAddress) && 
+                    !!safeGet(quotationData, 'shippingAddress.city', '') ? readOnlyFieldStyle : {}}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>State</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.state"
+                  value={quotationData.shippingAddress.state}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                  readOnly={
+                    !(isLoadingReplicationDetails || isFetchingShippingAddress) &&
+                    !!quotationData.shippingAddress.state
+                  }
+                  style={!(isLoadingReplicationDetails || isFetchingShippingAddress) && 
+                    !!quotationData.shippingAddress.state ? readOnlyFieldStyle : {}}
+                />
+              </Form.Group>
+            </div>
+          </>
+        )}
+
         <h5
           style={{
             fontWeight: "bold",
@@ -1397,60 +1707,55 @@ const QuotationFormPage = () => {
         {isItemSearchDropdownOpenInModal && (
           <div style={{ height: "300px" }}></div>
         )}
-        <div className="bg-light p-3 rounded mt-3">
-          <h5 className="text-center mb-3">Quotation Summary</h5>
-          <Table bordered size="sm">
-            <tbody>
-              <tr>
-                <td>Total Quantity</td>
-                <td className="text-end">
+        <div className="bg-light p-4 rounded mt-4 shadow-sm">
+          <h5 className="text-center mb-4 border-bottom pb-2 fw-bold">Quotation Summary</h5>
+          <Table bordered size="sm" className="table-hover"><tbody><tr>
+                <td className="ps-3">Total Quantity</td>
+                <td className="text-end pe-3">
                   <strong>{quotationData.totalQuantity}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Total Amount (Subtotal)</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                <td className="ps-3">Total Amount (Subtotal)</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.totalAmount?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Total GST</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                <td className="ps-3">Total GST</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.gstAmount?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Grand Total</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                <td className="ps-3">Grand Total (Exact)</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.grandTotal?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                <td className="ps-3">
+                  Rounding {quotationData.roundingDirection === 'up' ? 'Up' : 'Down'} 
+                  <span className="text-muted ms-2" style={{fontSize: '0.85rem'}}>
+                    ({quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)})
+                  </span>
+                </td>
+                <td className="text-end pe-3">
+                  <span className={quotationData.roundingDirection === 'up' ? 'text-success' : 'text-danger'}>
+                    {quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)}
+                  </span>
+                </td>
+              </tr>
+              <tr className="table-success">
+                <td className="ps-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
                   Round Off Total <span className="text-danger">*</span>
                 </td>
-                <td
-                  className="text-end"
-                  style={{ fontWeight: "bold", fontSize: "1.1rem" }}
-                >
-                  <Form.Control
-                    type="number"
-                    value={quotationData.roundOffTotal}
-                    readOnly
-                    plaintext
-                    style={{
-                      textAlign: "right",
-                      fontWeight: "bold",
-                      fontSize: "1.1rem",
-                      border: "none",
-                      backgroundColor: "transparent",
-                    }}
-                    tabIndex={-1}
-                  />
+                <td className="text-end pe-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                  <div className="text-end fw-bold" style={{ fontSize: "1.1rem" }}>
+                    ₹{quotationData.roundOffTotal?.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}
+                  </div>
                 </td>
-              </tr>
-            </tbody>
-          </Table>
+              </tr></tbody></Table>
         </div>
       </Form>
     </ReusablePageStructure>
@@ -1458,3 +1763,13 @@ const QuotationFormPage = () => {
 };
 
 export default QuotationFormPage;
+
+// Example fix for controlled/uncontrolled warning:
+// For all Form.Control components, ensure value is never undefined.
+// For text inputs:
+// value={item.description || ""}
+// For number inputs:
+// value={typeof item.quantity === "number" ? item.quantity : 0}
+// For select inputs:
+// value={item.unit || allUnits[0]?.name || "nos"}
+// Apply this pattern to all Form.Control and Form.Select in the file.

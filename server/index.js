@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const morgan = require('morgan');
+// const morgan = require('morgan');
 const cors = require('cors');
 const logger = require('./logger');
 require('dotenv').config();
@@ -26,7 +26,7 @@ connectDB();
 // Middleware - Increase payload size limit for JSON and URL-encoded bodies
 app.use(express.json({ limit: '10mb' })); // Allows up to 10MB JSON payloads
 app.use(express.urlencoded({ limit: '10mb', extended: true })); // Allows up to 10MB URL-encoded payloads
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 
 // Define allowed origins for CORS
 const allowedOrigins = [

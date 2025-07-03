@@ -1,10 +1,5 @@
 const mongoose = require('mongoose');
-const { STANDARD_UNITS } = require("../utils/payloads");
-
-// 1. Standard Unit Definitions
-// const STANDARD_UNITS = [
-//   'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag', 'set'
-// ];
+const { STANDARD_UNITS } = require("../utils/payloadServer");
 
 // 2. Unit Sub-schema
 const unitSchema = new mongoose.Schema({

@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs-extra");
 const ticketController = require("../controllers/ticketController");
 const logger = require("../logger"); // Ensure logger is available
-const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloads"); // Adjust the path as necessary
+const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloadServer"); // Adjust the path as necessary
 
 // ... (multer setup remains the same) ...
 const storage = multer.diskStorage({
@@ -465,5 +465,8 @@ router.post("/from-index/create", ticketController.createTicket_IndexLogic);
 // );
 router.put("/from-index/:id", ticketController.updateTicket_IndexLogic);
 router.get("/serve-file/:filename", ticketController.serveFile_IndexLogic);
+
+// Route for creating a ticket directly from a quotation ID
+router.post("/from-quotation/:quotationId", auth, ticketController.createTicketFromQuotation);
 
 module.exports = router;

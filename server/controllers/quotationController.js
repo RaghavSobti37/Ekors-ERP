@@ -5,7 +5,7 @@ const Ticket = require("../models/opentickets");
 const logger = require("../logger"); // Use unified logger
 const mongoose = require("mongoose");
 const ItemModel = require("../models/itemlist").Item; // Use correct model
-const { getInitialQuotationPayload, recalculateQuotationTotals } = require("../utils/payloads");
+const { getInitialQuotationPayload, recalculateQuotationTotals } = require("../utils/payloadServer");
 
 // --- Helper Functions ---
 const generateNextQuotationNumber = async (userId) => {
@@ -42,9 +42,16 @@ exports.handleQuotationUpsert = async (req, res) => {
     const {
       client: clientInput,
       billingAddress,
+      shippingAddress,
+      shippingSameAsBilling,
       ...quotationDetails
     } = req.body;
-    const quotationPayload = { ...quotationDetails, billingAddress };
+    const quotationPayload = { 
+      ...quotationDetails, 
+      billingAddress,
+      shippingAddress,
+      shippingSameAsBilling
+    };
 
     const { id: quotationId } = req.params;
     const user = req.user;
@@ -194,6 +201,18 @@ exports.handleQuotationUpsert = async (req, res) => {
       typeof billingAddress === "object" && billingAddress !== null
         ? billingAddress
         : { address1: "", address2: "", city: "", state: "", pincode: "" };
+    
+    // Process shipping address
+    const shippingSameAsBillingValue = 
+      typeof quotationPayload.shippingSameAsBilling === 'boolean' 
+        ? quotationPayload.shippingSameAsBilling 
+        : false;
+    
+    const processedShippingAddress = shippingSameAsBillingValue
+      ? { ...processedBillingAddress }
+      : (typeof shippingAddress === "object" && shippingAddress !== null
+          ? shippingAddress
+          : { address1: "", address2: "", city: "", state: "", pincode: "" });
 
     const goodsWithPrices = [];
     for (const g of quotationPayload.goods || []) {
@@ -223,8 +242,8 @@ exports.handleQuotationUpsert = async (req, res) => {
       });
     }
 
-    // Always recalculate totals before saving
-    const totals = recalculateQuotationTotals(quotationPayload.goods || []);
+    // Always recalculate totals before saving using the processed goods array
+    const totals = recalculateQuotationTotals(goodsWithPrices);
     const data = {
       ...quotationPayload,
       ...totals,
@@ -233,6 +252,8 @@ exports.handleQuotationUpsert = async (req, res) => {
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
       billingAddress: processedBillingAddress,
+      shippingAddress: processedShippingAddress,
+      shippingSameAsBilling: shippingSameAsBillingValue,
       goods: goodsWithPrices,
     };
 

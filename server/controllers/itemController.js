@@ -6,7 +6,7 @@ const multer = require("multer");
 const exceljs = require("exceljs");
 const asyncHandler = require("express-async-handler");
 const Ticket = require("../models/opentickets");
-const { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } = require("../utils/payloads");
+const { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } = require("../utils/payloadServer");
 
 // Constants
 const MAX_CUSTOM_UNITS_TO_EXPORT = 1;

@@ -51,7 +51,11 @@ export const getInitialTicketPayload = (userId = "", client = null) => ({
   statusHistory: [],
   createdBy: userId,
   currentAssignee: userId,
-  deadline: null,
+  deadline: (() => { 
+    const date = new Date(); 
+    date.setDate(date.getDate() + 30); 
+    return date; 
+  })(),
   assignedTo: userId,
   transferHistory: [],
   assignmentLog: [],
@@ -65,28 +69,54 @@ export function recalculateTicketTotals(ticket) {
   // GST breakdown and totals can be more complex, but here's a simple version:
   const gstAmount = ticket.goods.reduce((sum, item) => sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100), 0);
   const grandTotal = totalAmount + gstAmount;
-  const roundOff = Math.round((grandTotal - Math.round(grandTotal)) * 100) / 100;
-  const finalRoundedAmount = Math.round(grandTotal);
-  return { totalQuantity, totalAmount, finalGstAmount: gstAmount, grandTotal, roundOff, finalRoundedAmount };
+  
+  // Always calculate round off values
+  const exactGrandTotal = grandTotal;
+  const roundedTotal = Math.round(exactGrandTotal);
+  const roundOffAmount = roundedTotal - exactGrandTotal;
+  const roundOffDirection = roundOffAmount >= 0 ? 'up' : 'down';
+  
+  return { 
+    totalQuantity, 
+    totalAmount, 
+    finalGstAmount: gstAmount, 
+    grandTotal: exactGrandTotal, 
+    roundOff: roundOffAmount,
+    roundOffDirection,
+    finalRoundedAmount: roundedTotal
+  };
 }
 
 // Utility to map a quotation payload to a ticket payload
 export function mapQuotationToTicketPayload(quotation, userId = "") {
+  // Generate a unique ticket number based on current date/time
+  const now = new Date();
+  const ticketNumber = `T${now.getFullYear().toString().substr(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+  
+  // Set deadline to 30 days from now by default
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 30);
+  
   return {
     ...getInitialTicketPayload(userId, quotation.client),
+    ticketNumber,
+    deadline,
     companyName: quotation.client?.companyName || "",
     quotationNumber: quotation.referenceNumber,
     client: quotation.client?._id || null,
     clientPhone: quotation.client?.phone || "",
     clientGstNumber: quotation.client?.gstNumber || "",
     billingAddress: { ...quotation.billingAddress },
+    shippingAddress: { ...quotation.shippingAddress },
+    shippingSameAsBilling: quotation.shippingSameAsBilling || false,
     goods: quotation.goods?.map((g, idx) => ({ ...g, srNo: idx + 1 })) || [],
     totalQuantity: quotation.totalQuantity,
     totalAmount: quotation.totalAmount,
     finalGstAmount: quotation.gstAmount,
     grandTotal: quotation.grandTotal,
-    roundOff: quotation.roundOffTotal - Math.floor(quotation.roundOffTotal),
-    finalRoundedAmount: quotation.roundOffTotal,
+    roundOff: quotation.roundingDifference || (quotation.roundOffTotal - Math.floor(quotation.grandTotal || 0)),
+    roundOffDirection: quotation.roundingDirection || 'up',
+    finalRoundedAmount: quotation.roundOffTotal || Math.round(quotation.grandTotal || 0),
     status: "Quotation Sent",
     dispatchDays: "7-10 working days",
     // ...other fields as needed
@@ -107,12 +137,22 @@ export const getInitialQuotationPayload = (userId = "", client = null) => ({
     state: "",
     pincode: "",
   },
+  shippingAddress: {
+    address1: "",
+    address2: "",
+    city: "",
+    state: "",
+    pincode: "",
+  },
+  shippingSameAsBilling: false,
   goods: [],
   totalQuantity: 0,
   totalAmount: 0,
   gstAmount: 0,
   grandTotal: 0,
   roundOffTotal: 0,
+  roundingDifference: 0,
+  roundingDirection: 'up',
   status: "open",
   client: client || {
     _id: null,
@@ -128,12 +168,37 @@ export const getInitialQuotationPayload = (userId = "", client = null) => ({
 });
 
 export function recalculateQuotationTotals(goodsList) {
-  const totalQuantity = goodsList.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-  const totalAmount = goodsList.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const gstAmount = goodsList.reduce((sum, item) => sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100), 0);
+  // Ensure all goods have properly calculated amounts
+  const processedGoods = goodsList.map(item => {
+    // If amount is not set or needs recalculation
+    if (item.amount === undefined || item.amount === null) {
+      const quantity = Number(item.quantity || 0);
+      const price = Number(item.price || 0);
+      return { ...item, amount: quantity * price };
+    }
+    return item;
+  });
+  
+  const totalQuantity = processedGoods.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const totalAmount = processedGoods.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const gstAmount = processedGoods.reduce((sum, item) => sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100), 0);
   const grandTotal = totalAmount + gstAmount;
-  const roundOffTotal = Math.round(grandTotal * 100) / 100;
-  return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
+  
+  // Calculate rounding difference
+  const exactGrandTotal = grandTotal;
+  const roundOffTotal = Math.round(grandTotal);
+  const roundingDifference = roundOffTotal - exactGrandTotal;
+  const roundingDirection = roundingDifference >= 0 ? 'up' : 'down';
+  
+  return { 
+    totalQuantity, 
+    totalAmount, 
+    gstAmount, 
+    grandTotal: exactGrandTotal, 
+    roundOffTotal,
+    roundingDifference,
+    roundingDirection
+  };
 }
 
 // --- Item Payloads and Utilities ---
@@ -186,15 +251,18 @@ export function normalizeItemPayload(item) {
 
 // Normalizes an item for use in a quotation's goods array
 export function normalizeItemForQuotation(item) {
+  const price = parseFloat(item.sellingPrice) || 0;
+  const quantity = 1; // Default to 1 when creating from item
+  
   return {
     srNo: undefined, // to be set by caller
     description: item.name || "",
     hsnCode: item.hsnCode || "",
-    quantity: 1,
+    quantity: quantity,
     unit: item.baseUnit || (item.units && item.units[0]?.name) || "nos",
-    price: parseFloat(item.sellingPrice) || 0,
+    price: price,
     gstRate: parseFloat(item.gstRate) || 0,
-    amount: parseFloat(item.sellingPrice) || 0,
+    amount: price * quantity, // Calculate amount based on price and quantity
     units: Array.isArray(item.units) && item.units.length > 0 ? item.units : [{ name: item.baseUnit || "nos", isBaseUnit: true, conversionFactor: 1 }],
     originalItem: item, // Keep the full item for reference
   };
