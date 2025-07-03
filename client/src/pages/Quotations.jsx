@@ -347,7 +347,7 @@ export default function Quotations() {
             <SearchBar
                 value={searchTerm}
                 setSearchTerm={(value) => setSearchTerm(value)} 
-                placeholder="Search quotations..."
+                placeholder="Search by Company Name, or Client Name..."
                 className="w-100"
             />
           </div>

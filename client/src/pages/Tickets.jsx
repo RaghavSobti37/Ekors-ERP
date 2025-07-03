@@ -409,7 +409,7 @@ export default function Dashboard() {
             <SearchBar
               value={searchTerm}
               setSearchTerm={(value) => { setSearchTerm(value); }} // setCurrentPage(1) handled by useEffect
-              placeholder="Search tickets..."
+              placeholder="Search by Ticket No. or Company Name..."
               className="w-100" />
           </div>
         </div>
