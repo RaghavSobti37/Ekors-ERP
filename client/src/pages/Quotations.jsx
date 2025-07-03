@@ -109,7 +109,7 @@ export default function Quotations() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
+  }, [user, authLoading, navigate, statusFilter, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -119,7 +119,7 @@ export default function Quotations() {
     } else if (user) {
       fetchQuotations(currentPage, itemsPerPage); 
     }
-  }, [user, authLoading, navigate, fetchQuotations, currentPage, itemsPerPage]); 
+  }, [user, authLoading, navigate, fetchQuotations, currentPage, itemsPerPage, statusFilter, sortConfig]); 
 
 
   const requestSort = useCallback((key) => {
@@ -150,7 +150,16 @@ export default function Quotations() {
 
   useEffect(() => { 
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, sortConfig]); 
+  }, [statusFilter, sortConfig]); 
+
+  // Add debouncing for search term
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      fetchQuotations(1, itemsPerPage);
+    }, 400); // 400ms delay
+    return () => clearTimeout(timeout);
+  }, [searchTerm, itemsPerPage, fetchQuotations]);
 
   const reportButtonElement = (user?.role === "admin" || user?.role === "super-admin") && (
     <Button

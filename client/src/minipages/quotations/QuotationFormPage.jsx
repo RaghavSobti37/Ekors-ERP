@@ -400,8 +400,19 @@ const QuotationFormPage = () => {
             })
           );
 
-          // Recalculate totals to ensure round-off is always correct
+          // Use existing totals from the database if available, otherwise recalculate
           const recalculatedTotals = recalculateQuotationTotals(goodsWithUnits);
+          
+          // Log the retrieved values for debugging
+          console.log("Fetched quotation totals:", {
+            totalQuantity: fetchedQuotation.totalQuantity,
+            totalAmount: fetchedQuotation.totalAmount,
+            gstAmount: fetchedQuotation.gstAmount,
+            grandTotal: fetchedQuotation.grandTotal,
+            roundOffTotal: fetchedQuotation.roundOffTotal,
+            roundingDifference: fetchedQuotation.roundingDifference,
+            roundingDirection: fetchedQuotation.roundingDirection
+          });
 
           setQuotationData({
             date: formatDateForInput(fetchedQuotation.date),
@@ -413,7 +424,14 @@ const QuotationFormPage = () => {
                 ? orderIssuedByIdToSet._id
                 : orderIssuedByIdToSet,
             goods: goodsWithUnits,
-            ...recalculatedTotals,
+            // Use the fetched values but fall back to recalculated values if necessary
+            totalQuantity: fetchedQuotation.totalQuantity || recalculatedTotals.totalQuantity,
+            totalAmount: fetchedQuotation.totalAmount || recalculatedTotals.totalAmount,
+            gstAmount: fetchedQuotation.gstAmount || recalculatedTotals.gstAmount,
+            grandTotal: fetchedQuotation.grandTotal || recalculatedTotals.grandTotal,
+            roundOffTotal: fetchedQuotation.roundOffTotal || recalculatedTotals.roundOffTotal,
+            roundingDifference: fetchedQuotation.roundingDifference || recalculatedTotals.roundingDifference,
+            roundingDirection: fetchedQuotation.roundingDirection || recalculatedTotals.roundingDirection,
             billingAddress:
               fetchedQuotation.billingAddress ||
               getInitialQuotationPayload(user?.id).billingAddress,
@@ -1049,7 +1067,15 @@ const QuotationFormPage = () => {
       const recalculatedTotals = recalculateQuotationTotals(goodsForSubmission);
       
       // Log calculated values for debugging
-      console.log("Recalculated totals:", recalculatedTotals);
+      console.log("Recalculated totals for submission:", {
+        totalQuantity: recalculatedTotals.totalQuantity,
+        totalAmount: recalculatedTotals.totalAmount,
+        gstAmount: recalculatedTotals.gstAmount,
+        grandTotal: recalculatedTotals.grandTotal,
+        roundOffTotal: recalculatedTotals.roundOffTotal,
+        roundingDifference: recalculatedTotals.roundingDifference,
+        roundingDirection: recalculatedTotals.roundingDirection
+      });
       
       const submissionData = {
         referenceNumber: quotationData.referenceNumber,
@@ -1069,11 +1095,12 @@ const QuotationFormPage = () => {
         roundingDirection: recalculatedTotals.roundingDirection,
         status: quotationData.status || "open",
         client: { ...quotationData.client, _id: clientId },
-        // Include the replication source if applicable
         ...(quotationData.replicatedFromQuotationId && { 
           replicatedFromQuotationId: quotationData.replicatedFromQuotationId 
         }),
       };
+
+      console.log("Submission data:", quotationData);
 
       try {
         const url =
