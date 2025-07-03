@@ -916,3 +916,49 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
     });
   }
 };
+
+exports.updateQuotationStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const user = req.user;
+
+  try {
+    const quotation = await Quotation.findById(id);
+    
+    if (!quotation) {
+      return res.status(404).json({ message: "Quotation not found" });
+    }
+
+    // Only allow specific status values
+    const allowedStatuses = ["open", "running", "closed", "hold"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    quotation.status = status;
+    await quotation.save();
+
+    logger.log({
+      user,
+      page: "Quotation",
+      action: "Update Quotation Status",
+      req,
+      message: `Quotation status updated to ${status}`,
+      details: { quotationId: id, newStatus: status },
+      level: "info"
+    });
+
+    res.json(quotation);
+  } catch (error) {
+    logger.log({
+      user,
+      page: "Quotation",
+      action: "Update Quotation Status Error",
+      req,
+      message: "Failed to update quotation status",
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
+    res.status(500).json({ message: "Error updating quotation status" });
+  }
+};

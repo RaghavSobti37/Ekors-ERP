@@ -6,6 +6,7 @@ import { showToast, handleApiError, formatDisplayDate as formatDisplayDateHelper
 import { Button, Table, Alert, Form, Row, Col } from "react-bootstrap";
 import "../css/Logtime.css"; // You might want to create/use a specific CSS file or reuse styles
 
+
 // Helper to format a Date object or YYYY-MM-DD string to YYYY-MM-DD string
 const ensureYYYYMMDDFormat = (dateInput) => {
   if (dateInput instanceof Date) {

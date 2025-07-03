@@ -26,6 +26,7 @@ import apiClient from "../utils/apiClient";
 import "../css/Style.css";
 import "../css/Items.css";
 import { FaChartBar } from "react-icons/fa";
+import { PlusCircle } from "react-bootstrap-icons";
 
 export default function Quotations() {
   const [quotations, setQuotations] = useState([]); // Holds current page's quotations
@@ -109,7 +110,7 @@ export default function Quotations() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, authLoading, navigate, statusFilter, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
+  }, [user, authLoading, navigate, statusFilter, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction, searchTerm]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -156,10 +157,11 @@ export default function Quotations() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setCurrentPage(1);
-      fetchQuotations(1, itemsPerPage);
-    }, 400); // 400ms delay
+      fetchQuotations();
+    }, 400); // Debounce delay
     return () => clearTimeout(timeout);
-  }, [searchTerm, itemsPerPage, fetchQuotations]);
+  }, [searchTerm]);
+
 
   const reportButtonElement = (user?.role === "admin" || user?.role === "super-admin") && (
     <Button
@@ -206,7 +208,18 @@ export default function Quotations() {
         }
       });
       
+      // Update quotation status to "hold"
+      await apiClient(`/quotations/${quotation._id}`, {
+        method: 'PATCH',
+        body: {
+          status: 'hold'
+        }
+      });
+      
       toast.success("Ticket created successfully!");
+      
+      // Refresh quotations list to show updated status
+      fetchQuotations(currentPage, itemsPerPage);
       
       // Navigate to the edit page for the new ticket
       navigate(`/tickets/edit/${response._id}`);
@@ -217,9 +230,7 @@ export default function Quotations() {
       setIsLoading(false);
       return;
     }
-
-    // No need to navigate to create-from-quotation, we're handling the API call directly
-  }, [navigate, setSourceQuotationForTicket, setIsLoading, apiClient, toast]); 
+  }, [navigate, setSourceQuotationForTicket, setIsLoading, apiClient, toast, currentPage, itemsPerPage, fetchQuotations]); 
 
   const handleEdit = useCallback(async (quotation) => {
     let orderIssuedByIdToSet =
@@ -341,8 +352,8 @@ export default function Quotations() {
             />
           </div>
 
-          <Button variant="primary" onClick={openCreateModal} title="Create New Quotation" style={{ whiteSpace: "nowrap" }}>
-            ➕ Quotation
+          <Button variant="success" onClick={openCreateModal} title="Create New Quotation" style={{ whiteSpace: "nowrap" }}>
+            <PlusCircle size={18} className="me-1" /> New Quotation
           </Button>
         </div>
 
