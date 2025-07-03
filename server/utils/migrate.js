@@ -1,9 +1,9 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-const { STANDARD_UNITS } = require('./models/itemlist');
-const Quotation = require('./models/quotation');
-const Ticket = require('./models/opentickets');
+const { STANDARD_UNITS } = require('../models/itemlist');
+const Quotation = require('../models/quotation');
+const Ticket = require('../models/opentickets');
 
 const VALID_TICKET_STATUSES = [
   "Quotation Sent", "PO Received", "Payment Pending", "Inspection",

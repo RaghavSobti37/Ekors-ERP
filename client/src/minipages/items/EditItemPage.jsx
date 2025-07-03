@@ -4,11 +4,7 @@ import apiClient from "../../utils/apiClient";
 import { Alert, Button, Spinner, Table, Form, Card, Row, Col, OverlayTrigger, Tooltip } from "react-bootstrap";
 import ReusablePageStructure from "../../components/ReusablePageStructure";
 import { Trash } from "react-bootstrap-icons";
-
-// Standard units (should match backend)
-const STANDARD_UNITS = [
-  "nos", "pkt", "pcs", "kgs", "mtr", "sets", "kwp", "ltr", "bottle", "each", "bag", "set"
-];
+import { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } from "../../utils/payloads";
 
 export default function EditItemPage() {
   const { id } = useParams();
@@ -41,8 +37,8 @@ export default function EditItemPage() {
   }, [id]);
 
   useEffect(() => {
-    apiClient("/categories")
-      .then((res) => setCategories(res.data || []))
+    apiClient("/items/categories/all")
+      .then((res) => setCategories(res.categories || []))
       .catch(() => setCategories([]));
   }, []);
 
@@ -132,22 +128,11 @@ export default function EditItemPage() {
     setError(null);
     setSuccess(null);
     try {
+      // Normalize payload before sending
+      const normalizedPayload = normalizeItemPayload({ ...formData });
       await apiClient(`/items/${id}`, {
         method: "PUT",
-        body: {
-          ...formData,
-          quantity: parseFloat(formData.quantity) || 0,
-          sellingPrice: parseFloat(formData.sellingPrice) || 0,
-          buyingPrice: parseFloat(formData.buyingPrice) || 0,
-          gstRate: parseFloat(formData.gstRate) || 0,
-          maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
-          units: formData.units.map((u) => ({
-            name: u.name,
-            isBaseUnit: !!u.isBaseUnit,
-            conversionFactor: u.isBaseUnit ? 1 : parseFloat(Number(u.conversionFactor).toFixed(2)),
-          })),
-          baseUnit: formData.units.find((u) => u.isBaseUnit)?.name || formData.baseUnit,
-        },
+        body: normalizedPayload,
       });
       setSuccess("Item updated successfully!");
       setTimeout(() => navigate("/items"), 1200);
@@ -244,8 +229,8 @@ export default function EditItemPage() {
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
-                      <option key={cat._id || cat} value={cat.name || cat}>
-                        {cat.name || cat}
+                      <option key={cat} value={cat}>
+                        {cat}
                       </option>
                     ))}
                   </Form.Select>
@@ -255,7 +240,7 @@ export default function EditItemPage() {
                   <Form.Control
                     name="maxDiscountPercentage"
                     type="number"
-                    value={formData.maxDiscountPercentage}
+                    value={formData.maxDiscountPercentage ?? "0"}
                     onChange={handleChange}
                     min="0"
                     max="100"
@@ -298,6 +283,7 @@ export default function EditItemPage() {
                   )}
                 </Form.Group>
                 <hr />
+                {/* Units & Conversion */}
                 <h6 className="mb-2">Units & Conversion</h6>
                 <Table bordered size="sm" className="mb-2">
                   <thead>
@@ -368,11 +354,7 @@ export default function EditItemPage() {
                     ))}
                   </tbody>
                 </Table>
-                <Form
-                  className="d-flex gap-2 align-items-end mb-2"
-                  onSubmit={handleAddUnit}
-                  autoComplete="off"
-                >
+                <div className="d-flex gap-2 align-items-end mb-2">
                   <Form.Group>
                     <Form.Label visuallyHidden>Add Unit</Form.Label>
                     <Form.Select
@@ -418,7 +400,7 @@ export default function EditItemPage() {
                   >
                     Add Unit
                   </Button>
-                </Form>
+                </div>
                 {/* Conversion Table */}
                 {formData.units.length > 1 && baseUnit && (
                   <div className="mt-3">

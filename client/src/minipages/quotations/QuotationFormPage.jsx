@@ -9,37 +9,28 @@ import ItemSearchComponent from "../../components/ItemSearch.jsx";
 import QuotationSearchComponent from "../../components/QuotationSearchComponent.jsx";
 import apiClient from "../../utils/apiClient.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import {
-  handleApiError,
-  formatDateForInput,
-} from "../../utils/helpers.js";
+import { handleApiError, formatDateForInput, getReadOnlyFieldStyle } from "../../utils/helpers.js";
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
+import NewItemForm from "../../components/NewItemForm";
+import { getInitialQuotationPayload, recalculateQuotationTotals, normalizeItemForQuotation } from "../../utils/payloads";
 
-const initialNewItemFormData = {
-  name: "",
-  pricing: {
-    baseUnit: "nos",
-    sellingPrice: "",
-    buyingPrice: "",
-  },
-  units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
-  category: "",
-  hsnCode: "",
-  gstRate: "0",
-  quantity: 1,
-  lowStockThreshold: "5",
-};
+// Use the utility function for read-only fields
+const readOnlyFieldStyle = getReadOnlyFieldStyle();
 
-const generateQuotationNumber = () => {
+// Utility to generate a unique quotation number (customize as needed)
+function generateQuotationNumber() {
   const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
-};
+  return (
+    "Q-" +
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "-" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0")
+  );
+}
 
 const GoodsTable = ({
   goods,
@@ -55,6 +46,12 @@ const GoodsTable = ({
   setNewItemFormData,
   handleSaveAndAddNewItemToQuotation,
   isSavingNewItem,
+  fieldErrors,
+  categories = [],
+  onAddCategory,
+  newCategory,
+  setNewCategory,
+  isAddingCategory,
 }) => {
   // Helper to get all units for an item (from item.units, originalItem.units, or fallback)
   const getAllUnits = (item) => {
@@ -72,7 +69,9 @@ const GoodsTable = ({
       return item.originalItem.units;
     }
     // Fallback to base unit
-    return [{ name: item.unit || "nos", isBaseUnit: true, conversionFactor: 1 }];
+    return [
+      { name: item.unit || "nos", isBaseUnit: true, conversionFactor: 1 },
+    ];
   };
 
   return (
@@ -164,23 +163,30 @@ const GoodsTable = ({
                       handleGoodsChange(index, "hsnCode", e.target.value)
                     }
                     placeholder="HSN/SAC"
+                    disabled={!!item.originalItem?.hsnCode} // Disable if it's from original item
+                    isInvalid={!!fieldErrors[`goods.${index}.hsnCode`]}
                   />
+                  <Form.Control.Feedback type="invalid">
+                    {fieldErrors[`goods.${index}.hsnCode`]}
+                  </Form.Control.Feedback>
                 </td>
                 <td>
                   <Form.Control
                     required
                     type="number"
-                    min="1"
-                    value={item.quantity || 1}
+                    min="0"
+                    value={item.quantity}
                     onChange={(e) =>
-                      handleGoodsChange(index, "quantity", e.target.value)
+                      handleGoodsChange(index, "quantity", Number(e.target.value))
                     }
                   />
                 </td>
                 <td>
                   <Form.Select
                     value={item.unit || allUnits[0]?.name || "nos"}
-                    onChange={(e) => handleGoodsChange(index, "unit", e.target.value)}
+                    onChange={(e) =>
+                      handleGoodsChange(index, "unit", e.target.value)
+                    }
                   >
                     {allUnits.map((unitOption) => (
                       <option key={unitOption.name} value={unitOption.name}>
@@ -197,7 +203,7 @@ const GoodsTable = ({
                     step="0.01"
                     value={item.price || 0}
                     onChange={(e) =>
-                      handleGoodsChange(index, "price", e.target.value)
+                      handleGoodsChange(index, "price", Number(e.target.value))
                     }
                   />
                 </td>
@@ -209,11 +215,13 @@ const GoodsTable = ({
                     step="0.1"
                     value={item.gstRate === null ? "" : item.gstRate}
                     onChange={(e) =>
-                      handleGoodsChange(index, "gstRate", e.target.value)
+                      handleGoodsChange(index, "gstRate", Number(e.target.value))
                     }
                   />
                 </td>
-                <td className="align-middle">₹{(item.amount || 0).toFixed(2)}</td>
+                <td className="align-middle">
+                  ₹{(item.amount || 0).toFixed(2)}
+                </td>
                 <td className="align-middle">
                   <Button
                     variant="danger"
@@ -229,13 +237,20 @@ const GoodsTable = ({
         </tbody>
       </Table>
       <div className="mb-3">
-        <div className="d-flex gap-2 mb-2">
+        <div className="d-flex gap-2 mb-2 align-items-center">
           <Button
             variant={itemCreationMode === "new" ? "primary" : "outline-primary"}
             onClick={() => setItemCreationMode("new")}
             size="sm"
           >
             Create New Item
+          </Button>
+          <Button
+            variant={itemCreationMode === "search" ? "primary" : "outline-primary"}
+            onClick={() => setItemCreationMode("search")}
+            size="sm"
+          >
+            Add Existing Item
           </Button>
         </div>
         {itemCreationMode === "search" && (
@@ -251,169 +266,19 @@ const GoodsTable = ({
         {itemCreationMode === "new" && (
           <>
             <h6>Create and Add New Item</h6>
-            <Form>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>
-                      Item Name <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter item name"
-                      value={newItemFormData.name}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>
-                      Selling Price (per Base Unit) <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter selling price"
-                      value={newItemFormData.pricing.sellingPrice}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          pricing: {
-                            ...prev.pricing,
-                            sellingPrice: e.target.value,
-                          },
-                        }))
-                      }
-                      required
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Base Unit</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="e.g., nos, KG, Mtr"
-                      value={newItemFormData.pricing.baseUnit}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          pricing: {
-                            ...prev.pricing,
-                            baseUnit: e.target.value,
-                          },
-                          units: [
-                            {
-                              name: e.target.value,
-                              isBaseUnit: true,
-                              conversionFactor: 1,
-                            },
-                          ],
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>HSN/SAC Code</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="HSN/SAC"
-                      value={newItemFormData.hsnCode}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          hsnCode: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={4}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>GST Rate (%)</Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="GST Rate"
-                      value={newItemFormData.gstRate}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          gstRate: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Category</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Item Category"
-                      value={newItemFormData.category}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          category: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-2">
-                    <Form.Label>Low Stock Threshold</Form.Label>
-                    <Form.Control
-                      type="number"
-                      placeholder="Default: 5"
-                      value={newItemFormData.lowStockThreshold}
-                      onChange={(e) =>
-                        setNewItemFormData((prev) => ({
-                          ...prev,
-                          lowStockThreshold: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Button
-                variant="success"
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  handleSaveAndAddNewItemToQuotation(newItemFormData);
-                  setItemCreationMode("search");
-                }}
-                disabled={
-                  isSavingNewItem ||
-                  !newItemFormData.name ||
-                  !newItemFormData.pricing.sellingPrice ||
-                  !newItemFormData.pricing.baseUnit
-                }
-              >
-                {isSavingNewItem ? (
-                  <>
-                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />{" "}
-                    Saving Item...
-                  </>
-                ) : (
-                  "Save Item & Add to Quotation"
-                )}
-              </Button>
-            </Form>
+            <div className="p-3 border rounded bg-light">
+              <NewItemForm
+                onSubmit={handleSaveAndAddNewItemToQuotation}
+                isSaving={isSavingNewItem}
+                error={fieldErrors?.form}
+                success={fieldErrors?.success}
+                categories={categories}
+                onAddCategory={onAddCategory}
+                newCategory={newCategory}
+                setNewCategory={setNewCategory}
+                isAddingCategory={isAddingCategory}
+              />
+            </div>
           </>
         )}
       </div>
@@ -427,6 +292,7 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
+<<<<<<< HEAD
   const getInitialQuotationData = useCallback((userId) => ({
     date: formatDateForInput(new Date()),
     referenceNumber: "",
@@ -481,6 +347,25 @@ const QuotationFormPage = () => {
 
     getInitialQuotationData(user?.id) // Always start with initial, then fetch/populate
   );
+=======
+  // Use the shared payload for initial state
+  const [quotationData, setQuotationData] = useState(() => {
+    const initialData = location.state?.quotationDataForForm || getInitialQuotationPayload(user?.id);
+    
+    // Ensure shippingAddress is always initialized
+    if (!initialData.shippingAddress) {
+      initialData.shippingAddress = {
+        address1: "",
+        address2: "",
+        city: "",
+        state: "",
+        pincode: ""
+      };
+    }
+    
+    return initialData;
+  });
+>>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
   const [isEditing, setIsEditing] = useState(
      !!quotationIdFromParams || location.state?.isEditing // Determine editing mode from URL or state
 
@@ -493,14 +378,33 @@ const QuotationFormPage = () => {
   );
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [isFetchingBillingAddress, setIsFetchingBillingAddress] = useState(false);
-  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] = useState(false);
+  const [isFetchingShippingAddress, setIsFetchingShippingAddress] = useState(false);
+  const [isItemSearchDropdownOpenInModal, setIsItemSearchDropdownOpenInModal] =
+    useState(false);
   const [isReplicating, setIsReplicating] = useState(false);
-  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] = useState(false);
+  const [isLoadingReplicationDetails, setIsLoadingReplicationDetails] =
+    useState(false);
 
   const [itemCreationMode, setItemCreationMode] = useState("search");
-  const [newItemFormData, setNewItemFormData] = useState(initialNewItemFormData);
+  const [newItemFormData, setNewItemFormData] = useState({
+    name: "",
+    pricing: {
+      baseUnit: "nos",
+      sellingPrice: "",
+      buyingPrice: "",
+    },
+    units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
+    category: "",
+    hsnCode: "",
+    gstRate: "0",
+    quantity: 0, // default to 0
+    lowStockThreshold: "5",
+  });
   const [isSavingNewItem, setIsSavingNewItem] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState("");
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const quotationFormId = "quotation-form-page";
 
   useEffect(() => {
@@ -554,6 +458,20 @@ const QuotationFormPage = () => {
             })
           );
 
+          // Use existing totals from the database if available, otherwise recalculate
+          const recalculatedTotals = recalculateQuotationTotals(goodsWithUnits);
+          
+          // Log the retrieved values for debugging
+          console.log("Fetched quotation totals:", {
+            totalQuantity: fetchedQuotation.totalQuantity,
+            totalAmount: fetchedQuotation.totalAmount,
+            gstAmount: fetchedQuotation.gstAmount,
+            grandTotal: fetchedQuotation.grandTotal,
+            roundOffTotal: fetchedQuotation.roundOffTotal,
+            roundingDifference: fetchedQuotation.roundingDifference,
+            roundingDirection: fetchedQuotation.roundingDirection
+          });
+
           setQuotationData({
             date: formatDateForInput(fetchedQuotation.date),
             referenceNumber: fetchedQuotation.referenceNumber,
@@ -564,13 +482,21 @@ const QuotationFormPage = () => {
                 ? orderIssuedByIdToSet._id
                 : orderIssuedByIdToSet,
             goods: goodsWithUnits,
-            totalQuantity: Number(fetchedQuotation.totalQuantity),
-            totalAmount: Number(fetchedQuotation.totalAmount),
-            gstAmount: Number(fetchedQuotation.gstAmount),
-            grandTotal: Number(fetchedQuotation.grandTotal),
+            // Use the fetched values but fall back to recalculated values if necessary
+            totalQuantity: fetchedQuotation.totalQuantity || recalculatedTotals.totalQuantity,
+            totalAmount: fetchedQuotation.totalAmount || recalculatedTotals.totalAmount,
+            gstAmount: fetchedQuotation.gstAmount || recalculatedTotals.gstAmount,
+            grandTotal: fetchedQuotation.grandTotal || recalculatedTotals.grandTotal,
+            roundOffTotal: fetchedQuotation.roundOffTotal || recalculatedTotals.roundOffTotal,
+            roundingDifference: fetchedQuotation.roundingDifference || recalculatedTotals.roundingDifference,
+            roundingDirection: fetchedQuotation.roundingDirection || recalculatedTotals.roundingDirection,
             billingAddress:
               fetchedQuotation.billingAddress ||
-              getInitialQuotationData(user?.id).billingAddress,
+              getInitialQuotationPayload(user?.id).billingAddress,
+            shippingAddress:
+              fetchedQuotation.shippingAddress ||
+              getInitialQuotationPayload(user?.id).shippingAddress,
+            shippingSameAsBilling: fetchedQuotation.shippingSameAsBilling || false,
             status: fetchedQuotation.status || "open",
             client: {
               companyName: fetchedQuotation.client?.companyName || "",
@@ -622,146 +548,115 @@ const QuotationFormPage = () => {
       };
       fetchDefaults();
     }
-  }, [quotationIdFromParams, isEditing, location.state, navigate, user, getInitialQuotationData]);
+  }, [
+    quotationIdFromParams,
+    isEditing,
+    location.state,
+    navigate,
+    user,
+    getInitialQuotationPayload,
+  ]);
 
   const handleAddItem = useCallback(
     (item) => {
-      setQuotationData((prevQuotationData) => {
-        const defaultUnit = item.units?.find(u => u.isBaseUnit)?.name || item.units?.[0]?.name || "nos";
-        const pricePerSelectedUnit = typeof item.sellingPrice === "number" ? item.sellingPrice : 0;
-
-        const newGoods = [
-          ...prevQuotationData.goods,
-          {
-            srNo: prevQuotationData.goods.length + 1,
-            description: item.name,
-            hsnCode: item.hsnCode || "",
-            quantity: 1,
-            unit: defaultUnit,
-            price: pricePerSelectedUnit,
-            amount: pricePerSelectedUnit,
-            originalPrice: pricePerSelectedUnit,
-            sellingPrice: pricePerSelectedUnit,
-            maxDiscountPercentage: parseFloat(item.maxDiscountPercentage) || 0,
-            gstRate: parseFloat(item.gstRate || 0),
-            subtexts: [],
-            originalItem: item._id || item,
-            units: item.units || [{ name: defaultUnit, isBaseUnit: true, conversionFactor: 1 }], // always attach units
-          },
-        ];
-        const totals = recalculateTotals(newGoods);
-        return { ...prevQuotationData, goods: newGoods, ...totals };
+      setQuotationData((prev) => {
+        const normalized = normalizeItemForQuotation(item);
+        normalized.srNo = prev.goods.length + 1;
+        
+        // Ensure amount is properly calculated based on quantity and price
+        const quantity = Number(normalized.quantity || 1);
+        const price = Number(normalized.price || 0);
+        normalized.quantity = quantity;
+        normalized.price = price;
+        normalized.amount = quantity * price;
+        
+        const newGoods = [...prev.goods, normalized];
+        const totals = recalculateQuotationTotals(newGoods);
+        return { ...prev, goods: newGoods, ...totals };
       });
       setError(null);
     },
-    [recalculateTotals]
+    []
   );
 
-  const handleSaveAndAddNewItemToQuotation = useCallback(async (newItemData) => {
-    if (!newItemData.name || !newItemData.pricing.sellingPrice || !newItemData.pricing.baseUnit) {
-      toast.error("New item name, selling price, and base unit are required.");
-      return;
-    }
-    setIsSavingNewItem(true);
-    setError(null);
+  const handleSaveAndAddNewItemToQuotation = useCallback(
+    async (newItemData) => {
+      if (
+        !newItemData.name ||
+        !newItemData.pricing.sellingPrice ||
+        !newItemData.pricing.baseUnit
+      ) {
+        toast.error(
+          "New item name, selling price, and base unit are required."
+        );
+        return;
+      }
+      setIsSavingNewItem(true);
+      setError(null);
 
-    try {
-      const { pricing, ...restOfItemData } = newItemData;
-      const payload = {
-        ...restOfItemData,
-        ...pricing,
-      };
-      const savedItem = await apiClient("/items", {
-        method: "POST",
-        body: payload,
-      });
-      toast.success(`Item "${savedItem.name}" created and added to quotation.`);
-      handleAddItem(savedItem);
-      setNewItemFormData(initialNewItemFormData);
-      setItemCreationMode("search");
-    } catch (err) {
-      const errorMessage = handleApiError(
-        err,
-        "Failed to save new item.",
-        user,
-        "itemCreationInQuotation"
-      );
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsSavingNewItem(false);
-    }
-  }, [handleAddItem, user]);
+      try {
+        const { pricing, ...restOfItemData } = newItemData;
+        const payload = {
+          ...restOfItemData,
+          ...pricing,
+        };
+        const savedItem = await apiClient("/items", {
+          method: "POST",
+          body: payload,
+        });
+        toast.success(
+          `Item "${savedItem.name}" created and added to quotation.`
+        );
+        handleAddItem(savedItem);
+        setNewItemFormData(getInitialQuotationPayload().goods);
+        setItemCreationMode("search");
+      } catch (err) {
+        const errorMessage = handleApiError(
+          err,
+          "Failed to save new item.",
+          user,
+          "itemCreationInQuotation"
+        );
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsSavingNewItem(false);
+      }
+    },
+    [handleAddItem, user]
+  );
 
+  // Use recalculateTotals everywhere for goods changes
   const handleGoodsChange = useCallback(
     (index, field, value, subtextIndex = null) => {
       setQuotationData((prevData) => {
-        const updatedGoods = [...prevData.goods];
-        let itemToUpdate = { ...updatedGoods[index] };
-        let priceValidationError = null;
-
-        if (field === "subtexts" && subtextIndex !== null) {
-          if (!itemToUpdate.subtexts) itemToUpdate.subtexts = [];
-          itemToUpdate.subtexts[subtextIndex] = value;
-        } else if (field === "gstRate") {
-          itemToUpdate[field] = value === "" ? null : parseFloat(value);
-        } else {
-          itemToUpdate[field] = (["quantity", "price"].includes(field)) ? Number(value) : value;
-        }
-
-        if (field === "quantity" || field === "unit") {
-          const currentQuantity = Number(itemToUpdate.quantity) || 0;
-          const selectedUnit = itemToUpdate.unit;
-          const originalItem = itemToUpdate.originalItem;
-
-          if (originalItem && selectedUnit) {
-            const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(originalItem, 1, selectedUnit);
-            itemToUpdate.price = pricePerSelectedUnit;
-            itemToUpdate.amount = pricePerSelectedUnit * currentQuantity;
-          } else {
-            itemToUpdate.amount = (currentQuantity || 0) * (itemToUpdate.price || 0);
+        const goods = prevData.goods.map((item, idx) => {
+          if (idx !== index) return item;
+          
+          if (field === "subtexts") {
+            const subtexts = [...(item.subtexts || [])];
+            subtexts[subtextIndex] = value;
+            return { ...item, subtexts };
           }
-        } else if (field === "price") {
-          itemToUpdate.amount = (Number(itemToUpdate.quantity) || 0) * (Number(itemToUpdate.price) || 0);
-        }
-
-        if (field === "price") {
-          const currentItem = itemToUpdate;
-          const newPrice = parseFloat(value);
-          const originalPrice = parseFloat(currentItem.originalItem?.pricing?.sellingPrice);
-          const maxDiscountPerc = parseFloat(currentItem.maxDiscountPercentage);
-
-          if (!isNaN(newPrice) && !isNaN(originalPrice)) {
-            const selectedUnitInfo = currentItem.originalItem?.units.find(u => u.name === currentItem.unit);
-            const conversionFactor = selectedUnitInfo ? parseFloat(selectedUnitInfo.conversionFactor) : 1;
-            const minAllowedPricePerSelectedUnit = (originalPrice * (1 - maxDiscountPerc / 100)) * conversionFactor;
-
-            if (!isNaN(maxDiscountPerc) && maxDiscountPerc > 0) {
-              if (newPrice < minAllowedPricePerSelectedUnit)
-                priceValidationError = `Discount for ${currentItem.description} exceeds ${maxDiscountPerc}%. Min price for ${currentItem.unit} is ₹${minAllowedPricePerSelectedUnit.toFixed(2)}.`;
-            }
-          } else if (String(value).trim() !== "" && isNaN(newPrice)) {
-            priceValidationError = `Invalid price for ${currentItem.description}.`;
+          
+          // Create the updated item with the new field value
+          const updatedItem = { ...item, [field]: value };
+          
+          // Recalculate amount when quantity or price changes
+          if (field === 'quantity' || field === 'price') {
+            const quantity = Number(field === 'quantity' ? value : item.quantity || 0);
+            const price = Number(field === 'price' ? value : item.price || 0);
+            updatedItem.amount = quantity * price;
           }
-        }
-
-        updatedGoods[index] = itemToUpdate;
-        const totals = recalculateTotals(updatedGoods);
-
-        if (priceValidationError) {
-          setError(priceValidationError);
-          toast.warn(priceValidationError);
-        } else if (
-          error &&
-          (error.includes(`Discount for ${updatedGoods[index].description}`) ||
-            error.includes(`Price for ${updatedGoods[index].description}`))
-        ) {
-          setError(null);
-        }
-        return { ...prevData, goods: updatedGoods, ...totals };
+          
+          return updatedItem;
+        });
+        
+        const totals = recalculateQuotationTotals(goods);
+        return { ...prevData, goods, ...totals };
       });
     },
-    [recalculateTotals, error]
+    []
   );
 
   const handleDeleteItem = useCallback(
@@ -773,16 +668,21 @@ const QuotationFormPage = () => {
             ...item,
             srNo: idx + 1,
           }));
-        return { ...prevData, goods: updatedGoods, ...recalculateTotals(updatedGoods) };
+        return {
+          ...prevData,
+          goods: updatedGoods,
+          ...recalculateQuotationTotals(updatedGoods),
+        };
       });
     },
-    [recalculateTotals]
+    []
   );
 
   const handleAddSubtext = useCallback((itemIndex) => {
     setQuotationData((prevData) => {
       const updatedGoods = [...prevData.goods];
-      if (!updatedGoods[itemIndex].subtexts) updatedGoods[itemIndex].subtexts = [];
+      if (!updatedGoods[itemIndex].subtexts)
+        updatedGoods[itemIndex].subtexts = [];
       updatedGoods[itemIndex].subtexts.push("");
       return { ...prevData, goods: updatedGoods };
     });
@@ -796,49 +696,119 @@ const QuotationFormPage = () => {
     });
   }, []);
 
-  const fetchBillingAddressFromPincode = useCallback(
-    async (pincode) => {
-      if (!pincode || pincode.length !== 6) return;
-      setIsFetchingBillingAddress(true);
-      setError(null);
-      try {
-        const response = await fetch(
-          `https://api.postalpincode.in/pincode/${pincode}`
-        );
-        const responseData = await response.json();
-        if (
-          responseData &&
-          responseData.length > 0 &&
-          responseData[0].Status === "Success"
-        ) {
-          const postOffice = responseData[0].PostOffice[0];
-          if (postOffice) {
-            setQuotationData((prev) => ({
+  const fetchBillingAddressFromPincode = useCallback(async (pincode) => {
+    if (!pincode || pincode.length !== 6) return;
+    setIsFetchingBillingAddress(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://api.postalpincode.in/pincode/${pincode}`
+      );
+      const responseData = await response.json();
+      if (
+        responseData &&
+        responseData.length > 0 &&
+        responseData[0].Status === "Success"
+      ) {
+        const postOffice = responseData[0].PostOffice[0];
+        if (postOffice) {
+          setQuotationData((prev) => {
+            const updatedBillingAddress = {
+              ...prev.billingAddress,
+              city: postOffice.District || prev.billingAddress.city,
+              state: postOffice.State || prev.billingAddress.state,
+            };
+            
+            // Update shipping address if same as billing
+            let updatedShippingAddress = { ...prev.shippingAddress };
+            if (prev.shippingSameAsBilling) {
+              updatedShippingAddress = {
+                ...updatedShippingAddress,
+                city: updatedBillingAddress.city,
+                state: updatedBillingAddress.state,
+                pincode: pincode
+              };
+            }
+            
+            return {
               ...prev,
-              billingAddress: {
-                ...prev.billingAddress,
-                city: postOffice.District || prev.billingAddress.city,
-                state: postOffice.State || prev.billingAddress.state,
-              },
-            }));
-            toast.success(`City and State auto-filled for pincode ${pincode}.`);
-          } else {
-            toast.warn(`No Post Office details found for pincode ${pincode}.`);
-          }
+              billingAddress: updatedBillingAddress,
+              shippingAddress: prev.shippingSameAsBilling ? updatedShippingAddress : prev.shippingAddress,
+            };
+          });
+          toast.success(`City and State auto-filled for pincode ${pincode}.`);
         } else {
-          toast.warn(
-            `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
-          );
+          toast.warn(`No Post Office details found for pincode ${pincode}.`);
         }
-      } catch (error) {
-        console.error("Error fetching billing address:", error);
-        toast.error("Error fetching address details.");
-      } finally {
-        setIsFetchingBillingAddress(false);
+      } else {
+        toast.warn(
+          `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
+        );
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("Error fetching billing address:", error);
+      toast.error("Error fetching address details.");
+    } finally {
+      setIsFetchingBillingAddress(false);
+    }
+  }, []);
+  
+  const fetchShippingAddressFromPincode = useCallback(async (pincode) => {
+    if (!pincode || pincode.length !== 6) return;
+    setIsFetchingShippingAddress(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://api.postalpincode.in/pincode/${pincode}`
+      );
+      const responseData = await response.json();
+      if (
+        responseData &&
+        responseData.length > 0 &&
+        responseData[0].Status === "Success"
+      ) {
+        const postOffice = responseData[0].PostOffice[0];
+        if (postOffice) {
+          setQuotationData((prev) => ({
+            ...prev,
+            shippingAddress: {
+              ...prev.shippingAddress,
+              city: postOffice.District || prev.shippingAddress.city,
+              state: postOffice.State || prev.shippingAddress.state,
+            },
+          }));
+          toast.success(`City and State auto-filled for shipping pincode ${pincode}.`);
+        } else {
+          toast.warn(`No Post Office details found for pincode ${pincode}.`);
+        }
+      } else {
+        toast.warn(
+          `Could not find address details for pincode ${pincode}. Status: ${responseData[0]?.Status}`
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching shipping address:", error);
+      toast.error("Error fetching address details.");
+    } finally {
+      setIsFetchingShippingAddress(false);
+    }
+  }, []);
+
+  // Safe value accessor function to prevent 'undefined' errors
+  const safeGet = (obj, path, defaultValue = "") => {
+    if (!obj) return defaultValue;
+    const keys = path.split('.');
+    let result = obj;
+    
+    for (const key of keys) {
+      if (result === null || result === undefined || typeof result !== 'object') {
+        return defaultValue;
+      }
+      result = result[key];
+    }
+    
+    return result === undefined || result === null ? defaultValue : result;
+  };
 
   const handleInputChange = useCallback(
     (e) => {
@@ -846,6 +816,7 @@ const QuotationFormPage = () => {
       setQuotationData((prev) => {
         let newClientData = { ...prev.client };
         let newBillingAddress = { ...prev.billingAddress };
+        let newShippingAddress = { ...prev.shippingAddress };
         let otherChanges = {};
 
         if (name.startsWith("client.")) {
@@ -858,41 +829,60 @@ const QuotationFormPage = () => {
         } else if (name.startsWith("billingAddress.")) {
           const addressField = name.split(".")[1];
           newBillingAddress = { ...newBillingAddress, [addressField]: value };
+          
+          // If shipping same as billing, update shipping too
+          if (prev.shippingSameAsBilling) {
+            newShippingAddress = { ...newShippingAddress, [addressField]: value };
+          }
+          
           if (addressField === "pincode" && value.length === 6) {
             fetchBillingAddressFromPincode(value);
+          }
+        } else if (name.startsWith("shippingAddress.")) {
+          const addressField = name.split(".")[1];
+          newShippingAddress = { ...newShippingAddress, [addressField]: value };
+          
+          if (addressField === "pincode" && value.length === 6) {
+            fetchShippingAddressFromPincode(value);
+          }
+        } else if (name === "shippingSameAsBilling") {
+          // If toggling same as billing checkbox
+          otherChanges = { shippingSameAsBilling: value === "true" || value === true };
+          if (otherChanges.shippingSameAsBilling) {
+            // Copy billing address to shipping address
+            newShippingAddress = { ...newBillingAddress };
           }
         } else {
           otherChanges = { [name]: value };
         }
+        
         return {
           ...prev,
           client: newClientData,
           billingAddress: newBillingAddress,
+          shippingAddress: newShippingAddress,
           ...otherChanges,
         };
       });
     },
-    [fetchBillingAddressFromPincode]
+    [fetchBillingAddressFromPincode, fetchShippingAddressFromPincode]
   );
 
-  const handleClientSelect = useCallback(
-    (client) => {
-      setQuotationData((prev) => ({
-        ...prev,
-        client: {
-          _id: client._id,
-          companyName: client.companyName || "",
-          clientName: client.clientName || "",
-          gstNumber: client.gstNumber || "",
-          email: client.email || "",
-          phone: client.phone || "",
-        },
-      }));
-      setSelectedClientIdForForm(client._id);
-      setError(null);
-    },
-    []
-  );
+  const handleClientSelect = useCallback((client) => {
+    setQuotationData((prev) => ({
+      ...prev,
+      client: {
+        _id: client._id,
+        companyName: client.companyName || "",
+        clientName: client.clientName || "",
+        gstNumber: client.gstNumber || "",
+        email: client.email || "",
+        phone: client.phone || "",
+      },
+    }));
+    setSelectedClientIdForForm(client._id);
+    setError(null);
+  }, []);
 
   const handleSaveClientDetails = useCallback(async () => {
     const {
@@ -995,7 +985,7 @@ const QuotationFormPage = () => {
           subtexts: item.subtexts || [],
           originalItem: item.originalItem || item,
         }));
-        const totals = recalculateTotals(replicatedGoods);
+        const totals = recalculateQuotationTotals(replicatedGoods);
         setQuotationData((prevData) => ({
           ...prevData,
           client: {
@@ -1008,15 +998,17 @@ const QuotationFormPage = () => {
           },
           billingAddress:
             fullQuotation.billingAddress ||
-            getInitialQuotationData(user?.id).billingAddress,
+            getInitialQuotationPayload(user?.id).billingAddress,
           goods: replicatedGoods,
           ...totals,
           referenceNumber: "",
           date: formatDateForInput(new Date()),
+          // Store the original quotation ID to track that it was replicated
+          replicatedFromQuotationId: selectedQuotationStub._id
         }));
         setSelectedClientIdForForm(fullQuotation.client._id);
-        setIsReplicating(false);
-        toast.info("Quotation data replicated. Review and save as new.");
+        setIsReplicating(false); // Hide the replication UI
+        toast.success("Quotation data replicated. Review and save as new.");
       } catch (err) {
         const errorMessage = handleApiError(
           err,
@@ -1028,7 +1020,7 @@ const QuotationFormPage = () => {
         setIsLoadingReplicationDetails(false);
       }
     },
-    [recalculateTotals, user, getInitialQuotationData]
+    [user, getInitialQuotationPayload]
   );
 
   const handleSubmit = useCallback(
@@ -1038,23 +1030,40 @@ const QuotationFormPage = () => {
       setFieldErrors({});
       let errors = {};
 
-      if (!quotationData.client.companyName) errors["client.companyName"] = "Company Name is required";
-      if (!quotationData.client.clientName) errors["client.clientName"] = "Client Name is required";
-      if (!quotationData.client.gstNumber) errors["client.gstNumber"] = "GST Number is required";
-      if (!quotationData.client.email) errors["client.email"] = "Email is required";
-      if (!quotationData.client.phone) errors["client.phone"] = "Phone is required";
-      if (!quotationData.billingAddress.address1) errors["billingAddress.address1"] = "Address Line 1 is required";
-      if (!quotationData.billingAddress.pincode) errors["billingAddress.pincode"] = "Pincode is required";
-      if (!quotationData.billingAddress.city) errors["billingAddress.city"] = "City is required";
-      if (!quotationData.billingAddress.state) errors["billingAddress.state"] = "State is required";
-      if (!quotationData.goods || quotationData.goods.length === 0) errors["goods"] = "Add at least one item.";
+      if (!quotationData.client.companyName)
+        errors["client.companyName"] = "Company Name is required";
+      if (!quotationData.client.clientName)
+        errors["client.clientName"] = "Client Name is required";
+      if (!quotationData.client.gstNumber)
+        errors["client.gstNumber"] = "GST Number is required";
+      if (!quotationData.client.email)
+        errors["client.email"] = "Email is required";
+      if (!quotationData.client.phone)
+        errors["client.phone"] = "Phone is required";
+      if (!quotationData.billingAddress.address1)
+        errors["billingAddress.address1"] = "Address Line 1 is required";
+      if (!quotationData.billingAddress.pincode)
+        errors["billingAddress.pincode"] = "Pincode is required";
+      if (!quotationData.billingAddress.city)
+        errors["billingAddress.city"] = "City is required";
+      if (!quotationData.billingAddress.state)
+        errors["billingAddress.state"] = "State is required";
+      if (!quotationData.goods || quotationData.goods.length === 0)
+        errors["goods"] = "Add at least one item.";
 
       quotationData.goods.forEach((item, i) => {
-        if (!item.description) errors[`goods.${i}.description`] = `Description required for item ${i + 1}`;
-        if (!item.hsnCode) errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
-        if (!(parseFloat(item.quantity) > 0)) errors[`goods.${i}.quantity`] = `Quantity required for item ${i + 1}`;
-        if (!(parseFloat(item.price) >= 0)) errors[`goods.${i}.price`] = `Price required for item ${i + 1}`;
-        if (!item.unit) errors[`goods.${i}.unit`] = `Unit required for item ${i + 1}`;
+        if (!item.description)
+          errors[`goods.${i}.description`] = `Description required for item ${
+            i + 1
+          }`;
+        if (!item.hsnCode)
+          errors[`goods.${i}.hsnCode`] = `HSN/SAC required for item ${i + 1}`;
+        if (!(parseFloat(item.quantity) > 0))
+          errors[`goods.${i}.quantity`] = `Quantity required for item ${i + 1}`;
+        if (!(parseFloat(item.price) >= 0))
+          errors[`goods.${i}.price`] = `Price required for item ${i + 1}`;
+        if (!item.unit)
+          errors[`goods.${i}.unit`] = `Unit required for item ${i + 1}`;
       });
 
       if (Object.keys(errors).length > 0) {
@@ -1102,40 +1111,72 @@ const QuotationFormPage = () => {
         }
       }
 
-      const goodsForSubmission = quotationData.goods.map((item) => ({
-        srNo: item.srNo,
-        description: item.description,
-        hsnCode: item.hsnCode || "",
-        quantity: Number(item.quantity),
-        unit: item.unit || "nos",
-        price: Number(item.price),
-        amount: Number(item.amount),
-        sellingPrice: Number(item.sellingPrice),
-        originalItem: typeof item.originalItem === "object"
-          ? item.originalItem?._id
-          : item.originalItem,
-        maxDiscountPercentage: item.maxDiscountPercentage
-          ? Number(item.maxDiscountPercentage)
-          : 0,
-        gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      }));
+      // Process goods items to ensure all values are properly converted to numbers
+      const goodsForSubmission = quotationData.goods.map((item) => {
+        const quantity = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        // Recalculate amount to ensure consistency
+        const amount = quantity * price;
+        
+        return {
+          srNo: item.srNo,
+          description: item.description,
+          hsnCode: item.hsnCode || "",
+          quantity: quantity,
+          unit: item.unit || "nos",
+          price: price,
+          amount: amount,
+          sellingPrice: Number(item.sellingPrice || price),
+          originalItem:
+            typeof item.originalItem === "object"
+              ? item.originalItem?._id
+              : item.originalItem,
+          maxDiscountPercentage: item.maxDiscountPercentage
+            ? Number(item.maxDiscountPercentage)
+            : 0,
+          gstRate: item.gstRate === null ? 0 : parseFloat(item.gstRate || 0),
+          subtexts: item.subtexts || [],
+        };
+      });
 
+      // Recalculate totals from the processed goods to ensure consistency
+      const recalculatedTotals = recalculateQuotationTotals(goodsForSubmission);
+      
+      // Log calculated values for debugging
+      console.log("Recalculated totals for submission:", {
+        totalQuantity: recalculatedTotals.totalQuantity,
+        totalAmount: recalculatedTotals.totalAmount,
+        gstAmount: recalculatedTotals.gstAmount,
+        grandTotal: recalculatedTotals.grandTotal,
+        roundOffTotal: recalculatedTotals.roundOffTotal,
+        roundingDifference: recalculatedTotals.roundingDifference,
+        roundingDirection: recalculatedTotals.roundingDirection
+      });
+      
       const submissionData = {
         referenceNumber: quotationData.referenceNumber,
         date: new Date(quotationData.date).toISOString(),
         validityDate: new Date(quotationData.validityDate).toISOString(),
         orderIssuedBy: quotationData.orderIssuedBy,
         goods: goodsForSubmission,
-        totalQuantity: Number(quotationData.totalQuantity),
-        totalAmount: Number(quotationData.totalAmount),
-        gstAmount: Number(quotationData.gstAmount),
-        grandTotal: Number(quotationData.grandTotal),
-        roundOffTotal: Number(quotationData.roundOffTotal),
+        billingAddress: quotationData.billingAddress,
+        shippingAddress: quotationData.shippingSameAsBilling ? quotationData.billingAddress : quotationData.shippingAddress,
+        shippingSameAsBilling: quotationData.shippingSameAsBilling || false,
+        totalQuantity: recalculatedTotals.totalQuantity,
+        totalAmount: recalculatedTotals.totalAmount,
+        gstAmount: recalculatedTotals.gstAmount,
+        grandTotal: recalculatedTotals.grandTotal,
+        roundOffTotal: recalculatedTotals.roundOffTotal,
+        roundingDifference: recalculatedTotals.roundingDifference,
+        roundingDirection: recalculatedTotals.roundingDirection,
         status: quotationData.status || "open",
         client: { ...quotationData.client, _id: clientId },
-        billingAddress: quotationData.billingAddress,
+        ...(quotationData.replicatedFromQuotationId && { 
+          replicatedFromQuotationId: quotationData.replicatedFromQuotationId 
+        }),
       };
+
+      console.log("Submission data:", quotationData);
 
       try {
         const url =
@@ -1200,6 +1241,33 @@ const QuotationFormPage = () => {
     </>
   );
 
+  useEffect(() => {
+    // Fetch categories from backend or set static list
+    async function fetchCategories() {
+      try {
+        const res = await apiClient("/items/categories/all");
+        setCategories(res.data || []);
+      } catch {
+        setCategories([]);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
+    setIsAddingCategory(true);
+    try {
+      // Optionally, call backend to add category
+      setCategories((prev) => [...prev, newCategory.trim()]);
+      setNewCategory("");
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
+  // Removed handleCreateTicket function as it's now handled through the original route
+
   if (
     authLoading ||
     (isEditing && isLoading && !quotationData.referenceNumber)
@@ -1223,32 +1291,55 @@ const QuotationFormPage = () => {
         validated={formValidated}
         onSubmit={handleSubmit}
       >
-        {!isEditing && (
-          <>
+        {!isEditing && !location.state?.quotationDataForForm && !quotationData.replicatedFromQuotationId && (
+          <div className="bg-light p-4 mb-4 rounded text-center shadow-sm" style={{ backgroundColor: '#f0f2f5' }}>
             <Form.Group className="mb-3">
               <Form.Check
                 type="checkbox"
-                label="Replicate Existing Quotation?"
+                label={
+                  <span style={{ fontSize: '1.1rem', fontWeight: '500' }}>
+                    Replicate Existing Quotation?
+                  </span>
+                }
                 checked={isReplicating}
                 onChange={(e) => setIsReplicating(e.target.checked)}
+                id="replicateCheckbox"
+                className="d-inline-block"
               />
+              {isReplicating && (
+                <span className="ms-2 badge bg-success">
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Replication Mode Active
+                </span>
+              )}
             </Form.Group>
             {isReplicating && !isLoadingReplicationDetails && (
-              <QuotationSearchComponent
-                onQuotationSelect={handleReplicationSelect}
-                placeholder="Search quotation to replicate..."
-              />
+              <div className="mx-auto" style={{ maxWidth: '600px' }}>
+                <QuotationSearchComponent
+                  onQuotationSelect={handleReplicationSelect}
+                  placeholder="Search quotation to replicate..."
+                />
+                <div className="text-muted mt-2">
+                  <small>Select a quotation to replicate its content with a new reference number</small>
+                </div>
+              </div>
             )}
             {isReplicating && !isLoadingReplicationDetails && (
-              <div style={{ minHeight: "200px" }}></div>
+              <div style={{ minHeight: "100px" }}></div>
             )}
             {isLoadingReplicationDetails && (
               <div className="text-center my-3">
-                <Spinner animation="border" />{" "}
-                <p>Loading quotation details...</p>
+                <Spinner animation="border" className="me-2" />
+                <p className="mt-2">Loading quotation details...</p>
               </div>
             )}
-          </>
+          </div>
+        )}
+        {!isEditing && !location.state?.quotationDataForForm && quotationData.replicatedFromQuotationId && (
+          <div className="alert alert-success text-center mb-4">
+            <i className="bi bi-check-circle-fill me-2"></i>
+            Quotation has been replicated successfully. Review and save as new.
+          </div>
         )}
         {error && (
           <Alert variant="danger">
@@ -1361,6 +1452,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.companyName"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.companyName"]}
@@ -1383,6 +1475,7 @@ const QuotationFormPage = () => {
               disabled={isLoadingReplicationDetails}
               placeholder="Enter contact person's name"
               isInvalid={!!fieldErrors["client.clientName"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.clientName"]}
@@ -1405,6 +1498,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.gstNumber"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.gstNumber"]}
@@ -1424,6 +1518,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.email"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.email"]}
@@ -1445,6 +1540,7 @@ const QuotationFormPage = () => {
               readOnly={!!selectedClientIdForForm}
               disabled={isLoadingReplicationDetails}
               isInvalid={!!fieldErrors["client.phone"]}
+              style={!!selectedClientIdForForm ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["client.phone"]}
@@ -1458,7 +1554,7 @@ const QuotationFormPage = () => {
                 setSelectedClientIdForForm(null);
                 setQuotationData((prev) => ({
                   ...prev,
-                  client: { ...getInitialQuotationData().client, _id: null },
+                  client: { ...getInitialQuotationPayload().client, _id: null },
                 }));
               }}
               disabled={isLoadingReplicationDetails || !selectedClientIdForForm}
@@ -1546,6 +1642,8 @@ const QuotationFormPage = () => {
                 !!quotationData.billingAddress.city
               }
               isInvalid={!!fieldErrors["billingAddress.city"]}
+              style={!(isLoadingReplicationDetails || isFetchingBillingAddress) && 
+                !!quotationData.billingAddress.city ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["billingAddress.city"]}
@@ -1567,12 +1665,115 @@ const QuotationFormPage = () => {
                 !!quotationData.billingAddress.state
               }
               isInvalid={!!fieldErrors["billingAddress.state"]}
+              style={!(isLoadingReplicationDetails || isFetchingBillingAddress) && 
+                !!quotationData.billingAddress.state ? readOnlyFieldStyle : {}}
             />
             <Form.Control.Feedback type="invalid">
               {fieldErrors["billingAddress.state"]}
             </Form.Control.Feedback>
           </Form.Group>
         </div>
+
+        <h5
+          style={{
+            fontWeight: "bold",
+            textAlign: "center",
+            backgroundColor: "#f0f2f5",
+            padding: "0.5rem",
+            borderRadius: "0.25rem",
+            marginBottom: "1rem",
+          }}
+        >
+          Shipping Address
+        </h5>
+
+        <div className="mb-3">
+          <Form.Check
+            type="checkbox"
+            id="shippingSameAsBilling"
+            name="shippingSameAsBilling"
+            label="Same as Billing Address"
+            checked={quotationData.shippingSameAsBilling || false}
+            onChange={(e) => handleInputChange({ target: { name: 'shippingSameAsBilling', value: e.target.checked }})}
+            disabled={isLoadingReplicationDetails}
+          />
+        </div>
+
+        {!quotationData.shippingSameAsBilling && (
+          <>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Address Line 1</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.address1"
+                  value={safeGet(quotationData, 'shippingAddress.address1', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-6">
+                <Form.Label>Address Line 2</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.address2"
+                  value={safeGet(quotationData, 'shippingAddress.address2', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+              </Form.Group>
+            </div>
+            <div className="row">
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>Pincode</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.pincode"
+                  value={safeGet(quotationData, 'shippingAddress.pincode', '')}
+                  pattern="[0-9]{6}"
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                />
+                <Form.Text className="text-muted">
+                  6-digit pincode for City & State.
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>City</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.city"
+                  value={safeGet(quotationData, 'shippingAddress.city', '')}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                  readOnly={
+                    !(isLoadingReplicationDetails || isFetchingShippingAddress) &&
+                    !!safeGet(quotationData, 'shippingAddress.city', '')
+                  }
+                  style={!(isLoadingReplicationDetails || isFetchingShippingAddress) && 
+                    !!safeGet(quotationData, 'shippingAddress.city', '') ? readOnlyFieldStyle : {}}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3 col-md-4">
+                <Form.Label>State</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="shippingAddress.state"
+                  value={quotationData.shippingAddress.state}
+                  onChange={handleInputChange}
+                  disabled={isLoadingReplicationDetails || isFetchingShippingAddress}
+                  readOnly={
+                    !(isLoadingReplicationDetails || isFetchingShippingAddress) &&
+                    !!quotationData.shippingAddress.state
+                  }
+                  style={!(isLoadingReplicationDetails || isFetchingShippingAddress) && 
+                    !!quotationData.shippingAddress.state ? readOnlyFieldStyle : {}}
+                />
+              </Form.Group>
+            </div>
+          </>
+        )}
+
         <h5
           style={{
             fontWeight: "bold",
@@ -1597,55 +1798,67 @@ const QuotationFormPage = () => {
           setItemCreationMode={setItemCreationMode}
           newItemFormData={newItemFormData}
           setNewItemFormData={setNewItemFormData}
-          handleSaveAndAddNewItemToQuotation={
-            handleSaveAndAddNewItemToQuotation
-          }
+          handleSaveAndAddNewItemToQuotation={handleSaveAndAddNewItemToQuotation}
           isSavingNewItem={isSavingNewItem}
+          fieldErrors={fieldErrors}
+          categories={categories}
+          onAddCategory={handleAddCategory}
+          newCategory={newCategory}
+          setNewCategory={setNewCategory}
+          isAddingCategory={isAddingCategory}
         />
         {isItemSearchDropdownOpenInModal && (
           <div style={{ height: "300px" }}></div>
         )}
-        <div className="bg-light p-3 rounded mt-3">
-          <h5 className="text-center mb-3">Quotation Summary</h5>
-          <Table bordered size="sm">
-            <tbody>
-              <tr>
-                <td>Total Quantity</td>
-                <td className="text-end">
+        <div className="bg-light p-4 rounded mt-4 shadow-sm">
+          <h5 className="text-center mb-4 border-bottom pb-2 fw-bold">Quotation Summary</h5>
+          <Table bordered size="sm" className="table-hover"><tbody><tr>
+                <td className="ps-3">Total Quantity</td>
+                <td className="text-end pe-3">
                   <strong>{quotationData.totalQuantity}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Total Amount (Subtotal)</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.totalAmount.toFixed(2)}</strong>
+                <td className="ps-3">Total Amount (Subtotal)</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.totalAmount?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Total GST</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.gstAmount.toFixed(2)}</strong>
+                <td className="ps-3">Total GST</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.gstAmount?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td>Grand Total</td>
-                <td className="text-end">
-                  <strong>₹{quotationData.grandTotal.toFixed(2)}</strong>
+                <td className="ps-3">Grand Total (Exact)</td>
+                <td className="text-end pe-3">
+                  <strong>₹{quotationData.grandTotal?.toFixed(2) || '0.00'}</strong>
                 </td>
               </tr>
               <tr>
-                <td style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                <td className="ps-3">
+                  Rounding {quotationData.roundingDirection === 'up' ? 'Up' : 'Down'} 
+                  <span className="text-muted ms-2" style={{fontSize: '0.85rem'}}>
+                    ({quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)})
+                  </span>
+                </td>
+                <td className="text-end pe-3">
+                  <span className={quotationData.roundingDirection === 'up' ? 'text-success' : 'text-danger'}>
+                    {quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)}
+                  </span>
+                </td>
+              </tr>
+              <tr className="table-success">
+                <td className="ps-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
                   Round Off Total <span className="text-danger">*</span>
                 </td>
-                <td
-                  className="text-end"
-                  style={{ fontWeight: "bold", fontSize: "1.1rem" }}
-                >
-                  <strong>₹{quotationData.roundOffTotal}</strong>
+                <td className="text-end pe-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+                  <div className="text-end fw-bold" style={{ fontSize: "1.1rem" }}>
+                    ₹{quotationData.roundOffTotal?.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}
+                  </div>
                 </td>
-              </tr>
-            </tbody>
-          </Table>
+              </tr></tbody></Table>
         </div>
       </Form>
     </ReusablePageStructure>
@@ -1653,3 +1866,13 @@ const QuotationFormPage = () => {
 };
 
 export default QuotationFormPage;
+
+// Example fix for controlled/uncontrolled warning:
+// For all Form.Control components, ensure value is never undefined.
+// For text inputs:
+// value={item.description || ""}
+// For number inputs:
+// value={typeof item.quantity === "number" ? item.quantity : 0}
+// For select inputs:
+// value={item.unit || allUnits[0]?.name || "nos"}
+// Apply this pattern to all Form.Control and Form.Select in the file.

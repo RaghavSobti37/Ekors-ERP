@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const morgan = require('morgan');
+// const morgan = require('morgan');
 const cors = require('cors');
 const logger = require('./logger');
 require('dotenv').config();
@@ -18,7 +18,6 @@ const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clients');
 const ticketsRouter = require('./routes/tickets');
 const reportRoutes = require("./routes/reportRoutes");
-const auditLogRoutes = require('./routes/auditLogRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 
 const app = express();
@@ -27,7 +26,7 @@ connectDB();
 // Middleware - Increase payload size limit for JSON and URL-encoded bodies
 app.use(express.json({ limit: '10mb' })); // Allows up to 10MB JSON payloads
 app.use(express.urlencoded({ limit: '10mb', extended: true })); // Allows up to 10MB URL-encoded payloads
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 
 // Define allowed origins for CORS
 const allowedOrigins = [
@@ -88,27 +87,23 @@ mountRoute('/api/tickets', ticketsRouter);
 mountRoute('/api/challans', challanRoutes);
 mountRoute('/api/logtime', logtimeRoutes);
 mountRoute('/api/reports', reportRoutes);
-mountRoute('/api/audit', auditLogRoutes);
-app.use('/api/backups', backupRoutes);
-app.use('/api/company', companyRoutes);
-app.use('/api/uploads', express.static(serverUploadsPath));
-
-// Optional: Add a root route for the API to confirm it's running
-app.get('/', (req, res) => res.json({ message: 'Ekors ERP API is live and running!' }));
+mountRoute('/api/backups', backupRoutes);
+mountRoute('/api/company', companyRoutes);
+mountRoute('/api/uploads', express.static(serverUploadsPath));
 
 // ---------------------------
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('[GLOBAL ERROR] Unhandled:', err);
-  logger.log({
-    page: "Server",
-    action: "Global Error",
-    api: req.path,
-    req,
-    message: `Unhandled error on ${req.path}`,
-    details: { error: err.message, stack: err.stack, requestMethod: req.method },
-    level: "error"
-  });
+  // logger.log({
+  //   page: "Server",
+  //   action: "Global Error",
+  //   api: req.path,
+  //   req,
+  //   message: `Unhandled error on ${req.path}`,
+  //   details: { error: err.message, stack: err.stack, requestMethod: req.method },
+  //   level: "error"
+  // });
   res.status(500).send('Something broke!');
 });
 
@@ -117,12 +112,12 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[SERVER STARTED] Listening on port ${PORT}`);
-  logger.log({
-    page: "Server",
-    action: "Server Started",
-    api: `PORT:${PORT}`,
-    message: `Server running on port ${PORT}`,
-    details: {},
-    level: "info"
-  });
+  // logger.log({
+  //   page: "Server",
+  //   action: "Server Started",
+  //   api: `PORT:${PORT}`,
+  //   message: `Server running on port ${PORT}`,
+  //   details: {},
+  //   level: "info"
+  // });
 });

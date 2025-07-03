@@ -10,6 +10,7 @@ import apiClient from "../../utils/apiClient";
 import { handleApiError, formatDateForInput, generateNextTicketNumber } from "../../utils/helpers"; // Import generateNextTicketNumber
 import { calculateItemPriceAndQuantity } from "../../utils/unitConversion.js";
 import axios from "axios"; // For pincode API
+import { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } from "../../utils/payloads";
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 const statusStages = ["Quotation Sent", "PO Received", "Payment Pending", "Inspection", "Packing List", "Invoice Sent", "Hold", "Closed"];
@@ -21,24 +22,7 @@ const EditTicketPage = () => {
   const navigate = useNavigate();
   const { user: authUser, loading: authLoading } = useAuth();
 
-  const initialTicketData = {
-    companyName: "", quotationNumber: "",
-    ticketNumber: generateNextTicketNumber(), // Generate on frontend
-    billingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" }, // Initial empty object
-    shippingAddress: { address1: "", address2: "", city: "", state: "", pincode: "" },
-    shippingSameAsBilling: false,
-    goods: [], totalQuantity: 0, totalAmount: 0,
-    gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-    finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-    status: "Quotation Sent", deadline: null,
-    documents: { quotation: null, po: null, pi: null, challan: null, packingList: null, feedback: null, other: [] },
-    dispatchDays: "7-10 working", validityDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
-    clientPhone: "", clientGstNumber: "",
-    termsAndConditions: "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-    statusHistory: [],
-    currentAssignee: null,
-    createdAt: null,
-  };
+  const initialTicketData = getInitialTicketPayload(); // Use getInitialTicketPayload for initial state
 
   const [ticketData, setTicketData] = useState(location.state?.ticketDataForForm || initialTicketData);
   const [originalStatus, setOriginalStatus] = useState("");
@@ -53,19 +37,16 @@ const EditTicketPage = () => {
   const [formValidated, setFormValidated] = useState(false);
   const [isFetchingQuotation, setIsFetchingQuotation] = useState(false);
 
-  const fetchTicketDetails = useCallback(async () => {
-    if (!ticketIdFromParams) return;
-    setIsLoading(true);
-    try {
-      const data = await apiClient(`/tickets/${ticketIdFromParams}`, {
-        params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
-      });
-      const billingAddressObj = Array.isArray(data.billingAddress) && data.billingAddress.length === 5
-        ? { address1: data.billingAddress[0] || "", address2: data.billingAddress[1] || "", state: data.billingAddress[2] || "", city: data.billingAddress[3] || "", pincode: data.billingAddress[4] || "" }
-        : (typeof data.billingAddress === 'object' && data.billingAddress !== null)
-          ? data.billingAddress
-          : initialTicketData.billingAddress;
+// Modify the fetchTicketDetails function to better handle address formats
+const fetchTicketDetails = useCallback(async () => {
+  if (!ticketIdFromParams) return;
+  setIsLoading(true);
+  try {
+    const data = await apiClient(`/tickets/${ticketIdFromParams}`, {
+      params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
+    });
 
+<<<<<<< HEAD
       const shippingAddressObj = Array.isArray(data.shippingAddress) && data.shippingAddress.length === 5
         ? { address1: data.shippingAddress[0] || "", address2: data.shippingAddress[1] || "", state: data.shippingAddress[2] || "", city: data.shippingAddress[3] || "", pincode: data.shippingAddress[4] || "" }
         : (typeof data.shippingAddress === 'object' && data.shippingAddress !== null)
@@ -105,6 +86,88 @@ const EditTicketPage = () => {
       setIsLoading(false);
     }
   }, [ticketIdFromParams, navigate, authUser, location.pathname]);
+=======
+    // Enhanced address handling - ensure addresses are always objects with expected properties
+    let billingAddressObj = initialTicketData.billingAddress;
+    if (data.billingAddress) {
+      if (Array.isArray(data.billingAddress)) {
+        // Handle legacy array format if it exists
+        billingAddressObj = {
+          address1: data.billingAddress[0] || "",
+          address2: data.billingAddress[1] || "",
+          state: data.billingAddress[2] || "",
+          city: data.billingAddress[3] || "",
+          pincode: data.billingAddress[4] || "",
+        };
+      } else if (typeof data.billingAddress === 'object') {
+        // Handle object format (current schema)
+        billingAddressObj = {
+          address1: data.billingAddress.address1 || "",
+          address2: data.billingAddress.address2 || "",
+          city: data.billingAddress.city || "",
+          state: data.billingAddress.state || "",
+          pincode: data.billingAddress.pincode || "",
+        };
+      }
+    }
+
+    let shippingAddressObj = initialTicketData.shippingAddress;
+    if (data.shippingAddress) {
+      if (Array.isArray(data.shippingAddress)) {
+        // Handle legacy array format if it exists
+        shippingAddressObj = {
+          address1: data.shippingAddress[0] || "",
+          address2: data.shippingAddress[1] || "",
+          state: data.shippingAddress[2] || "",
+          city: data.shippingAddress[3] || "",
+          pincode: data.shippingAddress[4] || "",
+        };
+      } else if (typeof data.shippingAddress === 'object') {
+        // Handle object format (current schema)
+        shippingAddressObj = {
+          address1: data.shippingAddress.address1 || "",
+          address2: data.shippingAddress.address2 || "",
+          city: data.shippingAddress.city || "",
+          state: data.shippingAddress.state || "",
+          pincode: data.shippingAddress.pincode || "",
+        };
+      }
+    }
+    
+    // If shippingSameAsBilling is true but no shipping address, use billing address
+    if (data.shippingSameAsBilling && (!data.shippingAddress || Object.values(shippingAddressObj).every(v => !v))) {
+      shippingAddressObj = { ...billingAddressObj };
+    }
+
+    setTicketData({
+      ...initialTicketData,
+      ...data,
+      billingAddress: billingAddressObj,
+      shippingAddress: shippingAddressObj,
+      goods: (data.goods || []).map(g => ({
+        ...g,
+        hsnCode: g.hsnCode || "", // Defensive: always set hsnCode
+        originalItem: g.originalItem?._id || g.originalItem || undefined,
+        quantity: Number(g.quantity || 0),
+        price: Number(g.price || 0),
+        amount: Number(g.amount || 0),
+        gstRate: parseFloat(g.gstRate || 0),
+        subtexts: g.subtexts || [],
+      })),
+    });
+    setOriginalStatus(data.status);
+    setRoundOffAmount(data.roundOff || 0);
+    setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null 
+      ? data.finalRoundedAmount 
+      : data.grandTotal + (data.roundOff || 0));
+  } catch (err) {
+    handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
+    navigate("/tickets");
+  } finally {
+    setIsLoading(false);
+  }
+}, [ticketIdFromParams, navigate, authUser]);
+>>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
 
   useEffect(() => {
     // Do not run this effect until the initial authentication check is complete.
@@ -354,18 +417,30 @@ const EditTicketPage = () => {
         deadline: ticketData.deadline ? new Date(ticketData.deadline).toISOString() : null,
         validityDate: ticketData.validityDate ? new Date(ticketData.validityDate).toISOString() : null,
         statusChangeComment: ticketData.status !== originalStatus ? statusChangeComment : undefined,
-        billingAddress: [ // Convert back to array for backend
-          ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
-          ticketData.billingAddress.state || "", ticketData.billingAddress.city || "",
-          ticketData.billingAddress.pincode || ""
-        ],
+        // Send billing address as an object (not an array)
+        billingAddress: {
+          address1: ticketData.billingAddress.address1 || "",
+          address2: ticketData.billingAddress.address2 || "",
+          city: ticketData.billingAddress.city || "",
+          state: ticketData.billingAddress.state || "",
+          pincode: ticketData.billingAddress.pincode || ""
+        },
+        // Handle shipping address as an object too, respecting shippingSameAsBilling flag
         shippingAddress: ticketData.shippingSameAsBilling
-          ? [ ticketData.billingAddress.address1 || "", ticketData.billingAddress.address2 || "",
-              ticketData.billingAddress.state || "", ticketData.billingAddress.city || "",
-              ticketData.billingAddress.pincode || "" ]
-          : [ ticketData.shippingAddress.address1 || "", ticketData.shippingAddress.address2 || "",
-              ticketData.shippingAddress.state || "", ticketData.shippingAddress.city || "",
-              ticketData.shippingAddress.pincode || "" ],
+          ? {
+              address1: ticketData.billingAddress.address1 || "",
+              address2: ticketData.billingAddress.address2 || "",
+              city: ticketData.billingAddress.city || "",
+              state: ticketData.billingAddress.state || "",
+              pincode: ticketData.billingAddress.pincode || ""
+            }
+          : {
+              address1: ticketData.shippingAddress.address1 || "",
+              address2: ticketData.shippingAddress.address2 || "",
+              city: ticketData.shippingAddress.city || "",
+              state: ticketData.shippingAddress.state || "",
+              pincode: ticketData.shippingAddress.pincode || ""
+            },
         goods: ticketData.goods.map(g => ({
           ...g,
           hsnCode: g.hsnCode || "",
@@ -629,7 +704,7 @@ const EditTicketPage = () => {
                     ))}
                     <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
                   </td>
-                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN Code" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
                     {(item.units && item.units.length > 0) ? (

@@ -28,6 +28,7 @@ import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import Loading
 import { generatePIDocx } from "../utils/generatePIDocx";
 import { Button } from "react-bootstrap";
 import { useCompanyInfo } from "../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
+import { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } from "../utils/payloads";
 
 // UserSearchComponent remains as it might be used by other pages (e.g., TransferTicketPage)
 export const UserSearchComponent = ({ onUserSelect, authContext }) => {
@@ -283,20 +284,28 @@ export default function Dashboard() {
       setTickets([]); setTotalTickets(0);
       if (error.status === 401) { toast.error("Authentication failed."); navigate("/login", { state: { from: "/tickets" } }); }
     } finally { setIsLoading(false); }
-  }, [authUser, navigate, sortConfig, searchTerm, statusFilter, currentPage, itemsPerPage]);
+  }, [authUser, navigate, sortConfig, statusFilter, currentPage, itemsPerPage]);
 
   useEffect(() => {
     if (!authLoading && !authUser && !isCompanyInfoLoading) {      if (window.location.pathname !== "/login") { toast.info("Redirecting to login."); navigate("/login", { state: { from: "/tickets" } }); }
     } else if (authUser) {
       fetchTickets(currentPage, itemsPerPage);
     }
-  }, [authUser, authLoading, navigate, fetchTickets, currentPage, itemsPerPage]);
+  }, [authUser, authLoading, navigate, fetchTickets, currentPage, itemsPerPage, statusFilter, sortConfig]);
 
   // Reset to page 1 when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, sortConfig]);
+  }, [statusFilter, sortConfig]);
 
+  // Add debouncing for search term
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      fetchTickets(1, itemsPerPage);
+    }, 400); // 400ms delay
+    return () => clearTimeout(timeout);
+  }, [searchTerm, itemsPerPage, fetchTickets]);
 
   const handleDelete = useCallback(async (ticketToDelete) => {
     if (!authUser || authUser.role !== "super-admin") {

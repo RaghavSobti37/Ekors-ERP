@@ -207,3 +207,22 @@ export const generateNextTicketNumber = () => {
   return `EKORS/${year}${month}${day}-${hours}${minutes}${seconds}`;
 };
 
+/**
+ * Returns the style object for read-only form fields with enhanced visibility.
+ * @param {boolean} [isReadOnly=true] - Whether the field is read-only.
+ * @param {object} [additionalStyles={}] - Additional styles to merge.
+ * @returns {object} - Style object for the form field.
+ */
+export const getReadOnlyFieldStyle = (isReadOnly = true, additionalStyles = {}) => {
+  return isReadOnly
+    ? {
+        backgroundColor: "#f0f2f5", // Slightly darker than default for better visibility
+        borderColor: "#dee2e6",
+        opacity: 1,
+        cursor: "not-allowed",
+        color: "#495057",
+        ...additionalStyles
+      }
+    : additionalStyles;
+};
+

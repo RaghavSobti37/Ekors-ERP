@@ -31,7 +31,7 @@ const documentSubSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
-// Define billing address sub-schema
+// Define address sub-schema
 const addressSchema = new mongoose.Schema({
   address1: { type: String, default: '' },
   address2: { type: String, default: '' },
@@ -57,12 +57,18 @@ const quotationSchema = new mongoose.Schema(
     validityDate: { type: Date, required: true },
     // Add billingAddress to Quotation
     billingAddress: addressSchema,
+    // Add shippingAddress to Quotation
+    shippingAddress: addressSchema,
+    // Add flag for same shipping and billing address
+    shippingSameAsBilling: { type: Boolean, default: false },
     goods: [goodsItemSchema],
     totalQuantity: { type: Number, required: true, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
     gstAmount: { type: Number, required: true, min: 0 },
     grandTotal: { type: Number, required: true, min: 0 },
     roundOffTotal: { type: Number, required: true, min: 0 }, // Added field
+    roundingDifference: { type: Number, default: 0 }, // New field for rounding difference
+    roundingDirection: { type: String, enum: ['up', 'down'], default: 'up' }, // Direction of rounding
     status: {
       type: String,
       enum: ['open', 'closed', 'hold', 'running'], // Added 'running'
@@ -75,8 +81,6 @@ const quotationSchema = new mongoose.Schema(
     },
     documents: { // Added documents field for quotations
       quotationPdf: documentSubSchema, // For the generated PDF of this quotation
-      clientApproval: documentSubSchema, // Example: If client sends back a signed copy
-      other: [documentSubSchema]
     },
   },
   {

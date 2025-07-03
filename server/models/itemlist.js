@@ -1,9 +1,5 @@
 const mongoose = require('mongoose');
-
-// 1. Standard Unit Definitions
-const STANDARD_UNITS = [
-  'nos', 'pkt', 'pcs', 'kgs', 'mtr', 'sets', 'kwp', 'ltr', 'bottle', 'each', 'bag', 'set'
-];
+const { STANDARD_UNITS } = require("../utils/payloadServer");
 
 // 2. Unit Sub-schema
 const unitSchema = new mongoose.Schema({
@@ -278,14 +274,6 @@ purchaseSchema.index({ date: -1 });
 purchaseSchema.index({ companyName: 1 });
 purchaseSchema.index({ 'items.itemId': 1 });
 
-// --- Restock/LowStock logic (for reference, not used here) ---
-// To get restock items: quantity <= 0
-// To get low stock warning: quantity > 0 && quantity <= lowStockThreshold
-
-// 9. Models
-const Item = mongoose.model('Item', itemSchema);
-const Purchase = mongoose.model('Purchase', purchaseSchema);
-
 // 10. Add this static method to itemSchema for fetching unique categories
 itemSchema.statics.getAllCategories = async function () {
   // Only return unique, non-empty categories
@@ -293,6 +281,10 @@ itemSchema.statics.getAllCategories = async function () {
   // Remove null/undefined and sort alphabetically
   return categories.filter(Boolean).sort();
 };
+
+// 9. Models
+const Item = mongoose.model('Item', itemSchema);
+const Purchase = mongoose.model('Purchase', purchaseSchema);
 
 // 11. Export STANDARD_UNITS for use in other schemas
 module.exports = { Item, Purchase, STANDARD_UNITS };

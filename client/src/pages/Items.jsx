@@ -10,6 +10,7 @@ import Navbar from "../components/Navbar";
 import SearchBar from "../components/Searchbar";
 import SortIndicator from "../components/SortIndicator";
 import ActionButtons from "../components/ActionButtons";
+import { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } from "../utils/payloads";
 
 export default function Items() {
   const { user } = useAuth();
@@ -29,12 +30,22 @@ export default function Items() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [restockSummary, setRestockSummary] = useState({ restockNeededCount: 0, restockItems: [] });
+  const [showRestockAlert, setShowRestockAlert] = useState(true);
+  const [showRestockOnly, setShowRestockOnly] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
-    apiClient("/categories")
+    apiClient("/items/categories/all")
       .then((res) => setCategories(res.data || []))
       .catch(() => setCategories([]));
+  }, []);
+
+  // Fetch restock summary on mount
+  useEffect(() => {
+    apiClient("/items/restock-summary")
+      .then(res => setRestockSummary(res))
+      .catch(() => setRestockSummary({ restockNeededCount: 0, restockItems: [] }));
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -48,7 +59,7 @@ export default function Items() {
         search: searchTerm,
         sortKey: sortKey,
         sortDirection: sortDirection,
-        ...(selectedCategory && { category: selectedCategory }),
+        // ...(selectedCategory && { category: selectedCategory }), // REMOVE category param
       };
       const res = await apiClient("/items", { params });
       setItems(res.data || []);
@@ -59,7 +70,7 @@ export default function Items() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection, selectedCategory]);
+  }, [currentPage, itemsPerPage, searchTerm, sortKey, sortDirection]); // REMOVE selectedCategory from deps
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -106,8 +117,26 @@ export default function Items() {
           <SortIndicator columnKey="quantity" sortConfig={{ key: sortKey, direction: sortDirection }} />
         </>
       ),
-      renderCell: (item) =>
-        `${parseFloat(item.quantity || 0).toFixed(2)} ${item.baseUnit}`,
+      renderCell: (item) => (
+        <span>
+          {parseFloat(item.quantity || 0).toFixed(2)} {item.baseUnit}
+          {parseFloat(item.quantity) <= 0 && (
+            <span
+              title="Needs restock"
+              style={{
+                display: 'inline-block',
+                marginLeft: 6,
+                verticalAlign: 'middle',
+                color: '#dc3545',
+                fontWeight: 'bold',
+                fontSize: 16,
+              }}
+            >
+              &#9888;
+            </span>
+          )}
+        </span>
+      ),
       sortable: true,
     },
     {
@@ -252,18 +281,6 @@ export default function Items() {
     input.click();
   };
 
-  // You may have logic to fetch and display restock/low stock summary.
-  // Only use restockNeededCount, keep lowStockWarningCount commented out.
-
-  // Example (if you use this in your UI):
-  // const [restockSummary, setRestockSummary] = useState({ restockNeededCount: 0 /*, lowStockWarningCount: 0 */ });
-
-  // useEffect(() => {
-  //   apiClient("/items/restock-summary")
-  //     .then(res => setRestockSummary(res.data))
-  //     .catch(() => setRestockSummary({ restockNeededCount: 0 /*, lowStockWarningCount: 0 */ }));
-  // }, []);
-
   return (
     <div>
       <Navbar />
@@ -280,19 +297,14 @@ export default function Items() {
               showButton={false}
             />
           </div>
-          <Form.Select
+          {/* <Form.Check
+            type="checkbox"
+            id="show-restock-only"
+            label="Restock Items"
+            checked={showRestockOnly}
+            onChange={e => setShowRestockOnly(e.target.checked)}
             className="flex-shrink-0"
-            style={{ width: 180 }}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat._id || cat} value={cat.name || cat}>
-                {cat.name || cat}
-              </option>
-            ))}
-          </Form.Select>
+          /> */}
           <Button
             variant="success"
             className="flex-shrink-0"
@@ -306,7 +318,7 @@ export default function Items() {
         {error && <Alert variant="danger">{error}</Alert>}
         <ReusableTable
           columns={columns}
-          data={items}
+          data={showRestockOnly ? items.filter(item => parseFloat(item.quantity) <= 0) : items}
           keyField="_id"
           isLoading={loading}
           error={null}

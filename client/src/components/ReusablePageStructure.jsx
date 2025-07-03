@@ -21,13 +21,20 @@ const pageContainerStyle = {
 const headerStyle = {
   backgroundColor: "#34495E",
   color: "white",
-  padding: "1rem 1.5rem", // Added more padding
+  padding: "1rem 1.5rem",
   flexShrink: 0,
-  display: "grid", // Changed to grid for easier centering with items on sides
-  gridTemplateColumns: "auto 1fr auto", // Left actions, Title (takes remaining space), Right actions
+  display: "grid",
+  gridTemplateColumns: "auto 1fr auto",
   alignItems: "center",
-  boxShadow: "0 2px 4px rgba(0,0,0,0.1)", // Subtle shadow
-  gap: "1rem", // Gap between header items
+  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+  gap: "1rem",
+  position: "fixed", // Makes the header fixed
+  top: 0, // Positions it at the top
+  left: 0, // Aligns to the left
+  right: 0, // Aligns to the right
+  zIndex: 1000, // Ensures it stays above other content
+  width: "100%", // Ensures full width
+  boxSizing: "border-box" // Includes padding in width calculation
 };
 
 const titleStyle = {

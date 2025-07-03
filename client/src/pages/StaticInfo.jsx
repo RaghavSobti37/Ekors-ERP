@@ -12,7 +12,7 @@ import ReusableTable from "../components/ReusableTable";
 import "../css/StaticInfo.css";
 
 const StaticInfo = () => {
-    const { user, logEventToServer } = useAuth();
+    const { user } = useAuth();
     const [companies, setCompanies] = useState([]);
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [isLoading, setIsLoading] = useState(true);

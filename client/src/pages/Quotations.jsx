@@ -109,7 +109,7 @@ export default function Quotations() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
+  }, [user, authLoading, navigate, statusFilter, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -119,7 +119,7 @@ export default function Quotations() {
     } else if (user) {
       fetchQuotations(currentPage, itemsPerPage); 
     }
-  }, [user, authLoading, navigate, fetchQuotations, currentPage, itemsPerPage]); 
+  }, [user, authLoading, navigate, fetchQuotations, currentPage, itemsPerPage, statusFilter, sortConfig]); 
 
 
   const requestSort = useCallback((key) => {
@@ -150,7 +150,16 @@ export default function Quotations() {
 
   useEffect(() => { 
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, sortConfig]); 
+  }, [statusFilter, sortConfig]); 
+
+  // Add debouncing for search term
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      fetchQuotations(1, itemsPerPage);
+    }, 400); // 400ms delay
+    return () => clearTimeout(timeout);
+  }, [searchTerm, itemsPerPage, fetchQuotations]);
 
   const reportButtonElement = (user?.role === "admin" || user?.role === "super-admin") && (
     <Button
@@ -181,56 +190,36 @@ export default function Quotations() {
 
   const handleCreateTicket = useCallback(async (quotation) => {
     setSourceQuotationForTicket(quotation);
-    const defaultDeadline = new Date();
-    defaultDeadline.setDate(defaultDeadline.getDate() + 10);
+    
+    // Check if quotation has shipping address
+    if (!quotation.shippingAddress?.address1) {
+      toast.info("Billing address will be used as shipping address since no shipping address was defined.");
+    }
+    
+    try {
+      setIsLoading(true);
+      // Call the API endpoint to create a ticket from the quotation
+      const response = await apiClient(`/tickets/from-quotation/${quotation._id}`, {
+        method: 'POST',
+        body: {
+          userId: user?.id
+        }
+      });
+      
+      toast.success("Ticket created successfully!");
+      
+      // Navigate to the edit page for the new ticket
+      navigate(`/tickets/edit/${response._id}`);
+      setIsLoading(false);
+      return;
+    } catch (error) {
+      toast.error("Failed to create ticket: " + (error.response?.data?.error || error.message));
+      setIsLoading(false);
+      return;
+    }
 
-    const ticketNumberToSet = await generateTicketNumber();
-    const quotationBillingAddressObject = quotation.billingAddress || {};
-    const ticketBillingAddressArrayFromQuotation = [
-      quotationBillingAddressObject.address1 || "",
-      quotationBillingAddressObject.address2 || "",
-      quotationBillingAddressObject.state || "",
-      quotationBillingAddressObject.city || "",
-      quotationBillingAddressObject.pincode || "",
-    ];
-    const clientData = quotation.client || {};
-
-    const ticketDataForForm = {
-      ticketNumber: ticketNumberToSet,
-      companyName: quotation.client?.companyName || "",
-      quotationNumber: quotation.referenceNumber,
-      billingAddress: ticketBillingAddressArrayFromQuotation, 
-      shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" }, 
-      shippingSameAsBilling: false,
-      goods: quotation.goods.map((item) => ({
-        ...item,
-        hsnCode: item.hsnCode || item.hsnCode || "",
-        quantity: Number(item.quantity),
-        price: Number(item.price),
-        amount: Number(item.amount),
-        sellingPrice: Number(item.sellingPrice),
-        unit: item.unit || "nos",
-        originalPrice: Number(item.sellingPrice || item.originalPrice || item.price),
-        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
-        gstRate: parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-        originalItem: item.originalItem?._id || item.originalItem || item.itemId,
-        units: item.units || [], // <-- always attach units for ticket creation
-      })),
-      clientPhone: clientData.phone || "",
-      clientGstNumber: clientData.gstNumber || "",
-      totalQuantity: Number(quotation.totalQuantity),
-      totalAmount: Number(quotation.totalAmount),
-      dispatchDays: quotation.dispatchDays || "7-10 working days",
-      validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      termsAndConditions: quotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-      gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-      finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-      status: "Quotation Sent",
-      deadline: defaultDeadline.toISOString().split("T")[0],
-    };
-    navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
-  }, [navigate, generateTicketNumber, initialQuotationData]); 
+    // No need to navigate to create-from-quotation, we're handling the API call directly
+  }, [navigate, setSourceQuotationForTicket, setIsLoading, apiClient, toast]); 
 
   const handleEdit = useCallback(async (quotation) => {
     let orderIssuedByIdToSet =

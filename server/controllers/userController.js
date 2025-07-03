@@ -17,7 +17,6 @@ exports.createUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Create User",
-        api: req.originalUrl,
         req,
         message: `Attempt to create user with existing email: ${email}`,
         details: { email },
@@ -36,7 +35,6 @@ exports.createUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Create User",
-        api: req.originalUrl,
         req,
         message: `[AUTH_FAILURE] Non-super-admin attempt to create a super-admin user.`,
         details: { requestedRole: role },
@@ -67,7 +65,6 @@ exports.createUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Create User",
-      api: req.originalUrl,
       req,
       message: "User created successfully",
       details: {
@@ -84,7 +81,6 @@ exports.createUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Create User Error",
-      api: req.originalUrl,
       req,
       message: "Error creating user",
       details: { error: err.message, requestBody: req.body },
@@ -105,10 +101,8 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       user,
       page: "User",
       action: "Get All Users",
-      api: req.originalUrl,
       req,
       message: "[AUTH_FAILURE] Unauthorized access attempt to fetch all users",
-      details: {},
       level: "warn",
     });
     return res.status(403).json({
@@ -125,7 +119,6 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       user,
       page: "User",
       action: "Get All Users",
-      api: req.originalUrl,
       req,
       message: `Found ${users.length} users`,
       details: { count: users.length },
@@ -142,10 +135,8 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       user,
       page: "User",
       action: "Get All Users Error",
-      api: req.originalUrl,
       req,
       message: "Fetching users failed",
-      details: { error: err.message },
       level: "error",
     });
     res.status(500).json({
@@ -167,7 +158,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
     user: performingUser,
     page: "User",
     action: "Update User",
-    api: req.originalUrl,
     req,
     message: `Update user request for ID: ${userIdToUpdate} by User: ${performingUser?.email}`,
     details: {
@@ -187,10 +177,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Update User",
-        api: req.originalUrl,
         req,
         message: `User not found for update: ${userIdToUpdate}`,
-        details: {},
         level: "warn",
       });
       return res.status(404).json({
@@ -204,10 +192,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Update User",
-        api: req.originalUrl,
         req,
         message: `[AUTH_FAILURE] Unauthorized update attempt for User ID: ${userIdToUpdate} by User: ${performingUser.email}`,
-        details: {},
         level: "warn",
       });
       return res.status(403).json({
@@ -222,10 +208,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
           user: performingUser,
           page: "User",
           action: "Update User",
-          api: req.originalUrl,
           req,
           message: `[PASSWORD_VALIDATION_FAILED] Password too short for User ID: ${userIdToUpdate}`,
-          details: {},
           level: "warn",
         });
         return res.status(400).json({
@@ -238,10 +222,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Update User",
-        api: req.originalUrl,
         req,
         message: `[PASSWORD_CHANGE_INITIATED] Password change for User ID: ${userIdToUpdate} by Super Admin: ${performingUser.email}`,
-        details: {},
         level: "info",
       });
     }
@@ -256,10 +238,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
             user: performingUser,
             page: "User",
             action: "Update User",
-            api: req.originalUrl,
             req,
             message: `[ROLE_CHANGE_DENIED] Attempt to demote the last super-admin: ${userToUpdate.email} by ${performingUser.email}.`,
-            details: {},
             level: "warn",
           });
           return res.status(400).json({
@@ -273,10 +253,8 @@ exports.updateUser = asyncHandler(async (req, res) => {
           user: performingUser,
           page: "User",
           action: "Update User",
-          api: req.originalUrl,
           req,
           message: `[ROLE_CHANGE_DENIED] Non-super-admin ${performingUser.email} attempt to promote user ${userToUpdate.email} to super-admin.`,
-          details: {},
           level: "warn",
         });
         return res.status(403).json({
@@ -304,7 +282,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Update User",
-      api: req.originalUrl,
       req,
       message: `User updated successfully by ${performingUser.email}`,
       details: {
@@ -333,7 +310,6 @@ exports.updateUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Update User Error",
-      api: req.originalUrl,
       req,
       message: `User update failed for ID: ${userIdToUpdate} by ${performingUser?.email}`,
       details: {
@@ -381,7 +357,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message:
         "UniversalBackup model is not available. Critical server configuration issue.",
@@ -398,7 +373,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
     user: performingUser,
     page: "User",
     action: "Delete User",
-    api: req.originalUrl,
     req,
     message: `[DELETE_INITIATED] User ID: ${userIdToDelete} by User: ${performingUserEmail}.`,
     details: logDetails,
@@ -411,7 +385,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Delete User",
-        api: req.originalUrl,
         req,
         message: `[AUTH_FAILURE] Unauthorized delete attempt for User ID: ${userIdToDelete} by User: ${performingUserEmail}.`,
         details: logDetails,
@@ -425,7 +398,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[FETCH_ATTEMPT] Finding User ID: ${userIdToDelete} for backup and deletion.`,
       details: logDetails,
@@ -438,7 +410,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Delete User",
-        api: req.originalUrl,
         req,
         message: `[NOT_FOUND] User not found for deletion: ${userIdToDelete}.`,
         details: logDetails,
@@ -450,7 +421,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[FETCH_SUCCESS] Found User ID: ${userIdToDelete} (${userToBackup.email}). Performing checks before backup.`,
       details: logDetails,
@@ -462,7 +432,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Delete User",
-        api: req.originalUrl,
         req,
         message: `[DELETE_SELF_SUPER_ADMIN_DENIED] Super-admin ${performingUserEmail} attempted to delete themselves.`,
         details: logDetails,
@@ -482,7 +451,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
           user: performingUser,
           page: "User",
           action: "Delete User",
-          api: req.originalUrl,
           req,
           message: `[DELETE_LAST_SUPER_ADMIN_DENIED] Attempt to delete the last super-admin: ${userToBackup.email} by ${performingUserEmail}.`,
           details: logDetails,
@@ -497,7 +465,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[CHECKS_PASSED] Checks for User ID: ${userIdToDelete} passed. Preparing for backup.`,
       details: logDetails,
@@ -524,7 +491,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[PRE_BACKUP_SAVE] Attempting to save backup for User ID: ${userToBackup._id} (${userToBackup.email}).`,
       details: { ...logDetails, originalId: userToBackup._id },
@@ -536,7 +502,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[BACKUP_SUCCESS] User successfully backed up. Backup ID: ${newBackupEntry._id}.`,
       details: {
@@ -552,7 +517,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[PRE_ORIGINAL_DELETE] Attempting to delete original User ID: ${userToBackup._id} (${userToBackup.email}).`,
       details: { ...logDetails, originalId: userToBackup._id },
@@ -563,7 +527,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User",
-      api: req.originalUrl,
       req,
       message: `[ORIGINAL_DELETE_SUCCESS] Original User ${userToBackup.email} successfully deleted.`,
       details: { ...logDetails, originalId: userToBackup._id },
@@ -579,7 +542,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "User Activity",
-      api: req.originalUrl,
       req,
       message: "User profile deleted",
       details: {
@@ -594,7 +556,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Delete User Error",
-      api: req.originalUrl,
       req,
       message: `[DELETE_ERROR] Error during User deletion process for ID: ${userIdToDelete} by ${performingUserEmail}.`,
       details: { ...logDetails, error: error.message },
@@ -613,7 +574,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Delete User",
-        api: req.originalUrl,
         req,
         message: `[ROLLBACK_DELETE_IMPLIED] Backup failed or error before backup for User ID: ${userIdToDelete}. Original document was not deleted or deletion attempt failed.`,
         details: logDetails,
@@ -643,10 +603,8 @@ exports.getUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Get User",
-      api: req.originalUrl,
       req,
       message: `[AUTH_FAILURE] Unauthorized access attempt to get User ID: ${targetUserId} by ${performingUser.email}`,
-      details: {},
       level: "warn",
     });
     return res.status(404).json({
@@ -664,10 +622,8 @@ exports.getUser = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Get User",
-        api: req.originalUrl,
         req,
         message: `User not found: ${targetUserId}`,
-        details: {},
         level: "warn",
       });
       return res.status(404).json({
@@ -680,7 +636,6 @@ exports.getUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Get User",
-      api: req.originalUrl,
       req,
       message: `Fetched user details for ID: ${targetUserId}`,
       details: {
@@ -698,10 +653,8 @@ exports.getUser = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Get User Error",
-      api: req.originalUrl,
       req,
       message: `Failed to fetch user details for ID: ${targetUserId}`,
-      details: { error: err.message },
       level: "error",
     });
     if (err.kind === "ObjectId") {
@@ -731,10 +684,8 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
         user: req.user,
         page: "User",
         action: "Update User Profile",
-        api: req.originalUrl,
         req,
         message: `User not found for profile update. User ID from token: ${userId}.`,
-        details: {},
         level: "warn",
       });
       return res.status(404).json({ message: "User not found" });
@@ -749,10 +700,8 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
           user: req.user,
           page: "User",
           action: "Update User Profile",
-          api: req.originalUrl,
           req,
           message: `User ${userId} attempted to set a short password.`,
-          details: {},
           level: "warn",
         });
         return res
@@ -767,10 +716,8 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       user: req.user,
       page: "User",
       action: "Update User Profile",
-      api: req.originalUrl,
       req,
       message: `User ${userId} updated their profile successfully.`,
-      details: {},
       level: "info",
     });
 
@@ -795,10 +742,8 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       user: req.user,
       page: "User",
       action: "Update User Profile Error",
-      api: req.originalUrl,
       req,
       message: `Error updating profile for user ${userId}: ${error.message}`,
-      details: { error: error.message },
       level: "error",
     });
     if (error.name === "ValidationError") {
@@ -826,10 +771,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Toggle User Active Status",
-      api: req.originalUrl,
       req,
       message: `[AUTH_FAILURE] Unauthorized status toggle attempt for User ID: ${userIdToToggle} by User: ${performingUser.email}.`,
-      details: { targetUserId: userIdToToggle, requestedStatus: isActive },
       level: "warn",
     });
     return res.status(403).json({
@@ -843,10 +786,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Toggle User Active Status",
-      api: req.originalUrl,
       req,
       message: `[BAD_REQUEST] Invalid 'isActive' value for User ID: ${userIdToToggle}. Received: ${isActive}`,
-      details: { targetUserId: userIdToToggle, requestedStatus: isActive },
       level: "warn",
     });
     return res.status(400).json({
@@ -862,10 +803,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Toggle User Active Status",
-      api: req.originalUrl,
       req,
       message: `[NOT_FOUND] User not found for status toggle: ${userIdToToggle}.`,
-      details: { targetUserId: userIdToToggle },
       level: "warn",
     });
     return res.status(404).json({ success: false, error: "User not found" });
@@ -880,10 +819,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
       user: performingUser,
       page: "User",
       action: "Toggle User Active Status",
-      api: req.originalUrl,
       req,
       message: `[SELF_DISABLE_DENIED] Super-admin ${performingUser.email} attempted to disable themselves.`,
-      details: { targetUserId: userIdToToggle },
       level: "warn",
     });
     return res.status(400).json({
@@ -906,10 +843,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
         user: performingUser,
         page: "User",
         action: "Toggle User Active Status",
-        api: req.originalUrl,
         req,
         message: `[LAST_SUPER_ADMIN_DISABLE_DENIED] Attempt to disable the last active super-admin: ${userToUpdate.email} by ${performingUser.email}.`,
-        details: { targetUserId: userIdToToggle },
         level: "warn",
       });
       return res.status(400).json({
@@ -925,10 +860,8 @@ exports.toggleUserActiveStatus = asyncHandler(async (req, res) => {
     user: performingUser,
     page: "User",
     action: "Toggle User Active Status",
-    api: req.originalUrl,
     req,
     message: `[STATUS_TOGGLE_SUCCESS] User ${userToUpdate.email} status updated to ${isActive} by ${performingUser.email}.`,
-    details: { targetUserId: userToUpdate._id, newStatus: isActive },
     level: "info",
   });
 

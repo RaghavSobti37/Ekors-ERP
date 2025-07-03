@@ -1,4 +1,3 @@
-// server/controllers/ticketController.js
 const Ticket = require("../models/opentickets");
 const UniversalBackup = require("../models/universalBackup");
 const Quotation = require("../models/quotation");
@@ -11,91 +10,9 @@ const path = require("path");
 const asyncHandler = require("express-async-handler");
 const mongoose = require("mongoose");
 const ReportController = require("./reportController");
+const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloadServer");
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
-
-// --- Helper Function for Ticket Calculations ---
-/**
- * Calculates all derived fields for a ticket (totals, GST, rounding).
- * This is the SINGLE SOURCE OF TRUTH for ticket calculations on the backend.
- * @param {Array} goods - Array of goods items.
- * @param {Array} billingAddress - Array representing the billing address (e.g., [addr1, addr2, state, city, pincode]).
- * @returns {Object} Object containing all calculated fields.
- */
-const calculateTicketTotals = (goods, billingAddress) => {
-  let totalQuantity = 0;
-  let totalAmount = 0; // Pre-GST total
-
-  // Ensure goods is an array and each item has necessary numeric properties
-  const processedGoods = (goods || []).map((g) => ({
-    ...g,
-    quantity: Number(g.quantity || 0),
-    price: Number(g.price || 0),
-    amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))), // Recalculate amount for safety
-    gstRate: parseFloat(g.gstRate || 0),
-  }));
-
-  processedGoods.forEach((item) => {
-    totalQuantity += item.quantity;
-    totalAmount += item.amount;
-  });
-
-  const billingState = (billingAddress && billingAddress[2] ? billingAddress[2] : "")
-    .toUpperCase()
-    .trim();
-  const isBillingStateSameAsCompany =
-    billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
-
-  const gstGroups = {};
-  processedGoods.forEach((item) => {
-    const itemGstRate = item.gstRate;
-    if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
-      if (!gstGroups[itemGstRate])
-        gstGroups[itemGstRate] = { taxableAmount: 0 };
-      gstGroups[itemGstRate].taxableAmount += item.amount;
-    }
-  });
-
-  const newGstBreakdown = [];
-  let runningTotalCgst = 0;
-  let runningTotalSgst = 0;
-  let runningTotalIgst = 0;
-
-  for (const rateKey in gstGroups) {
-    const group = gstGroups[rateKey];
-    const itemGstRate = parseFloat(rateKey);
-    if (isNaN(itemGstRate) || itemGstRate < 0) continue;
-
-    const taxableAmount = group.taxableAmount;
-    let cgstAmount = 0, sgstAmount = 0, igstAmount = 0;
-    let cgstRate = 0, sgstRate = 0, igstRate = 0;
-
-    if (itemGstRate > 0) {
-      if (isBillingStateSameAsCompany) {
-        cgstRate = itemGstRate / 2;
-        sgstRate = itemGstRate / 2;
-        cgstAmount = (taxableAmount * cgstRate) / 100;
-        sgstAmount = (taxableAmount * sgstRate) / 100;
-        runningTotalCgst += cgstAmount;
-        runningTotalSgst += sgstAmount;
-      } else {
-        igstRate = itemGstRate;
-        igstAmount = (taxableAmount * igstRate) / 100;
-        runningTotalIgst += igstAmount;
-      }
-    }
-    newGstBreakdown.push({ itemGstRate, taxableAmount, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount });
-  }
-
-  const finalGstAmount = runningTotalCgst + runningTotalSgst + runningTotalIgst;
-  const grandTotal = totalAmount + finalGstAmount;
-
-  // Rounding logic is now mandatory and always applied
-  const finalRoundedAmount = Math.round(grandTotal);
-  const roundOff = finalRoundedAmount - grandTotal;
-
-  return { processedGoods, totalQuantity, totalAmount, gstBreakdown: newGstBreakdown, totalCgstAmount: runningTotalCgst, totalSgstAmount: runningTotalSgst, totalIgstAmount: runningTotalIgst, finalGstAmount, grandTotal, isBillingStateSameAsCompany, roundOff, finalRoundedAmount };
-};
 
 exports.createTicket = asyncHandler(async (req, res) => {
   const user = req.user; // Auth middleware should ensure req.user exists
@@ -106,7 +23,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
   user: req.user || user || initiator || null,
   page: "Ticket",
   action: "Error",
-  api: req.originalUrl,
   req,
   message: "User Not Found",
   details: { error: error.message, stack: error.stack },
@@ -123,7 +39,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user: req.user || user || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Missing newTicketDetails in request body",
       details: { error: "newTicketDetails is required" },
@@ -136,54 +52,74 @@ exports.createTicket = asyncHandler(async (req, res) => {
 
   let finalTicketData;
 
-  // If creating from a quotation, prioritize sourceQuotationData
+  // If creating from a quotation, use mapQuotationToTicketPayload
   if (sourceQuotationData && sourceQuotationData.referenceNumber) {
-    const clientData = sourceQuotationData.client || {};
-    let quotationBillingAddress = sourceQuotationData.billingAddress || {};
-    let quotationShippingAddress = sourceQuotationData.shippingAddress || {};
+    // Use our utility to map quotation data to ticket data
+    finalTicketData = mapQuotationToTicketPayload(sourceQuotationData, user.id);
+    
+    // Apply any override values from newTicketDetails
+    finalTicketData = {
+      ...finalTicketData,
+      ...newTicketDetails,
+      createdBy: user.id,
+      currentAssignee: user.id,
+      assignedTo: user.id,
+    };
+  } else {
+    // Not from quotation, just use newTicketDetails with defaults
+    finalTicketData = {
+      ...getInitialTicketPayload(user.id),
+      ...newTicketDetails,
+      createdBy: user.id,
+      currentAssignee: user.id,
+      assignedTo: user.id,
+    };
+  }
 
-    // Convert billingAddress to array if it's an object
-    if (!Array.isArray(quotationBillingAddress) && typeof quotationBillingAddress === "object") {
-      quotationBillingAddress = [
-        quotationBillingAddress.address1 || "",
-        quotationBillingAddress.address2 || "",
-        quotationBillingAddress.state || "",
-        quotationBillingAddress.city || "",
-        quotationBillingAddress.pincode || "",
-      ];
+  // Always recalculate totals before saving
+  const recalculatedTotals = recalculateTicketTotals(finalTicketData);
+  finalTicketData = {
+    ...finalTicketData,
+    ...recalculatedTotals
+  };
+  
+  // Process quotation data if available
+  if (sourceQuotationData) {
+    let quotationBillingAddress = sourceQuotationData.billingAddress || {};
+    let quotationShippingAddress;
+    
+    // Get shipping address according to the quotation's shippingSameAsBilling flag
+    if (sourceQuotationData.shippingSameAsBilling) {
+      quotationShippingAddress = { ...quotationBillingAddress };
+    } else {
+      quotationShippingAddress = sourceQuotationData.shippingAddress || {};
     }
-    // Convert shippingAddress to array if it's an object
-    if (!Array.isArray(quotationShippingAddress) && typeof quotationShippingAddress === "object") {
-      quotationShippingAddress = [
-        quotationShippingAddress.address1 || "",
-        quotationShippingAddress.address2 || "",
-        quotationShippingAddress.state || "",
-        quotationShippingAddress.city || "",
-        quotationShippingAddress.pincode || "",
-      ];
-    }
+
+    // Get client data either from the source quotation or from the newTicketDetails
+    const clientData = sourceQuotationData.client || newTicketDetails.client || {};
 
     // Determine deadline: Use newTicketDetails.deadline if provided, else use quotation's validityDate
     let determinedDeadline = newTicketDetails.deadline
       ? new Date(newTicketDetails.deadline)
       : sourceQuotationData.validityDate
       ? new Date(sourceQuotationData.validityDate)
-      : null; // Will be validated later
+      : null;
 
     finalTicketData = {
       ...finalTicketData,
       companyName: clientData.companyName || newTicketDetails.companyName,
       quotationNumber: sourceQuotationData.referenceNumber,
-      client: clientData._id || newTicketDetails.client?._id,
+      client: clientData._id || newTicketDetails.client,
       clientPhone: clientData.phone || newTicketDetails.clientPhone,
       clientGstNumber: clientData.gstNumber || newTicketDetails.clientGstNumber,
       billingAddress: quotationBillingAddress,
       shippingAddress: quotationShippingAddress,
+      shippingSameAsBilling: sourceQuotationData.shippingSameAsBilling || false,
       goods: (sourceQuotationData.goods || newTicketDetails.goods || []).map(
         (qGood, index) => ({
           srNo: qGood.srNo || index + 1,
           description: qGood.description,
-          hsnCode: qGood.hsnCode || "", // Use hsnCode
+          hsnCode: qGood.hsnCode || "",
           quantity: Number(qGood.quantity || 0),
           unit: qGood.unit || "nos",
           price: Number(qGood.price || 0),
@@ -202,23 +138,12 @@ exports.createTicket = asyncHandler(async (req, res) => {
         sourceQuotationData.dispatchDays ||
         newTicketDetails.dispatchDays ||
         "7-10 working", // Ensure default
-      deadline: determinedDeadline,
-    };
-  } else {
-    // If not from quotation, use newTicketDetails directly
-    finalTicketData = {
-      ...newTicketDetails,
-      goods: (newTicketDetails.goods || []).map((g, index) => ({
-        ...g,
-        srNo: g.srNo || index + 1,
-        quantity: Number(g.quantity || 0),
-        price: Number(g.price || 0),
-        amount: Number(g.amount || (Number(g.quantity || 0) * Number(g.price || 0))),
-      })),
+      deadline: determinedDeadline, // Use the determined deadline
+      roundOff: newTicketDetails.roundOff || 0, // Prioritize if specifically sent with newTicketDetails
+      finalRoundedAmount: newTicketDetails.finalRoundedAmount,
     };
   }
 
-  // Ensure deadline is null if an empty string is passed, otherwise Mongoose handles valid date strings/null.
   if (
     finalTicketData.hasOwnProperty("deadline") &&
     finalTicketData.deadline === ""
@@ -226,28 +151,11 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.deadline = null;
   }
 
-  // Set common fields
-  finalTicketData.createdBy = user.id;
-  finalTicketData.currentAssignee = user.id;
-  finalTicketData.assignedTo = user.id; // Default assignedTo to creator
-  finalTicketData.dispatchDays = finalTicketData.dispatchDays || "7-10 working days"; // Ensure default
-
-  // Validate required fields before calculations
-  if (!finalTicketData.goods || finalTicketData.goods.length === 0) {
-    logger.error(
-      "ticket-create",
-      "Ticket must contain at least one item.",
-      user,
-      { finalTicketData }
-    );
-    return res.status(400).json({ error: "Ticket must contain at least one item." });
-  }
   if (!finalTicketData.deadline) {
     logger.log({
       user: req.user || user || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
       req,
       message: "Ticket deadline is required but not provided or derived.",
       details: { finalTicketData },
@@ -255,13 +163,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     });
     return res.status(400).json({ error: "Ticket deadline is required." });
   }
-  if (!finalTicketData.ticketNumber) {
-    return res.status(400).json({ error: "Ticket number is required." });
-  }
-  if (!finalTicketData.companyName) {
-    return res.status(400).json({ error: "Company name is required." });
-  }
-  
+
   // Set client ObjectId if available from sourceQuotationData
   if (
     !finalTicketData.client && // Only if not already set by sourceQuotationData block
@@ -278,7 +180,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.client = sourceQuotationData.client._id;
   }
 
-  // Ensure statusHistory is correctly formatted and initial status is set
+  // Ensure statusHistory is correctly formatted
   if (
     Array.isArray(finalTicketData.statusHistory) &&
     finalTicketData.statusHistory.length > 0
@@ -292,126 +194,147 @@ exports.createTicket = asyncHandler(async (req, res) => {
     );
   } else {
     finalTicketData.statusHistory = [
-      { status: finalTicketData.status || "Quotation Sent", changedAt: new Date(), changedBy: user.id, note: sourceQuotationData && sourceQuotationData.referenceNumber ? "Ticket created from quotation." : "Ticket created." },
+      {
+        status: finalTicketData.status || "Quotation Sent", // Default from schema
+        changedAt: new Date(),
+        changedBy: user.id,
+        note:
+          sourceQuotationData && sourceQuotationData.referenceNumber
+            ? "Ticket created from quotation."
+            : "Ticket created.",
+      },
     ];
   }
   if (!finalTicketData.status) {
     finalTicketData.status = "Quotation Sent"; // Ensure status is set
   }
 
-  // Validate billing and shipping addresses
-  if (!Array.isArray(finalTicketData.billingAddress) || finalTicketData.billingAddress.length !== 5) {
-    logger.error("ticket-create", "Billing address is not in the expected array format.", user, { billingAddress: finalTicketData.billingAddress });
-    return res.status(400).json({ error: "Invalid billing address format." });
-  }
-
   // Construct shippingAddress array
   if (finalTicketData.shippingSameAsBilling === true) {
-    finalTicketData.shippingAddress = [
-      ...(finalTicketData.billingAddress || ["", "", "", "", ""]),
-    ];
+    finalTicketData.shippingAddress = { ...finalTicketData.billingAddress };
   } else if (finalTicketData.shippingAddressObj) {
-    const saObj = finalTicketData.shippingAddressObj;
-    finalTicketData.shippingAddress = [
-      saObj.address1 || "",
-      saObj.address2 || "",
-      saObj.state || "",
-      saObj.city || "",
-      saObj.pincode || "",
-    ];
+    finalTicketData.shippingAddress = { ...finalTicketData.shippingAddressObj };
   } else if (
-    !Array.isArray(finalTicketData.shippingAddress) ||
-    finalTicketData.shippingAddress.length !== 5
+    typeof finalTicketData.shippingAddress !== "object" ||
+    finalTicketData.shippingAddress === null
   ) {
-    finalTicketData.shippingAddress = ["", "", "", "", ""]; // Default if not properly provided
+    finalTicketData.shippingAddress = {
+      address1: "",
+      address2: "",
+      state: "",
+      city: "",
+      pincode: "",
+    };
   }
   delete finalTicketData.shippingAddressObj; // Remove if not part of schema
 
-  // --- Calculate Totals and GST using the helper function ---
-  const {
-    processedGoods,
-    totalQuantity,
-    totalAmount,
-    gstBreakdown,
-    totalCgstAmount,
-    totalSgstAmount,
-    totalIgstAmount,
-    finalGstAmount,
-    grandTotal,
-    isBillingStateSameAsCompany,
-    roundOff, // Calculated by helper
-    finalRoundedAmount, // Calculated by helper
-  } = calculateTicketTotals(finalTicketData.goods, finalTicketData.billingAddress);
+  // --- Calculate Totals and GST (Crucial for required fields) ---
+  if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
+    finalTicketData.totalQuantity = finalTicketData.goods.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    finalTicketData.totalAmount = finalTicketData.goods.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    ); // Pre-GST
 
-  // Apply calculated values to finalTicketData
-  finalTicketData.goods = processedGoods; // Use processed goods (with recalculated amounts)
-  finalTicketData.totalQuantity = totalQuantity;
-  finalTicketData.totalAmount = totalAmount;
-  finalTicketData.gstBreakdown = gstBreakdown;
-  finalTicketData.totalCgstAmount = totalCgstAmount;
-  finalTicketData.totalSgstAmount = totalSgstAmount;
-  finalTicketData.totalIgstAmount = totalIgstAmount;
-  finalTicketData.finalGstAmount = finalGstAmount;
-  finalTicketData.grandTotal = grandTotal;
-  finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
-  finalTicketData.roundOff = roundOff; // Set calculated roundOff
-  finalTicketData.finalRoundedAmount = finalRoundedAmount; // Set calculated finalRoundedAmount
+    const billingState = (finalTicketData.billingAddress[2] || "")
+      .toUpperCase()
+      .trim(); // Assuming state is at index 2
+    const isBillingStateSameAsCompany =
+      billingState === COMPANY_REFERENCE_STATE.toUpperCase().trim();
+    finalTicketData.isBillingStateSameAsCompany = isBillingStateSameAsCompany;
 
-  // --- Frontend Calculation Verification (Optional but Recommended) ---
-  // If frontend sends these, verify them against backend calculations
-  const frontendTotals = {
-    totalQuantity: Number(req.body.newTicketDetails.totalQuantity || 0),
-    totalAmount: Number(req.body.newTicketDetails.totalAmount || 0),
-    finalGstAmount: Number(req.body.newTicketDetails.finalGstAmount || 0),
-    grandTotal: Number(req.body.newTicketDetails.grandTotal || 0),
-    roundOff: Number(req.body.newTicketDetails.roundOff || 0),
-    finalRoundedAmount: Number(req.body.newTicketDetails.finalRoundedAmount || 0),
-  };
-  const tolerance = 0.01; // Allow for minor floating point discrepancies
-
-  if (
-    Math.abs(totalQuantity - frontendTotals.totalQuantity) > tolerance ||
-    Math.abs(totalAmount - frontendTotals.totalAmount) > tolerance ||
-    Math.abs(finalGstAmount - frontendTotals.finalGstAmount) > tolerance ||
-    Math.abs(grandTotal - frontendTotals.grandTotal) > tolerance ||
-    Math.abs(roundOff - frontendTotals.roundOff) > tolerance ||
-    Math.abs(finalRoundedAmount - frontendTotals.finalRoundedAmount) > tolerance
-  ) {
-   logger.log({
-      user: req.user || user || null,
-      page: "Ticket",
-      action: "Create Ticket",
-      api: req.originalUrl,
-      req,
-      message: "Billing address is not in the expected array format after construction.",
-      details: { billingAddress: finalTicketData.billingAddress },
-      level: "error",
+    const gstGroups = {};
+    finalTicketData.goods.forEach((item) => {
+      const itemGstRate = parseFloat(item.gstRate);
+      if (!isNaN(itemGstRate) && itemGstRate >= 0 && item.amount > 0) {
+        if (!gstGroups[itemGstRate])
+          gstGroups[itemGstRate] = { taxableAmount: 0 };
+        gstGroups[itemGstRate].taxableAmount += item.amount || 0;
+      }
     });
-    return res.status(400).json({ error: "Invalid billing address format." });
-  }
 
-  if (
-    !Array.isArray(finalTicketData.shippingAddress) ||
-    finalTicketData.shippingAddress.length !== 5
-  ) {
-    logger.log({
-      user: req.user || user || null,
-      page: "Ticket",
-      action: "Create Ticket",
-      api: req.originalUrl,
-      req,
-      message: "Shipping address is not in the expected array format after construction.",
-      details: { shippingAddress: finalTicketData.shippingAddress },
-      level: "error",
-    });
-    return res.status(400).json({ error: "Invalid shipping address format." });
+    const newGstBreakdown = [];
+    let runningTotalCgst = 0,
+      runningTotalSgst = 0,
+      runningTotalIgst = 0;
+
+    for (const rateKey in gstGroups) {
+      const group = gstGroups[rateKey];
+      const itemGstRate = parseFloat(rateKey);
+      if (isNaN(itemGstRate) || itemGstRate < 0) continue;
+
+      const taxableAmount = group.taxableAmount;
+      let cgstAmount = 0,
+        sgstAmount = 0,
+        igstAmount = 0;
+      let cgstRate = 0,
+        sgstRate = 0,
+        igstRate = 0;
+
+      if (itemGstRate > 0) {
+        if (isBillingStateSameAsCompany) {
+          cgstRate = itemGstRate / 2;
+          sgstRate = itemGstRate / 2;
+          cgstAmount = (taxableAmount * cgstRate) / 100;
+          sgstAmount = (taxableAmount * sgstRate) / 100;
+          runningTotalCgst += cgstAmount;
+          runningTotalSgst += sgstAmount;
+        } else {
+          igstRate = itemGstRate;
+          igstAmount = (taxableAmount * igstRate) / 100;
+          runningTotalIgst += igstAmount;
+        }
+      }
+      newGstBreakdown.push({
+        itemGstRate,
+        taxableAmount,
+        cgstRate,
+        cgstAmount,
+        sgstRate,
+        sgstAmount,
+        igstRate,
+        igstAmount,
+      });
+    }
+    finalTicketData.gstBreakdown = newGstBreakdown;
+    finalTicketData.totalCgstAmount = runningTotalCgst;
+    finalTicketData.totalSgstAmount = runningTotalSgst;
+    finalTicketData.totalIgstAmount = runningTotalIgst;
+    finalTicketData.finalGstAmount =
+      runningTotalCgst + runningTotalSgst + runningTotalIgst;
+    finalTicketData.grandTotal =
+      (finalTicketData.totalAmount || 0) +
+      (finalTicketData.finalGstAmount || 0);
+    if (
+      finalTicketData.finalRoundedAmount === undefined ||
+      finalTicketData.finalRoundedAmount === null
+    ) {
+      finalTicketData.finalRoundedAmount =
+        finalTicketData.grandTotal + (finalTicketData.roundOff || 0);
+    }
+  } else {
+    finalTicketData.totalQuantity = 0;
+    finalTicketData.totalAmount = 0;
+    finalTicketData.gstBreakdown = [];
+    finalTicketData.totalCgstAmount = 0;
+    finalTicketData.totalSgstAmount = 0;
+    finalTicketData.totalIgstAmount = 0;
+    finalTicketData.finalGstAmount = 0;
+    finalTicketData.grandTotal = 0;
+    finalTicketData.isBillingStateSameAsCompany = false;
+    finalTicketData.roundOff = 0;
+    finalTicketData.roundOffDirection = 'up';
+    finalTicketData.finalRoundedAmount = 0;
   }
 
   if (finalTicketData.goods && Array.isArray(finalTicketData.goods)) {
     finalTicketData.goods = finalTicketData.goods.map((item) => ({
       srNo: item.srNo,
       description: item.description,
-      hsnCode: item.hsnCode,
+      hsnCode: item.hsnCode || "", // Defensive: always set hsnCode
       quantity: Number(item.quantity || 0),
       unit: item.unit || "Nos",
       price: Number(item.price || 0),
@@ -446,8 +369,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
         }).session(session);
 
         if (itemToUpdate) {
-          const { quantityInBaseUnit, unitNameUsed } = convertToBaseUnit(good.quantity, good.unit, itemToUpdate);
-          const quantityToDecrementInBaseUnit = quantityInBaseUnit;
+          let quantityToDecrementInBaseUnit = 0;
+          const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
           const baseUnitName = itemToUpdate.baseUnit;
 
           if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
@@ -470,8 +393,8 @@ exports.createTicket = asyncHandler(async (req, res) => {
           const historyEntry = {
             type: "Ticket Deduction (Creation)",
             date: new Date(),
-            quantityChange: -quantityToDecrementInBaseUnit, // Negative for deduction
-            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Transaction: ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
+            quantityChange: -quantityToDecrementInBaseUnit,
+            details: `Items deducted for new Ticket ${finalTicketData.ticketNumber}. Transaction: ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
              ticketReference: ticket._id,
             userReference: user.id,
           };
@@ -496,13 +419,13 @@ exports.createTicket = asyncHandler(async (req, res) => {
     }
 
     // --- Ticket Creation ---
-    await ticket.save({ session }); // Save within the transaction
+    await ticket.save({ session });
 
     logger.log({
       user,
       page: "Ticket",
       action: "Create Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket ${ticket.ticketNumber} created successfully.`,
       details: {
@@ -514,7 +437,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     });
 
     // --- Update Quotation Status if applicable ---
-    if (finalTicketData.quotationNumber && sourceQuotationData && sourceQuotationData._id) { // Ensure quotation ID is present
+    if (finalTicketData.quotationNumber && sourceQuotationData) {
       try {
         const quotationOwnerId =
           sourceQuotationData.user?._id || sourceQuotationData.user;
@@ -523,7 +446,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
             user: req.user || user || null,
             page: "Ticket",
             action: "Create Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${finalTicketData.quotationNumber} not found. Ticket ${ticket.ticketNumber} created successfully.`,
             details: {
@@ -556,7 +479,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
           user: req.user || user || null,
           page: "Ticket",
           action: "Create Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `Failed to update quotation status for ticket ${ticket.ticketNumber}.`,
           details: {
@@ -592,7 +515,6 @@ exports.createTicket = asyncHandler(async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
       req,
       message: "Failed to create ticket",
       details: { error: error.message, stack: error.stack },
@@ -693,7 +615,7 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
     user,
     page: "Ticket",
     action: "Get All Tickets",
-    api: req.originalUrl,
+   
     req,
     message: `Fetched ${tickets.length} of ${totalItems} tickets.`,
     details: { page: pageNum, limit: limitNum, query: finalQuery },
@@ -722,7 +644,7 @@ logger.log({
       user: req.user || user || null,
       page: "Ticket",
       action: "Get User Tickets",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to fetch tickets",
       details: { error: error.message, stack: error.stack },
@@ -795,7 +717,7 @@ exports.getTicketById = async (req, res) => {
         user: req.user,
         page: "Ticket",
         action: "Get Ticket By ID",
-        api: req.originalUrl,
+       
         req,
         message: `Ticket not found or access denied for ID: ${req.params.id}`,
         details: {},
@@ -809,7 +731,7 @@ exports.getTicketById = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Get Ticket By ID",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched ticket: ${req.params.id}`,
       details: { ticketId: req.params.id },
@@ -821,7 +743,7 @@ exports.getTicketById = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Get Ticket By ID Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch single ticket by ID: ${req.params.id}`,
       details: { error: error.message, stack: error.stack },
@@ -845,6 +767,75 @@ exports.updateTicket = async (req, res) => {
   } = req.body;
   let ticketDataForUpdate = { ...updatedTicketPayload };
 
+  // Always fetch the original ticket for reference
+  const originalTicket = await Ticket.findById(ticketId);
+  if (!originalTicket) {
+    return res.status(404).json({ error: "Ticket not found" });
+  }
+
+  // --- Address Handling Fix ---
+  // Handle billing address - ensure it's always in the correct object format
+  if (typeof ticketDataForUpdate.billingAddress === "object" && ticketDataForUpdate.billingAddress !== null) {
+    // Ensure all required properties exist
+    if (!ticketDataForUpdate.billingAddress.address1 && originalTicket.billingAddress && originalTicket.billingAddress.address1) {
+      ticketDataForUpdate.billingAddress = {
+        ...originalTicket.billingAddress,
+        ...ticketDataForUpdate.billingAddress
+      };
+    }
+  } else if (originalTicket.billingAddress) {
+    ticketDataForUpdate.billingAddress = originalTicket.billingAddress;
+  } else {
+    // Create empty billing address if nothing exists
+    ticketDataForUpdate.billingAddress = {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: ""
+    };
+  }
+
+  // Always set shippingAddress
+  if (shippingSameAsBilling === true) {
+    // If same as billing, copy billing address to shipping address
+    ticketDataForUpdate.shippingAddress = { ...ticketDataForUpdate.billingAddress };
+    ticketDataForUpdate.shippingSameAsBilling = true;
+  } else if (typeof ticketDataForUpdate.shippingAddress === "object" && ticketDataForUpdate.shippingAddress !== null) {
+    // If shipping address is provided but has missing fields, merge with original
+    if (!ticketDataForUpdate.shippingAddress.address1 && originalTicket.shippingAddress && originalTicket.shippingAddress.address1) {
+      ticketDataForUpdate.shippingAddress = {
+        ...originalTicket.shippingAddress,
+        ...ticketDataForUpdate.shippingAddress
+      };
+    }
+    ticketDataForUpdate.shippingSameAsBilling = false;
+  } else if (originalTicket.shippingAddress) {
+    ticketDataForUpdate.shippingAddress = originalTicket.shippingAddress;
+    ticketDataForUpdate.shippingSameAsBilling = originalTicket.shippingSameAsBilling || false;
+  } else {
+    // Create empty shipping address if nothing exists
+    ticketDataForUpdate.shippingAddress = {
+      address1: "",
+      address2: "",
+      city: "",
+      state: "",
+      pincode: ""
+    };
+    ticketDataForUpdate.shippingSameAsBilling = false;
+  }
+
+  // If your schema expects addresses as arrays, ensure conversion here
+  // (Uncomment and adjust if needed)
+  // if (ticketDataForUpdate.billingAddress && !Array.isArray(ticketDataForUpdate.billingAddress)) {
+  //   const ba = ticketDataForUpdate.billingAddress;
+  //   ticketDataForUpdate.billingAddress = [ba.address1 || "", ba.address2 || "", ba.state || "", ba.city || "", ba.pincode || ""];
+  // }
+  // if (ticketDataForUpdate.shippingAddress && !Array.isArray(ticketDataForUpdate.shippingAddress)) {
+  //   const sa = ticketDataForUpdate.shippingAddress;
+  //   ticketDataForUpdate.shippingAddress = [sa.address1 || "", sa.address2 || "", sa.state || "", sa.city || "", sa.pincode || ""];
+  // }
+
   if (
     ticketDataForUpdate.hasOwnProperty("deadline") &&
     ticketDataForUpdate.deadline === ""
@@ -853,7 +844,7 @@ exports.updateTicket = async (req, res) => {
   }
   try {
     session.startTransaction();
-    const originalTicket = await Ticket.findById(ticketId).session(
+    const originalTicket = await Ticket.findOne({ _id: ticketId }).session(
       session
     );
 
@@ -985,8 +976,8 @@ exports.updateTicket = async (req, res) => {
             const historyEntry = {
               type: "Re-deducted (Ticket Off Hold)",
               date: new Date(),
-              quantityChange: -quantityToDeductInBaseUnit, // Negative for deduction
-              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Deducted ${good.quantity} ${unitNameUsed}. Action by: ${user.firstname || user.email}.`,
+              quantityChange: -quantityToDeductInBaseUnit,
+              details: `Ticket ${originalTicket.ticketNumber} taken off hold. Deducted ${good.quantity} ${transactionalUnitName}. Action by: ${user.firstname || user.email}.`,
               ticketReference: originalTicket._id,
               userReference: user.id,
             };
@@ -1218,7 +1209,8 @@ exports.updateTicket = async (req, res) => {
         ticketDataForUpdate.grandTotal = 0;
         ticketDataForUpdate.isBillingStateSameAsCompany = false;
         ticketDataForUpdate.roundOff = roundOff || 0;
-        ticketDataForUpdate.finalRoundedAmount = ticketDataForUpdate.grandTotal + ticketDataForUpdate.roundOff;
+        ticketDataForUpdate.roundOffDirection = 'up';
+        ticketDataForUpdate.finalRoundedAmount = Math.round(ticketDataForUpdate.grandTotal);
     }
 
     const ticket = await Ticket.findOneAndUpdate(
@@ -1229,10 +1221,9 @@ exports.updateTicket = async (req, res) => {
 
     if (!ticket) {
       await session.abortTransaction();
-      return res.status(500).json({ error: "Failed to update ticket unexpectedly." });
+      return res.status(404).json({ error: "Ticket not found" });
     }
 
-    // Update quotation status if ticket is closed and linked to a quotation
     if (
       originalTicket.status !== ticket.status &&
       ticket.status === "Closed" &&
@@ -1261,116 +1252,6 @@ exports.updateTicket = async (req, res) => {
   }
 };
 
-// Helper to convert quantity to base unit
-const convertToBaseUnit = (quantity, unit, item) => {
-  const transactionalUnitName = unit || item.baseUnit;
-  const baseUnitName = item.baseUnit;
-  let quantityInBaseUnit = Number(quantity);
-
-  if (transactionalUnitName.toLowerCase() === baseUnitName.toLowerCase()) {
-    return { quantityInBaseUnit, unitNameUsed: baseUnitName };
-  }
-
-  const transactionalUnitInfo = item.units.find(u => u.name.toLowerCase() === transactionalUnitName.toLowerCase());
-  if (transactionalUnitInfo) {
-    const conversionFactor = Number(transactionalUnitInfo.conversionFactor);
-    quantityInBaseUnit = Number(quantity) * conversionFactor;
-    return { quantityInBaseUnit, unitNameUsed: transactionalUnitName };
-  }
-
-  logger.warn("inventory", `Unit "${transactionalUnitName}" not found for item "${item.name}". Assuming quantity is in base unit.`, null);
-  return { quantityInBaseUnit, unitNameUsed: baseUnitName }; // Fallback to base unit if conversion not found
-};
-
-// Helper for general inventory adjustment on ticket update (not Hold transitions)
-const handleInventoryAdjustmentOnTicketUpdate = async (originalTicket, updatedTicketData, user, session) => {
-  // Create a map to track net changes for each item.
-  // Key: 'description-hsnSacCode', Value: { oldBaseQty: 0, newBaseQty: 0 }
-  const itemBaseQtyChanges = new Map();
-
-  // Helper function to get base quantity, with caching to reduce DB calls
-  const getItemDetailsAndBaseQuantity = async (good, itemCache) => {
-    const itemKey = `${good.description}-${good.hsnSacCode || ""}`;
-    let itemDetails = itemCache.get(itemKey);
-    if (!itemDetails) {
-      itemDetails = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).lean();
-      if (itemDetails) itemCache.set(itemKey, itemDetails);
-    }
-
-    if (!itemDetails) {
-      logger.warn("inventory", `Item "${good.description}" not found for quantity calculation.`, user);
-      return { quantity: 0, item: null };
-    }
-
-    const { quantityInBaseUnit } = convertToBaseUnit(good.quantity, good.unit, itemDetails);
-    return { quantity: quantityInBaseUnit, item: itemDetails };
-  };
-
-  const itemCache = new Map(); // Cache item details
-
-  // Populate old quantities in base units
-  for (const good of originalTicket.goods || []) {
-    if (!good.description || Number(good.quantity) <= 0) continue;
-    const key = `${good.description}-${good.hsnSacCode || ""}`;
-    const { quantity: oldBaseQty } = await getItemDetailsAndBaseQuantity(good, itemCache);
-    if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
-    itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
-  }
-
-  // Populate new quantities in base units
-  for (const good of updatedTicketData.goods || []) {
-    if (!good.description || Number(good.quantity) <= 0) continue;
-    const key = `${good.description}-${good.hsnSacCode || ""}`;
-    const { quantity: newBaseQty } = await getItemDetailsAndBaseQuantity(good, itemCache);
-    if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
-    itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
-  }
-
-  // Apply net changes to the database
-  for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
-    const netChangeInBaseUnit = newBaseQty - oldBaseQty;
-    if (netChangeInBaseUnit === 0) continue; // No change, skip
-
-    const [description, hsnSacCode] = key.split("-");
-    try {
-      const itemToUpdate = await Item.findOne({ name: description, ...(hsnSacCode && { hsnCode: hsnSacCode }) }).session(session);
-      if (itemToUpdate) {
-        if (itemToUpdate.quantity === undefined || itemToUpdate.quantity === null) {
-          logger.error("inventory", `Item "${description}" has NULL quantity before adjustment! Setting to 0.`, user);
-          itemToUpdate.quantity = 0;
-        }
-
-        itemToUpdate.quantity -= netChangeInBaseUnit; // Deduct if netChange is positive (more used), add if negative (less used/removed)
-
-        const historyEntry = {
-          type: "Inventory Adjustment (Ticket Update)",
-          date: new Date(),
-          quantityChange: -netChangeInBaseUnit, // Negative for deduction, positive for addition
-          details: `Ticket ${originalTicket.ticketNumber} updated. Base quantity changed from ${oldBaseQty.toFixed(2)} to ${newBaseQty.toFixed(2)}. Net stock change: ${(-netChangeInBaseUnit).toFixed(2)}. Action by: ${user.firstname || user.email}.`,
-          ticketReference: originalTicket._id,
-          userReference: user.id,
-        };
-        itemToUpdate.inventoryLog = itemToUpdate.inventoryLog || [];
-        itemToUpdate.inventoryLog.push(historyEntry);
-
-        if (itemToUpdate.quantity <= itemToUpdate.lowStockThreshold) {
-          itemToUpdate.needsRestock = true;
-          itemToUpdate.restockAmount = Math.max(0, itemToUpdate.lowStockThreshold - itemToUpdate.quantity);
-        } else {
-          itemToUpdate.needsRestock = false;
-          itemToUpdate.restockAmount = 0;
-        }
-        await itemToUpdate.save({ session });
-        logger.info("inventory", `Adjusted stock for ${itemToUpdate.name} (Ticket ${originalTicket.ticketNumber} general update). Inventory Change: ${(-netChangeInBaseUnit).toFixed(2)}, New Qty: ${itemToUpdate.quantity.toFixed(2)}`, user);
-      } else if (netChangeInBaseUnit > 0) { // Item was added to ticket but not found in DB
-        logger.warn("inventory", `Item "${description}" (HSN: ${hsnSacCode || "N/A"}) not found for stock deduction (Ticket ${originalTicket.ticketNumber} general update).`, user);
-      }
-    } catch (invError) {
-      logger.error("inventory", `Error adjusting stock for item "${description}" (Ticket ${originalTicket.ticketNumber} general update): ${invError.message}`, user, { error: invError });
-    }
-  }
-};
-
 exports.deleteTicket = async (req, res) => {
   const ticketId = req.params.id;
   const userId = req.user ? req.user.id : null;
@@ -1383,7 +1264,7 @@ exports.deleteTicket = async (req, res) => {
     user,
     page: "Ticket",
     action: "Delete Ticket",
-    api: req.originalUrl,
+   
     req,
     message: `[DELETE_INITIATED] Ticket ID: ${ticketId} by User: ${userEmail}. Transaction started.`,
     details: logDetails,
@@ -1401,7 +1282,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `[NOT_FOUND] Ticket not found for deletion: ${ticketId}.`,
         details: logDetails,
@@ -1416,7 +1297,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `Ticket ${ticketId} being deleted (status: ${ticketToBackup.status}). Rolling back item quantities.`,
         details: logDetails,
@@ -1441,7 +1322,7 @@ exports.deleteTicket = async (req, res) => {
                   user,
                   page: "Ticket",
                   action: "Delete Ticket",
-                  api: req.originalUrl,
+                 
                   req,
                   message: `Unit "${transactionalUnitName}" not found for item "${itemToUpdate.name}" during Ticket Deletion rollback. Assuming base unit.`,
                   details: { item: itemToUpdate.name },
@@ -1476,7 +1357,7 @@ exports.deleteTicket = async (req, res) => {
               user,
               page: "Ticket",
               action: "Delete Ticket",
-              api: req.originalUrl,
+             
               req,
               message: `Rolled back ${quantityToRollbackInBaseUnit.toFixed(2)} ${baseUnitName} for ${itemToUpdate.name} (Ticket ${ticketId} deletion). New Qty: ${itemToUpdate.quantity.toFixed(2)}`,
               details: { item: itemToUpdate.name },
@@ -1488,7 +1369,7 @@ exports.deleteTicket = async (req, res) => {
               user,
               page: "Ticket",
               action: "Delete Ticket",
-              api: req.originalUrl,
+             
               req,
               message: `Item "${good.description}" (HSN: ${good.hsnCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`,
               details: {},
@@ -1500,7 +1381,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Inventory Rollback Error",
-            api: req.originalUrl,
+           
             req,
             message: "Inventory rollback error",
             details: { error: invError.message, stack: invError.stack },
@@ -1525,7 +1406,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Delete Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${ticketToBackup.quotationNumber} status updated to 'hold' due to linked ticket deletion.`,
             details: { quotationId: updatedQuotation._id, ticketId: ticketToBackup._id },
@@ -1536,7 +1417,7 @@ exports.deleteTicket = async (req, res) => {
             user,
             page: "Ticket",
             action: "Delete Ticket",
-            api: req.originalUrl,
+           
             req,
             message: `Quotation ${ticketToBackup.quotationNumber} not found or not updated to 'hold' during linked ticket deletion.`,
             details: { ticketId: ticketToBackup._id },
@@ -1548,7 +1429,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Quotation Rollback Error",
-          api: req.originalUrl,
+         
           req,
           message: "Quotation rollback error",
           details: { error: quotationError.message, stack: quotationError.stack },
@@ -1565,7 +1446,7 @@ exports.deleteTicket = async (req, res) => {
         user,
         page: "Ticket",
         action: "Delete Ticket",
-        api: req.originalUrl,
+       
         req,
         message: `[AUTH_FAILURE] Unauthorized delete attempt for Ticket ID: ${ticketId} by User: ${userEmail}.`,
         details: { ...logDetails, createdBy: ticketToBackup.createdBy.toString() },
@@ -1595,7 +1476,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[BACKUP_SUCCESS] Ticket successfully backed up. Backup ID: ${newBackupEntry._id}.`,
       details: {
@@ -1612,7 +1493,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[ORIGINAL_DELETE_SUCCESS] Original Ticket successfully deleted.`,
       details: { ...logDetails, originalId: ticketToBackup._id },
@@ -1631,7 +1512,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Delete Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `[DOC_FOLDER_DELETE_SUCCESS] Successfully deleted documents folder: ${ticketDocumentsPath}`,
           details: logDetails,
@@ -1642,7 +1523,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Document Folder Deletion Error",
-          api: req.originalUrl,
+         
           req,
           message: "Document folder deletion error",
           details: { error: folderError.message, stack: folderError.stack },
@@ -1668,7 +1549,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "Delete Ticket",
-          api: req.originalUrl,
+         
           req,
           message: `[USER_TICKET_REF_REMOVE_SUCCESS] Removed ticket reference ${ticketToBackup._id} from User ID: ${uid}.`,
           details: { ...logDetails, targetUserId: uid },
@@ -1679,7 +1560,7 @@ exports.deleteTicket = async (req, res) => {
           user,
           page: "Ticket",
           action: "User Ticket Reference Removal Error",
-          api: req.originalUrl,
+         
           req,
           message: `Failed to remove ticket reference from User ID: ${uid}`,
           details: { error: userUpdateError.message, stack: userUpdateError.stack },
@@ -1700,7 +1581,7 @@ exports.deleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Delete Ticket Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to delete ticket ID: ${ticketId}`,
       details: { error: error.message, stack: error.stack },
@@ -1720,7 +1601,7 @@ exports.adminDeleteTicket = async (req, res) => {
     user,
     page: "Ticket",
     action: "Admin Delete Ticket",
-    api: req.originalUrl,
+   
     req,
     message: `[ADMIN_DELETE_TICKET_INVOKED] Admin delete initiated for Ticket ID: ${req.params.id}.`,
     details: { ticketId: req.params.id, model: "Ticket" },
@@ -1731,7 +1612,7 @@ exports.adminDeleteTicket = async (req, res) => {
       user,
       page: "Ticket",
       action: "Admin Delete Ticket",
-      api: req.originalUrl,
+     
       req,
       message: `[AUTH_FAILURE] Non-admin attempt to use adminDeleteTicket for Ticket ID: ${req.params.id}.`,
       details: { ticketId: req.params.id },
@@ -1754,7 +1635,7 @@ exports.checkExistingTicket = async (req, res) => {
       user: req.user,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to check existing ticket",
       details: { error: error.message, stack: error.stack },
@@ -1797,7 +1678,7 @@ exports.transferTicket = async (req, res) => {
         user: initiator,
         page: "Ticket",
         action: "Transfer Ticket Error",
-        api: req.originalUrl,
+       
         req,
         message: `Unauthorized transfer attempt for Ticket ID: ${ticketId} by User: ${initiator.email}.`,
         details: { ...logContext, reason: "Not current assignee or super-admin" },
@@ -1868,7 +1749,7 @@ logger.log({
       user: req.user || initiator || null,
       page: "Ticket",
       action: "Error",
-      api: req.originalUrl,
+     
       req,
       message: "Server error during ticket transfer.",
       details: { error: error.message, stack: error.stack },
@@ -1911,7 +1792,7 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       user: requestingUser,
       page: "Ticket",
       action: "Get Transfer Candidates",
-      api: req.originalUrl,
+     
       req,
       message: `Successfully fetched ${users.length} user candidates for ticket transfer by ${requestingUser.email}.`,
       details: logContext,
@@ -1923,7 +1804,7 @@ exports.getTransferCandidates = asyncHandler(async (req, res) => {
       user: requestingUser,
       page: "Ticket",
       action: "Get Transfer Candidates Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch user candidates for ticket transfer by ${requestingUser.email}.`,
       details: { ...logContext, errorMessage: error.message, stack: error.stack },
@@ -1946,7 +1827,7 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Get All Tickets (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched all tickets (index.js logic)`,
       details: { count: tickets.length },
@@ -1958,7 +1839,7 @@ exports.getAllTickets_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Get All Tickets (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching all tickets (index.js logic)`,
       details: { error: err.message },
@@ -2010,7 +1891,7 @@ exports.createTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Create Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket created (index.js logic)`,
       details: { ticketId: newTicket._id, companyName: newTicket.companyName },
@@ -2022,7 +1903,7 @@ exports.createTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Create Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error creating ticket (index.js logic)`,
       details: { error: err.message, requestBody: req.body },
@@ -2037,7 +1918,26 @@ exports.createTicket_IndexLogic = async (req, res) => {
 exports.updateTicket_IndexLogic = async (req, res) => {
   const user = req.user || null;
   try {
-    const { _id, __v, createdAt, updatedAt, ...updateData } = req.body;
+    const { _id, __v, createdAt, updatedAt, shippingSameAsBilling, ...updateData } = req.body;
+    
+    // Handle shippingSameAsBilling logic
+    if (shippingSameAsBilling === true && updateData.billingAddress) {
+      updateData.shippingAddress = { ...updateData.billingAddress };
+      updateData.shippingSameAsBilling = true;
+    }
+    
+    // Get original ticket to preserve data if needed
+    const originalTicket = await OpenticketModel.findById(req.params.id);
+    if (originalTicket) {
+      // Preserve addresses if not provided
+      if (!updateData.billingAddress && originalTicket.billingAddress) {
+        updateData.billingAddress = originalTicket.billingAddress;
+      }
+      if (!updateData.shippingAddress && originalTicket.shippingAddress) {
+        updateData.shippingAddress = originalTicket.shippingAddress;
+      }
+    }
+    
     const updatedTicket = await OpenticketModel.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -2048,7 +1948,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
         user,
         page: "Ticket",
         action: "Update Ticket (Index Logic)",
-        api: req.originalUrl,
+       
         req,
         message: "Ticket not found for update (index.js logic)",
         details: { ticketId: req.params.id },
@@ -2060,7 +1960,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Update Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Ticket updated (index.js logic)`,
       details: { ticketId: updatedTicket._id },
@@ -2072,7 +1972,7 @@ exports.updateTicket_IndexLogic = async (req, res) => {
       user,
       page: "Ticket",
       action: "Update Ticket (Index Logic)",
-      api: req.originalUrl,
+     
       req,
       message: `Error updating ticket ${req.params.id} (index.js logic)`,
       details: { error: err.message, requestBody: req.body },
@@ -2129,3 +2029,123 @@ exports.serveFile_IndexLogic = (req, res) => {
 //   // Delegate to the dedicated report controller
 //   ReportController.generateTicketsReport(req, res);
 // };
+
+exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const quotationId = req.params.quotationId;
+
+  if (!user || !user.id) {
+    logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Error",
+      req,
+      message: "User Not Found",
+      details: { error: "User not authenticated" },
+      level: "error"
+    });
+    return res.status(401).json({ error: "Unauthorized: User not authenticated." });
+  }
+
+  try {
+    // Get the quotation from the database
+    const quotation = await Quotation.findById(quotationId)
+      .populate('client')
+      .populate('user')
+      .populate('orderIssuedBy');
+      
+    if (!quotation) {
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Error",
+        req,
+        message: `Quotation not found: ${quotationId}`,
+        details: { quotationId },
+        level: "error"
+      });
+      return res.status(404).json({ error: "Quotation not found" });
+    }
+
+    // Use the mapQuotationToTicketPayload utility function to prepare ticket data
+    let finalTicketData = mapQuotationToTicketPayload(quotation, user.id);
+    
+    // Add user info
+    finalTicketData.createdBy = user.id;
+    finalTicketData.currentAssignee = user.id;
+    finalTicketData.assignedTo = user.id;
+    
+    // Ensure ticketNumber and deadline are set (these are required fields in the model)
+    if (!finalTicketData.ticketNumber) {
+      const now = new Date();
+      finalTicketData.ticketNumber = `T${now.getFullYear().toString().substr(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    }
+    
+    if (!finalTicketData.deadline) {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 30); // 30 days from now
+      finalTicketData.deadline = deadline;
+    }
+    
+    // Address handling: If shipping address is not properly defined, use billing address
+    if (!finalTicketData.shippingAddress || 
+        !finalTicketData.shippingAddress.address1 || 
+        (!finalTicketData.shippingAddress.city && !finalTicketData.shippingAddress.state)) {
+      // Set shipping same as billing and use billing address
+      finalTicketData.shippingSameAsBilling = true;
+      finalTicketData.shippingAddress = { ...finalTicketData.billingAddress };
+      
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Create Ticket From Quotation",
+        req,
+        message: `Used billing address as shipping address for ticket creation from quotation: ${quotationId}`,
+        details: { quotationId },
+        level: "info"
+      });
+    }
+    
+    // Always recalculate totals before saving
+    const recalculatedTotals = recalculateTicketTotals(finalTicketData);
+    finalTicketData = {
+      ...finalTicketData,
+      ...recalculatedTotals
+    };
+
+    // Ensure proper status history
+    finalTicketData.statusHistory = [{
+      status: "Quotation Sent",
+      changedAt: new Date(),
+      changedBy: user.id,
+      note: `Ticket created from quotation ${quotation.referenceNumber}.`
+    }];
+    
+    // Create and save the ticket
+    const ticket = new Ticket(finalTicketData);
+    await ticket.save();
+    
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Create Ticket From Quotation",
+      req,
+      message: `Successfully created ticket from quotation: ${quotationId}`,
+      details: { quotationId, ticketId: ticket._id },
+      level: "info"
+    });
+    
+    res.status(201).json(ticket);
+  } catch (error) {
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Error",
+      req,
+      message: `Error creating ticket from quotation: ${quotationId}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
+    res.status(500).json({ error: "Error creating ticket", details: error.message });
+  }
+});

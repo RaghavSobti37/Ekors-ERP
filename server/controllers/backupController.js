@@ -29,7 +29,7 @@ exports.listBackups = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "List Backups",
-        api: req.originalUrl,
+       
         req,
         message: "Access Denied. Only super-admins can view backups.",
         details: {},
@@ -71,7 +71,7 @@ exports.listBackups = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "List Backups",
-      api: req.originalUrl,
+     
       req,
       message: "Listed backups",
       details: { totalBackups, page, limit, query },
@@ -89,7 +89,7 @@ exports.listBackups = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "List Backups Error",
-      api: req.originalUrl,
+     
       req,
       message: "Error listing backups",
       details: { error: error.message, stack: error.stack },
@@ -110,7 +110,7 @@ exports.getBackupDetails = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Get Backup Details",
-        api: req.originalUrl,
+       
         req,
         message: "Access Denied.",
         details: { id },
@@ -124,7 +124,7 @@ exports.getBackupDetails = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Get Backup Details",
-        api: req.originalUrl,
+       
         req,
         message: "Invalid backup ID",
         details: { id },
@@ -139,7 +139,7 @@ exports.getBackupDetails = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Get Backup Details",
-        api: req.originalUrl,
+       
         req,
         message: "Backup entry not found",
         details: { id },
@@ -152,7 +152,7 @@ exports.getBackupDetails = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "Get Backup Details",
-      api: req.originalUrl,
+     
       req,
       message: "Fetched backup details",
       details: { id },
@@ -165,7 +165,7 @@ exports.getBackupDetails = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "Get Backup Details Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching backup details for ID ${req.params.id}`,
       details: { error: error.message, stack: error.stack, id: req.params.id },
@@ -189,7 +189,7 @@ exports.restoreBackup = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Restore Backup",
-        api: req.originalUrl,
+       
         req,
         message: "Access Denied. Only super-admins can restore data.",
         details: { backupId },
@@ -205,7 +205,7 @@ exports.restoreBackup = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Restore Backup",
-        api: req.originalUrl,
+       
         req,
         message: "Invalid backup ID",
         details: { backupId },
@@ -222,7 +222,7 @@ exports.restoreBackup = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Restore Backup",
-        api: req.originalUrl,
+       
         req,
         message: "Backup entry not found",
         details: { backupId },
@@ -239,7 +239,7 @@ exports.restoreBackup = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Restore Backup",
-        api: req.originalUrl,
+       
         req,
         message: `Cannot restore: Model ${backupEntry.originalModel} not found.`,
         details: { backupId, originalModel: backupEntry.originalModel },
@@ -257,7 +257,7 @@ exports.restoreBackup = async (req, res) => {
         user: req.user,
         page: "Backup",
         action: "Restore Backup",
-        api: req.originalUrl,
+       
         req,
         message: `Cannot restore: A document with ID ${backupEntry.originalId} already exists in ${backupEntry.originalModel}.`,
         details: { backupId, originalId: backupEntry.originalId, originalModel: backupEntry.originalModel },
@@ -289,7 +289,7 @@ exports.restoreBackup = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "Restore Backup Success",
-      api: req.originalUrl,
+     
       req,
       message: `Backup ${backupId} for ${backupEntry.originalModel} (ID: ${backupEntry.originalId}) restored and backup entry removed.`,
       details: { backupId, originalModel: backupEntry.originalModel, originalId: backupEntry.originalId, userId },
@@ -305,7 +305,7 @@ exports.restoreBackup = async (req, res) => {
       user: req.user,
       page: "Backup",
       action: "Restore Backup Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error restoring backup ID ${req.params.id}`,
       details: { error: error.message, stack: error.stack, backupId: req.params.id },

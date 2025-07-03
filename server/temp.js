@@ -1,85 +1,78 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { Item, STANDARD_UNITS } = require('./models/itemlist');
+const Ticket = require('./models/opentickets');
 
-// Conversion data: [name, baseUnit, weightPerMeter]
-const conversionData = [
-  ["ALUMINIUM STRIP 25X3", "Mtr", 0.2],
-  ["COPPER BONDED STRIP 25X3", "Mtr", 0.67],
-  ["COPPER BONDED STRIP 25X6", "Mtr", 1.34],
-  ["COPPER STRIP 20X3", "Mtr", 0.54],
-  ["Copper Strip 25x5", "Mtr", 1.12],
-  ["COPPER STRIP 25X6", "Mtr", 1.34],
-  ["COPPER STRIP 50*6", "Mtr", 2.68],
-  ["Copper Strip 50x5", "Mtr", 2.24],
-  ["Cu Strip 25 X 3 MM", "Mtr", 0.67],
-  ["Cu Strip 50 X 6 MM", "Mtr", 2.68],
-  ["GI 50-6 Strip", "Mtr", 2.4],
-  ["GI Strip 20x3 Mm", "Mtr", 0.48],
-  ["GI Strip 25 X 3 mm", "Mtr", 0.6],
-  ["GI Strip 25 X 5 mm", "Mtr", 1],
-  ["GI Strip 25 X 6 mm", "Mtr", 1.2],
-  ["GI STRIP 32X6", "Mtr", 1.54],
-  ["GI STRIP 50X3 E", "Mtr", 1.2],
-  ["Gi Strip 75x10", "Mtr", 6],
-  ["HDG Strip", "Mtr", null],
-  ["HDGI Strip 25x3mm", "Mtr", 0.6],
-];
+function arrayToAddressObj(address) {
+  if (Array.isArray(address)) {
+    // [address1, address2, state, city, pincode]
+    return {
+      address1: address[0] || "",
+      address2: address[1] || "",
+      state: address[2] || "",
+      city: address[3] || "",
+      pincode: address[4] || "",
+    };
+  }
+  if (typeof address === "object" && address !== null) {
+    // Already an object, just normalize keys
+    return {
+      address1: address.address1 || "",
+      address2: address.address2 || "",
+      state: address.state || "",
+      city: address.city || "",
+      pincode: address.pincode || "",
+    };
+  }
+  return { address1: "", address2: "", state: "", city: "", pincode: "" };
+}
 
-async function run() {
+async function migrateTicketAddresses() {
   await mongoose.connect(process.env.MONGO_URI, {});
 
-  for (const [name, baseUnit, weightPerMeter] of conversionData) {
-    if (!baseUnit || !STANDARD_UNITS.includes(baseUnit.toLowerCase())) {
-      console.warn(`Skipping ${name}: base unit ${baseUnit} not in STANDARD_UNITS`);
-      continue;
+  const tickets = await Ticket.find({});
+  let updatedCount = 0;
+
+  for (const ticket of tickets) {
+    let changed = false;
+
+    // Billing Address
+    if (Array.isArray(ticket.billingAddress)) {
+      ticket.billingAddress = arrayToAddressObj(ticket.billingAddress);
+      changed = true;
+    } else if (typeof ticket.billingAddress === "object" && ticket.billingAddress !== null) {
+      // Normalize keys
+      const normalized = arrayToAddressObj(ticket.billingAddress);
+      if (JSON.stringify(ticket.billingAddress) !== JSON.stringify(normalized)) {
+        ticket.billingAddress = normalized;
+        changed = true;
+      }
     }
 
-    // Find item by name (case-insensitive)
-    const item = await Item.findOne({ name: new RegExp(`^${name}$`, 'i') });
-    if (!item) {
-      console.warn(`Item not found: ${name}`);
-      continue;
+    // Shipping Address
+    if (Array.isArray(ticket.shippingAddress)) {
+      ticket.shippingAddress = arrayToAddressObj(ticket.shippingAddress);
+      changed = true;
+    } else if (typeof ticket.shippingAddress === "object" && ticket.shippingAddress !== null) {
+      // Normalize keys
+      const normalized = arrayToAddressObj(ticket.shippingAddress);
+      if (JSON.stringify(ticket.shippingAddress) !== JSON.stringify(normalized)) {
+        ticket.shippingAddress = normalized;
+        changed = true;
+      }
     }
 
-    // Prepare units array: base unit + kg unit if weightPerMeter is present
-    const units = [
-      {
-        name: baseUnit.toLowerCase(),
-        isBaseUnit: true,
-        conversionFactor: 1,
-      },
-    ];
-
-    if (weightPerMeter && !isNaN(weightPerMeter)) {
-      units.push({
-        name: 'kgs',
-        isBaseUnit: false,
-        conversionFactor: parseFloat(weightPerMeter),
-      });
-    }
-
-    item.units = units;
-    item.baseUnit = baseUnit.toLowerCase();
-
-    // Fix: Ensure gstRate is valid (<= 100)
-    if (!item.gstRate || item.gstRate > 100) {
-      item.gstRate = 0; // or set to a valid default like 18
-    }
-
-    try {
-      await item.save();
-      console.log(`Updated units for: ${name}`);
-    } catch (err) {
-      console.warn(`Failed to update ${name}: ${err.message}`);
+    if (changed) {
+      await ticket.save();
+      updatedCount++;
+      console.log(`Updated ticket ${ticket._id}`);
     }
   }
 
   await mongoose.disconnect();
-  console.log('Done!');
+  console.log(`Migration complete. Updated ${updatedCount} tickets.`);
 }
 
-run().catch(err => {
+migrateTicketAddresses().catch(err => {
   console.error(err);
   process.exit(1);
 });

@@ -5,6 +5,7 @@ const Ticket = require("../models/opentickets");
 const logger = require("../logger"); // Use unified logger
 const mongoose = require("mongoose");
 const ItemModel = require("../models/itemlist").Item; // Use correct model
+const { getInitialQuotationPayload, recalculateQuotationTotals } = require("../utils/payloadServer");
 
 // --- Helper Functions ---
 const generateNextQuotationNumber = async (userId) => {
@@ -41,9 +42,16 @@ exports.handleQuotationUpsert = async (req, res) => {
     const {
       client: clientInput,
       billingAddress,
+      shippingAddress,
+      shippingSameAsBilling,
       ...quotationDetails
     } = req.body;
-    const quotationPayload = { ...quotationDetails, billingAddress };
+    const quotationPayload = { 
+      ...quotationDetails, 
+      billingAddress,
+      shippingAddress,
+      shippingSameAsBilling
+    };
 
     const { id: quotationId } = req.params;
     const user = req.user;
@@ -60,7 +68,7 @@ exports.handleQuotationUpsert = async (req, res) => {
         user,
         page: "Quotation",
         action: `Quotation ${operation}`,
-        api: req.originalUrl,
+       
         req,
         message: "Missing reference number during quotation upsert",
         details: logDetails,
@@ -86,7 +94,7 @@ exports.handleQuotationUpsert = async (req, res) => {
         user,
         page: "Quotation",
         action: `Quotation ${operation}`,
-        api: req.originalUrl,
+       
         req,
         message: "Reference number already exists for user",
         details: logDetails,
@@ -193,6 +201,18 @@ exports.handleQuotationUpsert = async (req, res) => {
       typeof billingAddress === "object" && billingAddress !== null
         ? billingAddress
         : { address1: "", address2: "", city: "", state: "", pincode: "" };
+    
+    // Process shipping address
+    const shippingSameAsBillingValue = 
+      typeof quotationPayload.shippingSameAsBilling === 'boolean' 
+        ? quotationPayload.shippingSameAsBilling 
+        : false;
+    
+    const processedShippingAddress = shippingSameAsBillingValue
+      ? { ...processedBillingAddress }
+      : (typeof shippingAddress === "object" && shippingAddress !== null
+          ? shippingAddress
+          : { address1: "", address2: "", city: "", state: "", pincode: "" });
 
     const goodsWithPrices = [];
     for (const g of quotationPayload.goods || []) {
@@ -222,15 +242,19 @@ exports.handleQuotationUpsert = async (req, res) => {
       });
     }
 
+    // Always recalculate totals before saving using the processed goods array
+    const totals = recalculateQuotationTotals(goodsWithPrices);
     const data = {
       ...quotationPayload,
+      ...totals,
       user: user._id,
       date: new Date(quotationPayload.date),
       validityDate: new Date(quotationPayload.validityDate),
       client: processedClient._id,
       billingAddress: processedBillingAddress,
+      shippingAddress: processedShippingAddress,
+      shippingSameAsBilling: shippingSameAsBillingValue,
       goods: goodsWithPrices,
-      roundOffTotal: Number(quotationPayload.roundOffTotal) || 0, // Ensure roundOffTotal is saved
     };
 
     let quotation;
@@ -285,7 +309,7 @@ exports.handleQuotationUpsert = async (req, res) => {
         user,
         page: "Quotation",
         action: `Quotation ${operation}`,
-        api: req.originalUrl,
+       
         req,
         message: `Quotation ${operation} failed unexpectedly.`,
         details: logDetails,
@@ -311,7 +335,7 @@ exports.handleQuotationUpsert = async (req, res) => {
           user,
           page: "Quotation",
           action: "Quotation-Ticket Sync",
-          api: req.originalUrl,
+         
           req,
           message: `Found ${linkedTickets.length} tickets linked to quotation ${quotation.referenceNumber} for syncing.`,
           details: { quotationId: quotation._id },
@@ -355,7 +379,7 @@ exports.handleQuotationUpsert = async (req, res) => {
               user,
               page: "Quotation",
               action: "Quotation-Ticket Sync",
-              api: req.originalUrl,
+             
               req,
               message: `Synced ticket ${ticket.ticketNumber} with updated quotation ${quotation.referenceNumber}.`,
               details: { ticketId: ticket._id },
@@ -366,7 +390,7 @@ exports.handleQuotationUpsert = async (req, res) => {
               user,
               page: "Quotation",
               action: "Quotation-Ticket Sync",
-              api: req.originalUrl,
+             
               req,
               message: `Skipped syncing ticket ${ticket.ticketNumber} (status: ${ticket.status}) with updated quotation ${quotation.referenceNumber}.`,
               details: { ticketId: ticket._id },
@@ -385,7 +409,7 @@ exports.handleQuotationUpsert = async (req, res) => {
       user,
       page: "Quotation",
       action: `Quotation ${operation}`,
-      api: req.originalUrl,
+     
       req,
       message: logMessage,
       details: { ...logDetails, quotationId: quotation._id, clientId: processedClient._id },
@@ -406,7 +430,7 @@ exports.handleQuotationUpsert = async (req, res) => {
       user: req.user,
       page: "Quotation",
       action: `Quotation ${operation || "unknown"} Error`,
-      api: req.originalUrl,
+     
       req,
       message: `Error during quotation ${operation || "unknown"} process`,
       details: { ...logDetails, error: error.message, stack: error.stack },
@@ -488,7 +512,7 @@ exports.getAllQuotations = async (req, res) => {
       user,
       page: "Quotation",
       action: "Get All Quotations",
-      api: req.originalUrl,
+     
       req,
       message: "Constructed final query for quotations",
       details: { finalQuery: JSON.stringify(finalQuery) },
@@ -515,7 +539,7 @@ exports.getAllQuotations = async (req, res) => {
       user,
       page: "Quotation",
       action: "Get All Quotations Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to fetch all accessible quotations",
       details: { error: error.message, stack: error.stack, queryParams: req.query },
@@ -546,7 +570,7 @@ exports.getQuotationById = async (req, res) => {
         user,
         page: "Quotation",
         action: "Get Quotation By ID",
-        api: req.originalUrl,
+       
         req,
         message: `Quotation not found or access denied: ${req.params.id}`,
         details: { queryDetails: findQuery },
@@ -591,7 +615,7 @@ exports.getQuotationById = async (req, res) => {
       user: req.user,
       page: "Quotation",
       action: "Get Quotation By ID Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch quotation by ID: ${req.params.id}`,
       details: { error: error.message, stack: error.stack },
@@ -616,7 +640,7 @@ exports.deleteQuotation = async (req, res) => {
     user,
     page: "Quotation",
     action: "Delete Quotation Initiated",
-    api: req.originalUrl,
+   
     req,
     message: `[DELETE_INITIATED] Quotation ID: ${quotationId} by User: ${user.email}. Transaction started.`,
     details: logDetails,
@@ -630,7 +654,7 @@ exports.deleteQuotation = async (req, res) => {
         user,
         page: "Quotation",
         action: "Delete Quotation Auth Failure",
-        api: req.originalUrl,
+       
         req,
         message: `[AUTH_FAILURE] Unauthorized delete attempt for Quotation ID: ${quotationId} by User: ${user.email}.`,
         details: logDetails,
@@ -650,7 +674,7 @@ exports.deleteQuotation = async (req, res) => {
         user,
         page: "Quotation",
         action: "Delete Quotation Not Found",
-        api: req.originalUrl,
+       
         req,
         message: `[NOT_FOUND] Quotation not found for deletion: ${quotationId}.`,
         details: logDetails,
@@ -681,7 +705,7 @@ exports.deleteQuotation = async (req, res) => {
         user,
         page: "Quotation",
         action: "Delete Quotation Failed Unexpectedly",
-        api: req.originalUrl,
+       
         req,
         message: `[DELETE_FAILED_UNEXPECTEDLY] Quotation ${quotationId} found but failed to delete. Transaction aborted.`,
         details: logDetails,
@@ -703,7 +727,7 @@ exports.deleteQuotation = async (req, res) => {
         user,
         page: "Quotation",
         action: "Delete Quotation Client Ref Removed",
-        api: req.originalUrl,
+       
         req,
         message: `[CLIENT_REF_REMOVED] Quotation reference ${quotationToBackup._id} removed from Client ID: ${quotationToBackup.client}.`,
         details: { ...logDetails, targetClientId: quotationToBackup.client.toString() },
@@ -748,7 +772,7 @@ exports.deleteQuotation = async (req, res) => {
           user,
           page: "Quotation",
           action: "Delete Quotation Cascade",
-          api: req.originalUrl,
+         
           req,
           message: `Updated linked ticket ${ticket.ticketNumber} due to quotation deletion.`,
           details: { ticketId: ticket._id },
@@ -762,7 +786,7 @@ exports.deleteQuotation = async (req, res) => {
       user,
       page: "Quotation",
       action: "Delete Quotation Success",
-      api: req.originalUrl,
+     
       req,
       message: `[DELETE_SUCCESS] Quotation ID: ${quotationId} deleted and backed up successfully by User: ${user.email}. Backup ID: ${newBackupEntry._id}`,
       details: { ...logDetails, backupId: newBackupEntry._id },
@@ -782,7 +806,7 @@ exports.deleteQuotation = async (req, res) => {
       user,
       page: "Quotation",
       action: "Delete Quotation Error",
-      api: req.originalUrl,
+     
       req,
       message: `[DELETE_ERROR] Error during Quotation deletion process for ID: ${quotationId} by ${user.email}.`,
       details: { ...logDetails, error: error.message, stack: error.stack },
@@ -808,7 +832,7 @@ exports.getNextQuotationNumber = async (req, res) => {
       user: req.user,
       page: "Quotation",
       action: "Get Next Quotation Number Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to generate next quotation number",
       details: { error: error.message, stack: error.stack },
@@ -837,7 +861,7 @@ exports.checkReferenceNumber = async (req, res) => {
       user: req.user,
       page: "Quotation",
       action: "Check Reference Number Error",
-      api: req.originalUrl,
+     
       req,
       message: "Failed to check reference number availability",
       details: { error: error.message, stack: error.stack, queryParams: req.query },
@@ -866,7 +890,7 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
         user,
         page: "Quotation",
         action: "Get Quotation By Reference",
-        api: req.originalUrl,
+       
         req,
         message: `Quotation not found by reference: ${refNumber} for user ${user._id}`,
         details: { userId: user._id, role: user.role, queryUsed: JSON.stringify(query) },
@@ -880,7 +904,7 @@ exports.getQuotationByReferenceNumber = async (req, res) => {
       user: req.user,
       page: "Quotation",
       action: "Get Quotation By Reference Error",
-      api: req.originalUrl,
+     
       req,
       message: `Error fetching quotation by reference: ${req.params.refNumber}`,
       details: { error: error.message, stack: error.stack },

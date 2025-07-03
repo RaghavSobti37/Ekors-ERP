@@ -31,7 +31,7 @@ exports.createChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Create Challan",
-      api: req.originalUrl,
+     
       req,
       message: `Challan created by user: ${user._id}`,
       details: {
@@ -47,7 +47,7 @@ exports.createChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Create Challan Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to create challan by user: ${user._id}`,
       details: { error: err.message, stack: err.stack },
@@ -84,7 +84,7 @@ exports.getAllChallans = async (req, res) => {
       user,
       page: "Challan",
       action: "Get All Challans",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched challans for user: ${user._id}, role: ${user.role}`,
       details: { totalItems, page, limit },
@@ -102,7 +102,7 @@ exports.getAllChallans = async (req, res) => {
       user,
       page: "Challan",
       action: "Get All Challans Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch all challans for user: ${user._id}, role: ${user.role}`,
       details: { error: err.message, stack: err.stack },
@@ -124,7 +124,7 @@ exports.getChallanById = async (req, res) => {
       logger.log({
         page: "Challan",
         action: "Get Challan By ID",
-        api: req.originalUrl,
+       
         req,
         message: `Challan not found: ${req.params.id}`,
         details: { challanId: req.params.id },
@@ -137,7 +137,7 @@ exports.getChallanById = async (req, res) => {
       user: req.user,
       page: "Challan",
       action: "Get Challan By ID",
-      api: req.originalUrl,
+     
       req,
       message: `Fetched challan: ${req.params.id}`,
       details: { challanId: req.params.id },
@@ -150,7 +150,7 @@ exports.getChallanById = async (req, res) => {
       user: req.user,
       page: "Challan",
       action: "Get Challan By ID Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to fetch challan: ${req.params.id}`,
       details: { error: err.message, stack: err.stack },
@@ -169,7 +169,7 @@ exports.getDocument = async (req, res) => {
         user: req.user,
         page: "Challan",
         action: "Get Document",
-        api: req.originalUrl,
+       
         req,
         message: `Document not found for Challan ID: ${req.params.id}`,
         details: { challanId: req.params.id },
@@ -182,7 +182,7 @@ exports.getDocument = async (req, res) => {
       user: req.user,
       page: "Challan",
       action: "Get Document",
-      api: req.originalUrl,
+     
       req,
       message: `Serving document for Challan ID: ${req.params.id}`,
       details: { challanId: req.params.id },
@@ -196,7 +196,7 @@ exports.getDocument = async (req, res) => {
       user: req.user,
       page: "Challan",
       action: "Get Document Error",
-      api: req.originalUrl,
+     
       req,
       message: `Failed to retrieve document for Challan ID: ${req.params.id}`,
       details: { error: err.message, stack: err.stack },
@@ -237,7 +237,7 @@ exports.updateChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Update Challan",
-      api: req.originalUrl,
+     
       req,
       message: `Challan updated by user: ${user._id}`,
       details: {
@@ -253,7 +253,7 @@ exports.updateChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Update Challan Error",
-      api: req.originalUrl,
+     
       req,
       message: `Update failed by user: ${user._id}`,
       details: { error: err.message, stack: err.stack },
@@ -275,7 +275,7 @@ exports.deleteChallan = async (req, res) => {
     user,
     page: "Challan",
     action: "Delete Challan Initiated",
-    api: req.originalUrl,
+   
     req,
     message: `[DELETE_INITIATED] Challan ID: ${challanId}`,
     details: logDetails,
@@ -287,7 +287,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Fetch Attempt",
-      api: req.originalUrl,
+     
       req,
       message: `[FETCH_ATTEMPT] Finding Challan ID: ${challanId} for backup and deletion.`,
       details: logDetails,
@@ -300,7 +300,7 @@ exports.deleteChallan = async (req, res) => {
         user,
         page: "Challan",
         action: "Delete Challan Not Found",
-        api: req.originalUrl,
+       
         req,
         message: `[NOT_FOUND] Challan not found for deletion.`,
         details: logDetails,
@@ -312,7 +312,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Fetch Success",
-      api: req.originalUrl,
+     
       req,
       message: `[FETCH_SUCCESS] Found Challan ID: ${challanId}. Preparing for backup.`,
       details: logDetails,
@@ -335,7 +335,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Pre Backup Save",
-      api: req.originalUrl,
+     
       req,
       message: `[PRE_BACKUP_SAVE] Attempting to save backup for Challan ID: ${challanToBackup._id}.`,
       details: { ...logDetails, originalId: challanToBackup._id },
@@ -346,7 +346,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Backup Success",
-      api: req.originalUrl,
+     
       req,
       message: `[BACKUP_SUCCESS] Challan successfully backed up. Backup ID: ${newBackupEntry._id}.`,
       details: {
@@ -362,7 +362,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Pre Original Delete",
-      api: req.originalUrl,
+     
       req,
       message: `[PRE_ORIGINAL_DELETE] Attempting to delete original Challan ID: ${challanToBackup._id}.`,
       details: { ...logDetails, originalId: challanToBackup._id },
@@ -373,7 +373,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Original Delete Success",
-      api: req.originalUrl,
+     
       req,
       message: `[ORIGINAL_DELETE_SUCCESS] Original Challan successfully deleted.`,
       details: { ...logDetails, originalId: challanToBackup._id },
@@ -390,7 +390,7 @@ exports.deleteChallan = async (req, res) => {
       user,
       page: "Challan",
       action: "Delete Challan Error",
-      api: req.originalUrl,
+     
       req,
       message: `[DELETE_ERROR] Error during Challan deletion process for ID: ${challanId}.`,
       details: { ...logDetails, error: error.message, stack: error.stack },
@@ -405,7 +405,7 @@ exports.deleteChallan = async (req, res) => {
         user,
         page: "Challan",
         action: "Delete Challan Rollback",
-        api: req.originalUrl,
+       
         req,
         message: `[ROLLBACK_DELETE] Backup failed or error before backup for Challan ID: ${challanId}. Original document will not be deleted.`,
         details: logDetails,
@@ -420,7 +420,7 @@ exports.deleteChallan = async (req, res) => {
           user,
           page: "Challan",
           action: "Delete Challan Critical State",
-          api: req.originalUrl,
+         
           req,
           message: `[CRITICAL_STATE] Challan was backed up (ID: ${backupExists._id}) but original might not have been deleted or error occurred after backup. Manual check recommended.`,
           details: { ...logDetails, backupId: backupExists._id },
@@ -431,7 +431,7 @@ exports.deleteChallan = async (req, res) => {
           user,
           page: "Challan",
           action: "Delete Challan Post Backup Error",
-          api: req.originalUrl,
+         
           req,
           message: `[DELETE_POST_BACKUP_ERROR] Challan backup (ID: ${backupExists._id}) was created, but an error occurred before original deletion could be confirmed.`,
           details: { ...logDetails, backupId: backupExists._id },

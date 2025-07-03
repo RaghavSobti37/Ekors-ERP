@@ -4,28 +4,12 @@ import apiClient from "../../utils/apiClient";
 import { Alert, Button, Spinner, Form } from "react-bootstrap";
 import ReusablePageStructure from "../../components/ReusablePageStructure";
 import { useAuth } from "../../context/AuthContext";
-
-const STANDARD_UNITS = [
-  "nos", "pkt", "pcs", "kgs", "mtr", "sets", "kwp", "ltr", "bottle", "each", "bag", "set"
-];
+import { getInitialItemPayload, normalizeItemPayload, STANDARD_UNITS } from "../../utils/payloads";
 
 export default function AddItemPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: "",
-    quantity: "",
-    sellingPrice: "",
-    buyingPrice: "",
-    profitMarginPercentage: "",
-    gstRate: "0",
-    hsnCode: "",
-    baseUnit: "nos",
-    units: [{ name: "nos", isBaseUnit: true, conversionFactor: 1 }],
-    category: "",
-    maxDiscountPercentage: "",
-    image: "",
-  });
+  const [formData, setFormData] = useState(getInitialItemPayload());
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -50,14 +34,7 @@ export default function AddItemPage() {
     try {
       await apiClient("/items", {
         method: "POST",
-        body: {
-          ...formData,
-          quantity: parseFloat(formData.quantity) || 0,
-          sellingPrice: parseFloat(formData.sellingPrice) || 0,
-          buyingPrice: parseFloat(formData.buyingPrice) || 0,
-          gstRate: parseFloat(formData.gstRate) || 0,
-          maxDiscountPercentage: parseFloat(formData.maxDiscountPercentage) || 0,
-        },
+        body: normalizeItemPayload(formData),
       });
       navigate("/items");
     } catch (err) {

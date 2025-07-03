@@ -29,6 +29,14 @@ const documentSubSchema = new mongoose.Schema({ // _id: false for embedded docum
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+const addressSchema = new mongoose.Schema({
+  address1: { type: String, default: '' },
+  address2: { type: String, default: '' },
+  city: { type: String, default: '' },
+  state: { type: String, default: '' },
+  pincode: { type: String, default: '' },
+}, { _id: false });
+
 const ticketSchema = new mongoose.Schema({
   ticketNumber: { type: String, unique: true, required: true },
   companyName: { type: String, required: true }, // Redundant if client is always populated, but useful for quick access
@@ -37,21 +45,8 @@ const ticketSchema = new mongoose.Schema({
   clientPhone: { type: String },
   clientGstNumber: { type: String },
 
-  billingAddress: {
-    // Change to object for consistency
-    address1: { type: String, default: '' },
-    address2: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
-  shippingAddress: {
-    address1: { type: String, default: '' },
-    address2: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    pincode: { type: String, default: '' }
-  },
+  billingAddress: addressSchema,
+  shippingAddress: addressSchema,
   shippingSameAsBilling: { type: Boolean, default: false },
   goods: [goodsSchema],
   totalQuantity: { type: Number, required: true },
@@ -147,5 +142,8 @@ ticketSchema.pre('save', function(next) {
 
 // Create a unique compound index to ensure one ticket per quotation
 ticketSchema.index({ quotationNumber: 1 }, { unique: true });
+
+// Ticket payloads/utilities are now managed in payloads.js, and should be used for all CRUD and mapping logic.
+// Use getInitialTicketPayload and recalculateTicketTotals for ticket schema defaults and calculations if needed.
 
 module.exports = mongoose.model('Ticket', ticketSchema);

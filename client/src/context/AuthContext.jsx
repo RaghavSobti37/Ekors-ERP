@@ -3,7 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
-  useCallback,
+  useCallback
 } from "react";
 import apiClient from "../utils/apiClient"; // Adjust path if apiClient.js is elsewhere
 import LoadingSpinner from "../components/LoadingSpinner"; // Import the LoadingSpinner
@@ -33,18 +33,10 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
   }, [fetchCurrentUser]);
 
-  const logEventToServer = useCallback(async (logData) => {
-    const payload = { level: "info", ...logData };
-    try {
-      // apiClient handles token and base URL
-      await apiClient("/audit/log", {
-        method: "POST",
-        body: payload,
-      });
-    } catch (error) {
-      // Consider using a more robust client-side logger if this fails often
-      // For now, failing silently or logging to a dedicated client logger is okay
-    }
+  // Removed audit log functionality
+  // The audit log functionality has been removed
+  const logEventToServer = useCallback(() => {
+    // No-op function as replacement
   }, []);
 
   const login = useCallback(
@@ -58,13 +50,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem("erp-user", authResponseData.token);
           setUser(authResponseData.user);
 
+          // Removed audit logging
           const { firstname, lastname, id, email } = authResponseData.user;
-          logEventToServer({
-            type: "userActivity",
-            message: "User logged in",
-            user: { firstname, lastname, id, email },
-            details: { event: "USER_LOGIN", userId: id, userEmail: email },
-          });
           return authResponseData.user; // Return user for immediate use if needed
         } else {
           throw new Error("Login failed: Invalid server response structure.");
@@ -122,7 +109,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isLoading,
-        logEventToServer, // Expose if needed by other parts of the app
+        // logEventToServer has been removed
         fetchCurrentUser,
       }}
     >
