@@ -46,47 +46,6 @@ const fetchTicketDetails = useCallback(async () => {
       params: { populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy" },
     });
 
-<<<<<<< HEAD
-      const shippingAddressObj = Array.isArray(data.shippingAddress) && data.shippingAddress.length === 5
-        ? { address1: data.shippingAddress[0] || "", address2: data.shippingAddress[1] || "", state: data.shippingAddress[2] || "", city: data.shippingAddress[3] || "", pincode: data.shippingAddress[4] || "" }
-        : (typeof data.shippingAddress === 'object' && data.shippingAddress !== null)
-          ? data.shippingAddress
-          : initialTicketData.shippingAddress;
-
-      setTicketData({
-        ...initialTicketData, // Start with defaults to ensure all fields are present
-        ...data,
-        billingAddress: billingAddressObj,
-        shippingAddress: shippingAddressObj,
-        clientPhone: data.clientPhone || data.client?.phone || "", // Prioritize direct field, fallback to populated client
-        clientGstNumber: data.clientGstNumber || data.client?.gstNumber || "", // Prioritize direct field
-        deadline: data.deadline ? formatDateForInput(data.deadline) : null,
-        validityDate: data.validityDate ? formatDateForInput(data.validityDate) : initialTicketData.validityDate,
-        goods: (data.goods || []).map(g => ({
-            ...g,
-            hsnCode: g.hsnCode || "",
-            originalItem: g.originalItem?._id || g.originalItem || undefined,
-            // ...other fields...
-        })),
-      });
-      setOriginalStatus(data.status);
-       setRoundOffAmount(data.roundOff || 0);
-      setRoundedGrandTotal(data.finalRoundedAmount !== undefined && data.finalRoundedAmount !== null ? data.finalRoundedAmount : data.grandTotal + (data.roundOff || 0) );
-    } catch (err) {
-      const errorMessage = handleApiError(err, "Failed to fetch ticket details.", authUser, "editTicketActivity");
-      setError(errorMessage);
-      if (err.status === 401 || err.response?.status === 401) {
-        toast.error("Authentication failed. Please log in again.");
-        navigate('/login', { state: { from: location.pathname } });
-      } else {
-        // For other errors (e.g., ticket not found), navigate back to the list
-        navigate("/tickets");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [ticketIdFromParams, navigate, authUser, location.pathname]);
-=======
     // Enhanced address handling - ensure addresses are always objects with expected properties
     let billingAddressObj = initialTicketData.billingAddress;
     if (data.billingAddress) {
@@ -167,7 +126,6 @@ const fetchTicketDetails = useCallback(async () => {
     setIsLoading(false);
   }
 }, [ticketIdFromParams, navigate, authUser]);
->>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
 
   useEffect(() => {
     // Do not run this effect until the initial authentication check is complete.

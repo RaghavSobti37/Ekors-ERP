@@ -5,11 +5,7 @@ const Ticket = require("../models/opentickets");
 const auth = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
-<<<<<<< HEAD
-const fs = require("fs-extra"); // Use fs-extra for ensureDirSync
-=======
 const fs = require("fs-extra");
->>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
 const ticketController = require("../controllers/ticketController");
 const logger = require("../logger"); // Ensure logger is available
 const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloadServer"); // Adjust the path as necessary
@@ -70,10 +66,6 @@ router.delete(
 // CRITICAL: This route MUST come BEFORE any general '/:id' route
 router.get("/transfer-candidates", auth, ticketController.getTransferCandidates);
 
-<<<<<<< HEAD
-// Get single ticket by ID
-router.get("/:id", auth, ticketController.getTicketById);
-=======
 router.get("/:id", auth, async (req, res) => {
   try {
     // Ensure this is not matching '/transfer-candidates'
@@ -180,7 +172,6 @@ router.get("/:id", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch ticket" });
   }
 });
->>>>>>> 871eea39ee2777f57e4fdae8e5265e13500dde3a
 
 // Update ticket by ID
 router.put("/:id", auth, ticketController.updateTicket);
@@ -206,9 +197,6 @@ router.post(
       return res.status(500).json({ error: "Error uploading document", details: err.message });
     } next();
   },
-<<<<<<< HEAD
-  ticketController.uploadTicketDocument
-=======
 
   async (req, res) => {
     try {
@@ -325,16 +313,12 @@ router.post(
         .json({ error: "Error uploading document", details: error.message });
     }
   }
->>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
 );
 
 // Document Delete Route
 router.delete(
   "/:id/documents",
   auth,
-<<<<<<< HEAD
-  ticketController.deleteTicketDocument
-=======
   // ... (your existing document delete logic) ...
   async (req, res) => {
     const { documentType, documentPath } = req.body;
@@ -457,7 +441,6 @@ router.delete(
       });
     }
   }
->>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
 );
 
 // Use the new controller for the main ticket listing

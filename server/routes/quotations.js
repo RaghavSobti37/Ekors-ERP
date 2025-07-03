@@ -7,9 +7,9 @@ const mongoose = require("mongoose"); // Required for ObjectId validation if use
 
 // Main CRUD and Listing
 router.get("/", auth, quotationController.getAllQuotations); // Handles pagination, sort, filter
-router.post("/", auth, quotationController.createQuotation); // Create
+// router.post("/", auth, quotationController.createQuotation); // Create
 router.get("/:id", auth, quotationController.getQuotationById);
-router.put("/:id", auth, quotationController.updateQuotation); // Update
+// router.put("/:id", auth, quotationController.updateQuotation); // Update
 router.delete("/:id", auth, quotationController.deleteQuotation);
 
 // Utility Routes

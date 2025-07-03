@@ -292,62 +292,6 @@ const QuotationFormPage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-<<<<<<< HEAD
-  const getInitialQuotationData = useCallback((userId) => ({
-    date: formatDateForInput(new Date()),
-    referenceNumber: "",
-    validityDate: formatDateForInput(
-      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
-    ),
-    orderIssuedBy: userId || "",
-    billingAddress: {
-      address1: "",
-      address2: "",
-      city: "",
-      state: "",
-      pincode: "",
-    },
-    goods: [],
-    totalQuantity: 0,
-    totalAmount: 0,
-    gstAmount: 0,
-    grandTotal: 0,
-    roundOffTotal: 0,
-    status: "open",
-    client: {
-      _id: null,
-      companyName: "",
-      clientName: "",
-      gstNumber: "",
-      email: "",
-      phone: "",
-    },
-  }), []);
-
-  const recalculateTotals = useCallback((goodsList) => {
-    const totalQuantity = goodsList.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0
-    );
-    const totalAmount = goodsList.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    );
-    const gstAmount = goodsList.reduce(
-      (sum, item) =>
-        sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100),
-      0
-    );
-    const grandTotal = totalAmount + gstAmount;
-    const roundOffTotal = Math.round(grandTotal);
-    return { totalQuantity, totalAmount, gstAmount, grandTotal, roundOffTotal };
-  }, []);
-
-  const [quotationData, setQuotationData] = useState(
-
-    getInitialQuotationData(user?.id) // Always start with initial, then fetch/populate
-  );
-=======
   // Use the shared payload for initial state
   const [quotationData, setQuotationData] = useState(() => {
     const initialData = location.state?.quotationDataForForm || getInitialQuotationPayload(user?.id);
@@ -365,7 +309,6 @@ const QuotationFormPage = () => {
     
     return initialData;
   });
->>>>>>> 72ec15cebae139fc189f286edeab8d5ddbd098d2
   const [isEditing, setIsEditing] = useState(
      !!quotationIdFromParams || location.state?.isEditing // Determine editing mode from URL or state
 
