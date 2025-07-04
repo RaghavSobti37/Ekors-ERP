@@ -46,7 +46,7 @@ export default function AddItemPage() {
 
   return (
     <ReusablePageStructure title="Add New Item">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ paddingTop: "40px" }}>
         {error && <Alert variant="danger">{error}</Alert>}
         <div className="row">
           <div className="col-md-6">
