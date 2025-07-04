@@ -193,7 +193,7 @@ function NavbarComponent() {
               </div>
             )}
 
-            {user && user.role !== "user" && (
+            {user && user.role === "super-admin" && (
               <div
                 className="dropdown-wrapper"
                 onMouseEnter={handleMouseEnterManagementDropdown}
