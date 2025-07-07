@@ -31,6 +31,141 @@ function normalizeUnit(unit) {
 // --- Main Controller Functions ---
 
 // Create or Update Quotation
+exports.handleQuotationPatch = async (req, res) => {
+  const { id: quotationId } = req.params;
+  const { status} = req.body; // Expecting status and an optional note for the history
+  const user = req.user;
+  const operation = "patch_status";
+  const logDetails = {
+    userId: user._id,
+    operation,
+    quotationId,
+    newStatus: status,
+  };
+
+  if (!status) {
+    return res.status(400).json({ message: "New status is required." });
+  }
+
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    // Define which statuses can be set manually and which cannot be changed from
+    const allowedManualStatuses = ["open", "hold", "closed"];
+    const unchangeableStatuses = ["running", "converted"];
+
+    // if (!allowedManualStatuses.includes(status)) {
+    //   await session.abortTransaction();
+    //   return res.status(400).json({
+    //     message: `Status can only be manually changed to one of: ${allowedManualStatuses.join(
+    //       ", "
+    //     )}.`,
+    //   });
+    // }
+
+    // Find the quotation, ensuring user has access unless they are a super-admin
+    let findQuery = { _id: quotationId };
+    if (user.role !== "super-admin") {
+      findQuery.user = user._id;
+    }
+
+    const existingQuotation = await Quotation.findOne(findQuery).session(
+      session
+    );
+
+    if (!existingQuotation) {
+      await session.abortTransaction();
+      logger.log({
+        user,
+        page: "Quotation",
+        action: "Patch Quotation Status",
+        req,
+        message: `Quotation not found or access denied: ${quotationId}`,
+        details: logDetails,
+        level: "warn",
+      });
+      return res
+        .status(404)
+        .json({ message: "Quotation not found or access denied." });
+    }
+
+    // if (existingQuotation.status === status) {
+    //   await session.abortTransaction();
+    //   return res.status(200).json(existingQuotation);
+    // }
+
+    // if (unchangeableStatuses.includes(existingQuotation.status)) {
+    //   await session.abortTransaction();
+    //   return res.status(400).json({
+    //     message: `Cannot manually change status from '${existingQuotation.status}'.`,
+    //   });
+    // }
+
+    const updatePayload = {
+      status,
+      $push: {
+        statusHistory: {
+          status: status,
+          changedAt: new Date(),
+          changedBy: user._id,
+          note: `Status changed to ${status} by ${user.firstname}`,
+        },
+      },
+    };
+
+    const updatedQuotation = await Quotation.findByIdAndUpdate(
+      quotationId,
+      updatePayload,
+      { new: true, session }
+    );
+
+    if (!updatedQuotation) {
+      await session.abortTransaction();
+      throw new Error("Failed to update quotation status.");
+    }
+
+    await session.commitTransaction();
+
+    logger.log({
+      user,
+      page: "Quotation",
+      action: "Patch Quotation Status",
+      req,
+      message: `Quotation ${existingQuotation.referenceNumber} status changed to ${status}`,
+      details: { ...logDetails, quotationId: updatedQuotation._id },
+      level: "info",
+    });
+
+    const populatedQuotation = await Quotation.findById(updatedQuotation._id)
+      .populate("client")
+      .populate("user", "name email firstname lastname")
+      .populate("orderIssuedBy", "firstname lastname");
+
+    res.status(200).json(populatedQuotation);
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    logger.log({
+      user: req.user,
+      page: "Quotation",
+      action: `Quotation ${operation} Error`,
+      req,
+      message: `Error during quotation status patch for ID: ${quotationId}`,
+      details: { ...logDetails, error: error.message, stack: error.stack },
+      level: "error",
+    });
+    res
+      .status(500)
+      .json({ message: error.message || "An unexpected error occurred." });
+  } finally {
+    if (session && session.endSession) {
+      session.endSession();
+    }
+  }
+};
 exports.handleQuotationUpsert = async (req, res) => {
   let operation;
   let logDetails = {};

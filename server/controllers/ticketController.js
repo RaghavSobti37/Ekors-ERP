@@ -1955,4 +1955,129 @@ exports.serveFile_IndexLogic = (req, res) => {
 // exports.generateTicketsReport = async (req, res) => {
 //   // Delegate to the dedicated report controller
 //   ReportController.generateTicketsReport(req, res);
+<<<<<<< Updated upstream
 // };
+=======
+// };
+
+exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
+  
+  const user = req.user;
+  const quotationId = req.params.quotationId;
+
+  if (!user || !user.id) {
+    logger.log({
+      user: req.user || user || null,
+      page: "Ticket",
+      action: "Error",
+      req,
+      message: "User Not Found",
+      details: { error: "User not authenticated" },
+      level: "error"
+    });
+    return res.status(401).json({ error: "Unauthorized: User not authenticated." });
+  }
+
+  try {
+    // Get the quotation from the database
+    const quotation = await Quotation.findById(quotationId)
+      .populate('client')
+      .populate('user')
+      .populate('orderIssuedBy');
+      
+    if (!quotation) {
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Error",
+        req,
+        message: `Quotation not found: ${quotationId}`,
+        details: { quotationId },
+        level: "error"
+      });
+      return res.status(404).json({ error: "Quotation not found" });
+    }
+
+    // Use the mapQuotationToTicketPayload utility function to prepare ticket data
+    let finalTicketData = mapQuotationToTicketPayload(quotation, user.id);
+    
+    // Add user info
+    finalTicketData.createdBy = user.id;
+    finalTicketData.currentAssignee = user.id;
+    finalTicketData.assignedTo = user.id;
+    
+    // Ensure ticketNumber and deadline are set (these are required fields in the model)
+    if (!finalTicketData.ticketNumber) {
+      const now = new Date();
+      finalTicketData.ticketNumber = `T${now.getFullYear().toString().substr(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    }
+    
+    if (!finalTicketData.deadline) {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 30); // 30 days from now
+      finalTicketData.deadline = deadline;
+    }
+    
+    // Address handling: If shipping address is not properly defined, use billing address
+    if (!finalTicketData.shippingAddress || 
+        !finalTicketData.shippingAddress.address1 || 
+        (!finalTicketData.shippingAddress.city && !finalTicketData.shippingAddress.state)) {
+      // Set shipping same as billing and use billing address
+      finalTicketData.shippingSameAsBilling = true;
+      finalTicketData.shippingAddress = { ...finalTicketData.billingAddress };
+      
+      logger.log({
+        user,
+        page: "Ticket",
+        action: "Create Ticket From Quotation",
+        req,
+        message: `Used billing address as shipping address for ticket creation from quotation: ${quotationId}`,
+        details: { quotationId },
+        level: "info"
+      });
+    }
+    
+    // Always recalculate totals before saving
+    const recalculatedTotals = recalculateTicketTotals(finalTicketData);
+    finalTicketData = {
+      ...finalTicketData,
+      ...recalculatedTotals
+    };
+
+    // Ensure proper status history
+    finalTicketData.statusHistory = [{
+      status: "Quotation Sent",
+      changedAt: new Date(),
+      changedBy: user.id,
+      note: `Ticket created from quotation ${quotation.referenceNumber}.`
+    }];
+    
+    // Create and save the ticket
+    const ticket = new Ticket(finalTicketData);
+    await ticket.save();
+    
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Create Ticket From Quotation",
+      req,
+      message: `Successfully created ticket from quotation: ${quotationId}`,
+      details: { quotationId, ticketId: ticket._id },
+      level: "info"
+    });
+    
+    res.status(201).json(ticket);
+  } catch (error) {
+    logger.log({
+      user,
+      page: "Ticket",
+      action: "Error",
+      req,
+      message: `Error creating ticket from quotation: ${quotationId}`,
+      details: { error: error.message, stack: error.stack },
+      level: "error"
+    });
+    res.status(500).json({ error: "Error creating ticket", details: error.message });
+  }
+});
+>>>>>>> Stashed changes
