@@ -22,14 +22,11 @@ import LoadingSpinner from "../components/LoadingSpinner.jsx"; // Import Loading
 import { generatePIDocx } from "../utils/generatePIDocx";
 import { Button } from "react-bootstrap";
 import { useCompanyInfo } from "../context/CompanyInfoContext.jsx"; // Import useCompanyInfo
-<<<<<<< Updated upstream
-=======
 import {
   getInitialTicketPayload,
   recalculateTicketTotals,
   mapQuotationToTicketPayload,
 } from "../utils/payloads";
->>>>>>> Stashed changes
 
 // UserSearchComponent remains as it might be used by other pages (e.g., TransferTicketPage)
 export const UserSearchComponent = ({ onUserSelect, authContext }) => {
@@ -311,34 +308,6 @@ export default function Dashboard() {
     [sortConfig]
   );
 
-<<<<<<< Updated upstream
-  const fetchTickets = useCallback(async (page = currentPage, limit = itemsPerPage) => {
-    if (!authUser) return;
-    setIsLoading(true); setError(null);
-    try {
-      const params = {
-        page,
-        limit,
-        sortKey: sortConfig.key,
-        sortDirection: sortConfig.direction,
-        searchTerm,
-        status: statusFilter === "all" ? undefined : statusFilter,
-        populate: "client,currentAssignee,createdBy,transferHistory.from,transferHistory.to,transferHistory.transferredBy,statusHistory.changedBy,documents.quotation.uploadedBy,documents.po.uploadedBy,documents.pi.uploadedBy,documents.challan.uploadedBy,documents.packingList.uploadedBy,documents.feedback.uploadedBy,documents.other.uploadedBy"
-              };
-      if (params.status === undefined) {
-        delete params.status;
-      };
-      const response = await apiClient("/tickets", { params });
-      setTickets(response.data || []);
-      setTotalTickets(response.totalItems || 0);
-    } catch (error) {
-      const errorMsg = handleApiError(error, "Failed to load tickets", authUser, "ticketActivity");
-      setError(errorMsg); toast.error(errorMsg);
-      setTickets([]); setTotalTickets(0);
-      if (error.status === 401) { toast.error("Authentication failed."); navigate("/login", { state: { from: "/tickets" } }); }
-    } finally { setIsLoading(false); }
-  }, [authUser, navigate, sortConfig, searchTerm, statusFilter, currentPage, itemsPerPage]);
-=======
   const fetchTickets = useCallback(
     async (page = currentPage, limit = itemsPerPage) => {
       if (!authUser) return;
@@ -382,7 +351,6 @@ export default function Dashboard() {
     },
     [authUser, navigate, sortConfig, statusFilter, currentPage, itemsPerPage]
   );
->>>>>>> Stashed changes
 
   useEffect(() => {
     if (!authLoading && !authUser && !isCompanyInfoLoading) {
@@ -393,9 +361,6 @@ export default function Dashboard() {
     } else if (authUser) {
       fetchTickets(currentPage, itemsPerPage);
     }
-<<<<<<< Updated upstream
-  }, [authUser, authLoading, navigate, fetchTickets, currentPage, itemsPerPage]);
-=======
   }, [
     authUser,
     authLoading,
@@ -406,7 +371,6 @@ export default function Dashboard() {
     statusFilter,
     sortConfig,
   ]);
->>>>>>> Stashed changes
 
   // Reset to page 1 when filters or sort change
   useEffect(() => {

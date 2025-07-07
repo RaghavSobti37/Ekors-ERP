@@ -1945,19 +1945,12 @@ exports.serveFile_IndexLogic = (req, res) => {
     );
   }
   res.setHeader("Content-Type", contentType);
-  logger.debug("ticket-controller", `Serving file (index.js logic)`, user, {
-    filename,
-    contentType,
-  });
   fs.createReadStream(filePath).pipe(res);
 };
 
 // exports.generateTicketsReport = async (req, res) => {
 //   // Delegate to the dedicated report controller
 //   ReportController.generateTicketsReport(req, res);
-<<<<<<< Updated upstream
-// };
-=======
 // };
 
 exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
@@ -2080,4 +2073,3 @@ exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Error creating ticket", details: error.message });
   }
 });
->>>>>>> Stashed changes

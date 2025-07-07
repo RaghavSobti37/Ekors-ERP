@@ -124,12 +124,6 @@ export default function Quotations() {
       } finally {
         setIsLoading(false);
       }
-<<<<<<< Updated upstream
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, authLoading, navigate, statusFilter, searchTerm, authUserFromContext, currentPage, itemsPerPage, sortConfig.key, sortConfig.direction]);
-=======
     },
     [
       user,
@@ -143,7 +137,6 @@ export default function Quotations() {
       sortConfig.direction,
     ]
   );
->>>>>>> Stashed changes
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -153,9 +146,6 @@ export default function Quotations() {
     } else if (user) {
       fetchQuotations(currentPage, itemsPerPage);
     }
-<<<<<<< Updated upstream
-  }, [user, authLoading, navigate, fetchQuotations, currentPage, itemsPerPage]); 
-=======
   }, [
     user,
     authLoading,
@@ -166,7 +156,6 @@ export default function Quotations() {
     statusFilter,
     sortConfig,
   ]);
->>>>>>> Stashed changes
 
   const requestSort = useCallback(
     (key) => {
@@ -204,9 +193,6 @@ export default function Quotations() {
 
   useEffect(() => {
     setCurrentPage(1);
-<<<<<<< Updated upstream
-  }, [searchTerm, statusFilter, sortConfig]); 
-=======
   }, [statusFilter, sortConfig]);
 
   // Add debouncing for search term
@@ -217,7 +203,6 @@ export default function Quotations() {
     }, 400); // 400ms delay
     return () => clearTimeout(timeout);
   }, [searchTerm, itemsPerPage, fetchQuotations]);
->>>>>>> Stashed changes
 
   const reportButtonElement = (user?.role === "admin" ||
     user?.role === "super-admin") && (
@@ -246,89 +231,6 @@ export default function Quotations() {
     return `EKORS/${year}${month}${day}${hours}${minutes}${seconds}`;
   }, []);
 
-<<<<<<< Updated upstream
-  const handleCreateTicket = useCallback(async (quotation) => {
-    setSourceQuotationForTicket(quotation);
-    const defaultDeadline = new Date();
-    defaultDeadline.setDate(defaultDeadline.getDate() + 10);
-
-    const ticketNumberToSet = await generateTicketNumber();
-    const quotationBillingAddressObject = quotation.billingAddress || {};
-    const ticketBillingAddressArrayFromQuotation = [
-      quotationBillingAddressObject.address1 || "",
-      quotationBillingAddressObject.address2 || "",
-      quotationBillingAddressObject.state || "",
-      quotationBillingAddressObject.city || "",
-      quotationBillingAddressObject.pincode || "",
-    ];
-    const clientData = quotation.client || {};
-
-    const ticketDataForForm = {
-      ticketNumber: ticketNumberToSet,
-      companyName: quotation.client?.companyName || "",
-      quotationNumber: quotation.referenceNumber,
-      billingAddress: ticketBillingAddressArrayFromQuotation, 
-      shippingAddressObj: { address1: "", address2: "", city: "", state: "", pincode: "" }, 
-      shippingSameAsBilling: false,
-      goods: quotation.goods.map((item) => ({
-        ...item,
-        quantity: Number(item.quantity),
-        price: Number(item.price),
-        amount: Number(item.amount),
-        gstRate: parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      })),
-      clientPhone: clientData.phone || "",
-      clientGstNumber: clientData.gstNumber || "",
-      totalQuantity: Number(quotation.totalQuantity),
-      totalAmount: Number(quotation.totalAmount),
-      dispatchDays: quotation.dispatchDays || "7-10 working days",
-      validityDate: quotation.validityDate ? new Date(quotation.validityDate).toISOString() : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      termsAndConditions: quotation.termsAndConditions || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged if payment is not made within the stipulated time.\n3. Subject to Noida jurisdiction.",
-      gstBreakdown: [], totalCgstAmount: 0, totalSgstAmount: 0, totalIgstAmount: 0,
-      finalGstAmount: 0, grandTotal: 0, isBillingStateSameAsCompany: false,
-      status: "Quotation Sent",
-      deadline: defaultDeadline.toISOString().split("T")[0],
-    };
-    navigate("/tickets/create-from-quotation", { state: { ticketDataForForm, sourceQuotationData: quotation } });
-  }, [navigate, generateTicketNumber, initialQuotationData]); 
-
-  const handleEdit = useCallback(async (quotation) => {
-    let orderIssuedByIdToSet =
-      quotation.orderIssuedBy?._id || quotation.orderIssuedBy ||
-      quotation.user?._id || quotation.user || user?.id;
-    if (typeof orderIssuedByIdToSet === "object" && orderIssuedByIdToSet !== null) {
-      orderIssuedByIdToSet = orderIssuedByIdToSet._id;
-    }
-
-    const quotationDataForForm = {
-      date: formatDateForInputHelper(quotation.date),
-      referenceNumber: quotation.referenceNumber,
-      validityDate: formatDateForInputHelper(quotation.validityDate),
-      orderIssuedBy: orderIssuedByIdToSet,
-      goods: quotation.goods.map((item) => ({
-        ...item,
-        quantity: Number(item.quantity), price: Number(item.price), amount: Number(item.amount),
-        unit: item.unit || "nos", originalPrice: Number(item.originalPrice || item.price),
-        maxDiscountPercentage: item.maxDiscountPercentage ? Number(item.maxDiscountPercentage) : 0,
-        gstRate: parseFloat(item.gstRate || 0),
-        subtexts: item.subtexts || [],
-      })),
-      totalQuantity: Number(quotation.totalQuantity), totalAmount: Number(quotation.totalAmount),
-      gstAmount: Number(quotation.gstAmount), grandTotal: Number(quotation.grandTotal),
-      billingAddress: quotation.billingAddress || initialQuotationData.billingAddress,
-      status: quotation.status || "open",
-      client: {
-        companyName: quotation.client?.companyName || "", gstNumber: quotation.client?.gstNumber || "",
-        clientName: quotation.client?.clientName || "", email: quotation.client?.email || "",
-        phone: quotation.client?.phone || "", _id: quotation.client?._id || null,
-      },
-    };
-    navigate(`/quotations/form/${quotation._id}`, { state: { quotationDataForForm, isEditing: true } });
-  }, [navigate, user, initialQuotationData]); 
-
-  const openCreateModal = useCallback(async () => { 
-=======
   const handleCreateTicket = useCallback(
     async (quotation) => {
       // quotation.status = "running";
@@ -445,7 +347,6 @@ export default function Quotations() {
   );
 
   const openCreateModal = useCallback(async () => {
->>>>>>> Stashed changes
     if (!user) {
       toast.error("User data not available.");
       return;
