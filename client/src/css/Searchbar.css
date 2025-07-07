@@ -23,13 +23,13 @@
 }
 
 .search-input.has-icon {
- padding-left: 2.75rem !important; /* More space for icon */
+  padding-left: 2.75rem !important; /* More space for icon */
 }
-
 
 .search-input:focus {
   border-color: #86b7fe !important;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2), 0 2px 4px rgba(0, 0, 0, 0.05) !important; /* Focus shadow */
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.05) !important; /* Focus shadow */
 }
 
 .search-icon-prefix {
@@ -55,10 +55,10 @@
 }
 
 .search-add-button:hover {
-    filter: brightness(95%);
+  filter: brightness(95%);
 }
 
 .button-icon-prefix {
-    display: inline-flex;
-    align-items: center;
+  display: inline-flex;
+  align-items: center;
 }

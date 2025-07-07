@@ -10,6 +10,7 @@ router.get("/", auth, quotationController.getAllQuotations); // Handles paginati
 router.post("/", auth, quotationController.handleQuotationUpsert); // Create
 router.get("/:id", auth, quotationController.getQuotationById);
 router.put("/:id", auth, quotationController.handleQuotationUpsert); // Update
+router.patch("/:id", auth, quotationController.handleQuotationPatch); // Partial")
 router.delete("/:id", auth, quotationController.deleteQuotation);
 
 // Utility Routes

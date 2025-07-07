@@ -721,6 +721,7 @@ exports.getUser = asyncHandler(async (req, res) => {
 // @route   PATCH /api/users/profile
 // @access  Private (Authenticated users)
 exports.updateUserProfile = asyncHandler(async (req, res) => {
+  console.log(req.body);
   const { phone, password } = req.body;
   const userId = req.user.id;
 

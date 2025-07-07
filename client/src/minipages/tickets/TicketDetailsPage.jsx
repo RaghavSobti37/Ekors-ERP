@@ -418,8 +418,10 @@ const TicketDetailsPage = () => {
                         setIsLoading(true); // Use main page loading spinner
                         // Assuming you have a backend endpoint to fetch quotation by ref number
                         // This endpoint might need to allow access for users who can view the ticket
-                        const fetchedQuotation = await apiClient( // Corrected API path
-                          `/quotations/by-reference/${ticket.quotationNumber}`                        );
+                        const fetchedQuotation = await apiClient(
+                          // Corrected API path
+                          `/quotations/by-reference/${ticket.quotationNumber}`
+                        );
                         setPdfPreviewConfig({
                           type: docConfig.type,
                           data: fetchedQuotation,

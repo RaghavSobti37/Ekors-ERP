@@ -3,7 +3,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #1E293B;
+  background-color: #1e293b;
   padding: 8px 15px; /* Reduced padding */
   color: white;
   font-family: Arial, sans-serif;
@@ -52,7 +52,8 @@
 }
 
 .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #a98dbd;
+  transition: ease-in-out 0.3s;
 }
 
 .nav-link.active {
@@ -247,17 +248,17 @@
   .nav-links {
     gap: 10px; /* Reduced gap */
   }
-  
+
   .nav-link {
     font-size: 13px; /* Slightly smaller */
     padding: 5px 8px; /* Reduced padding */
   }
-  
+
   .logo-img {
     width: 45px; /* Slightly smaller */
     height: 30px; /* Slightly smaller */
   }
-  
+
   .stock-alert-notification {
     margin-left: 8px; /* Reduced margin */
     padding: 5px 8px; /* Reduced padding */
@@ -270,16 +271,16 @@
     font-size: 20px; /* Slightly smaller */
     padding: 5px; /* Reduced padding */
   }
-  
+
   .nav-links {
     top: 65px; /* Reduced distance */
     padding: 8px 0; /* Reduced padding */
   }
-  
+
   .nav-link {
     padding: 10px 15px; /* Reduced padding */
   }
-  
+
   .stock-alert-notification {
     margin: 8px 15px; /* Reduced margin */
   }
@@ -290,36 +291,36 @@
   .navbar {
     padding: 6px 10px; /* Reduced padding */
   }
-  
+
   .logo {
     margin-right: 8px; /* Reduced margin */
   }
-  
+
   .logo-img {
     width: 35px; /* Slightly smaller */
     height: 25px; /* Slightly smaller */
   }
-  
+
   .mobile-menu-toggle {
     font-size: 18px; /* Slightly smaller */
     padding: 4px; /* Reduced padding */
   }
-  
+
   .profile-section {
     font-size: 13px; /* Slightly smaller */
   }
-  
+
   .profile-icon {
     width: 22px; /* Slightly smaller */
     height: 22px; /* Slightly smaller */
     font-size: 11px; /* Slightly smaller */
   }
-  
+
   .profile-popup {
     width: 180px; /* Slightly narrower */
     right: -8px; /* Adjusted position */
   }
-  
+
   .stock-alert-notification {
     padding: 6px; /* Reduced padding */
   }
@@ -330,7 +331,7 @@
   .nav-links {
     top: 55px; /* Reduced distance */
   }
-  
+
   .nav-link {
     padding: 6px 15px; /* Reduced padding */
   }
@@ -342,11 +343,11 @@
     background-color: #2d2d2d;
     color: white;
   }
-  
+
   .profile-details p {
     color: white;
   }
-  
+
   .dropdown-menu {
     background-color: #1a1a1a !important;
   }
@@ -357,11 +358,11 @@
   .nav-link {
     border: 1px solid white;
   }
-  
+
   .dropdown-item {
     border-bottom: 1px solid white;
   }
-  
+
   .profile-popup {
     border: 2px solid white;
   }

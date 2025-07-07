@@ -140,7 +140,7 @@ export const generatePIDocx = (ticket) => {
           children: [
             new TableCell({ children: [new Paragraph(String(i + 1))] }),
             new TableCell({ children: [new Paragraph(item.description)] }),
-            new TableCell({ children: [new Paragraph(item.hsnSacCode)] }),
+            new TableCell({ children: [new Paragraph(item?.hsnCode)] }),
             new TableCell({ children: [new Paragraph(String(item.quantity))] }),
             new TableCell({ children: [new Paragraph("PCS")] }), // Assuming unit is PCS, adjust if dynamic
             new TableCell({ children: [new Paragraph(item.price.toFixed(2))] }),
