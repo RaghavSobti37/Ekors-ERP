@@ -5,7 +5,7 @@ const goodsItemSchema = new mongoose.Schema(
     srNo: { type: Number, required: true },
     description: { type: String, required: true },
     subtexts: { type: [String], default: [] },
-    hsnSacCode: { type: String, default: '' },
+    hsnCode: { type: String, default: '' },
     quantity: { type: Number, required: true, min: 1 },
     unit: { 
       type: String, 

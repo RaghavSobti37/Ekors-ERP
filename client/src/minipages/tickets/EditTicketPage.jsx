@@ -236,7 +236,7 @@ const EditTicketPage = () => {
       const { pricePerSelectedUnit } = calculateItemPriceAndQuantity(item, 1, defaultUnit);
 
       const newGoodsItem = {
-        srNo: prev.goods.length + 1, description: item.name, hsnSacCode: item.hsnCode || "",
+        srNo: prev.goods.length + 1, description: item.name, hsnCode: item.hsnCode || "",
         quantity: 1, unit: defaultUnit, // Set default unit
         price: pricePerSelectedUnit, // Price per selected unit (already calculated based on base unit)
         amount: pricePerSelectedUnit, // Amount for 1 quantity
@@ -613,7 +613,7 @@ const EditTicketPage = () => {
                     ))}
                     <BsButton variant="outline-primary" size="sm" className="mt-1" onClick={() => handleAddSubtextToTicketItem(index)}>+ Subtext</BsButton>
                   </td>
-                  <td><Form.Control required type="text" value={item.hsnSacCode} onChange={(e) => handleTicketGoodsChange(index, "hsnSacCode", e.target.value)} placeholder="HSN/SAC" /></td>
+                  <td><Form.Control required type="text" value={item.hsnCode} onChange={(e) => handleTicketGoodsChange(index, "hsnCode", e.target.value)} placeholder="HSN/SAC" /></td>
                   <td><Form.Control required type="number" value={item.quantity} onChange={(e) => handleTicketGoodsChange(index, "quantity", e.target.value)} placeholder="Qty" min="0" /></td>
                   <td style={{ minWidth: "100px" }}>
                     {item.originalItem && item.originalItem.units && item.originalItem.units.length > 0 ? (

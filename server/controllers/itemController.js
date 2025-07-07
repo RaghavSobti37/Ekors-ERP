@@ -1457,7 +1457,7 @@ exports.getItemTicketUsageHistory = asyncHandler(async (req, res) => {
 
     const ticketsContainingItem = await Ticket.find({
       "goods.description": item.name,
-      ...(item.hsnCode && { "goods.hsnSacCode": item.hsnCode }),
+      ...(item.hsnCode && { "goods.hsnCode": item.hsnCode }),
     })
       .populate("createdBy", "firstname lastname")
       .populate("currentAssignee", "firstname lastname email")
@@ -1469,7 +1469,7 @@ exports.getItemTicketUsageHistory = asyncHandler(async (req, res) => {
       .map(ticket => {
         const relevantGood = ticket.goods.find(g => 
           g.description === item.name && 
-          (item.hsnCode ? g.hsnSacCode === item.hsnCode : true)
+          (item.hsnCode ? g.hsnCode === item.hsnCode : true)
         );
 
         if (!relevantGood || relevantGood.quantity <= 0) return null;

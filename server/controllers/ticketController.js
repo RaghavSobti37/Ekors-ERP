@@ -94,7 +94,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
         (qGood, index) => ({
           srNo: qGood.srNo || index + 1,
           description: qGood.description, // Required
-          hsnSacCode: qGood.hsnSacCode, // Required
+          hsnCode: qGood.hsnCode, // Required
           quantity: Number(qGood.quantity || 0), // Required, ensure number
           unit: qGood.unit || "Nos",
           price: Number(qGood.price || 0), // Required, ensure number
@@ -345,7 +345,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.goods = finalTicketData.goods.map((item) => ({
       srNo: item.srNo,
       description: item.description,
-      hsnSacCode: item.hsnSacCode,
+      hsnCode: item.hsnCode,
       quantity: Number(item.quantity || 0),
       unit: item.unit || "Nos",
       price: Number(item.price || 0),
@@ -376,7 +376,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
         }
         const itemToUpdate = await Item.findOne({
           name: good.description,
-          ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }),
+          ...(good.hsnCode && { hsnCode: good.hsnCode }),
         }).session(session);
 
         if (itemToUpdate) {
@@ -849,7 +849,7 @@ exports.updateTicket = async (req, res) => {
     if (newStatus === "Hold" && oldStatus !== "Hold") {
       for (const good of originalTicket.goods) {
         try {
-          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
           if (itemToUpdate) {
             let quantityToRollbackInBaseUnit = 0;
             const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
@@ -896,7 +896,7 @@ exports.updateTicket = async (req, res) => {
       const goodsToDeduct = ticketDataForUpdate.goods || originalTicket.goods;
       for (const good of goodsToDeduct) {
         try {
-          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
           if (itemToUpdate) {
             let quantityToDeductInBaseUnit = 0;
             const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
@@ -943,10 +943,10 @@ exports.updateTicket = async (req, res) => {
       const itemBaseQtyChanges = new Map();
 
       const getBaseQuantity = async (good, itemCache) => {
-        const itemKey = `${good.description}-${good.hsnSacCode || ""}`;
+        const itemKey = `${good.description}-${good.hsnCode || ""}`;
         let itemDetails = itemCache.get(itemKey);
         if (!itemDetails) {
-          itemDetails = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).lean();
+          itemDetails = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).lean();
           if (itemDetails) itemCache.set(itemKey, itemDetails);
         }
 
@@ -971,14 +971,14 @@ exports.updateTicket = async (req, res) => {
       const itemCache = new Map();
 
       for (const good of originalTicket.goods || []) {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
+        const key = `${good.description}-${good.hsnCode || ""}`;
         const oldBaseQty = await getBaseQuantity(good, itemCache);
         if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
         itemBaseQtyChanges.get(key).oldBaseQty += oldBaseQty;
       }
 
       for (const good of ticketDataForUpdate.goods || []) {
-        const key = `${good.description}-${good.hsnSacCode || ""}`;
+        const key = `${good.description}-${good.hsnCode || ""}`;
         const newBaseQty = await getBaseQuantity(good, itemCache);
         if (!itemBaseQtyChanges.has(key)) itemBaseQtyChanges.set(key, { oldBaseQty: 0, newBaseQty: 0 });
         itemBaseQtyChanges.get(key).newBaseQty += newBaseQty;
@@ -987,9 +987,9 @@ exports.updateTicket = async (req, res) => {
       for (const [key, { oldBaseQty, newBaseQty }] of itemBaseQtyChanges) {
         const netChangeInBaseUnit = newBaseQty - oldBaseQty;
         if (netChangeInBaseUnit === 0) continue;
-        const [description, hsnSacCode] = key.split("-");
+        const [description, hsnCode] = key.split("-");
         try {
-          const itemToUpdate = await Item.findOne({ name: description, ...(hsnSacCode && { hsnCode: hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: description, ...(hsnCode && { hsnCode: hsnCode }) }).session(session);
           if (itemToUpdate) {
             // We subtract the net change from the current inventory.
             // If more items were added (netChange > 0), we deduct.
@@ -1247,7 +1247,7 @@ exports.deleteTicket = async (req, res) => {
       });
       for (const good of ticketToBackup.goods) {
         try {
-          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnSacCode && { hsnCode: good.hsnSacCode }) }).session(session);
+          const itemToUpdate = await Item.findOne({ name: good.description, ...(good.hsnCode && { hsnCode: good.hsnCode }) }).session(session);
           if (itemToUpdate) {
             let quantityToRollbackInBaseUnit = 0;
             const transactionalUnitName = good.unit || itemToUpdate.baseUnit;
@@ -1313,7 +1313,7 @@ exports.deleteTicket = async (req, res) => {
               action: "Delete Ticket",
               api: req.originalUrl,
               req,
-              message: `Item "${good.description}" (HSN: ${good.hsnSacCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`,
+              message: `Item "${good.description}" (HSN: ${good.hsnCode || 'N/A'}) not found for rollback during Ticket ${ticketId} deletion.`,
               details: {},
               level: "warn"
             });

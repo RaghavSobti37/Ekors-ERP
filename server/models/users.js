@@ -101,56 +101,34 @@ userSchema.virtual("fullName").get(function () {
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
-  logger.debug(
-    "user-model-presave",
-    `Running pre-save hook for user: ${this.email}`
-  );
 
   if (!this.isModified("password")) {
-    logger.debug(
-      "user-model-presave",
-      `Password not modified for ${this.email}, skipping hash`
-    );
     return next();
   }
 
   try {
-    logger.debug(
-      "user-model-presave",
-      `Hashing password for user: ${this.email}`
-    );
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (err) {
-    logger.error(
-      "user-model-presave",
-      `Password hashing failed for ${this.email}`,
-      err
-    );
+    logger.log({
+      user: { email: this.email },
+      page: "User Model",
+      action: "Password Hash",
+      message: `Password hashing failed for ${this.email}`,
+      details: { error: err.message },
+      level: "error"
+    });
     next(err);
   }
 });
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  logger.debug(
-    "user-model-comparePassword",
-    `Comparing passwords for user: ${this.email}`
-  );
   try {
     const isMatch = await bcrypt.compare(candidatePassword, this.password);
-    logger.debug(
-      "user-model-comparePassword",
-      `Password comparison result for ${this.email}: ${isMatch}`
-    );
     return isMatch;
   } catch (err) {
-    logger.error(
-      "user-model-comparePassword",
-      `Password comparison failed for ${this.email}`,
-      err
-    );
     throw err;
   }
 };

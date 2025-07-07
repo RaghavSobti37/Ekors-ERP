@@ -139,9 +139,9 @@ const GoodsTable = ({
                 <Form.Control
                   required
                   type="text"
-                  value={item.hsnSacCode || ""}
+                  value={item.hsnCode || ""}
                   onChange={(e) =>
-                    handleGoodsChange(index, "hsnSacCode", e.target.value)
+                    handleGoodsChange(index, "hsnCode", e.target.value)
                   }
                   placeholder="HSN/SAC"
                 />
@@ -509,7 +509,7 @@ const QuotationFormPage = () => {
           {
             srNo: prevQuotationData.goods.length + 1,
             description: item.name,
-            hsnSacCode: item.hsnCode || "",
+            hsnCode: item.hsnCode || "",
             quantity: 1,
             unit: defaultUnit,
             price: pricePerSelectedUnit,
@@ -852,7 +852,7 @@ const QuotationFormPage = () => {
         }
         const replicatedGoods = fullQuotation.goods.map((item, index) => ({
           description: item.description,
-          hsnSacCode: item.hsnSacCode || "",
+          hsnCode: item.hsnCode || "",
           quantity: Number(item.quantity || 1),
           unit: item.unit || "nos",
           price: Number(item.price || 0),
@@ -969,7 +969,7 @@ const QuotationFormPage = () => {
         goods: quotationData.goods.map((item) => ({
           srNo: item.srNo,
           description: item.description,
-          hsnSacCode: item.hsnSacCode || "",
+          hsnCode: item.hsnCode || "",
           quantity: Number(item.quantity),
           unit: item.unit || "nos",
           price: Number(item.price),
