@@ -198,6 +198,8 @@ export default function Quotations() {
       toast.info("Billing address will be used as shipping address since no shipping address was defined.");
     }
     
+    let createdTicket = null;
+    
     try {
       setIsLoading(true);
       // Call the API endpoint to create a ticket from the quotation
@@ -208,13 +210,20 @@ export default function Quotations() {
         }
       });
       
+      createdTicket = response;
+      
       // Update quotation status to "hold"
-      await apiClient(`/quotations/${quotation._id}`, {
-        method: 'PATCH',
-        body: {
-          status: 'hold'
-        }
-      });
+      try {
+        await apiClient(`/quotations/${quotation._id}`, {
+          method: 'PATCH',
+          body: {
+            status: 'hold'
+          }
+        });
+      } catch (statusUpdateError) {
+        console.warn("Failed to update quotation status to hold:", statusUpdateError);
+        // Continue anyway since ticket was created successfully
+      }
       
       toast.success("Ticket created successfully!");
       
@@ -226,11 +235,13 @@ export default function Quotations() {
       setIsLoading(false);
       return;
     } catch (error) {
-      toast.error("Failed to create ticket: " + (error.response?.data?.error || error.message));
+      console.error("Error creating ticket:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
+      toast.error("Failed to create ticket: " + errorMessage);
       setIsLoading(false);
       return;
     }
-  }, [navigate, setSourceQuotationForTicket, setIsLoading, apiClient, toast, currentPage, itemsPerPage, fetchQuotations]); 
+  }, [navigate, setSourceQuotationForTicket, setIsLoading, user, toast, currentPage, itemsPerPage, fetchQuotations]); 
 
   const handleEdit = useCallback(async (quotation) => {
     let orderIssuedByIdToSet =

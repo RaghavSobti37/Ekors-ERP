@@ -923,10 +923,26 @@ exports.updateQuotationStatus = async (req, res) => {
   const user = req.user;
 
   try {
-    const quotation = await Quotation.findById(id);
+    let findQuery = { _id: id };
+    
+    // Role-based access control
+    if (user.role !== "super-admin") {
+      findQuery.user = user._id;
+    }
+    
+    const quotation = await Quotation.findOne(findQuery);
     
     if (!quotation) {
-      return res.status(404).json({ message: "Quotation not found" });
+      logger.log({
+        user,
+        page: "Quotation",
+        action: "Update Quotation Status Error",
+        req,
+        message: "Quotation not found or access denied",
+        details: { quotationId: id, userRole: user.role },
+        level: "warning"
+      });
+      return res.status(404).json({ message: "Quotation not found or access denied" });
     }
 
     // Only allow specific status values
