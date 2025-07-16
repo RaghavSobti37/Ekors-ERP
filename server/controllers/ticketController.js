@@ -11,6 +11,7 @@ const asyncHandler = require("express-async-handler");
 const mongoose = require("mongoose");
 const ReportController = require("./reportController");
 const { getInitialTicketPayload, recalculateTicketTotals, mapQuotationToTicketPayload } = require("../utils/payloadServer");
+const { generateTicketNumber } = require("../utils/ticketNumberGenerator");
 
 const COMPANY_REFERENCE_STATE = "UTTAR PRADESH";
 
@@ -188,7 +189,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
     finalTicketData.statusHistory = finalTicketData.statusHistory.map(
       (entry) => ({
         ...entry,
-        changedBy: entry.changedBy || user.id, // Ensure changedBy is set by backend
+        changedBy: entry.changedBy || user.id || user._id, // Ensure changedBy is set by backend
         changedAt: entry.changedAt || new Date(),
       })
     );
@@ -197,7 +198,7 @@ exports.createTicket = asyncHandler(async (req, res) => {
       {
         status: finalTicketData.status || "Quotation Sent", // Default from schema
         changedAt: new Date(),
-        changedBy: user.id,
+        changedBy: user.id || user._id,
         note:
           sourceQuotationData && sourceQuotationData.referenceNumber
             ? "Ticket created from quotation."
@@ -441,6 +442,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
       try {
         const quotationOwnerId =
           sourceQuotationData.user?._id || sourceQuotationData.user;
+        
+        console.log("Updating quotation status:", {
+          quotationNumber: finalTicketData.quotationNumber,
+          quotationOwnerId: quotationOwnerId,
+          sourceQuotationData: {
+            user: sourceQuotationData.user,
+            referenceNumber: sourceQuotationData.referenceNumber
+          }
+        });
+        
         if (!quotationOwnerId) {
          logger.log({
             user: req.user || user || null,
@@ -458,6 +469,12 @@ exports.createTicket = asyncHandler(async (req, res) => {
           });
           return res.status(200).json({ success: true, ticket });
         } else {
+          console.log("Attempting to update quotation:", {
+            referenceNumber: ticket.quotationNumber,
+            user: quotationOwnerId,
+            ticketId: ticket._id
+          });
+          
           const updatedQuotation = await Quotation.findOneAndUpdate(
             {
               referenceNumber: ticket.quotationNumber,
@@ -471,7 +488,16 @@ exports.createTicket = asyncHandler(async (req, res) => {
           );
 
           if (updatedQuotation) {
+            console.log("Quotation updated successfully:", {
+              quotationId: updatedQuotation._id,
+              referenceNumber: updatedQuotation.referenceNumber,
+              status: updatedQuotation.status
+            });
           } else {
+            console.log("Failed to find quotation for update:", {
+              referenceNumber: ticket.quotationNumber,
+              user: quotationOwnerId
+            });
           }
         }
       } catch (quotationError) {
@@ -606,7 +632,8 @@ exports.getAllTickets = asyncHandler(async (req, res) => {
     // Default essential populates if not specified by frontend
     ticketsQuery = ticketsQuery
       .populate({ path: "currentAssignee", select: "firstname lastname email" })
-      .populate({ path: "createdBy", select: "firstname lastname email" });
+      .populate({ path: "createdBy", select: "firstname lastname email" })
+      .populate({ path: "statusHistory.changedBy", select: "firstname lastname email" });
   }
 
   const tickets = await ticketsQuery.exec();
@@ -871,7 +898,7 @@ exports.updateTicket = async (req, res) => {
       const newStatusEntry = {
         status: ticketDataForUpdate.status,
         changedAt: new Date(),
-        changedBy: user.id,
+        changedBy: user.id || user._id,
         note: statusChangeComment || "Status updated.",
       };
       ticketDataForUpdate.statusHistory = [
@@ -1876,7 +1903,12 @@ exports.createTicket_IndexLogic = async (req, res) => {
       gstAmount,
       grandTotal,
       status: "Quotation Sent",
-      statusHistory: [{ status: "Quotation Sent", changedAt: new Date() }],
+      statusHistory: [{ 
+        status: "Quotation Sent", 
+        changedAt: new Date(),
+        changedBy: user.id || user._id,
+        note: "Ticket created"
+      }],
       documents: {
         quotation: null,
         po: null,
@@ -2077,8 +2109,7 @@ exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
     
     // Ensure ticketNumber and deadline are set (these are required fields in the model)
     if (!finalTicketData.ticketNumber) {
-      const now = new Date();
-      finalTicketData.ticketNumber = `T${now.getFullYear().toString().substr(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+      finalTicketData.ticketNumber = generateTicketNumber();
     }
     
     if (!finalTicketData.deadline) {
@@ -2117,7 +2148,7 @@ exports.createTicketFromQuotation = asyncHandler(async (req, res) => {
     finalTicketData.statusHistory = [{
       status: "Quotation Sent",
       changedAt: new Date(),
-      changedBy: user.id,
+      changedBy: user.id || user._id,
       note: `Ticket created from quotation ${quotation.referenceNumber}.`
     }];
     

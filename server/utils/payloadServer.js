@@ -1,4 +1,5 @@
 // Unified Quotation Payload structure matching the Mongoose schema in server/models/quotation.js
+const { generateTicketNumber } = require("./ticketNumberGenerator");
 
 const getInitialQuotationPayload = (userId = "", client = null) => ({
   user: userId,
@@ -26,9 +27,6 @@ const getInitialQuotationPayload = (userId = "", client = null) => ({
   totalAmount: 0,
   gstAmount: 0,
   grandTotal: 0,
-  roundOffTotal: 0,
-  roundingDifference: 0,
-  roundingDirection: 'up',
   status: "open",
   client: client || {
     _id: null,
@@ -61,20 +59,12 @@ function recalculateQuotationTotals(goodsList) {
   const gstAmount = processedGoods.reduce((sum, item) => sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100), 0);
   const grandTotal = totalAmount + gstAmount;
   
-  // Calculate rounding difference
-  const exactGrandTotal = grandTotal;
-  const roundOffTotal = Math.round(grandTotal);
-  const roundingDifference = roundOffTotal - exactGrandTotal;
-  const roundingDirection = roundingDifference >= 0 ? 'up' : 'down';
-  
+  // For quotations, we don't calculate rounding - only exact totals
   return { 
     totalQuantity, 
     totalAmount, 
     gstAmount, 
-    grandTotal: exactGrandTotal, 
-    roundOffTotal,
-    roundingDifference,
-    roundingDirection
+    grandTotal
   };
 }
 
@@ -209,9 +199,8 @@ function recalculateTicketTotals(ticket) {
 
 // Map a quotation payload to a ticket payload
 function mapQuotationToTicketPayload(quotation, userId = "") {
-  // Generate a unique ticket number based on current date/time
-  const now = new Date();
-  const ticketNumber = `T${now.getFullYear().toString().substr(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+  // Generate a unique ticket number using centralized function
+  const ticketNumber = generateTicketNumber();
   
   // Set deadline to 30 days from now by default
   const deadline = new Date();

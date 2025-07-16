@@ -66,14 +66,12 @@ const quotationSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true, min: 0 },
     gstAmount: { type: Number, required: true, min: 0 },
     grandTotal: { type: Number, required: true, min: 0 },
-    roundOffTotal: { type: Number, required: true, min: 0 }, // Added field
-    roundingDifference: { type: Number, default: 0 }, // New field for rounding difference
-    roundingDirection: { type: String, enum: ['up', 'down'], default: 'up' }, // Direction of rounding
     status: {
       type: String,
       enum: ['open', 'closed', 'hold', 'running'], // Added 'running'
       default: 'open'
     },
+    linkedTickets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }], // Added field for linked tickets
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",

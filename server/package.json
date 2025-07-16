@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon index.js",
+    "backup-clear": "node scripts/clearAndBackupData.js clear",
+    "backup-restore": "node scripts/clearAndBackupData.js restore",
+    "backup-interactive": "node scripts/interactiveBackup.js"
   },
   "keywords": [],
   "author": "",

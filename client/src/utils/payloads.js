@@ -150,9 +150,6 @@ export const getInitialQuotationPayload = (userId = "", client = null) => ({
   totalAmount: 0,
   gstAmount: 0,
   grandTotal: 0,
-  roundOffTotal: 0,
-  roundingDifference: 0,
-  roundingDirection: 'up',
   status: "open",
   client: client || {
     _id: null,
@@ -184,20 +181,12 @@ export function recalculateQuotationTotals(goodsList) {
   const gstAmount = processedGoods.reduce((sum, item) => sum + Number(item.amount || 0) * (parseFloat(item.gstRate || 0) / 100), 0);
   const grandTotal = totalAmount + gstAmount;
   
-  // Calculate rounding difference
-  const exactGrandTotal = grandTotal;
-  const roundOffTotal = Math.round(grandTotal);
-  const roundingDifference = roundOffTotal - exactGrandTotal;
-  const roundingDirection = roundingDifference >= 0 ? 'up' : 'down';
-  
+  // For quotations, we don't calculate rounding - only exact totals
   return { 
     totalQuantity, 
     totalAmount, 
     gstAmount, 
-    grandTotal: exactGrandTotal, 
-    roundOffTotal,
-    roundingDifference,
-    roundingDirection
+    grandTotal
   };
 }
 

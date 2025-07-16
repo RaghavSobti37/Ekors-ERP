@@ -544,7 +544,15 @@ const fetchTicketDetails = useCallback(async () => {
             <tbody>
               {ticketData.statusHistory.slice().reverse().map((historyItem, index) => (
                 <tr key={historyItem._id || index}>
-                  <td>{historyItem.changedBy ? `${historyItem.changedBy.firstname || ""} ${historyItem.changedBy.lastname || ""}`.trim() || historyItem.changedBy.email || "Unknown" : "N/A"}</td>
+                  <td>{
+                    historyItem.changedBy 
+                      ? (typeof historyItem.changedBy === 'object' && historyItem.changedBy.firstname)
+                        ? `${historyItem.changedBy.firstname} ${historyItem.changedBy.lastname}`.trim() 
+                        : (typeof historyItem.changedBy === 'object' && historyItem.changedBy.email)
+                          ? historyItem.changedBy.email
+                          : "Unknown User"
+                      : "N/A"
+                  }</td>
                   <td>{historyItem.changedAt ? new Date(historyItem.changedAt).toLocaleString() : 'N/A'}</td>
                   <td><Badge bg={getStatusBadgeColor(historyItem.status)}>{historyItem.status}</Badge></td>
                   <td title={historyItem.note || "No comment"}>{(historyItem.note || "N/A").substring(0, 50) + (historyItem.note && historyItem.note.length > 50 ? "..." : "")}</td>
@@ -744,21 +752,7 @@ const fetchTicketDetails = useCallback(async () => {
                 </Row>
             </Card.Body>
         </Card>
-        <Form.Group className="mb-3">
-            <div style={{clear: "both"}}></div>
-            {/* <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
-                <i className="bi bi-card-checklist me-1"></i>Other Details
-            </h5> */}
-            <Row>
-             
-              {/* <Col md={6}><Form.Group className="mb-3"><Form.Label>Validity Date (Quotation)</Form.Label><Form.Control type="date" value={ticketData.validityDate || ""} onChange={(e) => setTicketData({ ...ticketData, validityDate: e.target.value })} /></Form.Group></Col> */}
-            </Row>
-            <hr/>
-            <h5 style={{ fontWeight: "bold", textAlign: "center", backgroundColor: "#f0f2f5", padding: "0.5rem", borderRadius: "0.25rem", marginBottom: "1rem" }}>
-                <i className="bi bi-file-text me-1"></i>Terms & Conditions
-            </h5>
-            <Form.Control as="textarea" rows={3} value={ticketData.termsAndConditions || ""} onChange={(e) => setTicketData({ ...ticketData, termsAndConditions: e.target.value })} />
-        </Form.Group>
+      
       </Form>
     </ReusablePageStructure>
   );

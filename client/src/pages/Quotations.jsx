@@ -179,17 +179,6 @@ export default function Quotations() {
     setError(null);
   }, []);
 
-  const generateTicketNumber = useCallback(async () => { 
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    return `EKORS/${year}${month}${day}${hours}${minutes}${seconds}`;
-  }, []);
-
   const handleCreateTicket = useCallback(async (quotation) => {
     setSourceQuotationForTicket(quotation);
     
@@ -198,48 +187,34 @@ export default function Quotations() {
       toast.info("Billing address will be used as shipping address since no shipping address was defined.");
     }
     
-    let createdTicket = null;
-    
     try {
       setIsLoading(true);
-      // Call the API endpoint to create a ticket from the quotation
-      const response = await apiClient(`/tickets/from-quotation/${quotation._id}`, {
+      
+      // Create ticket from quotation - the backend will handle status update to "running"
+      const response = await apiClient(`/tickets`, {
         method: 'POST',
         body: {
-          userId: user?.id
+          newTicketDetails: {
+            userId: user?.id
+          },
+          sourceQuotationData: quotation
         }
       });
       
-      createdTicket = response;
-      
-      // Update quotation status to "hold"
-      try {
-        await apiClient(`/quotations/${quotation._id}`, {
-          method: 'PATCH',
-          body: {
-            status: 'hold'
-          }
-        });
-      } catch (statusUpdateError) {
-        console.warn("Failed to update quotation status to hold:", statusUpdateError);
-        // Continue anyway since ticket was created successfully
-      }
-      
       toast.success("Ticket created successfully!");
       
-      // Refresh quotations list to show updated status
+      // Refresh quotations list to show updated status (should be "running" now)
       fetchQuotations(currentPage, itemsPerPage);
       
       // Navigate to the edit page for the new ticket
       navigate(`/tickets/edit/${response._id}`);
-      setIsLoading(false);
-      return;
+      
     } catch (error) {
       console.error("Error creating ticket:", error);
       const errorMessage = error.response?.data?.error || error.message || "Unknown error occurred";
       toast.error("Failed to create ticket: " + errorMessage);
+    } finally {
       setIsLoading(false);
-      return;
     }
   }, [navigate, setSourceQuotationForTicket, setIsLoading, user, toast, currentPage, itemsPerPage, fetchQuotations]); 
 

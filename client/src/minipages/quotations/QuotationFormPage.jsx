@@ -408,10 +408,14 @@ const QuotationFormPage = () => {
             totalQuantity: fetchedQuotation.totalQuantity,
             totalAmount: fetchedQuotation.totalAmount,
             gstAmount: fetchedQuotation.gstAmount,
-            grandTotal: fetchedQuotation.grandTotal,
-            roundOffTotal: fetchedQuotation.roundOffTotal,
-            roundingDifference: fetchedQuotation.roundingDifference,
-            roundingDirection: fetchedQuotation.roundingDirection
+            grandTotal: fetchedQuotation.grandTotal
+          });
+
+          console.log("Recalculated totals:", {
+            totalQuantity: recalculatedTotals.totalQuantity,
+            totalAmount: recalculatedTotals.totalAmount,
+            gstAmount: recalculatedTotals.gstAmount,
+            grandTotal: recalculatedTotals.grandTotal
           });
 
           setQuotationData({
@@ -425,13 +429,10 @@ const QuotationFormPage = () => {
                 : orderIssuedByIdToSet,
             goods: goodsWithUnits,
             // Use the fetched values but fall back to recalculated values if necessary
-            totalQuantity: fetchedQuotation.totalQuantity || recalculatedTotals.totalQuantity,
-            totalAmount: fetchedQuotation.totalAmount || recalculatedTotals.totalAmount,
-            gstAmount: fetchedQuotation.gstAmount || recalculatedTotals.gstAmount,
-            grandTotal: fetchedQuotation.grandTotal || recalculatedTotals.grandTotal,
-            roundOffTotal: fetchedQuotation.roundOffTotal || recalculatedTotals.roundOffTotal,
-            roundingDifference: fetchedQuotation.roundingDifference || recalculatedTotals.roundingDifference,
-            roundingDirection: fetchedQuotation.roundingDirection || recalculatedTotals.roundingDirection,
+            totalQuantity: fetchedQuotation.totalQuantity !== undefined ? fetchedQuotation.totalQuantity : recalculatedTotals.totalQuantity,
+            totalAmount: fetchedQuotation.totalAmount !== undefined ? fetchedQuotation.totalAmount : recalculatedTotals.totalAmount,
+            gstAmount: fetchedQuotation.gstAmount !== undefined ? fetchedQuotation.gstAmount : recalculatedTotals.gstAmount,
+            grandTotal: fetchedQuotation.grandTotal !== undefined ? fetchedQuotation.grandTotal : recalculatedTotals.grandTotal,
             billingAddress:
               fetchedQuotation.billingAddress ||
               getInitialQuotationPayload(user?.id).billingAddress,
@@ -578,15 +579,12 @@ const QuotationFormPage = () => {
         
         const totals = recalculateQuotationTotals(goods);
         
-        // Log for debugging the rounding calculations
+        // Log for debugging the calculations
         console.log("Goods changed, recalculated totals:", {
           totalQuantity: totals.totalQuantity,
           totalAmount: totals.totalAmount,
           gstAmount: totals.gstAmount,
-          grandTotal: totals.grandTotal,
-          roundOffTotal: totals.roundOffTotal,
-          roundingDifference: totals.roundingDifference,
-          roundingDirection: totals.roundingDirection
+          grandTotal: totals.grandTotal
         });
         
         return { ...prevData, goods, ...totals };
@@ -1790,32 +1788,9 @@ const QuotationFormPage = () => {
                 </td>
               </tr>
               <tr>
-                <td className="ps-3">Grand Total (Exact)</td>
+                <td className="ps-3">Grand Total (Final)</td>
                 <td className="text-end pe-3">
                   <strong>₹{quotationData.grandTotal?.toFixed(2) || '0.00'}</strong>
-                </td>
-              </tr>
-              <tr>
-                <td className="ps-3">
-                  Rounding {quotationData.roundingDirection === 'up' ? 'Up' : 'Down'} 
-                  <span className="text-muted ms-2" style={{fontSize: '0.85rem'}}>
-                    ({quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)})
-                  </span>
-                </td>
-                <td className="text-end pe-3">
-                  <span className={quotationData.roundingDirection === 'up' ? 'text-success' : 'text-danger'}>
-                    {quotationData.roundingDirection === 'up' ? '+' : '-'}₹{Math.abs(quotationData.roundingDifference || 0).toFixed(2)}
-                  </span>
-                </td>
-              </tr>
-              <tr className="table-success">
-                <td className="ps-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-                  Round Off Total <span className="text-danger">*</span>
-                </td>
-                <td className="text-end pe-3" style={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-                  <div className="text-end fw-bold" style={{ fontSize: "1.1rem" }}>
-                    ₹{quotationData.roundOffTotal?.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}
-                  </div>
                 </td>
               </tr></tbody></Table>
         </div>

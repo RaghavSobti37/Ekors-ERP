@@ -10,19 +10,18 @@ import { useNavigate } from "react-router-dom"; // To navigate back
 const pageContainerStyle = {
   display: "flex",
   flexDirection: "column",
-  // Assuming this component is rendered within a main app layout that might have a global Navbar/Footer
-  // If standalone, it might need vh units for height.
-  // For now, let it be a block that fills its container.
-  padding: "0", // Remove padding if Navbar/Footer are outside
   backgroundColor: "#f8f9fa", // A light background for the page
-  minHeight: "calc(100vh - 120px)", // Example: if Navbar+Footer height is 120px
+  minHeight: "calc(100vh - 120px)", // Default minimum height
 };
 
 const headerStyle = {
   backgroundColor: "#34495E",
   color: "white",
   padding: "1rem 1.5rem", // Added more padding
-  flexShrink: 0,
+  flexShrink: 0, // Prevent shrinking
+  position: "sticky", // Make header sticky
+  top: 0, // Stick to top
+  zIndex: 1000, // Ensure it's above other content
   display: "grid", // Changed to grid for easier centering with items on sides
   gridTemplateColumns: "auto 1fr auto", // Left actions, Title (takes remaining space), Right actions
   alignItems: "center",
@@ -38,8 +37,8 @@ const titleStyle = {
 };
 
 const contentStyle = {
-  flex: 1,
-  overflowY: "auto",
+  flex: 1, // Take remaining space
+  overflowY: "auto", // Enable scrolling within content area
   padding: "20px",
   backgroundColor: "white",
   margin: "15px", // Margin around the content area
@@ -50,12 +49,15 @@ const contentStyle = {
 const footerStyle = {
   borderTop: "1px solid #dee2e6",
   padding: "15px",
-  flexShrink: 0,
+  flexShrink: 0, // Prevent shrinking
+  position: "sticky", // Make footer sticky
+  bottom: 0, // Stick to bottom
+  zIndex: 1000, // Ensure it's above other content
   backgroundColor: "#f8f9fa", // Match page background
   display: "flex",
   justifyContent: "flex-end",
   gap: "10px",
-  marginTop: "auto", // Push footer to bottom if content is short
+  boxShadow: "0 -2px 4px rgba(0,0,0,0.1)", // Subtle shadow above footer
 };
 
 const ReusablePageStructureComponent = ({
@@ -65,6 +67,7 @@ const ReusablePageStructureComponent = ({
   footerContent,
   showBackButton = true, // Prop to control back button visibility, defaults to true
   onBack, // New prop for custom back button behavior
+  fullHeight = false, // New prop to control whether to use full viewport height
 }) => {
   const navigate = useNavigate();
 
@@ -88,8 +91,28 @@ const ReusablePageStructureComponent = ({
     };
   }, [handleGoBack]); // Corrected dependency array
 
+  // Dynamic styles based on fullHeight prop
+  const dynamicPageStyle = fullHeight ? {
+    ...pageContainerStyle,
+    height: "100vh",
+    overflow: "hidden"
+  } : {
+    ...pageContainerStyle,
+    height: "auto",
+    minHeight: "calc(100vh - 120px)",
+    overflow: "visible"
+  };
+
+  const dynamicContentStyle = fullHeight ? {
+    ...contentStyle,
+    maxHeight: "calc(100vh - 200px)"
+  } : {
+    ...contentStyle,
+    maxHeight: "none"
+  };
+
   return (
-    <div style={pageContainerStyle}>
+    <div style={dynamicPageStyle}>
       <div style={headerStyle}>
         {showBackButton ? (
           <Button variant="light" onClick={handleGoBack} size="sm" style={{ justifySelf: "start" }}>
@@ -101,7 +124,7 @@ const ReusablePageStructureComponent = ({
         <h2 style={titleStyle}>{title}</h2>
         <div></div> {/* Empty div for the right side of the grid, for balance or future actions */}
       </div>
-      <div style={contentStyle}>
+      <div style={dynamicContentStyle}>
         {children}
       </div>
 
