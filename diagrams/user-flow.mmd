@@ -1,25 +1,33 @@
-graph TD
-    A[End User] --> B[1.0 User Authentication \n JWT-based];
-    B --> C[2.0 Role Management \n RBAC: Admin/Employee];
-    C --> D[3.0 Quotation Management];
-    C --> E[4.0 Inventory Management \n ItemList];
-    C --> F[5.0 Ticket Management \n OpenTickets];
-    C --> L[6.0 Client Management];
-    C --> M[7.0 Challan Management];
-    C --> N[8.0 Supplier Management];
+flowchart TD
+    User[User] -->|Login Request| API[API Endpoint /auth/login]
+    API --> Auth[Auth Middleware]
+    Auth --> UserController[User Controller]
+    UserController --> UserModel[User Model]
+    UserModel --> DB[(MongoDB)]
+    API -->|JWT Token| User
 
-    D --> G([PDF Generator for Quotations]);
-    E --> H([Stock Alerts/Item Tracking]);
-    F --> I([Ticket Status Updates]);
-    L --> O([Client Data Operations]);
-    M --> P([Challan Generation/Tracking]);
-    N --> Q([Supplier Data Operations]);
+    User -->|Authenticated API Request| API2[API Endpoint ]
+    API2 --> Auth2[Auth Middleware]
+    Auth2 --> Controller[Business Controller]
+    Controller --> Model[Mongoose Model]
+    Model --> DB
+    Controller -->|On Delete| UniversalBackup[UniversalBackup Model]
+    UniversalBackup --> DB
 
-    G --> J{MongoDB Database \n Users, Quotations, ItemList, \n OpenTickets, Clients, Challans, \n Suppliers, LogTime};
-    H --> J;
-    I --> J;
-    O --> J;
-    P --> J;
-    Q --> J;
+    User -->|Create Ticket| API_Ticket[API /tickets]
+    API_Ticket --> Auth_Ticket[Auth Middleware]
+    Auth_Ticket --> TicketController[Ticket Controller]
+    TicketController --> TicketModel[Ticket Model]
+    TicketModel --> DB
 
-    J --> K[9.0 Audit Logging \n LogTime - User activities];
+    User -->|Log Time| API_LogTime[API /logtime]
+    API_LogTime --> Auth_LogTime[Auth Middleware]
+    Auth_LogTime --> LogTimeController[LogTime Controller]
+    LogTimeController --> LogTimeModel[LogTime Model]
+    LogTimeModel --> DB
+
+    User -->|CRUD Items/Clients/Suppliers| API_Other[API Endpoint]
+    API_Other --> Auth_Other[Auth Middleware]
+    Auth_Other --> OtherController[Other Controllers]
+    OtherController --> OtherModel[Other Models]
+    OtherModel --> DB

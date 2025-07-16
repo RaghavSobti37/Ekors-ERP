@@ -10,6 +10,7 @@ const { STANDARD_UNITS } = require("../utils/payloadServer"); // Import STANDARD
 // More specific routes first
 router.get("/purchases/new", auth, (req, res) => res.status(200).send("Purchase Form Page")); // This route is primarily for frontend navigation
 router.get("/purchases/all", auth, purchaseController.getAllPurchases); // Get all purchases (Protected)
+router.delete("/purchases/:id", auth, purchaseController.deletePurchaseWithBackup); // Delete purchase with backup
 router.post("/purchase", auth, purchaseController.addBulkPurchase); // Add bulk purchase
 router.get("/categories/all", itemController.getAllCategories); // GET all unique categories for dropdown
 router.get("/export-excel", auth, itemController.exportItemsToExcel); // New route for export

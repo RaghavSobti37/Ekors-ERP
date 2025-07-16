@@ -91,8 +91,35 @@ export default function PurchaseHistory() {
     setExpandedPurchase(expandedPurchase === purchaseId ? null : purchaseId);
   };
 
+
   const handleRetry = () => {
     fetchPurchases();
+  };
+
+  const handleDeletePurchase = async (purchaseId) => {
+    if (!window.confirm("Are you sure you want to delete this purchase? This action cannot be undone.")) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getAuthTokenUtil();
+      if (!token) {
+        setError("Authentication token not found. Please log in again.");
+        setLoading(false);
+        return;
+      }
+      await apiClient(`/items/purchases/${purchaseId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Purchase deleted and backed up successfully.");
+      // Remove from local state
+      setPurchases((prev) => prev.filter((p) => p._id !== purchaseId));
+    } catch (err) {
+      const errorMessage = handleApiError(err, "Failed to delete purchase.");
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredPurchases = purchases.filter((purchase) => {
@@ -185,7 +212,12 @@ export default function PurchaseHistory() {
                               >
                                 {expandedPurchase === purchase._id ? "Hide" : "Show"} Details
                               </button>
-                             
+                              <button
+                                onClick={() => handleDeletePurchase(purchase._id)}
+                                className="btn btn-danger btn-sm"
+                              >
+                                Delete
+                              </button>
                             </div>
                           </td>
                         </tr>

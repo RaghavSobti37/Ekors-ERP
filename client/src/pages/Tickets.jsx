@@ -259,19 +259,27 @@ export default function Dashboard() {
     setCurrentPage(1); // Reset to first page on sort change
   }, [sortConfig]);
 
-  const fetchTickets = useCallback(async (page = currentPage, limit = itemsPerPage) => {
+  // Always use latest values for search/filter/sort
+  const fetchTickets = useCallback(async ({
+    page = currentPage,
+    limit = itemsPerPage,
+    sortKey = sortConfig.key,
+    sortDirection = sortConfig.direction,
+    status = statusFilter,
+    search = searchTerm,
+  } = {}) => {
     if (authLoading || !authUser) return;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("limit", limit.toString());
-      params.append("sortKey", sortConfig.key);
-      params.append("sortDirection", sortConfig.direction);
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (searchTerm) params.append("search", searchTerm);
+      params.append("sortKey", sortKey);
+      params.append("sortDirection", sortDirection);
+      if (status !== "all") params.append("status", status);
+      if (search && search.trim().length > 0) params.append("search", search.trim());
 
-      const endpoint = `/tickets${params.toString() ? `?${params.toString()}` : ""}`;
+      const endpoint = `/tickets?${params.toString()}`;
       const data = await apiClient(endpoint);
       setTickets(data.data || []);
       setTotalTickets(data.totalItems || 0);
@@ -287,28 +295,51 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [authUser, authLoading, navigate, sortConfig, statusFilter, currentPage, itemsPerPage, searchTerm]);
+  }, [authUser, authLoading, navigate]);
 
-  useEffect(() => {
-    if (!authLoading && !authUser && !isCompanyInfoLoading) {      if (window.location.pathname !== "/login") { toast.info("Redirecting to login."); navigate("/login", { state: { from: "/tickets" } }); }
-    } else if (authUser) {
-      fetchTickets(currentPage, itemsPerPage);
-    }
-  }, [authUser, authLoading, navigate, fetchTickets, currentPage, itemsPerPage, statusFilter, sortConfig]);
-
-  // Reset to page 1 when filters or sort change
+  // Reset to page 1 when filters, sort, or search change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, sortConfig]);
 
-  // Add debouncing for search term
+  // Debounced fetch for search, page, filter, sort changes
+  // Debounce search only
   useEffect(() => {
     const timeout = setTimeout(() => {
       setCurrentPage(1);
-      fetchTickets();
-    }, 400); // Debounce delay
+      fetchTickets({
+        page: 1,
+        limit: itemsPerPage,
+        sortKey: sortConfig.key,
+        sortDirection: sortConfig.direction,
+        status: statusFilter,
+        search: searchTerm,
+      });
+    }, 400);
     return () => clearTimeout(timeout);
   }, [searchTerm]);
+
+  // Fetch on page/filter/sort change
+  useEffect(() => {
+    fetchTickets({
+      page: currentPage,
+      limit: itemsPerPage,
+      sortKey: sortConfig.key,
+      sortDirection: sortConfig.direction,
+      status: statusFilter,
+      search: searchTerm,
+    });
+  }, [currentPage, itemsPerPage, sortConfig, statusFilter]);
+
+  useEffect(() => {
+    if (!authLoading && !authUser && !isCompanyInfoLoading) {
+      if (window.location.pathname !== "/login") {
+        toast.info("Redirecting to login.");
+        navigate("/login", { state: { from: "/tickets" } });
+      }
+    }
+    // Initial fetch is now handled by the debounced effect above
+  }, [authUser, authLoading, navigate, isCompanyInfoLoading]);
 
   const handleDelete = useCallback(async (ticketToDelete) => {
     if (!authUser || authUser.role !== "super-admin") {

@@ -1,3 +1,31 @@
+// Backup and delete a purchase
+const UniversalBackup = require("../models/universalBackup");
+
+exports.deletePurchaseWithBackup = async (req, res) => {
+  const purchaseId = req.params.id;
+  const user = req.user;
+  try {
+    const purchase = await Purchase.findById(purchaseId);
+    if (!purchase) {
+      return res.status(404).json({ success: false, message: "Purchase not found" });
+    }
+    // Backup the purchase
+    await UniversalBackup.create({
+      originalId: purchase._id,
+      originalModel: "Purchase",
+      data: purchase.toObject(),
+      deletedBy: user?._id,
+      deletedAt: new Date(),
+      originalCreatedAt: purchase.createdAt,
+      originalUpdatedAt: purchase.updatedAt
+    });
+    // Delete the purchase
+    await Purchase.deleteOne({ _id: purchaseId });
+    res.json({ success: true, message: "Purchase deleted and backed up." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to delete purchase", error: error.message });
+  }
+};
 const { Item, Purchase } = require("../models/itemlist");
 const mongoose = require("mongoose");
 const logger = require("../logger");
