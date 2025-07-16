@@ -19,7 +19,7 @@ const generateNextQuotationNumber = async (userId) => {
   return `Q-${year}${month}${day}-${hours}${minutes}${seconds}`;
 };
 
-const allowedUnits = ["Nos", "Kg", "Mtr", "Ltr"]; // Add all allowed units here
+const allowedUnits = ["Nos", "Kg", "Mtr", "Ltr"]; 
 
 function normalizeUnit(unit) {
   if (!unit) return unit;

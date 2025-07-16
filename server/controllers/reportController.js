@@ -8,6 +8,7 @@ const PDFDocument = require("pdfkit");
 const mongoose = require("mongoose");
 const xlsx = require("xlsx"); // For Excel export
 const excelJS = require('exceljs');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 
 // Helper function to calculate date ranges
 const getDateRange = (period) => {
@@ -61,9 +62,103 @@ const formatDateToYYYYMMDD = (dateObj) => {
   return dateObj.toISOString().split("T")[0];
 };
 
-// Internal function to fetch and process report data
-async function getUserReportDataInternal(userId, period) {
+// Helper function to get monthly analytics data
+async function getMonthlyAnalytics(userId, months = 6) {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const monthsAgo = new Date();
+  monthsAgo.setMonth(monthsAgo.getMonth() - months);
+  
+  // Get monthly quotation data
+  const quotationAnalytics = await Quotation.aggregate([
+    {
+      $match: {
+        user: userObjectId,
+        createdAt: { $gte: monthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        totalQuotations: { $sum: 1 },
+        totalAmount: { $sum: "$grandTotal" },
+        avgAmount: { $avg: "$grandTotal" },
+        statusBreakdown: {
+          $push: {
+            status: "$status",
+            amount: "$grandTotal"
+          }
+        }
+      }
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 }
+    }
+  ]);
 
+  // Get monthly ticket data
+  const ticketAnalytics = await Ticket.aggregate([
+    {
+      $match: {
+        createdBy: userObjectId,
+        createdAt: { $gte: monthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        totalTickets: { $sum: 1 },
+        totalAmount: { $sum: "$grandTotal" },
+        avgAmount: { $avg: "$grandTotal" },
+        statusBreakdown: {
+          $push: {
+            status: "$status",
+            amount: "$grandTotal"
+          }
+        }
+      }
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 }
+    }
+  ]);
+
+  return { quotationAnalytics, ticketAnalytics };
+}
+
+// Function to generate chart images
+async function generateChartImage(chartConfig) {
+  const width = 800;
+  const height = 400;
+  const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour: 'white' });
+  
+  try {
+    const imageBuffer = await chartJSNodeCanvas.renderToBuffer(chartConfig);
+    return imageBuffer;
+  } catch (error) {
+    logger.log({
+      user: null,
+      page: "Report",
+      action: "Chart Generation Error",
+      message: `Failed to generate chart: ${error.message}`,
+      level: "error"
+    });
+    return null;
+  }
+}
+
+// Enhanced internal function to fetch and process report data
+async function getUserReportDataInternal(userId, period) {
+  // Get date range based on period
+  const { startDate, endDate } = getDateRange(period);
+  
+  // Find the user
+  const user = await User.findById(userId);
   if (!user) {
     logger.log({
       user: { id: userId },
@@ -79,12 +174,15 @@ async function getUserReportDataInternal(userId, period) {
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
+  // Build match conditions for quotations
+  const quotationMatchConditions = { user: userObjectId };
+  if (startDate && endDate) {
+    quotationMatchConditions.createdAt = { $gte: startDate, $lte: endDate };
+  }
+  
   const quotations = await Quotation.aggregate([
     {
-      $match: {
-        user: userObjectId,
-        createdAt: { $gte: startDate, $lte: endDate },
-      },
+      $match: quotationMatchConditions,
     },
     {
       $group: {
@@ -94,12 +192,16 @@ async function getUserReportDataInternal(userId, period) {
       },
     },
   ]);
+  
+  // Build match conditions for tickets
+  const ticketMatchConditions = { createdBy: userObjectId };
+  if (startDate && endDate) {
+    ticketMatchConditions.createdAt = { $gte: startDate, $lte: endDate };
+  }
+  
   const tickets = await Ticket.aggregate([
     {
-      $match: {
-        createdBy: userObjectId, // Assuming 'createdBy' field stores the user ID for tickets
-        createdAt: { $gte: startDate, $lte: endDate },
-      },
+      $match: ticketMatchConditions,
     },
     {
       $group: {
@@ -110,16 +212,18 @@ async function getUserReportDataInternal(userId, period) {
     },
   ]);
 
-  const startDateString = formatDateToYYYYMMDD(startDate);
-  const endDateString = formatDateToYYYYMMDD(endDate);
+  // Build match conditions for log times
+  const logTimeMatchConditions = { user: userObjectId };
+  if (startDate && endDate) {
+    const startDateString = formatDateToYYYYMMDD(startDate);
+    const endDateString = formatDateToYYYYMMDD(endDate);
+    logTimeMatchConditions.date = { $gte: startDateString, $lte: endDateString };
+  }
+  logTimeMatchConditions["logs.timeSpent"] = { $exists: true, $ne: null, $ne: "" };
 
   const logTimes = await LogTime.aggregate([
     {
-      $match: {
-        user: userObjectId,
-        date: { $gte: startDateString, $lte: endDateString }, // Assuming LogTime.date is "YYYY-MM-DD" string
-        "logs.timeSpent": { $exists: true, $ne: null, $ne: "" }, // Ensure timeSpent exists and is not empty
-      },
+      $match: logTimeMatchConditions,
     },
     { $unwind: "$logs" }, // Consider { preserveNullAndEmptyArrays: true } if needed
     {
@@ -220,25 +324,45 @@ async function getUserReportDataInternal(userId, period) {
     hold: 0,
     closed: 0,
     totalAmount: 0,
+    openAmount: 0,
+    holdAmount: 0,
+    closedAmount: 0,
   };
   quotations.forEach((item) => {
     quotationStats.total += item.count;
-    if (item._id === "open") quotationStats.open = item.count;
-    else if (item._id === "hold") quotationStats.hold = item.count;
-    else if (item._id === "closed") {
+    quotationStats.totalAmount += item.totalAmount || 0;
+    if (item._id === "open") {
+      quotationStats.open = item.count;
+      quotationStats.openAmount = item.totalAmount || 0;
+    } else if (item._id === "hold") {
+      quotationStats.hold = item.count;
+      quotationStats.holdAmount = item.totalAmount || 0;
+    } else if (item._id === "closed") {
       quotationStats.closed = item.count;
-      quotationStats.totalAmount = item.totalAmount || 0;
+      quotationStats.closedAmount = item.totalAmount || 0;
     }
   });
 
-  const ticketStats = { total: 0, open: 0, hold: 0, closed: 0, totalAmount: 0 };
+  const ticketStats = { 
+    total: 0, 
+    open: 0, 
+    hold: 0, 
+    closed: 0, 
+    totalAmount: 0,
+    openAmount: 0,
+    holdAmount: 0,
+    closedAmount: 0,
+  };
   tickets.forEach((item) => {
     ticketStats.total += item.count;
+    ticketStats.totalAmount += item.totalAmount || 0;
     if (item._id === "Closed") {
       ticketStats.closed = item.count;
-      ticketStats.totalAmount = item.totalAmount || 0;
-    } else if (item._id === "Hold") ticketStats.hold = item.count;
-    else if (
+      ticketStats.closedAmount = item.totalAmount || 0;
+    } else if (item._id === "Hold") {
+      ticketStats.hold = item.count;
+      ticketStats.holdAmount = item.totalAmount || 0;
+    } else if (
       [
         "Quotation Sent",
         "PO Received",
@@ -247,8 +371,10 @@ async function getUserReportDataInternal(userId, period) {
         "Packing List",
         "Invoice Sent",
       ].includes(item._id)
-    )
+    ) {
       ticketStats.open += item.count;
+      ticketStats.openAmount += item.totalAmount || 0;
+    }
   });
 
   const logTimeStats = {
@@ -258,7 +384,7 @@ async function getUserReportDataInternal(userId, period) {
 
   return {
     user: user.toObject(), // Convert Mongoose doc to plain object
-    period: formatDateRange(startDate, endDate),
+    period: startDate && endDate ? formatDateRange(startDate, endDate) : "All Time",
     quotationStats,
     ticketStats,
     logTimeStats,
@@ -397,90 +523,244 @@ exports.generateUserReportPDF = async (req, res, next) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const reportData = await getUserReportDataInternal(userId, period); // Use the internal function
+    const reportData = await getUserReportDataInternal(userId, period);
+    const monthlyData = await getMonthlyAnalytics(userId, 6);
 
     // Before creating PDF, verify data exists
     if (!reportData || !reportData.user) {
-      // Check reportData itself first
       throw new Error("No user data found");
     }
 
     // Destructure data for easier access in PDF generation
     const {
-      user, // This 'user' object comes from reportData
-      period: dateRange, // 'period' from reportData, aliased to dateRange
+      user,
+      period: dateRange,
       quotationStats,
       ticketStats,
       logTimeStats,
     } = reportData;
 
-    // Create PDF document
-    const doc = new PDFDocument({ margin: 30 });
+    // Create PDF document with better margins
+    const doc = new PDFDocument({ 
+      margin: 50, 
+      size: 'A4',
+      info: {
+        Title: `User Report - ${user.firstname} ${user.lastname}`,
+        Author: 'ERP System',
+        Subject: `Performance Report for ${dateRange}`,
+        Keywords: 'user report, analytics, performance'
+      }
+    });
 
     // Set response headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=user-report-${user.firstname}-${user.lastname}.pdf`
+      `attachment; filename=user-report-${user.firstname}-${user.lastname}-${new Date().toISOString().split('T')[0]}.pdf`
     );
 
     // Pipe to response
     doc.pipe(res);
-    // Add content with error handling
-    doc.fontSize(18).text("User Activity Report", { align: "center" });
-    doc.moveDown();
 
-    // User Information Section
-    doc.fontSize(12).text(`Report for: ${user.firstname} ${user.lastname}`);
-    doc.text(`Email: ${user.email}`);
-    doc.text(`Role: ${user.role}`);
-    doc.text(`Report Period: ${dateRange}`);
-    doc.moveDown();
+    // Colors for the report
+    const primaryColor = '#800000'; // Maroon
+    const accentColor = '#4A90E2';
+    const lightGray = '#F5F5F5';
+    const darkGray = '#333333';
 
-    // Quotation Statistics
-    doc.fontSize(14).text("Quotation Statistics:", { underline: true });
-    doc
-      .fontSize(12)
-      .text(`Total Quotations: ${quotationStats.total}`)
-      .text(
-        `Open: ${quotationStats.open} | Hold: ${quotationStats.hold} | Closed: ${quotationStats.closed}`
-      )
-      .text(
-        `Total Amount (Closed): ₹${(quotationStats.totalAmount || 0).toFixed(
-          2
-        )}`
-      );
-    doc.moveDown();
+    // Header with company branding
+    doc.rect(0, 0, doc.page.width, 80).fill(primaryColor);
+    doc.fontSize(24).fillColor('white').text('USER PERFORMANCE REPORT', 50, 30, { align: 'center' });
+    doc.moveDown(2);
 
-    // Ticket Statistics
-    doc.fontSize(14).text("Ticket Statistics:", { underline: true });
-    doc
-      .fontSize(12)
-      .text(`Total Tickets: ${ticketStats.total}`)
-      .text(
-        `Open: ${ticketStats.open} | Hold: ${ticketStats.hold} | Closed: ${ticketStats.closed}`
-      )
-      .text(
-        `Total Amount (Closed): ₹${(ticketStats.totalAmount || 0).toFixed(2)}`
-      );
-    doc.moveDown();
+    // User Information Section with styling
+    doc.rect(50, 120, doc.page.width - 100, 100).fill(lightGray).stroke();
+    doc.fillColor(darkGray).fontSize(16).text('USER INFORMATION', 70, 135);
+    
+    doc.fontSize(12)
+      .text(`Name: ${user.firstname} ${user.lastname}`, 70, 160)
+      .text(`Email: ${user.email}`, 70, 180)
+      .text(`Role: ${user.role}`, 300, 160)
+      .text(`Report Period: ${dateRange}`, 300, 180)
+      .text(`Generated: ${new Date().toLocaleDateString()}`, 300, 200);
 
-    // Time Log Statistics
-    doc.fontSize(14).text("Time Logs:", { underline: true });
-    doc
-      .fontSize(12)
-      .text(`Total Tasks: ${logTimeStats.totalTasks}`)
-      .text(
-        `Total Hours: ${((logTimeStats.totalTimeSpent || 0) / 60).toFixed(2)}`
-      );
-    doc.moveDown();
+    doc.moveDown(3);
 
-    // Footer
-    doc
-      .fontSize(10)
-      .text(`Generated on ${new Date().toLocaleDateString()}`, {
-        align: "right",
+    // Performance Summary Section
+    let yPosition = 250;
+    doc.rect(50, yPosition, doc.page.width - 100, 30).fill(accentColor);
+    doc.fillColor('white').fontSize(14).text('PERFORMANCE SUMMARY', 70, yPosition + 10);
+    yPosition += 50;
+
+    // Create performance metrics table
+    const tableWidth = doc.page.width - 100;
+    const colWidth = tableWidth / 4;
+    
+    // Table headers
+    doc.rect(50, yPosition, tableWidth, 25).fill(lightGray).stroke();
+    doc.fillColor(darkGray).fontSize(11).text('Metric', 60, yPosition + 8);
+    doc.text('Quotations', 60 + colWidth, yPosition + 8);
+    doc.text('Tickets', 60 + colWidth * 2, yPosition + 8);
+    doc.text('Time Logs', 60 + colWidth * 3, yPosition + 8);
+    
+    yPosition += 25;
+    
+    // Table data
+    const metrics = [
+      ['Total Count', quotationStats.total, ticketStats.total, logTimeStats.totalTasks],
+      ['Open/Running', quotationStats.open, ticketStats.open, '-'],
+      ['On Hold', quotationStats.hold, ticketStats.hold, '-'],
+      ['Completed', quotationStats.closed, ticketStats.closed, '-'],
+      ['Total Value', `₹${quotationStats.totalAmount?.toFixed(2) || '0.00'}`, `₹${ticketStats.totalAmount?.toFixed(2) || '0.00'}`, `${((logTimeStats.totalTimeSpent || 0) / 60).toFixed(1)}h`],
+      ['Open Value', `₹${quotationStats.openAmount?.toFixed(2) || '0.00'}`, `₹${ticketStats.openAmount?.toFixed(2) || '0.00'}`, '-'],
+      ['Hold Value', `₹${quotationStats.holdAmount?.toFixed(2) || '0.00'}`, `₹${ticketStats.holdAmount?.toFixed(2) || '0.00'}`, '-'],
+      ['Closed Value', `₹${quotationStats.closedAmount?.toFixed(2) || '0.00'}`, `₹${ticketStats.closedAmount?.toFixed(2) || '0.00'}`, '-']
+    ];
+
+    metrics.forEach((row, index) => {
+      const bgColor = index % 2 === 0 ? 'white' : lightGray;
+      doc.rect(50, yPosition, tableWidth, 20).fill(bgColor).stroke();
+      doc.fillColor(darkGray).fontSize(10);
+      row.forEach((cell, cellIndex) => {
+        doc.text(String(cell), 60 + colWidth * cellIndex, yPosition + 6);
       });
+      yPosition += 20;
+    });
+
+    // Only add charts if we have meaningful data
+    const hasMonthlyData = monthlyData.quotationAnalytics.length > 0 || monthlyData.ticketAnalytics.length > 0;
+    
+    if (hasMonthlyData) {
+      // Add new page for charts only if we have data
+      doc.addPage();
+      yPosition = 50;
+      
+      // Charts section header
+      doc.rect(50, yPosition, doc.page.width - 100, 30).fill(accentColor);
+      doc.fillColor('white').fontSize(14).text('MONTHLY PERFORMANCE TRENDS', 70, yPosition + 10);
+      yPosition += 50;
+
+      // Prepare chart data
+      const months = monthlyData.quotationAnalytics.map(item => 
+        `${item._id.year}-${String(item._id.month).padStart(2, '0')}`
+      );
+      
+      const quotationValues = monthlyData.quotationAnalytics.map(item => item.totalQuotations);
+      const ticketValues = monthlyData.ticketAnalytics.map(item => item.totalTickets || 0);
+
+      // Only create charts if we have data
+      if (months.length > 0) {
+        // Create chart configuration
+        const chartConfig = {
+          type: 'line',
+          data: {
+            labels: months,
+            datasets: [{
+              label: 'Quotations',
+              data: quotationValues,
+              borderColor: primaryColor,
+              backgroundColor: primaryColor + '20',
+              tension: 0.4
+            }, {
+              label: 'Tickets',
+              data: ticketValues,
+              borderColor: accentColor,
+              backgroundColor: accentColor + '20',
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Monthly Activity Trends'
+              },
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Count'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Month'
+                }
+              }
+            }
+          }
+        };
+
+        // Generate and embed chart
+        const chartImage = await generateChartImage(chartConfig);
+        if (chartImage) {
+          doc.image(chartImage, 80, yPosition, { width: 400, height: 200 });
+          yPosition += 220;
+        }
+
+        // Value chart
+        const valueChartConfig = {
+          type: 'bar',
+          data: {
+            labels: months,
+            datasets: [{
+              label: 'Quotation Value (₹)',
+              data: monthlyData.quotationAnalytics.map(item => item.totalAmount || 0),
+              backgroundColor: primaryColor + '80',
+              borderColor: primaryColor,
+              borderWidth: 1
+            }, {
+              label: 'Ticket Value (₹)',
+              data: monthlyData.ticketAnalytics.map(item => item.totalAmount || 0),
+              backgroundColor: accentColor + '80',
+              borderColor: accentColor,
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Monthly Revenue Trends'
+              },
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Amount (₹)'
+                }
+              }
+            }
+          }
+        };
+
+        const valueChartImage = await generateChartImage(valueChartConfig);
+        if (valueChartImage) {
+          doc.image(valueChartImage, 80, yPosition, { width: 400, height: 200 });
+        }
+      }
+    }
+
+    // Footer on the last page
+    doc.rect(0, doc.page.height - 50, doc.page.width, 50).fill(primaryColor);
+    doc.fillColor('white').fontSize(10)
+      .text('Generated by ERP System', 50, doc.page.height - 30)
+      .text(`Generated on ${new Date().toLocaleDateString()}`, 0, doc.page.height - 30, { align: 'right', width: doc.page.width - 50 });
 
     // Finalize PDF
     doc.end();
