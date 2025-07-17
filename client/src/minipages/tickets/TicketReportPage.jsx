@@ -65,7 +65,7 @@ const TicketReportPage = () => {
     try {
       const response = await apiClient(`/reports/tickets`, {
         params: { period },
-        method: "GET", // Endpoint remains the same
+        method: "GET",
       });
       setReportData(response.data);
     } catch (err) {
@@ -95,11 +95,13 @@ const TicketReportPage = () => {
     try {
       const response = await apiClient(`/reports/tickets`, {
         params: { period, exportToExcel: "true" },
-        method: "GET", // Endpoint remains the same
+        method: "GET",
         responseType: "blob",
+        rawResponse: true
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", `ticket-report-${period}.xlsx`);

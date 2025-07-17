@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   getUserReport,
+  exportUserReportToExcel,
   generateUserReportPDF,
   generateQuotationsReport, // Import the quotations report controller
   generateTicketsReport, // Import the new tickets report controller
@@ -25,10 +26,11 @@ router.get("/users/:userId", auth, (req, res, next) => {  // Keep existing middl
 // @desc    Export user report to Excel
 // @route   GET /api/reports/users/:userId/export-excel
 // @access  Private (Admin/Super-Admin)
-// router.get(
-//   "/users/:userId/export-excel",
-//   exportUserReportToExcel
-// );
+router.get(
+  "/users/:userId/export-excel",
+  auth,
+  exportUserReportToExcel
+);
 
 // @desc    Generate PDF report for user
 // @route   GET /api/reports/users/:userId/generate-pdf

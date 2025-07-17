@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }) => {
           method: "POST",
           body: credentials,
         });
+        
         if (authResponseData.token && authResponseData.user) {
           localStorage.setItem("erp-user", authResponseData.token);
           setUser(authResponseData.user);

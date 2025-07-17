@@ -435,80 +435,94 @@ exports.getUserReport = async (req, res, next) => {
 };
 
 // @access  Private
-// exports.exportUserReportToExcel = async (req, res, next) => {
-//   try {
-//     const { userId } = req.params;
-//     const { period = "7days" } = req.query;
+exports.exportUserReportToExcel = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { period = "7days" } = req.query;
 
-//     // First get the report data
-//     const reportResponse = await this.getUserReportData(userId, period);
-//     const { user, period: dateRange, quotationStats, ticketStats, logTimeStats } = reportResponse;
+    // First get the report data
+    const reportResponse = await getUserReportDataInternal(userId, period);
+    const { user, period: dateRange, quotationStats, ticketStats, logTimeStats } = reportResponse;
 
-//     // Create a workbook
-//     const workbook = new ExcelJS.Workbook();
-//     const worksheet = workbook.addWorksheet("User Report");
+    // Create a workbook
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet("User Report");
 
-//     // Add some metadata
-//     worksheet.columns = [
-//       { header: "User Report", key: "title", width: 30 },
-//       { header: "Value", key: "value", width: 30 },
-//     ];
+    // Add some metadata
+    worksheet.columns = [
+      { header: "User Report", key: "title", width: 30 },
+      { header: "Value", key: "value", width: 30 },
+    ];
 
-//     worksheet.addRow({ title: "Report For", value: `${user.firstname} ${user.lastname}` });
-//     worksheet.addRow({ title: "Email", value: user.email });
-//     worksheet.addRow({ title: "Role", value: user.role });
-//     worksheet.addRow({ title: "Period", value: dateRange });
-//     worksheet.addRow({});
+    worksheet.addRow({ title: "Report For", value: `${user.firstname} ${user.lastname}` });
+    worksheet.addRow({ title: "Email", value: user.email });
+    worksheet.addRow({ title: "Role", value: user.role });
+    worksheet.addRow({ title: "Period", value: dateRange });
+    worksheet.addRow({});
 
-//     // Add Quotation Stats
-//     worksheet.addRow({ title: "Quotation Statistics", value: "" });
-//     worksheet.addRow({ title: "Total Quotations", value: quotationStats.total });
-//     worksheet.addRow({ title: "Open Quotations", value: quotationStats.open });
-//     worksheet.addRow({ title: "Hold Quotations", value: quotationStats.hold });
-//     worksheet.addRow({ title: "Closed Quotations", value: quotationStats.closed });
-//     worksheet.addRow({ title: "Total Amount (All)", value: quotationStats.totalAmount });
-//     worksheet.addRow({ title: "Total Amount (Closed)", value: quotationStats.closedAmount });
-//     worksheet.addRow({});
+    // Add Quotation Stats
+    worksheet.addRow({ title: "Quotation Statistics", value: "" });
+    worksheet.addRow({ title: "Total Quotations", value: quotationStats.total });
+    worksheet.addRow({ title: "Open Quotations", value: quotationStats.open });
+    worksheet.addRow({ title: "Hold Quotations", value: quotationStats.hold });
+    worksheet.addRow({ title: "Closed Quotations", value: quotationStats.closed });
+    worksheet.addRow({ title: "Total Amount (All)", value: quotationStats.totalAmount });
+    worksheet.addRow({ title: "Total Amount (Closed)", value: quotationStats.closedAmount });
+    worksheet.addRow({});
 
-//     // Add Ticket Stats
-//     worksheet.addRow({ title: "Ticket Statistics", value: "" });
-//     worksheet.addRow({ title: "Total Tickets", value: ticketStats.total });
-//     worksheet.addRow({ title: "Open Tickets", value: ticketStats.open });
-//     worksheet.addRow({ title: "Hold Tickets", value: ticketStats.hold });
-//     worksheet.addRow({ title: "Closed Tickets", value: ticketStats.closed });
-//     worksheet.addRow({ title: "Total Amount (All)", value: ticketStats.totalAmount });
-//     worksheet.addRow({ title: "Total Amount (Closed)", value: ticketStats.closedAmount });
-//     worksheet.addRow({});
+    // Add Ticket Stats
+    worksheet.addRow({ title: "Ticket Statistics", value: "" });
+    worksheet.addRow({ title: "Total Tickets", value: ticketStats.total });
+    worksheet.addRow({ title: "Open Tickets", value: ticketStats.open });
+    worksheet.addRow({ title: "Hold Tickets", value: ticketStats.hold });
+    worksheet.addRow({ title: "Closed Tickets", value: ticketStats.closed });
+    worksheet.addRow({ title: "Total Amount (All)", value: ticketStats.totalAmount });
+    worksheet.addRow({ title: "Total Amount (Closed)", value: ticketStats.closedAmount });
+    worksheet.addRow({});
 
-//     // Add Log Time Stats
-//     worksheet.addRow({ title: "Time Log Statistics", value: "" });
-//     worksheet.addRow({ title: "Total Tasks Logged", value: logTimeStats.totalTasks });
-//     worksheet.addRow({ title: "Total Time Spent (hours)", value: (logTimeStats.totalTimeSpent / 60).toFixed(2) });
+    // Add Log Time Stats
+    worksheet.addRow({ title: "Time Log Statistics", value: "" });
+    worksheet.addRow({ title: "Total Tasks Logged", value: logTimeStats.totalTasks });
+    worksheet.addRow({ title: "Total Time Spent (hours)", value: (logTimeStats.totalTimeSpent / 60).toFixed(2) });
 
-//     // Style the header row
-//     worksheet.getRow(1).font = { bold: true };
-//     worksheet.getRow(7).font = { bold: true };
-//     worksheet.getRow(15).font = { bold: true };
-//     worksheet.getRow(23).font = { bold: true };
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(7).font = { bold: true };
+    worksheet.getRow(15).font = { bold: true };
+    worksheet.getRow(23).font = { bold: true };
 
-//     // Set response headers
-//     res.setHeader(
-//       "Content-Type",
-//       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-//     );
-//     res.setHeader(
-//       "Content-Disposition",
-//       `attachment; filename=user-report-${user.firstname}-${user.lastname}.xlsx`
-//     );
+    // Set response headers
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=user-report-${user.firstname}-${user.lastname}.xlsx`
+    );
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate"
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
-//     // Write to response
-//     await workbook.xlsx.write(res);
-//     res.end();
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ success: false, error: "Server Error" });
-//   }
-// };
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    logger.log({
+      user: req.user,
+      page: "Report",
+      action: "Error",
+      req,
+      message: `Failed to export user report to Excel (userId: ${req.params.userId}, period: ${req.query.period})`,
+      details: { error: err.message, stack: err.stack },
+      level: "error"
+    });
+    res.status(500).json({ success: false, error: "Server Error" });
+  }
+};
 
 // @desc    Generate PDF report for user
 // @route   GET /api/reports/users/:userId/generate-pdf
@@ -922,10 +936,31 @@ exports.generateQuotationsReport = async (req, res) => {
             "Content-Disposition",
             `attachment; filename=quotations_report_${period}.xlsx`
         );
+        res.setHeader(
+            "Cache-Control",
+            "no-cache, no-store, must-revalidate"
+        );
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
 
         // Send the workbook
         return workbook.xlsx.write(res).then(() => {
-            res.status(200).end();
+            res.end();
+        }).catch((error) => {
+            logger.log({
+                user: req.user,
+                page: "Report",
+                action: "Error",
+                req,
+                message: `Failed to write quotations Excel file (period: ${period})`,
+                details: { error: error.message, stack: error.stack },
+                level: "error"
+            });
+            res.status(500).json({
+                success: false,
+                message: "Error generating Excel file",
+                error: error.message,
+            });
         });
     }
   } catch (error) {
@@ -1077,7 +1112,28 @@ exports.generateTicketsReport = async (req, res) => {
 
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename=tickets_report_${period}.xlsx`);
-      return workbook.xlsx.write(res).then(() => res.status(200).end());
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      
+      return workbook.xlsx.write(res).then(() => {
+        res.end();
+      }).catch((error) => {
+        logger.log({
+          user: req.user,
+          page: "Report",
+          action: "Error",
+          req,
+          message: `Failed to write tickets Excel file (period: ${period})`,
+          details: { error: error.message, stack: error.stack },
+          level: "error"
+        });
+        res.status(500).json({
+          success: false,
+          message: "Error generating Excel file",
+          error: error.message,
+        });
+      });
     }
   } catch (error) {
     logger.log({

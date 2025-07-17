@@ -230,14 +230,19 @@ export default function Items() {
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
-      const res = await apiClient("/items/export-excel", { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res]));
+      const res = await apiClient("/items/export-excel", { 
+        responseType: "blob",
+        rawResponse: true 
+      });
+      const blob = res.data;
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", "items.xlsx");
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch {
       setError("Failed to export items.");
     } finally {

@@ -97,14 +97,31 @@ const apiClient = async (
     }
 
     if (!response.ok) {
-      const error = new Error(responseData.message || `Request failed with status ${response.status}`);
-      error.status = response.status;
-      error.data = responseData;
-      throw error;
+      // For blob responses, we need to handle errors differently
+      if (responseType === "blob" && responseData instanceof Blob) {
+        try {
+          const errorText = await responseData.text();
+          const errorData = JSON.parse(errorText);
+          const error = new Error(errorData.message || `Request failed with status ${response.status}`);
+          error.status = response.status;
+          error.data = errorData;
+          throw error;
+        } catch (parseError) {
+          const error = new Error(`Request failed with status ${response.status}`);
+          error.status = response.status;
+          error.data = { message: `Could not parse error response` };
+          throw error;
+        }
+      } else {
+        const error = new Error(responseData.message || `Request failed with status ${response.status}`);
+        error.status = response.status;
+        error.data = responseData;
+        throw error;
+      }
     }
 
     if (rawResponse) {
-      return { data: responseData, raw: response };
+      return { data: responseData, response: response };
     }
 
     return responseData;

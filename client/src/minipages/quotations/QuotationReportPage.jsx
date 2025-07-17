@@ -54,7 +54,7 @@ const QuotationReportPage = () => {
 
     try {
       // Align endpoint with backend: /api/reports/quotations
-      const response = await apiClient(`/reports/quotations`, { // Using apiClient as a function
+      const response = await apiClient(`/reports/quotations`, {
         params: { period },
         method: 'GET'
       });
@@ -89,13 +89,15 @@ const QuotationReportPage = () => {
 
     try {
       // Align endpoint with backend: /api/reports/quotations/export
-      const response = await apiClient(`/reports/quotations/export`, { // Using apiClient as a function
+      const response = await apiClient(`/reports/quotations/export`, {
         params: { period },
-        responseType: "blob", // apiClient should be configured to handle this or pass it to axios
-        method: 'GET'
+        responseType: "blob",
+        method: 'GET',
+        rawResponse: true
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", `quotation-report-${period}.xlsx`);
