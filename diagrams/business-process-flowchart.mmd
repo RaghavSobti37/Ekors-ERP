@@ -1,0 +1,54 @@
+---
+title: "ERP System - Controller-Based Workflow"
+config:
+  theme: default
+  flowchart:
+    htmlLabels: true
+    curve: basis
+    securityLevel: loose
+    nodeSpacing: 15
+    rankSpacing: 25
+---
+%% Minimal Node Controller-Based Flow
+flowchart TD
+    %% Entry
+    START((Login)) --> DASH[Dashboard]
+    
+    %% Quotation Controller Flow
+    DASH --> Q_CRUD[Quotation CRUD<br/>handleQuotationUpsert]
+    Q_CRUD --> Q_STATUS{Status Update?}
+    Q_STATUS -->|open/running/closed/hold| Q_CRUD
+    Q_STATUS -->|Client Accepts| T_CREATE[Create Ticket<br/>mapQuotationToTicketPayload]
+    
+    %% Ticket Controller Flow  
+    T_CREATE --> T_STATUS[Status: Quotation Sent]
+    T_STATUS --> T_UPDATE[Update Ticket<br/>statusHistory tracking]
+    T_UPDATE --> T_STATES{Ticket Status?}
+    T_STATES -->|Hold| T_UPDATE
+    T_STATES -->|Progress| T_UPDATE
+    T_STATES -->|Resolved| T_UPDATE
+    T_STATES -->|Closed| COMPLETE[Complete]
+    
+    %% Return Flow
+    COMPLETE --> DASH
+    
+    %% System Persistence
+    Q_CRUD -.-> DB1[(Quotation DB<br/>Client Relations)]
+    T_CREATE -.-> DB2[(Ticket DB<br/>Inventory Deduction)]
+    T_UPDATE -.-> DB3[(Status History<br/>Universal Backup)]
+    
+    %% Exit
+    DASH --> LOGOUT[Logout] --> END((End))
+    
+    %% Minimal Styling
+    classDef controller fill:#2196f3,stroke:#1565c0,stroke-width:2px,color:#fff
+    classDef status fill:#ff9800,stroke:#ef6c00,stroke-width:2px,color:#fff
+    classDef decision fill:#9c27b0,stroke:#6a1b9a,stroke-width:2px,color:#fff
+    classDef db fill:#607d8b,stroke:#37474f,stroke-width:1px,color:#fff
+    classDef system fill:#4caf50,stroke:#2e7d32,stroke-width:2px,color:#fff
+    
+    class START,END,DASH,LOGOUT system
+    class Q_CRUD,T_CREATE,T_UPDATE controller
+    class T_STATUS,COMPLETE status
+    class Q_STATUS,T_STATES decision
+    class DB1,DB2,DB3 db
