@@ -26,7 +26,26 @@ const StaticInfo = () => {
     // Add Field/Company Modal State
     const [showAddModal, setShowAddModal] = useState(false);
     const [addModalType, setAddModalType] = useState('company'); // 'company' or 'field'
-    const [newCompanyData, setNewCompanyData] = useState({ companyName: '', gstin: '' });
+    // Track all company fields in nested structure
+    const [newCompanyData, setNewCompanyData] = useState({
+        companyName: '',
+        gstin: '',
+        cin: '',
+        addresses: {
+            companyAddress: '',
+            officeAddress: ''
+        },
+        contacts: {
+            contactNumbers: '', // comma separated
+            email: ''
+        },
+        bank: {
+            bankName: '',
+            accountNumber: '',
+            ifscCode: '',
+            branch: ''
+        }
+    });
     const [newFieldPath, setNewFieldPath] = useState("");
     const [newFieldValue, setNewFieldValue] = useState("");
     const [addError, setAddError] = useState(null);
@@ -122,10 +141,14 @@ const StaticInfo = () => {
                 return;
             }
             try {
-                await apiClient('/company', { method: 'POST', body: newCompanyData });
+                // Send all entered fields as company object
+                await apiClient('/company', { method: 'POST', body: { company: newCompanyData } });
                 toast.success("New company added.");
                 setShowAddModal(false);
-                setNewCompanyData({ companyName: '', gstin: '' });
+                // Reset all fields
+                const resetObj = {};
+                allCompanyFields.forEach(f => { resetObj[f] = ''; });
+                setNewCompanyData(resetObj);
                 fetchCompanies();
             } catch (err) {
                 setAddError(err.message || "Failed to add company.");
@@ -246,13 +269,17 @@ const StaticInfo = () => {
 
             {/* Edit Field Modal */}
             {fieldToEdit && (
-                <ReusableModal show={showEditModal} onHide={() => setShowEditModal(false)} title={`Edit Field: ${fieldToEdit.key}`}
+                <ReusableModal
+                    show={showEditModal}
+                    onHide={() => setShowEditModal(false)}
+                    title={`Edit Field: ${fieldToEdit.key}`}
                     footerContent={
                         <>
                             <BsButton variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</BsButton>
                             <BsButton variant="primary" onClick={handleSaveField}>Save Changes</BsButton>
                         </>
-                    }>
+                    }
+                >
                     <Form.Group>
                         <Form.Label>Value</Form.Label>
                         <Form.Control type="text" value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
@@ -261,42 +288,86 @@ const StaticInfo = () => {
             )}
 
             {/* Add Company / Add Field Modal */}
-            <Modal show={showAddModal} onHide={() => setShowAddModal(false)}>
-                <Modal.Header closeButton>
-                    <Modal.Title>{addModalType === 'company' ? 'Add New Company' : 'Add New Field'}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {addError && <Alert variant="danger">{addError}</Alert>}
-                    {addModalType === 'company' ? (
-                        <Form>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
-                                <Form.Control type="text" value={newCompanyData.companyName} onChange={(e) => setNewCompanyData({ ...newCompanyData, companyName: e.target.value })} />
-                            </Form.Group>
-                            <Form.Group className="mb-3">
-                                <Form.Label>GSTIN</Form.Label>
-                                <Form.Control type="text" value={newCompanyData.gstin} onChange={(e) => setNewCompanyData({ ...newCompanyData, gstin: e.target.value })} />
-                            </Form.Group>
-                        </Form>
-                    ) : (
-                        <Form>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Field Path</Form.Label>
-                                <Form.Control type="text" placeholder="e.g., company.contacts.fax" value={newFieldPath} onChange={(e) => setNewFieldPath(e.target.value)} />
-                                <Form.Text className="text-muted">Must start with `company.`</Form.Text>
-                            </Form.Group>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Value</Form.Label>
-                                <Form.Control type="text" placeholder="Enter value" value={newFieldValue} onChange={(e) => setNewFieldValue(e.target.value)} />
-                            </Form.Group>
-                        </Form>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <BsButton variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</BsButton>
-                    <BsButton variant="primary" onClick={handleAddSubmit}>Save</BsButton>
-                </Modal.Footer>
-            </Modal>
+            <ReusableModal
+                show={showAddModal}
+                onHide={() => setShowAddModal(false)}
+                title={addModalType === 'company' ? 'Add New Company' : 'Add New Field'}
+                footerContent={
+                    <>
+                        <BsButton variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</BsButton>
+                        <BsButton variant="primary" onClick={handleAddSubmit}>Save</BsButton>
+                    </>
+                }
+                size="xl"
+            >
+                {addError && <Alert variant="danger">{addError}</Alert>}
+                {addModalType === 'company' ? (
+                    <Form>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Company Name <span className="text-danger">*</span></Form.Label>
+                            <Form.Control type="text" value={newCompanyData.companyName} onChange={e => setNewCompanyData({ ...newCompanyData, companyName: e.target.value })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>GSTIN</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.gstin} onChange={e => setNewCompanyData({ ...newCompanyData, gstin: e.target.value })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>CIN</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.cin} onChange={e => setNewCompanyData({ ...newCompanyData, cin: e.target.value })} />
+                        </Form.Group>
+                        <hr />
+                        <h5>Addresses</h5>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Company Address</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.addresses.companyAddress} onChange={e => setNewCompanyData({ ...newCompanyData, addresses: { ...newCompanyData.addresses, companyAddress: e.target.value } })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Office Address</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.addresses.officeAddress} onChange={e => setNewCompanyData({ ...newCompanyData, addresses: { ...newCompanyData.addresses, officeAddress: e.target.value } })} />
+                        </Form.Group>
+                        <hr />
+                        <h5>Contacts</h5>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Contact Numbers</Form.Label>
+                            <Form.Control type="text" placeholder="Comma separated" value={newCompanyData.contacts.contactNumbers} onChange={e => setNewCompanyData({ ...newCompanyData, contacts: { ...newCompanyData.contacts, contactNumbers: e.target.value } })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Email</Form.Label>
+                            <Form.Control type="email" value={newCompanyData.contacts.email} onChange={e => setNewCompanyData({ ...newCompanyData, contacts: { ...newCompanyData.contacts, email: e.target.value } })} />
+                        </Form.Group>
+                        <hr />
+                        <h5>Bank</h5>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Bank Name</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.bank.bankName} onChange={e => setNewCompanyData({ ...newCompanyData, bank: { ...newCompanyData.bank, bankName: e.target.value } })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Account Number</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.bank.accountNumber} onChange={e => setNewCompanyData({ ...newCompanyData, bank: { ...newCompanyData.bank, accountNumber: e.target.value } })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>IFSC Code</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.bank.ifscCode} onChange={e => setNewCompanyData({ ...newCompanyData, bank: { ...newCompanyData.bank, ifscCode: e.target.value } })} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Branch</Form.Label>
+                            <Form.Control type="text" value={newCompanyData.bank.branch} onChange={e => setNewCompanyData({ ...newCompanyData, bank: { ...newCompanyData.bank, branch: e.target.value } })} />
+                        </Form.Group>
+                    </Form>
+                ) : (
+                    <Form>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Field Path</Form.Label>
+                            <Form.Control type="text" placeholder="e.g., company.contacts.fax" value={newFieldPath} onChange={(e) => setNewFieldPath(e.target.value)} />
+                            <Form.Text className="text-muted">Must start with `company.`</Form.Text>
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Value</Form.Label>
+                            <Form.Control type="text" placeholder="Enter value" value={newFieldValue} onChange={(e) => setNewFieldValue(e.target.value)} />
+                        </Form.Group>
+                    </Form>
+                )}
+            </ReusableModal>
             <Footer />
         </>
     );

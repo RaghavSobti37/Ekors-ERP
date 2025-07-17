@@ -13,7 +13,7 @@ router.get('/default', companyController.getDefaultCompany);
 const adminOnly = [authMiddleware, isSuperAdmin];
 
 // @route   POST /api/company
-// @desc    Create a new company
+// @desc    Create a new company (accepts nested company object)
 router.post('/', adminOnly, companyController.createCompany);
 
 // @route   GET /api/company

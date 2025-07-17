@@ -13,17 +13,17 @@ const CompanyInfoSchema = new mongoose.Schema({
         cin: { type: String },
         addresses: {
             companyAddress: { type: String },
-            officeAddress: { type: String },
+            officeAddress: { type: String }
         },
         contacts: {
             contactNumbers: [{ type: String }],
-            email: { type: String },
+            email: { type: String }
         },
         bank: {
             bankName: { type: String },
             accountNumber: { type: String },
             ifscCode: { type: String },
-            branch: { type: String },
+            branch: { type: String }
         }
     }
 }, { timestamps: true, strict: false });

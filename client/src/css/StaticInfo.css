@@ -1,7 +1,39 @@
+
 .static-info-page-container {
     padding: 20px;
     background-color: #f9f9f9;
     border-radius: 8px;
+}
+
+/* Fullscreen modal styles for StaticInfo */
+.modal.show.staticinfo-modal {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: rgba(0,0,0,0.2);
+}
+
+.modal-dialog.staticinfo-modal-dialog {
+    max-width: 900px;
+    width: 100vw;
+    height: 100vh;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content.staticinfo-modal-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 32px;
 }
 
 .company-info-tree {

@@ -10,7 +10,13 @@ const getNestedValue = (obj, path) => {
 // POST /api/company - Create a new company
 exports.createCompany = async (req, res) => {
     try {
-        const newCompany = new CompanyInfo({ company: req.body });
+        // Accept nested company object
+        let companyData = req.body.company || req.body;
+        // Convert contactNumbers to array if string
+        if (companyData.contacts && typeof companyData.contacts.contactNumbers === 'string') {
+            companyData.contacts.contactNumbers = companyData.contacts.contactNumbers.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        const newCompany = new CompanyInfo({ company: companyData });
         // If this is the very first company, make it the default
         const count = await CompanyInfo.countDocuments();
         if (count === 0) {
